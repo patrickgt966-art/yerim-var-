@@ -1,0 +1,184 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>3-sonuc</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit}
+.disp{font-family:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif}
+@keyframes ring{0%{transform:scale(0.5);opacity:0.5}100%{transform:scale(1.6);opacity:0}}
+@keyframes ferryY{from{transform:translateY(340px)}to{transform:translateY(30px)}}
+@keyframes liveDot{0%,100%{opacity:1}50%{opacity:0.3}}
+.pulse{animation:ring 2.8s ease-out infinite}
+.ferry-y{animation:ferryY 22s linear infinite}
+.live{animation:liveDot 1.8s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){
+.pulse,.ferry-y,.live{animation:none}
+}
+</style>
+</head><body>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; overflow: hidden; background: #F4F7F8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif">
+
+<!-- Harita: İzmir Körfezi kıyısı -->
+<svg width="390" height="360" viewBox="0 0 390 360" fill="none" aria-hidden="true" style="position: absolute; top: 0; left: 0">
+<rect x="0" y="0" width="390" height="360" style="fill: #EAF0EE"/>
+<path d="M120 200L210 190L226 250L128 262Z" style="fill: #D2E5D6"/>
+<path d="M300 30L390 22V96L306 104Z" style="fill: #D2E5D6"/>
+<path d="M92 90H400" style="fill: none; stroke: #FFFFFF; stroke-width: 12"/>
+<path d="M100 160H400" style="fill: none; stroke: #FFFFFF; stroke-width: 16"/>
+<path d="M88 240H400" style="fill: none; stroke: #FFFFFF; stroke-width: 10"/>
+<path d="M150 -10V370" style="fill: none; stroke: #FFFFFF; stroke-width: 10"/>
+<path d="M250 -10V370" style="fill: none; stroke: #FFFFFF; stroke-width: 14"/>
+<path d="M330 -10V370" style="fill: none; stroke: #FFFFFF; stroke-width: 8"/>
+<path d="M110 40L390 150" style="fill: none; stroke: #FFFFFF; stroke-width: 6"/>
+<path d="M0 0H64C52 70 96 130 78 200C66 250 86 310 98 360H0Z" style="fill: #BBDCEA"/>
+<path d="M68 0C56 70 100 130 82 200C70 250 90 310 102 360" style="fill: none; stroke: #F2DDB8; stroke-width: 9; stroke-linecap: round"/>
+<path d="M8 70q6-4 12 0t12 0M10 150q6-4 12 0t12 0M8 240q6-4 12 0t12 0M10 310q6-4 12 0t12 0" style="fill: none; stroke: rgba(255, 255, 255, 0.8); stroke-width: 2; stroke-linecap: round"/>
+<text transform="rotate(-90 26 200)" x="26" y="200" text-anchor="middle" style="font-size: 10px; font-weight: 700; fill: #5E98B3; letter-spacing: 0.22em">İZMİR KÖRFEZİ</text>
+<text transform="rotate(-80 78 132)" x="78" y="132" text-anchor="middle" style="font-size: 9px; font-weight: 700; fill: #8A6B3A; letter-spacing: 0.16em">KORDON</text>
+<defs><pattern id="bays" width="9" height="16" patternUnits="userSpaceOnUse"><path d="M0.5 0V16" style="stroke: rgba(255,255,255,0.95); stroke-width: 1.6"/></pattern></defs>
+<rect x="154" y="58" width="66" height="68" rx="8" style="fill: #BFDDD2"/><rect x="154" y="58" width="66" height="68" rx="8" style="fill: url(#bays)"/>
+<rect x="242" y="86" width="66" height="68" rx="8" style="fill: #BFDDD2"/><rect x="242" y="86" width="66" height="68" rx="8" style="fill: url(#bays)"/>
+<rect x="134" y="196" width="66" height="68" rx="8" style="fill: #F1DDBE"/><rect x="134" y="196" width="66" height="68" rx="8" style="fill: url(#bays)"/>
+<rect x="276" y="176" width="66" height="68" rx="8" style="fill: #EFC9C9"/><rect x="276" y="176" width="66" height="68" rx="8" style="fill: url(#bays)"/>
+<path d="M187 124V152" style="fill: none; stroke: #0B3C49; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1 7"/>
+<circle cx="200" cy="164" r="12" style="fill: #0B3C49; stroke: #FFFFFF; stroke-width: 3"/>
+<circle cx="200" cy="164" r="4" style="fill: #FFFFFF"/>
+</svg>
+
+<!-- Körfezde vapur -->
+<div style="position: absolute; left: 8px; top: 0; width: 40px; height: 18px">
+<div class="ferry-y">
+<svg width="40" height="18" viewBox="0 0 80 36" fill="none" aria-hidden="true" style="display: block; transform: rotate(-90deg)">
+<path d="M2 22H78L70 32H12Z" style="fill: #FFFFFF"/>
+<rect x="16" y="12" width="40" height="10" rx="2" style="fill: #FFFFFF"/>
+<rect x="24" y="5" width="24" height="7" rx="2" style="fill: #E6EEF0"/>
+<rect x="34" y="0" width="6" height="6" style="fill: #FF8A1F"/>
+</svg>
+</div>
+</div>
+
+<!-- Hedef etiketi ve nabzı -->
+<div class="pulse" style="position: absolute; left: 170px; top: 134px; width: 60px; height: 60px; box-sizing: border-box; border-radius: 50%; border: 2px solid #0B3C49"></div>
+<div class="disp" style="position: absolute; left: 216px; top: 154px; height: 22px; line-height: 22px; padding: 0 9px; border-radius: 11px 11px 11px 3px; background: #0B3C49; color: #FFFFFF; font-size: 12px; font-weight: 800">Alsancak</div>
+
+<!-- Seçili yerin nabzı -->
+<div class="pulse" style="position: absolute; left: 151px; top: 56px; width: 72px; height: 72px; box-sizing: border-box; border-radius: 50%; border: 2px solid #0E7C6B"></div>
+
+<!-- Yer şeklinde pinler -->
+<div style="position: absolute; left: 170px; top: 68px; width: 34px; height: 48px; box-sizing: border-box; border-radius: 10px; background: #0E7C6B; border: 2px solid #FFFFFF; box-shadow: 0 4px 10px rgba(11, 60, 73, 0.28); display: flex; flex-direction: column; align-items: center; justify-content: center">
+<div style="position: absolute; top: 3px; right: 3px; bottom: 3px; left: 3px; border: 1.5px dashed rgba(255, 255, 255, 0.75); border-radius: 6px"></div>
+<span class="disp" style="position: relative; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 5px 5px 5px 2px; background: #FFFFFF; color: #0B3C49; font-size: 12px; font-weight: 800; margin-bottom: 1px">P</span>
+<span class="disp" style="position: relative; font-size: 16px; font-weight: 800; color: #FFFFFF">14</span>
+</div>
+<div style="position: absolute; left: 258px; top: 96px; width: 34px; height: 48px; box-sizing: border-box; border-radius: 10px; background: #0E7C6B; border: 2px solid #FFFFFF; box-shadow: 0 4px 10px rgba(11, 60, 73, 0.28); display: flex; flex-direction: column; align-items: center; justify-content: center">
+<div style="position: absolute; top: 3px; right: 3px; bottom: 3px; left: 3px; border: 1.5px dashed rgba(255, 255, 255, 0.75); border-radius: 6px"></div>
+<span class="disp" style="position: relative; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 5px 5px 5px 2px; background: #FFFFFF; color: #0B3C49; font-size: 12px; font-weight: 800; margin-bottom: 1px">P</span>
+<span class="disp" style="position: relative; font-size: 16px; font-weight: 800; color: #FFFFFF">6</span>
+</div>
+<div style="position: absolute; left: 150px; top: 206px; width: 34px; height: 48px; box-sizing: border-box; border-radius: 10px; background: #B45309; border: 2px solid #FFFFFF; box-shadow: 0 4px 10px rgba(11, 60, 73, 0.28); display: flex; flex-direction: column; align-items: center; justify-content: center">
+<div style="position: absolute; top: 3px; right: 3px; bottom: 3px; left: 3px; border: 1.5px dashed rgba(255, 255, 255, 0.75); border-radius: 6px"></div>
+<span class="disp" style="position: relative; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 5px 5px 5px 2px; background: #FFFFFF; color: #0B3C49; font-size: 12px; font-weight: 800; margin-bottom: 1px">P</span>
+<span class="disp" style="position: relative; font-size: 16px; font-weight: 800; color: #FFFFFF">3</span>
+</div>
+<div style="position: absolute; left: 292px; top: 186px; width: 34px; height: 48px; box-sizing: border-box; border-radius: 10px; background: #B91C1C; border: 2px solid #FFFFFF; box-shadow: 0 4px 10px rgba(11, 60, 73, 0.28); display: flex; flex-direction: column; align-items: center; justify-content: center">
+<div style="position: absolute; top: 3px; right: 3px; bottom: 3px; left: 3px; border: 1.5px dashed rgba(255, 255, 255, 0.75); border-radius: 6px"></div>
+<span class="disp" style="position: relative; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 5px 5px 5px 2px; background: #FFFFFF; color: #0B3C49; font-size: 12px; font-weight: 800; margin-bottom: 1px">P</span>
+<span class="disp" style="position: relative; font-size: 16px; font-weight: 800; color: #FFFFFF">0</span>
+</div>
+
+<!-- Üst arama -->
+<div style="position: absolute; top: 56px; left: 16px; right: 16px; height: 52px; box-sizing: border-box; padding: 0 8px 0 14px; background: #FFFFFF; border-radius: 26px 26px 26px 7px; box-shadow: 0 6px 18px rgba(11, 60, 73, 0.14); display: flex; align-items: center; gap: 12px">
+<button aria-label="Geri" style="width: 44px; height: 44px; margin-left: -10px; padding: 0; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M15 5l-7 7 7 7"/></svg></button>
+<div class="disp" style="flex: 1; min-width: 0; font-size: 17px; font-weight: 800; color: #0B3C49">Alsancak, İzmir</div>
+<button aria-label="Filtrele" style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 16px 16px 16px 5px; background: #E6EEF0; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2.2; stroke-linecap: round"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button>
+</div>
+
+<!-- Alt panel -->
+<div style="position: absolute; left: 0; right: 0; top: 320px; bottom: 0; box-sizing: border-box; padding: 10px 20px 34px; background: #FFFFFF; border-radius: 32px 32px 0 0; box-shadow: 0 -8px 24px rgba(11, 60, 73, 0.12)">
+<div style="width: 44px; height: 0; margin: 0 auto; border-top: 4px dashed #C5D2D6"></div>
+
+<div class="disp" style="margin-top: 14px; font-size: 21px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 800; color: #0B3C49">12 otopark · 41 boş yer</div>
+<div style="margin-top: 2px; font-size: 13px; color: #5C7580">Alsancak’a yürüme mesafesine göre</div>
+
+<div style="margin-top: 12px; display: flex; gap: 8px">
+<button style="height: 40px; padding: 0 14px; border-radius: 20px 20px 20px 6px; border: 1.5px solid #0B3C49; background: #0B3C49; color: #FFFFFF; font-size: 13px; font-weight: 700; cursor: pointer">Tümü</button>
+<button style="height: 40px; padding: 0 14px; border-radius: 20px 20px 20px 6px; border: 1.5px dashed #7F98A1; background: #FFFFFF; color: #0B3C49; font-size: 13px; font-weight: 700; cursor: pointer">Kapalı</button>
+<button style="height: 40px; padding: 0 14px; border-radius: 20px 20px 20px 6px; border: 1.5px dashed #7F98A1; background: #FFFFFF; color: #0B3C49; font-size: 13px; font-weight: 700; cursor: pointer">İskeleye yakın</button>
+<button style="height: 40px; padding: 0 14px; border-radius: 20px 20px 20px 6px; border: 1.5px dashed #7F98A1; background: #FFFFFF; color: #0B3C49; font-size: 13px; font-weight: 700; cursor: pointer">Şarj</button>
+</div>
+
+<!-- Kart 1: seçili, park çizgili -->
+<div style="margin-top: 14px; box-sizing: border-box; padding: 14px; border-radius: 22px 22px 22px 6px; background: #F4F7F8; border: 2px dashed #0B3C49">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px">
+<div style="min-width: 0">
+<div style="display: flex; align-items: center; gap: 6px">
+<span class="disp" style="flex: none; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 7px 7px 7px 2px; background: #0B3C49; color: #FFFFFF; font-size: 14px; font-weight: 800">P</span>
+<div style="height: 22px; line-height: 22px; padding: 0 8px; border-radius: 10px 10px 10px 3px; background: #FFEBD6; color: #92400E; font-size: 12px; font-weight: 800">En yakın</div>
+<div style="height: 22px; display: flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: 10px 10px 10px 3px; background: #D9F5EE; color: #0B5E50; font-size: 12px; font-weight: 800"><span class="live" style="width: 6px; height: 6px; border-radius: 50%; background: #0E7C6B"></span>Canlı</div>
+</div>
+<div class="disp" style="margin-top: 7px; font-size: 18px; letter-spacing: -0.01em; font-weight: 800; color: #0B3C49">Alsancak Katlı Otopark</div>
+<div style="margin-top: 2px; font-size: 13px; color: #5C7580">2 dk yürüyüş · ₺60/saat · Kapalı · 7/24</div>
+<div style="margin-top: 9px; display: flex; align-items: center; gap: 3px">
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; box-sizing: border-box; border-radius: 3px; border: 1.5px dashed #0E7C6B"></span>
+<span style="width: 9px; height: 15px; box-sizing: border-box; border-radius: 3px; border: 1.5px dashed #0E7C6B"></span>
+<span style="margin-left: 6px; font-size: 12px; font-weight: 700; color: #5C7580">14 / 60</span>
+</div>
+</div>
+<div style="flex: none; text-align: right">
+<div class="disp" style="font-size: 40px; line-height: 1; letter-spacing: -0.03em; font-weight: 800; color: #0E7C6B">14</div>
+<div style="margin-top: 2px; font-size: 12px; font-weight: 700; color: #5C7580">boş yer</div>
+</div>
+</div>
+<div style="margin-top: 12px; display: flex; gap: 10px">
+<button class="disp" style="flex: 1; height: 48px; border: 0; border-radius: 16px 16px 16px 5px; background: #0B3C49; color: #FFFFFF; font-size: 16px; font-weight: 800; cursor: pointer">Buraya park et</button>
+<button style="width: 96px; height: 48px; border: 1px solid #C5D2D6; border-radius: 16px 16px 16px 5px; background: #FFFFFF; color: #0B3C49; font-size: 15px; font-weight: 700; cursor: pointer">Detay</button>
+</div>
+</div>
+
+<!-- Kart 2 -->
+<button style="width: 100%; margin-top: 10px; height: 92px; box-sizing: border-box; padding: 0 14px; border-radius: 22px 22px 22px 6px; border: 1px solid #D3DCDF; background: #FFFFFF; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer">
+<span style="min-width: 0"><span class="disp" style="display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 800; color: #0B3C49"><span class="disp" style="flex: none; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 7px 7px 7px 2px; background: #0B3C49; color: #FFFFFF; font-size: 14px; font-weight: 800">P</span>Kordon Açık Otopark</span><span style="display: block; margin-top: 2px; font-size: 13px; color: #5C7580">5 dk yürüyüş · ₺45/saat · Açık · Canlı</span>
+<span style="display: flex; align-items: center; gap: 3px; margin-top: 9px">
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; box-sizing: border-box; border-radius: 3px; border: 1.5px dashed #0E7C6B"></span>
+<span style="width: 9px; height: 15px; box-sizing: border-box; border-radius: 3px; border: 1.5px dashed #0E7C6B"></span>
+<span style="margin-left: 6px; font-size: 12px; font-weight: 700; color: #5C7580">6 / 40</span></span></span>
+<span style="flex: none; text-align: right"><span class="disp" style="display: block; font-size: 34px; line-height: 1; letter-spacing: -0.03em; font-weight: 800; color: #0E7C6B">6</span><span style="display: block; margin-top: 2px; font-size: 12px; font-weight: 700; color: #5C7580">boş yer</span></span>
+</button>
+
+<!-- Kart 3 -->
+<button style="width: 100%; margin-top: 10px; height: 92px; box-sizing: border-box; padding: 0 14px; border-radius: 22px 22px 22px 6px; border: 1px solid #D3DCDF; background: #FFFFFF; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; cursor: pointer">
+<span style="min-width: 0"><span class="disp" style="display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 800; color: #0B3C49"><span class="disp" style="flex: none; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 7px 7px 7px 2px; background: #0B3C49; color: #FFFFFF; font-size: 14px; font-weight: 800">P</span>Gar Yanı Otopark</span><span style="display: block; margin-top: 2px; font-size: 13px; color: #5C7580">8 dk yürüyüş · ₺30/saat · Tahmini</span>
+<span style="display: flex; align-items: center; gap: 3px; margin-top: 9px">
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; border-radius: 3px; background: #C9D6DA"></span>
+<span style="width: 9px; height: 15px; box-sizing: border-box; border-radius: 3px; border: 1.5px dashed #B45309"></span>
+<span style="margin-left: 6px; font-size: 12px; font-weight: 700; color: #5C7580">3 / 80</span></span></span>
+<span style="flex: none; text-align: right"><span class="disp" style="display: block; font-size: 34px; line-height: 1; letter-spacing: -0.03em; font-weight: 800; color: #B45309">3</span><span style="display: block; margin-top: 2px; font-size: 12px; font-weight: 700; color: #5C7580">boş yer</span></span>
+</button>
+
+</div>
+
+</div>
+</body></html>

@@ -1,0 +1,148 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>2-arama</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit}
+input{font-family:inherit}
+input::placeholder{color:#5C7580;opacity:1}
+.disp{font-family:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif}
+@keyframes ferryH{from{transform:translateX(-70px)}to{transform:translateX(240px)}}
+@keyframes waveMove{from{transform:translateX(0)}to{transform:translateX(40px)}}
+@keyframes fabPulse{0%{transform:scale(1);opacity:0.45}100%{transform:scale(1.7);opacity:0}}
+.ferry-h{animation:ferryH 18s linear infinite}
+.wave{animation:waveMove 4s linear infinite}
+.fab-pulse{animation:fabPulse 2.6s ease-out infinite}
+@media (prefers-reduced-motion: reduce){
+.ferry-h,.wave,.fab-pulse{animation:none}
+}
+</style>
+</head><body>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; overflow: hidden; background: #F4F7F8; font-family: 'Plus Jakarta Sans', system-ui, sans-serif">
+
+<!-- Başlık bandı -->
+<div style="position: absolute; top: 0; left: 0; right: 0; height: 268px; border-radius: 0 0 40px 12px; overflow: hidden; background: #0B3C49">
+<div style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 2px, transparent 2px, transparent 20px)"></div>
+<div style="position: absolute; top: -90px; right: -70px; width: 270px; height: 270px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 138, 31, 0.38), rgba(255, 138, 31, 0) 65%)"></div>
+<svg width="230" height="150" viewBox="0 0 230 150" fill="none" aria-hidden="true" style="position: absolute; right: 0; bottom: 0">
+<rect x="70" y="62" width="9" height="62" style="fill: rgba(255, 255, 255, 0.14)"/>
+<rect x="63" y="52" width="23" height="13" rx="2" style="fill: rgba(255, 255, 255, 0.14)"/>
+<rect x="72" y="44" width="5" height="9" style="fill: rgba(255, 255, 255, 0.14)"/>
+<g transform="translate(130 30) scale(0.78)">
+<rect x="12" y="78" width="36" height="42" style="fill: rgba(255, 255, 255, 0.16)"/>
+<rect x="16" y="52" width="28" height="28" style="fill: rgba(255, 255, 255, 0.16)"/>
+<rect x="19" y="30" width="22" height="24" style="fill: rgba(255, 255, 255, 0.16)"/>
+<circle cx="30" cy="42" r="6" style="fill: #0B3C49"/>
+<path d="M19 30Q30 8 41 30Z" style="fill: rgba(255, 255, 255, 0.16)"/>
+<rect x="29" y="2" width="2" height="10" style="fill: rgba(255, 255, 255, 0.16)"/>
+</g>
+<rect x="0" y="124" width="230" height="26" style="fill: rgba(255, 255, 255, 0.05)"/>
+<path class="wave" d="M-40 130q10-6 20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0t20 0" style="fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 2"/>
+<g class="ferry-h">
+<g transform="translate(0 112) scale(0.5)">
+<path d="M2 22H78L70 32H12Z" style="fill: rgba(255, 255, 255, 0.4)"/>
+<rect x="16" y="12" width="40" height="10" rx="2" style="fill: rgba(255, 255, 255, 0.32)"/>
+<rect x="24" y="5" width="24" height="7" rx="2" style="fill: rgba(255, 255, 255, 0.32)"/>
+<rect x="34" y="0" width="6" height="6" style="fill: rgba(255, 138, 31, 0.85)"/>
+</g>
+</g>
+</svg>
+</div>
+
+<!-- Başlık içeriği -->
+<div style="position: absolute; top: 64px; left: 20px; right: 20px; display: flex; align-items: center; justify-content: space-between">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="34" height="34" viewBox="0 0 120 120" fill="none" aria-hidden="true" style="display: block">
+<rect x="0" y="0" width="120" height="120" rx="30" style="fill: #FFFFFF"/>
+<path d="M24 106V18H96V106" style="fill: none; stroke: #0B3C49; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 9 9"/>
+<rect x="40" y="36" width="40" height="62" rx="16" style="fill: #FF8A1F"/>
+<rect x="46" y="50" width="28" height="15" rx="5" style="fill: #FFFFFF"/>
+<rect x="47" y="80" width="26" height="9" rx="3" style="fill: #FFFFFF"/>
+</svg>
+<div class="disp" style="font-size: 19px; line-height: 1; letter-spacing: -0.02em; font-weight: 800; color: #FFFFFF">yerim <span style="color: #FFB27A">var</span></div>
+</div>
+<button style="height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 17px 17px 17px 5px; background: rgba(255, 255, 255, 0.12); color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer"><span class="disp" style="width:18px;height:18px;line-height:18px;text-align:center;border-radius:6px 6px 6px 2px;background:#FF8A1F;color:#0B3C49;font-size:12px;font-weight:800">P</span>Alsancak</button>
+</div>
+<h1 class="disp" style="position: absolute; top: 114px; left: 20px; margin: 0; font-size: 40px; line-height: 1.05; letter-spacing: -0.03em; font-weight: 800; color: #FFFFFF">Nereye <span style="color: #FFB27A">park</span><br>edeceksin?</h1>
+
+<!-- Arama kutusu -->
+<label style="position: absolute; top: 214px; left: 20px; right: 20px; height: 60px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 10px 0 16px; background: #FFFFFF; border: 1px solid #D3DCDF; border-radius: 22px 22px 22px 6px; box-shadow: 0 10px 24px rgba(11, 60, 73, 0.18)">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="flex: none; fill: none">
+<path d="M3.5 22V3.5h17V22" style="fill: none; stroke: #0B3C49; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 3.2 2.6"/>
+<rect x="8" y="8" width="8" height="12" rx="3.5" style="fill: #FF8A1F"/>
+<rect x="9.5" y="10.5" width="5" height="3" rx="1" style="fill: #0B3C49"/>
+</svg>
+<input type="text" aria-label="Gideceğin yeri yaz" placeholder="Gideceğin yeri yaz" style="flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 16px; color: #0B3C49">
+<button type="button" aria-label="Konumumu kullan" style="flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 15px 15px 15px 5px; background: #0B3C49; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg></button>
+</label>
+
+<!-- İçerik -->
+<div style="position: absolute; top: 294px; left: 20px; right: 20px">
+
+<div style="display: flex; gap: 10px">
+<button style="height: 44px; display: flex; align-items: center; gap: 7px; padding: 0 16px; border: 1.5px solid #0B3C49; border-radius: 19px 19px 19px 6px; background: #0B3C49; color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #FFFFFF; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Şimdi park</button>
+<button style="height: 44px; display: flex; align-items: center; gap: 7px; padding: 0 16px; border: 1.5px dashed #7F98A1; border-radius: 19px 19px 19px 6px; background: transparent; color: #0B3C49; font-size: 14px; font-weight: 700; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/></svg>2 saat park</button>
+</div>
+
+<div style="margin-top: 14px; display: flex; gap: 12px">
+<button style="flex: 1; height: 64px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1.5px dashed #7F98A1; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg></span>
+<span><span class="disp" style="display: block; font-size: 17px; font-weight: 800; color: #0B3C49">Ev</span><span style="display: block; font-size: 12px; color: #5C7580">Ekle</span></span>
+</button>
+<button style="flex: 1; height: 64px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1.5px dashed #7F98A1; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 36px; height: 36px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 13h17"/></svg></span>
+<span><span class="disp" style="display: block; font-size: 17px; font-weight: 800; color: #0B3C49">İş</span><span style="display: block; font-size: 12px; color: #5C7580">Ekle</span></span>
+</button>
+</div>
+
+<div class="disp" style="margin-top: 20px; height: 22px; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; color: #0B3C49">İzmir'de popüler yerler</div>
+<div style="margin-top: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<button style="height: 72px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #D3DCDF; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M11 29V14h10v15M9 29h14M12 14l4-8 4 8M16 2v4"/><circle cx="16" cy="19" r="2.5"/></svg></span>
+<span style="min-width: 0"><span class="disp" style="display: block; font-size: 15px; line-height: 1.2; font-weight: 800; color: #0B3C49">Saat Kulesi</span><span style="display: block; margin-top: 2px; font-size: 12px; color: #5C7580">Konak</span></span>
+</button>
+<button style="height: 72px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #D3DCDF; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M3 20c3-4 5 4 8 0s5 4 8 0 5 4 8 0M3 12c3-4 5 4 8 0s5 4 8 0 5 4 8 0"/></svg></span>
+<span style="min-width: 0"><span class="disp" style="display: block; font-size: 15px; line-height: 1.2; font-weight: 800; color: #0B3C49">Kordon</span><span style="display: block; margin-top: 2px; font-size: 12px; color: #5C7580">Alsancak</span></span>
+</button>
+<button style="height: 72px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #D3DCDF; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M4 28V14a12 12 0 0 1 24 0v14M10 28V16a6 6 0 0 1 12 0v12"/></svg></span>
+<span style="min-width: 0"><span class="disp" style="display: block; font-size: 15px; line-height: 1.2; font-weight: 800; color: #0B3C49">Kemeraltı</span><span style="display: block; margin-top: 2px; font-size: 12px; color: #5C7580">Konak</span></span>
+</button>
+<button style="height: 72px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid #D3DCDF; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span style="width: 40px; height: 40px; border-radius: 50%; background: #FFF1E3; display: flex; align-items: center; justify-content: center; flex: none"><svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M3 20h26l-4 7H7zM8 20v-6h16v6M13 14V9h6v5M15 9V5h2v4"/></svg></span>
+<span style="min-width: 0"><span class="disp" style="display: block; font-size: 15px; line-height: 1.2; font-weight: 800; color: #0B3C49">Karşıyaka İskelesi</span><span style="display: block; margin-top: 2px; font-size: 12px; color: #5C7580">Karşıyaka</span></span>
+</button>
+</div>
+
+<div class="disp" style="margin-top: 20px; height: 22px; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; color: #0B3C49">Aktif park</div>
+<button style="width: 100%; margin-top: 10px; height: 60px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 14px; border: 1px solid #D3DCDF; border-radius: 20px 20px 20px 6px; background: #FFFFFF; text-align: left; cursor: pointer">
+<span class="disp" style="width: 36px; height: 36px; line-height: 36px; text-align: center; border-radius: 12px 12px 12px 4px; background: #0B3C49; color: #FFFFFF; font-size: 22px; font-weight: 800; flex: none">P</span>
+<span style="flex: 1; min-width: 0"><span class="disp" style="display: block; font-size: 15px; font-weight: 800; color: #0B3C49">Alsancak Katlı Otopark</span><span style="display: block; font-size: 12px; color: #5C7580">Kat 2 · B-14 · 1 sa 12 dk</span></span>
+<span class="disp" style="flex: none; font-size: 17px; font-weight: 800; color: #0E7C6B">₺72</span>
+</button>
+
+</div>
+
+<!-- Alt sekmeler -->
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; box-sizing: border-box; background: #FFFFFF; border-top: 1px solid #D3DCDF; display: flex; justify-content: space-around; padding-top: 10px">
+<button style="width: 64px; height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #0B3C49; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span style="font-size: 12px; font-weight: 800; color: #0B3C49">Ara</span><span style="width: 18px; height: 0; border-top: 3px dashed #FF8A1F"></span></button>
+<button style="width: 64px; height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #5C7580; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M9 4L3.5 6.5v13L9 17l6 2.5 5.5-2.5v-13L15 6.5 9 4zM9 4v13M15 6.5v13"/></svg><span style="font-size: 12px; font-weight: 600; color: #5C7580">Harita</span></button>
+<button style="width: 64px; height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer"><span style="font-size: 12px; font-weight: 800; color: #0B3C49">Hemen bul</span></button>
+<button style="width: 64px; height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #5C7580; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M12 4l2.4 5 5.4.7-4 3.8 1 5.4-4.8-2.6-4.8 2.6 1-5.4-4-3.8 5.4-.7z"/></svg><span style="font-size: 12px; font-weight: 600; color: #5C7580">Favoriler</span></button>
+<button style="width: 64px; height: 52px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: #5C7580; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span style="font-size: 12px; font-weight: 600; color: #5C7580">Profil</span></button>
+</div>
+
+<!-- Hemen bul: ortadaki yer düğmesi -->
+<div style="position: absolute; left: 165px; top: 726px; width: 60px; height: 60px">
+<div class="fab-pulse" style="position: absolute; top: 0; left: 0; width: 60px; height: 60px; border-radius: 50%; background: #FF8A1F"></div>
+<button aria-label="Hemen en yakın boş yeri bul" style="position: relative; width: 60px; height: 60px; padding: 0; box-sizing: border-box; border: 4px solid #F4F7F8; border-radius: 50%; background: #0B3C49; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 18px rgba(11, 60, 73, 0.35)">
+<svg width="30" height="30" viewBox="0 0 120 120" fill="none" aria-hidden="true" style="display: block">
+<path d="M24 106V18H96V106" style="fill: none; stroke: #FFFFFF; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 11 11"/>
+<rect x="40" y="36" width="40" height="62" rx="16" style="fill: #FF8A1F"/>
+<rect x="46" y="50" width="28" height="15" rx="5" style="fill: #0B3C49"/>
+</svg>
+</button>
+</div>
+
+</div>
+</body></html>
