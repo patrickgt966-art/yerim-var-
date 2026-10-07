@@ -1,4 +1,4 @@
-import { useQuery, type QueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { deviceCache } from './cache';
@@ -9,19 +9,21 @@ import type { Parking } from './types';
 
 export const PARKINGS_QUERY_KEY = ['parkings'] as const;
 
+export const parkingsQuery = queryOptions({
+  queryKey: PARKINGS_QUERY_KEY,
+  queryFn: ({ signal }) => loadParkings(undefined, undefined, { signal }),
+  staleTime: 60_000,
+  // Refetch only while the app is in the foreground (see focusManager in _layout).
+  refetchInterval: 120_000,
+  refetchIntervalInBackground: false,
+  // loadParkings retries and falls back itself, so the query never fails.
+  retry: false,
+  // Keep the last result for the whole session so screens never wait twice.
+  gcTime: Infinity,
+});
+
 export function useParkings() {
-  return useQuery({
-    queryKey: PARKINGS_QUERY_KEY,
-    queryFn: ({ signal }) => loadParkings(undefined, undefined, { signal }),
-    staleTime: 60_000,
-    // Refetch only while the app is in the foreground (see focusManager in _layout).
-    refetchInterval: 120_000,
-    refetchIntervalInBackground: false,
-    // loadParkings retries and falls back itself, so the query never fails.
-    retry: false,
-    // Keep the last result for the whole session so screens never wait twice.
-    gcTime: Infinity,
-  });
+  return useQuery(parkingsQuery);
 }
 
 /**
@@ -35,6 +37,16 @@ export async function primeParkingsFromCache(client: QueryClient) {
   const cached = await deviceCache.load();
   if (!cached || client.getQueryData(PARKINGS_QUERY_KEY)) return;
   client.setQueryData(PARKINGS_QUERY_KEY, cached, { updatedAt: 0 });
+}
+
+/**
+ * Starts the slow (~15 s) download at launch instead of when the results
+ * screen opens, so it usually finishes while the user is still typing.
+ * Saved data is shown first; the download replaces it when it arrives.
+ */
+export async function warmUpParkings(client: QueryClient) {
+  await primeParkingsFromCache(client);
+  await client.prefetchQuery(parkingsQuery);
 }
 
 export type RankedParking = Parking & {

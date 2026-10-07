@@ -3,7 +3,9 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { deviceCache } from '../cache';
 import type { ParkingResult } from '../types';
-import { PARKINGS_QUERY_KEY, primeParkingsFromCache } from '../useParkings';
+import { PARKINGS_QUERY_KEY, primeParkingsFromCache, warmUpParkings } from '../useParkings';
+
+import live from './fixtures/izmir-live-2026-10-07.json';
 
 const result: ParkingResult = {
   parkings: [],
@@ -49,6 +51,31 @@ describe('primeParkingsFromCache', () => {
     client.setQueryData(PARKINGS_QUERY_KEY, fresh);
     await primeParkingsFromCache(client);
     expect(client.getQueryData(PARKINGS_QUERY_KEY)).toEqual(fresh);
+    client.clear();
+  });
+});
+
+describe('warmUpParkings', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('downloads at launch, before any screen asks for the data', async () => {
+    await AsyncStorage.clear();
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => live,
+    })) as unknown as typeof fetch;
+    const client = new QueryClient();
+    await warmUpParkings(client);
+    const data = client.getQueryData<ParkingResult>(PARKINGS_QUERY_KEY);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(data?.source).toBe('izmir-open-data');
+    expect(data?.parkings).toHaveLength(live.length);
+    // The result is saved for the next launch.
+    expect((await deviceCache.load())?.parkings).toHaveLength(live.length);
     client.clear();
   });
 });
