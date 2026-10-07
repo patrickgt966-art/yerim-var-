@@ -81,6 +81,7 @@ const tr = {
     details: 'Detay',
     empty: 'Bu çevrede otopark bulamadık.',
     loading: 'Otoparklar yükleniyor…',
+    refreshing: 'Yenileniyor…',
     error: 'Veri alınamadı.',
     myLocation: 'Konumun',
     a11yStrip: '{{capacity}} yerden {{free}} boş',

@@ -19,6 +19,8 @@ export function useParkings() {
     refetchIntervalInBackground: false,
     // loadParkings retries and falls back itself, so the query never fails.
     retry: false,
+    // Keep the last result for the whole session so screens never wait twice.
+    gcTime: Infinity,
   });
 }
 
@@ -28,6 +30,8 @@ export function useParkings() {
  * old counts, and it is marked stale so the download is not skipped.
  */
 export async function primeParkingsFromCache(client: QueryClient) {
+  // Primed data has no observer yet; keep it until the results screen opens.
+  client.setQueryDefaults(PARKINGS_QUERY_KEY, { gcTime: Infinity });
   const cached = await deviceCache.load();
   if (!cached || client.getQueryData(PARKINGS_QUERY_KEY)) return;
   client.setQueryData(PARKINGS_QUERY_KEY, cached, { updatedAt: 0 });
