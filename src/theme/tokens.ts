@@ -1,0 +1,124 @@
+/** Brand palette. Values come from design/*.html. */
+export const brand = {
+  navy: '#0B3C49',
+  orange: '#FF8A1F',
+  orangeLight: '#FFB27A',
+  yellow: '#FFE08A',
+  cream: '#FFF1E3',
+  surface: '#F4F7F8',
+  line: '#D3DCDF',
+  textSecondary: '#5C7580',
+  white: '#FFFFFF',
+} as const;
+
+export const occupancy = {
+  plenty: '#0E7C6B',
+  few: '#B45309',
+  full: '#B91C1C',
+} as const;
+
+export type Palette = {
+  bg: string;
+  surface: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  line: string;
+  dashed: string;
+  slotFilled: string;
+  primary: string;
+  onPrimary: string;
+  accent: string;
+  chipBg: string;
+  hero: string;
+  onHero: string;
+  plenty: string;
+  few: string;
+  full: string;
+  badgeNearBg: string;
+  badgeNearText: string;
+  badgeFreshBg: string;
+  badgeFreshText: string;
+  badgeUnknownBg: string;
+  badgeUnknownText: string;
+  warnBg: string;
+  warnText: string;
+};
+
+export const lightPalette: Palette = {
+  bg: brand.surface,
+  surface: brand.surface,
+  card: brand.white,
+  text: brand.navy,
+  textSecondary: brand.textSecondary,
+  line: brand.line,
+  dashed: '#7F98A1',
+  slotFilled: '#C9D6DA',
+  primary: brand.navy,
+  onPrimary: brand.white,
+  accent: brand.orange,
+  chipBg: '#E6EEF0',
+  hero: brand.navy,
+  onHero: brand.white,
+  plenty: occupancy.plenty,
+  few: occupancy.few,
+  full: occupancy.full,
+  badgeNearBg: '#FFEBD6',
+  badgeNearText: '#92400E',
+  badgeFreshBg: '#D9F5EE',
+  badgeFreshText: '#0B5E50',
+  badgeUnknownBg: '#E6EEF0',
+  badgeUnknownText: '#3F5964',
+  warnBg: brand.cream,
+  warnText: '#92400E',
+};
+
+/** Dark palette: navy becomes the canvas, orange stays the accent. */
+export const darkPalette: Palette = {
+  bg: '#061F26',
+  surface: '#0B2C35',
+  card: '#0F3540',
+  text: '#F4F7F8',
+  textSecondary: '#A9BEC5',
+  line: '#24505C',
+  dashed: '#6F8C95',
+  slotFilled: '#36606B',
+  primary: brand.orange,
+  onPrimary: '#061F26',
+  accent: brand.orange,
+  chipBg: '#16424E',
+  hero: '#082D37',
+  onHero: brand.white,
+  plenty: '#3CC3A9',
+  few: '#F5A04A',
+  full: '#F27474',
+  badgeNearBg: '#4A2A0C',
+  badgeNearText: '#FFC48F',
+  badgeFreshBg: '#0E4A40',
+  badgeFreshText: '#9BE7D7',
+  badgeUnknownBg: '#16424E',
+  badgeUnknownText: '#C9D6DA',
+  warnBg: '#4A2A0C',
+  warnText: '#FFC48F',
+};
+
+export const fonts = {
+  display: 'BricolageGrotesque_800ExtraBold',
+  displayBold: 'BricolageGrotesque_700Bold',
+  body: 'PlusJakartaSans_500Medium',
+  bodyBold: 'PlusJakartaSans_700Bold',
+  bodyExtraBold: 'PlusJakartaSans_800ExtraBold',
+} as const;
+
+/** Signature asymmetric corner: three round corners, bottom-left tight. */
+export function asym(r: number, tight = Math.max(2, Math.round(r * 0.27))) {
+  return {
+    borderTopLeftRadius: r,
+    borderTopRightRadius: r,
+    borderBottomRightRadius: r,
+    borderBottomLeftRadius: tight,
+  };
+}
+
+/** Minimum touch target (HIG). */
+export const HIT = 44;

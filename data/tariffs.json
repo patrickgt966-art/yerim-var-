@@ -1,0 +1,54 @@
+{
+  "$comment": "Hourly tariffs. 'official' only after checking the operator's published price list; fill source and verifiedAt. Nothing here is verified yet.",
+  "updatedAt": "2026-10-07",
+  "tariffs": [
+    {
+      "parkingId": "mock-alsancak-katli",
+      "hourly": 60,
+      "currency": "TRY",
+      "bands": [
+        { "label": "0-1 saat", "price": 60 },
+        { "label": "1-2 saat", "price": 90 },
+        { "label": "2-4 saat", "price": 130 },
+        { "label": "Günlük", "price": 250 }
+      ],
+      "priceKind": "estimated",
+      "validFrom": null,
+      "source": "Örnek değer (mock)",
+      "verifiedAt": null
+    },
+    {
+      "parkingId": "mock-kordon-acik",
+      "hourly": 45,
+      "currency": "TRY",
+      "bands": [
+        { "label": "0-1 saat", "price": 45 },
+        { "label": "1-2 saat", "price": 70 }
+      ],
+      "priceKind": "estimated",
+      "validFrom": null,
+      "source": "Örnek değer (mock)",
+      "verifiedAt": null
+    },
+    {
+      "parkingId": "mock-gar-yani",
+      "hourly": 30,
+      "currency": "TRY",
+      "bands": [{ "label": "0-1 saat", "price": 30 }],
+      "priceKind": "estimated",
+      "validFrom": null,
+      "source": "Örnek değer (mock)",
+      "verifiedAt": null
+    },
+    {
+      "parkingId": "mock-konak-meydan",
+      "hourly": 50,
+      "currency": "TRY",
+      "bands": [{ "label": "0-1 saat", "price": 50 }],
+      "priceKind": "estimated",
+      "validFrom": null,
+      "source": "Örnek değer (mock)",
+      "verifiedAt": null
+    }
+  ]
+}
