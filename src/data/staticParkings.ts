@@ -24,6 +24,8 @@ type StaticRecord = {
   address: string | null;
   access: 'customers' | 'subscribers' | null;
   source: StaticSource;
+  /** Nearest named place within 400 m, for unnamed car parks. */
+  near?: string | null;
 };
 
 type StaticFile = { generatedAt: string; parkings: StaticRecord[] };
@@ -31,9 +33,17 @@ type StaticFile = { generatedAt: string; parkings: StaticRecord[] };
 /** A static record this close to a live one is the same car park. */
 export const DUPLICATE_RADIUS_M = 80;
 
+/** OSM sometimes stores the word itself as the name; that is no name. */
+function ownName(r: StaticRecord): string | null {
+  const n = r.name?.trim();
+  return n && n.toLocaleLowerCase('tr') !== 'otopark' ? n : null;
+}
+
 function displayName(r: StaticRecord): string {
-  if (r.name) return r.name;
+  const own = ownName(r);
+  if (own) return own;
   if (r.operator) return t('parking.operatorParking', { operator: r.operator });
+  if (r.near) return t('parking.nearby', { place: r.near });
   return t('parking.unnamed');
 }
 
@@ -41,6 +51,7 @@ export function toParking(r: StaticRecord, generatedAt: string): Parking {
   return {
     id: r.id,
     name: displayName(r),
+    genericName: !ownName(r),
     lat: r.lat,
     lng: r.lng,
     capacity: r.capacity,

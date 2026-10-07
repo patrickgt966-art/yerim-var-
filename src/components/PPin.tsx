@@ -1,21 +1,56 @@
 import { View } from 'react-native';
 
 import { occupancyLevel } from '@/data/freshness';
-import { fonts, useColors } from '@/theme';
+import { brand, fonts, useColors } from '@/theme';
 
 import { Txt } from './Txt';
 
-/** Map pin shaped like a parking bay: P badge over the free count. */
+/**
+ * Map pin shaped like a parking bay: P badge over the free count.
+ * `quiet`: a car park without a live count; a smaller brand-navy bay with
+ * just the P, so live pins stand out and no "?" suggests an error.
+ */
 export function PPin({
   free,
   capacity,
   selected,
+  quiet,
 }: {
   free: number | null;
   capacity: number | null;
   selected?: boolean;
+  quiet?: boolean;
 }) {
   const c = useColors();
+  if (quiet) {
+    const s = selected ? 1.15 : 1;
+    return (
+      <View
+        style={{
+          width: 26 * s,
+          height: 34 * s,
+          borderRadius: 8,
+          backgroundColor: brand.navy,
+          borderWidth: 2,
+          borderColor: brand.white,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: brand.navy,
+          shadowOpacity: 0.22,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 3 },
+        }}
+      >
+        <Txt
+          allowFontScaling={false}
+          style={{ fontFamily: fonts.display, fontSize: 14, lineHeight: 17 }}
+          color={brand.white}
+        >
+          P
+        </Txt>
+      </View>
+    );
+  }
   const level = occupancyLevel(free, capacity);
   const bg =
     level === 'plenty' ? c.plenty : level === 'few' ? c.few : level === 'full' ? c.full : '#5C7580';

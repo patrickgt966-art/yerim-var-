@@ -26,7 +26,7 @@ const tr = {
     updated: 'Güncellendi: {{time}}',
     unknown: 'Bilinmiyor',
     sample: 'Örnek veri',
-    noData: 'Doluluk bilgisi yok',
+    noData: 'Canlı sayım yok',
     sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
     offline: 'Çevrimdışı',
     offlineBanner:
@@ -141,6 +141,11 @@ const tr = {
       sunday: 'Pazar',
     },
     notFound: 'Otopark bulunamadı.',
+    staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
+    staticBodyMunicipal:
+      'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
+    staticBodyMapped:
+      'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
   },
   favorites: {
     title: 'Favoriler',
@@ -168,9 +173,17 @@ const tr = {
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
   },
+  card: {
+    municipal: 'Belediye otoparkı',
+    mapped: 'Haritada kayıtlı',
+    capacityUnit: 'araçlık',
+    walkUnit: 'dk yürüme',
+    a11yStatic: '{{name}}. {{meta}}. Canlı sayım yok. {{facts}}',
+  },
   parking: {
     unnamed: 'Otopark',
     operatorParking: '{{operator}} otoparkı',
+    nearby: 'Otopark · {{place}} yakını',
   },
   map: { title: 'Harita' },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },

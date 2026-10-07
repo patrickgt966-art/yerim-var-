@@ -29,6 +29,8 @@ export type Parking = {
   /** Free-text opening hours when the source has no per-day table (OSM syntax). */
   openingHoursText?: string | null;
   operator?: string | null;
+  /** True when the name was generated ("Otopark · Bostanlı yakını"), not from the source. */
+  genericName?: boolean;
   /** 'customers': open to visitors of a shop/mall; 'subscribers': monthly pass holders. */
   access?: 'customers' | 'subscribers' | null;
   source: DataSource;

@@ -1,5 +1,3 @@
-import { t } from 'i18next';
-
 import raw from '../../data/places-izmir.json';
 import { distanceMeters, type LatLng } from './geo';
 import { POPULAR_PLACES } from './places';
@@ -75,7 +73,7 @@ function buildIndex(): Entry[] {
   );
   // Named car parks are useful targets too ("Konak Katlı").
   const parkings = staticParkings()
-    .filter((p) => p.name !== t('parking.unnamed'))
+    .filter((p) => !p.genericName)
     .map((p) => entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'parking' }));
   return [...popular, ...places, ...parkings];
 }

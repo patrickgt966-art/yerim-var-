@@ -18,8 +18,9 @@ import { useParkings } from '@/data/useParkings';
 import { metaLine } from '@/lib/format';
 import { parkHere } from '@/lib/parkHere';
 import { reportWrongData } from '@/lib/report';
+import { isStatic } from '@/lib/staticInfo';
 import { useApp, useIsFavorite } from '@/store/app';
-import { fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, useColors } from '@/theme';
 
 const DAY_ORDER: (keyof OpeningHours)[] = [
   'monday',
@@ -97,33 +98,68 @@ export default function ParkingDetail() {
       </Txt>
       <SampleBanner result={data} />
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ gap: 8, flex: 1 }}>
-          <FreshnessBadge freshness={freshness} />
-          <SlotStrip free={free} capacity={p.capacity} />
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Txt
+      {isStatic(p) ? (
+        <View style={[asym(18, 5), { backgroundColor: c.badgeInfoBg, padding: 14, gap: 6 }]}>
+          <View
             style={{
-              fontFamily: fonts.display,
-              fontSize: free == null ? 20 : 44,
-              lineHeight: free == null ? 26 : 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
             }}
           >
-            {free == null ? t('common.unknown') : String(free)}
-          </Txt>
-          <Txt variant="label" secondary>
-            {t('common.free')}
+            <Txt variant="bodyBold" color={c.badgeInfoText} style={{ flex: 1 }}>
+              {t('detail.staticTitle')}
+            </Txt>
+            {p.capacity != null && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Txt
+                  style={{ fontFamily: fonts.display, fontSize: 30, lineHeight: 34 }}
+                  color={c.badgeInfoText}
+                >
+                  {String(p.capacity)}
+                </Txt>
+                <Txt variant="label" color={c.badgeInfoText}>
+                  {t('card.capacityUnit')}
+                </Txt>
+              </View>
+            )}
+          </View>
+          <Txt variant="caption" color={c.badgeInfoText}>
+            {p.source === 'izelman'
+              ? t('detail.staticBodyMunicipal')
+              : t('detail.staticBodyMapped')}
           </Txt>
         </View>
-      </View>
+      ) : (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ gap: 8, flex: 1 }}>
+            <FreshnessBadge freshness={freshness} />
+            <SlotStrip free={free} capacity={p.capacity} />
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Txt
+              style={{
+                fontFamily: fonts.display,
+                fontSize: free == null ? 20 : 44,
+                lineHeight: free == null ? 26 : 48,
+              }}
+            >
+              {free == null ? t('common.unknown') : String(free)}
+            </Txt>
+            <Txt variant="label" secondary>
+              {t('common.free')}
+            </Txt>
+          </View>
+        </View>
+      )}
 
       <Button label={t('results.parkHere')} onPress={() => parkHere(p)} />
 

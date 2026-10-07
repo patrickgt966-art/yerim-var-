@@ -41,6 +41,9 @@ export type Palette = {
   badgeFreshText: string;
   badgeUnknownBg: string;
   badgeUnknownText: string;
+  /** Friendly "no live count" badge: informative, not an error. */
+  badgeInfoBg: string;
+  badgeInfoText: string;
   warnBg: string;
   warnText: string;
 };
@@ -69,6 +72,8 @@ export const lightPalette: Palette = {
   badgeFreshText: '#0B5E50',
   badgeUnknownBg: '#E6EEF0',
   badgeUnknownText: '#3F5964',
+  badgeInfoBg: '#FFF3C4',
+  badgeInfoText: brand.navy,
   warnBg: brand.cream,
   warnText: '#92400E',
 };
@@ -98,6 +103,8 @@ export const darkPalette: Palette = {
   badgeFreshText: '#9BE7D7',
   badgeUnknownBg: '#16424E',
   badgeUnknownText: '#C9D6DA',
+  badgeInfoBg: '#3D3517',
+  badgeInfoText: brand.yellow,
   warnBg: '#4A2A0C',
   warnText: '#FFC48F',
 };

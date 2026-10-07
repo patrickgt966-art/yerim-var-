@@ -52,6 +52,30 @@ describe('static parkings', () => {
     expect(visibleFree({ ...p, free: 12 })).toBeNull();
   });
 
+  it('names unnamed car parks after a nearby place when there is one', () => {
+    const p = toParking(
+      {
+        id: 'osm-node-9',
+        name: null,
+        lat: 38.45,
+        lng: 27.1,
+        capacity: null,
+        isPaid: null,
+        isIndoor: null,
+        nonstop: null,
+        openingHoursText: null,
+        operator: null,
+        address: null,
+        access: null,
+        source: 'osm',
+        near: 'Bostanlı',
+      },
+      at,
+    );
+    expect(p.name).toBe('Otopark · Bostanlı yakını');
+    expect(p.genericName).toBe(true);
+  });
+
   it('names unnamed car parks', () => {
     expect(osm('osm-node-1', 38.42, 27.13).name).toBe('Otopark');
   });

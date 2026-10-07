@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { visibleFree } from '@/data/freshness';
+import { isStatic } from '@/lib/staticInfo';
 import type { LatLng } from '@/data/geo';
 import type { Parking } from '@/data/types';
 import { asym, fonts } from '@/theme';
@@ -76,10 +77,19 @@ export const ParkingMap = forwardRef<MapView, Props>(function ParkingMap(
             onPress={() => onSelect(p)}
             accessibilityLabel={t('results.a11yPin', {
               name: p.name,
-              free: free == null ? t('common.unknown') : `${free} ${t('common.free')}`,
+              free: isStatic(p)
+                ? t('freshness.noData')
+                : free == null
+                  ? t('common.unknown')
+                  : `${free} ${t('common.free')}`,
             })}
           >
-            <PPin free={free} capacity={p.capacity} selected={p.id === selectedId} />
+            <PPin
+              free={free}
+              capacity={p.capacity}
+              selected={p.id === selectedId}
+              quiet={isStatic(p)}
+            />
           </Marker>
         );
       })}
