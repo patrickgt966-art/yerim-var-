@@ -39,6 +39,17 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
 - [ ] **"Burada yer var / dolu" kullanıcı bildirimi.** Canlı verisi olmayan otoparklar için. Sunucu gerekir.
 - [ ] **Belediyeyle iletişim:** daha fazla sensörlü otoparkın açık veriye eklenmesi, veri güncelleme sıklığı ve zaman damgası alanı talebi. Kapsamı en çok bu artırır.
 
+## Fikir: Restoran + park (perşembe akşamı konuşulacak)
+
+Karar taslağı: doğrudan rezervasyon yerine **ara → listele → restoranın kendi rezervasyon sayfasına yönlendir**. Asıl fark park: "restoranı seç → yanındaki boş otoparkı gör → rezervasyon yap → oraya park et".
+
+- [ ] **1. aşama, yönlendirme (sunucu yok):** Aramada "Konak et restoranı" gibi sorgular restoranları listeler. Her restoranın yanında "Yakınında 3 otopark · en yakında 14 boş yer" yazar. Restoran ekranında "Rezervasyon yap" (restoranın sitesi), "Ara" ve "Buraya park et" düğmeleri olur.
+  - Veri: Apple Haritalar araması (ad, adres, telefon, web sitesi; uygulamanın kendi derlemesinde) ve OpenStreetMap restoranları (mutfak türüyle, yedek olarak).
+  - Apple yer aramasıyla aynı altyapı; o işten hemen sonra yapılması doğal.
+- [ ] **2. aşama, iş birliği:** Mevcut rezervasyon platformlarına bağlanmak (masa müsaitliği uygulamada görünür, rezervasyonu platform yapar). Hangi platformların bunu dışarıya açtığı araştırılmalı.
+- [ ] **3. aşama, kendi sistemimiz:** Sunucu, hesap (SMS doğrulama), restoran paneli, KVKK. Ancak 1. ve 2. aşama talep gösterirse. Fark yaratabilecek fikirler: rezervasyonla birlikte otopark yeri, otopark ücretini restoranın karşılaması.
+- Dikkat: Park ana iş olarak kalsın. Hesap ve kişisel veri gelince gizlilik metni ve App Store bilgileri değişir. App Store adı "Otopark Bul" yerine daha genel olabilir.
+
 ## 3. App Store öncesi
 
 - [ ] Apple Developer hesabı (99 $/yıl). Apple Haritalar özellikleri ve TestFlight için gerekli.
