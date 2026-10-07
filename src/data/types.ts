@@ -1,10 +1,10 @@
 export type OccupancyKind = 'live' | 'estimated';
 export type PriceKind = 'official' | 'estimated';
 /**
- * Static records bundled with the app, without occupancy:
- * 'izelman' (municipal inventory, 2022) and 'osm' (OpenStreetMap).
+ * Records without occupancy: bundled 'izelman' (municipal inventory, 2022)
+ * and 'osm' (OpenStreetMap), and 'apple' (Apple Maps search on the device).
  */
-export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm';
+export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm' | 'apple';
 export type StaticSource = 'izelman' | 'osm';
 
 export type OpeningHours = Partial<

@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -12,6 +13,7 @@ import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
 import { Txt } from '@/components/Txt';
 import { getFreshness, visibleFree } from '@/data/freshness';
+import { findAppleParking } from '@/data/appleParkings';
 import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
@@ -38,7 +40,8 @@ export default function ParkingDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data } = useParkings();
-  const p = data?.parkings.find((x) => x.id === id);
+  const queryClient = useQueryClient();
+  const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
@@ -128,7 +131,9 @@ export default function ParkingDetail() {
           <Txt variant="caption" color={c.badgeInfoText}>
             {p.source === 'izelman'
               ? t('detail.staticBodyMunicipal')
-              : t('detail.staticBodyMapped')}
+              : p.source === 'apple'
+                ? t('detail.staticBodyApple')
+                : t('detail.staticBodyMapped')}
           </Txt>
         </View>
       ) : (
@@ -219,7 +224,9 @@ export default function ParkingDetail() {
               ? t('detail.sourceOsm')
               : p.source === 'izelman'
                 ? t('detail.sourceIzelman')
-                : t('detail.sourceIzmir')}
+                : p.source === 'apple'
+                  ? t('detail.sourceApple')
+                  : t('detail.sourceIzmir')}
         </Txt>
       </Section>
 

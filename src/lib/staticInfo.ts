@@ -4,7 +4,7 @@ import type { Parking } from '@/data/types';
 
 /** Car parks without a live count (bundled lists or Apple Maps). */
 export function isStatic(p: Pick<Parking, 'source'>): boolean {
-  return p.source === 'osm' || p.source === 'izelman';
+  return p.source === 'osm' || p.source === 'izelman' || p.source === 'apple';
 }
 
 /**
@@ -14,6 +14,7 @@ export function isStatic(p: Pick<Parking, 'source'>): boolean {
 export function sourceLabel(p: Pick<Parking, 'source'>, t: TFunction): string | null {
   if (p.source === 'izelman') return t('card.municipal');
   if (p.source === 'osm') return t('card.mapped');
+  if (p.source === 'apple') return t('card.apple');
   return null;
 }
 

@@ -28,7 +28,8 @@ export function getFreshness(
   now: Date = new Date(),
 ): Freshness {
   if (p.source === 'mock') return { kind: 'sample' };
-  if (p.source === 'osm' || p.source === 'izelman') return { kind: 'noData' };
+  if (p.source === 'osm' || p.source === 'izelman' || p.source === 'apple')
+    return { kind: 'noData' };
   if (p.free == null) return { kind: 'unknown' };
 
   const measured = parse(p.updatedAt);

@@ -1,6 +1,7 @@
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
 import { distanceMeters, walkMinutes, type LatLng } from './geo';
 import { isNearPier } from './places';
@@ -82,7 +83,7 @@ export function rankByDistance(
   let statics = 0;
   const out: RankedParking[] = [];
   for (const { p, distance } of sorted) {
-    const isStatic = p.source === 'osm' || p.source === 'izelman';
+    const isStatic = p.source === 'osm' || p.source === 'izelman' || p.source === 'apple';
     if (isStatic && ++statics > MAX_STATIC_RESULTS) continue;
     out.push({ ...p, distance, walk: walkMinutes(target, p), nearPier: isNearPier(p) });
   }
@@ -91,9 +92,14 @@ export function rankByDistance(
 
 export function useRanked(target: LatLng | null, radiusMeters?: number) {
   const q = useParkings();
-  const ranked = useMemo(
-    () => (q.data && target ? rankByDistance(q.data.parkings, target, radiusMeters) : []),
-    [q.data, target, radiusMeters],
-  );
+  // Apple Maps car parks around the target, where the native module exists.
+  const apple = useAppleParkings(target);
+  const ranked = useMemo(() => {
+    if (!q.data || !target) return [];
+    // Never mix real Apple results into sample data.
+    const list =
+      q.data.source === 'mock' ? q.data.parkings : withApple(q.data.parkings, apple.data ?? []);
+    return rankByDistance(list, target, radiusMeters);
+  }, [q.data, apple.data, target, radiusMeters]);
   return { ...q, ranked };
 }
