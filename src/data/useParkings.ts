@@ -27,7 +27,11 @@ export type RankedParking = Parking & {
 };
 
 /** Parkings sorted by distance to a target, limited to a radius. */
-export function rankByDistance(list: Parking[], target: LatLng, radiusMeters = 1500): RankedParking[] {
+export function rankByDistance(
+  list: Parking[],
+  target: LatLng,
+  radiusMeters = 1500,
+): RankedParking[] {
   return list
     .map((p) => ({
       ...p,

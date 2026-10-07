@@ -32,7 +32,15 @@ export const MOCK_SEEDS: Seed[] = [
     isOpen: true,
     isPaid: true,
     nonstop: false,
-    openingHours: { monday: '07:00 – 23:00', tuesday: '07:00 – 23:00', wednesday: '07:00 – 23:00', thursday: '07:00 – 23:00', friday: '07:00 – 23:00', saturday: '08:00 – 23:00', sunday: '08:00 – 22:00' },
+    openingHours: {
+      monday: '07:00 – 23:00',
+      tuesday: '07:00 – 23:00',
+      wednesday: '07:00 – 23:00',
+      thursday: '07:00 – 23:00',
+      friday: '07:00 – 23:00',
+      saturday: '08:00 – 23:00',
+      sunday: '08:00 – 22:00',
+    },
     address: 'Kordon, Alsancak',
   },
   {

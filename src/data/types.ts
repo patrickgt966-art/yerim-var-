@@ -3,10 +3,7 @@ export type PriceKind = 'official' | 'estimated';
 export type DataSource = 'izmir-open-data' | 'mock';
 
 export type OpeningHours = Partial<
-  Record<
-    'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
-    string
-  >
+  Record<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday', string>
 >;
 
 export type Parking = {
