@@ -11,6 +11,14 @@ describe('fold', () => {
 });
 
 describe('searchPlaces', () => {
+  it('finds malls the address geocoder does not know', () => {
+    for (const q of ['istinye', 'İstinye Park', 'istinyepark', 'ISTINYE']) {
+      const [top] = searchPlaces(q);
+      expect(top?.kind).toBe('mall');
+      expect(top?.name).toMatch(/İstinye ?Park/);
+    }
+  });
+
   it('needs at least two letters', () => {
     expect(searchPlaces('k')).toEqual([]);
   });
