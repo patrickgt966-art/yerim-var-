@@ -1,0 +1,29 @@
+name: Özellik öner
+description: Yeni bir fikir veya iyileştirme öner.
+title: 'Öneri: '
+labels: ['öneri']
+body:
+  - type: textarea
+    id: sorun
+    attributes:
+      label: Hangi sorunu çözüyor?
+      description: Park ederken yaşadığın durumu anlat.
+    validations:
+      required: true
+  - type: textarea
+    id: oneri
+    attributes:
+      label: Önerin
+    validations:
+      required: true
+  - type: textarea
+    id: alternatif
+    attributes:
+      label: Düşündüğün alternatifler
+  - type: checkboxes
+    id: kapsam
+    attributes:
+      label: Kapsam
+      description: Yerim Var bir navigasyon uygulaması değildir; hesap, sunucu ve takip içermez.
+      options:
+        - label: Öneri hesap, sunucu, analitik veya yeni bir ücretli dış servis gerektirmiyor (gerektiriyorsa aşağıda açıkla).

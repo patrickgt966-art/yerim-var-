@@ -1,0 +1,45 @@
+name: Hata bildir
+description: Uygulamada bir şey beklendiği gibi çalışmıyor.
+title: 'Hata: '
+labels: ['hata']
+body:
+  - type: textarea
+    id: ne-oldu
+    attributes:
+      label: Ne oldu?
+      description: Gördüğün hatayı kısaca anlat. Ekran görüntüsü eklemek çok yardımcı olur.
+    validations:
+      required: true
+  - type: textarea
+    id: adimlar
+    attributes:
+      label: Nasıl tekrar üretilir?
+      placeholder: |
+        1. "Ara" sekmesini aç
+        2. "Kordon" yaz
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: beklenen
+    attributes:
+      label: Ne olmasını bekliyordun?
+    validations:
+      required: true
+  - type: input
+    id: cihaz
+    attributes:
+      label: Cihaz ve iOS sürümü
+      placeholder: iPhone 15, iOS 26.0
+  - type: input
+    id: surum
+    attributes:
+      label: Uygulama sürümü veya commit
+      placeholder: 0.1.0
+  - type: checkboxes
+    id: gizlilik
+    attributes:
+      label: Gizlilik
+      options:
+        - label: Ekran görüntülerinde ev/iş adresi gibi kişisel bilgilerin olmadığını kontrol ettim.
+          required: true
