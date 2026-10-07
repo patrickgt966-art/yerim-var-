@@ -1,6 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
 
-import { appleSearchAvailable, findAppleParking, fromApple, withApple } from '../appleParkings';
+import {
+  appleSearchAvailable,
+  findAppleParking,
+  fromApple,
+  roundArea,
+  withApple,
+} from '../appleParkings';
 import { getFreshness, visibleFree } from '../freshness';
 import type { Parking } from '../types';
 
@@ -30,6 +36,10 @@ describe('Apple Maps car parks', () => {
     expect(visibleFree({ ...p, free: 9 })).toBeNull();
   });
 
+  it('sends Apple only a ~100 m area, never the exact position', () => {
+    expect(roundArea({ lat: 38.4301234, lng: 27.1456789 })).toEqual({ lat: 38.43, lng: 27.146 });
+  });
+
   it('drops unnamed or invalid results', () => {
     expect(fromApple({ ...row, name: '  ' }, at)).toBeNull();
     expect(fromApple({ ...row, latitude: Number.NaN }, at)).toBeNull();
@@ -45,7 +55,7 @@ describe('Apple Maps car parks', () => {
   it('lets the detail screen find an Apple result in the query cache', () => {
     const client = new QueryClient();
     const p = fromApple(row, at)!;
-    client.setQueryData(['apple-parkings', ['38.430', '27.145']], [p]);
+    client.setQueryData(['apple-parkings', 38.43, 27.145], [p]);
     expect(findAppleParking(client, p.id)).toEqual(p);
     expect(findAppleParking(client, 'osm-node-1')).toBeUndefined();
     client.clear();

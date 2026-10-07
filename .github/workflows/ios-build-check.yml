@@ -37,4 +37,6 @@ jobs:
       - name: Build for the iOS simulator and wait for the result
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # `eas init` edits app.json in this throwaway checkout; build it as is.
+          EAS_NO_VCS: '1'
         run: npx eas-cli@latest build --platform ios --profile simulator --non-interactive --wait

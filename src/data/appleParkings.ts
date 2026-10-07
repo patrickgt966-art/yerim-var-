@@ -41,11 +41,22 @@ export function withApple(known: Parking[], apple: Parking[]): Parking[] {
   return [...known, ...extra];
 }
 
-async function searchApple(target: LatLng): Promise<Parking[]> {
+/** ~100 m grid (3 decimals). */
+export function roundArea(p: LatLng): LatLng {
+  return { lat: Math.round(p.lat * 1000) / 1000, lng: Math.round(p.lng * 1000) / 1000 };
+}
+
+async function searchApple(area: LatLng): Promise<Parking[]> {
   if (!YerimMapKit) return [];
   const at = new Date().toISOString();
-  const rows = await YerimMapKit.searchParkingAsync(target.lat, target.lng, RADIUS_M);
-  return rows.map((r) => fromApple(r, at)).filter((p): p is Parking => p != null);
+  const rows = await YerimMapKit.searchParkingAsync(area.lat, area.lng, RADIUS_M);
+  const out = new Map<string, Parking>();
+  for (const r of rows) {
+    const p = fromApple(r, at);
+    // Ids come from coordinates; keep one result per spot.
+    if (p && !out.has(p.id)) out.set(p.id, p);
+  }
+  return [...out.values()];
 }
 
 /**
@@ -54,10 +65,12 @@ async function searchApple(target: LatLng): Promise<Parking[]> {
  * stay well inside Apple's request limits; kept in memory only.
  */
 export function useAppleParkings(target: LatLng | null) {
-  const key = target ? [target.lat.toFixed(3), target.lng.toFixed(3)] : null;
+  // Rounded to ~100 m: shared between nearby searches and, as the only
+  // value sent to Apple, never the exact GPS position.
+  const area = target ? roundArea(target) : null;
   return useQuery({
-    queryKey: ['apple-parkings', key],
-    queryFn: () => searchApple(target!),
+    queryKey: ['apple-parkings', area?.lat, area?.lng],
+    queryFn: () => searchApple(area!),
     enabled: appleSearchAvailable && target != null,
     staleTime: 60 * 60 * 1000,
     gcTime: 60 * 60 * 1000,

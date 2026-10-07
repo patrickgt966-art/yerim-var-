@@ -81,19 +81,22 @@ export default function ParkingDetail() {
         title={p.name}
         back
         right={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
-            accessibilityState={{ selected: isFav }}
-            onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
-            style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon
-              name={isFav ? 'starFilled' : 'star'}
-              size={26}
-              color={isFav ? c.accent : c.text}
-            />
-          </Pressable>
+          // Apple results live only in memory, so a favourite would go stale.
+          p.source === 'apple' ? undefined : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
+              accessibilityState={{ selected: isFav }}
+              onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
+              style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Icon
+                name={isFav ? 'starFilled' : 'star'}
+                size={26}
+                color={isFav ? c.accent : c.text}
+              />
+            </Pressable>
+          )
         }
       />
       <Txt secondary>

@@ -169,7 +169,7 @@ const tr = {
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple yalnızca aradığın bölgeyi görür. Belediyeye giden tek istek doluluk verisidir.',
+      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple aradığın metni ya da konumunun yaklaşık bölgesini (~100 m) görür. Belediyeye giden tek istek doluluk verisidir.',
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
