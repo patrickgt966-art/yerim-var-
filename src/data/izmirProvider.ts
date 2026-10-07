@@ -97,7 +97,8 @@ export class IzmirOpenDataProvider implements ParkingProvider {
 
   constructor(
     private readonly url = IZMIR_PARKING_URL,
-    private readonly timeoutMs = 10_000,
+    // The API took ~15 s on a phone (2026-10-07); the brief's 10 s was too short.
+    private readonly timeoutMs = 30_000,
   ) {}
 
   async list(signal?: AbortSignal): Promise<Parking[]> {
