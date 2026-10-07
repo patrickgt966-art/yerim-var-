@@ -1,7 +1,7 @@
 import { t } from 'i18next';
 
 import raw from '../../data/places-izmir.json';
-import type { LatLng } from './geo';
+import { distanceMeters, type LatLng } from './geo';
 import { POPULAR_PLACES } from './places';
 import { staticParkings } from './staticParkings';
 
@@ -15,6 +15,7 @@ export type PlaceKind =
   | 'university'
   | 'pier'
   | 'station'
+  | 'hotel'
   | 'landmark'
   | 'parking';
 
@@ -50,10 +51,13 @@ const KIND_RANK: Record<PlaceKind, number> = {
   pier: 6,
   hospital: 5,
   university: 5,
-  station: 5,
+  hotel: 4,
   landmark: 4,
+  station: 4,
   parking: 3,
 };
+
+const SAME_PLACE_M = 300;
 
 let index: Entry[] | null = null;
 
@@ -97,10 +101,10 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
   }
   scored.sort((a, b) => b.score - a.score);
   const out: SearchHit[] = [];
-  const seen = new Set<string>();
   for (const { e } of scored) {
-    if (seen.has(e.key)) continue;
-    seen.add(e.key);
+    // Same name in the same spot is one place; same name elsewhere is not
+    // (e.g. "Ege Üniversitesi" campus vs. its metro station).
+    if (out.some((o) => fold(o.name) === e.key && distanceMeters(o, e) <= SAME_PLACE_M)) continue;
     out.push({ name: e.name, kind: e.kind, lat: e.lat, lng: e.lng });
     if (out.length >= limit) break;
   }

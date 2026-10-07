@@ -19,6 +19,13 @@ describe('searchPlaces', () => {
     }
   });
 
+  it('keeps same-named places that are far apart', () => {
+    // Campus and metro station share the name; both must be offered.
+    const kinds = searchPlaces('ege universitesi').map((h) => h.kind);
+    expect(kinds).toContain('university');
+    expect(kinds).toContain('station');
+  });
+
   it('needs at least two letters', () => {
     expect(searchPlaces('k')).toEqual([]);
   });
