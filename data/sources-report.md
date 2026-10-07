@@ -27,4 +27,10 @@
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
 - data/parkings-static.json: 1466 otopark.
-- data/places-izmir.json: 3149 yer (arama için).
+- Overpass https://overpass-api.de/api/interpreter başarısız (tur 1): HTTP 504
+- Overpass https://overpass.kumi.systems/api/interpreter başarısız (tur 1): HTTP 500
+- Overpass https://overpass.private.coffee/api/interpreter başarısız (tur 1): HTTP 500
+- Overpass https://overpass-api.de/api/interpreter başarısız (tur 2): HTTP 504
+- Overpass https://overpass.kumi.systems/api/interpreter başarısız (tur 2): HTTP 500
+- Overpass https://overpass.private.coffee/api/interpreter başarısız (tur 2): HTTP 500
+- data/places-izmir.json: 3462 yer (arama için).
