@@ -25,6 +25,9 @@ const tr = {
     unknown: 'Bilinmiyor',
     sample: 'Örnek veri',
     sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
+    offline: 'Çevrimdışı',
+    offlineBanner:
+      'Çevrimdışı · Son veri: {{time}}. Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
   },
   onboarding: {
     tagline: 'Gideceğin yerin yanında boş park yeri bul.',

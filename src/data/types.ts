@@ -33,8 +33,10 @@ export type ParkingResult = {
   parkings: Parking[];
   source: DataSource;
   fetchedAt: string;
-  /** Set when the primary provider failed and we fell back to sample data. */
+  /** Set when the primary provider failed (we show cached or sample data). */
   fallbackReason?: string;
+  /** True when this is the last good result from the device cache, not a fresh download. */
+  offline?: boolean;
 };
 
 export interface ParkingProvider {

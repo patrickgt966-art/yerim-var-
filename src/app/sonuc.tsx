@@ -106,7 +106,7 @@ export default function ResultsScreen() {
           </Txt>
         )}
       </View>
-      {data?.source === 'mock' && <SampleBanner />}
+      <SampleBanner result={data} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

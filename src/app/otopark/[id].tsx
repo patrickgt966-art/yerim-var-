@@ -93,7 +93,7 @@ export default function ParkingDetail() {
         }
       />
       <Txt secondary>{[metaLine(p, t, mode), p.address].filter(Boolean).join(' · ')}</Txt>
-      {p.source === 'mock' && <SampleBanner />}
+      <SampleBanner result={data} />
 
       <View
         style={{

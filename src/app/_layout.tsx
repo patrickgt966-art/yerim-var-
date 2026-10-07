@@ -18,12 +18,14 @@ import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { primeParkingsFromCache } from '@/data/useParkings';
 import { useHydrated } from '@/store/useHydrated';
 import { useColors } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+void primeParkingsFromCache(queryClient);
 
 // Pause polling while the app is in the background.
 function onAppStateChange(status: AppStateStatus) {

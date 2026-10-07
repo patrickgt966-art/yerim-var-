@@ -1,7 +1,8 @@
 import { appleMapsUrl, distanceMeters, walkMinutes } from '../geo';
 import { loadParkings } from '../repository';
 import { estimateCost, tariffFor } from '../tariffs';
-import type { ParkingProvider } from '../types';
+import type { ParkingCache } from '../cache';
+import type { Parking, ParkingProvider, ParkingResult } from '../types';
 
 describe('geo', () => {
   it('computes plausible distances', () => {
@@ -33,15 +34,93 @@ describe('tariffs', () => {
 });
 
 describe('loadParkings', () => {
-  it('falls back to sample data and says so', async () => {
-    const failing: ParkingProvider = {
-      source: 'izmir-open-data',
-      list: () => Promise.reject(new Error('HTTP 403')),
+  const fast = { retryDelaysMs: [0, 0] };
+
+  function memoryCache(initial: ParkingResult | null = null): ParkingCache & {
+    saved: ParkingResult | null;
+  } {
+    return {
+      saved: initial,
+      async load() {
+        return this.saved;
+      },
+      async save(r) {
+        this.saved = r;
+      },
     };
-    const res = await loadParkings(failing);
+  }
+
+  function provider(results: (Parking[] | Error)[]): ParkingProvider & { calls: number } {
+    return {
+      source: 'izmir-open-data',
+      calls: 0,
+      list() {
+        const r = results[Math.min(this.calls++, results.length - 1)];
+        return r instanceof Error ? Promise.reject(r) : Promise.resolve(r ?? []);
+      },
+    };
+  }
+
+  const real = { id: 'CPS-TR-IZM-M1-01', name: 'Konak Katlı Otopark' } as Parking;
+
+  it('retries before giving up and saves a good result', async () => {
+    const cache = memoryCache();
+    const primary = provider([new Error('timeout'), new Error('timeout'), [real]]);
+    const res = await loadParkings(primary, undefined, { ...fast, cache });
+    expect(primary.calls).toBe(3);
+    expect(res.source).toBe('izmir-open-data');
+    expect(res.offline).toBeUndefined();
+    expect(cache.saved?.parkings).toEqual([real]);
+  });
+
+  it('shows the last good result as offline when every attempt fails', async () => {
+    const saved: ParkingResult = {
+      parkings: [real],
+      source: 'izmir-open-data',
+      fetchedAt: '2026-10-07T10:00:00.000Z',
+    };
+    const cache = memoryCache(saved);
+    const primary = provider([new Error('HTTP 503')]);
+    const res = await loadParkings(primary, undefined, { ...fast, cache });
+    expect(primary.calls).toBe(3);
+    expect(res).toMatchObject({
+      parkings: [real],
+      source: 'izmir-open-data',
+      offline: true,
+      fallbackReason: 'HTTP 503',
+      // Keeps the original download time, so the 15 minute rule applies.
+      fetchedAt: '2026-10-07T10:00:00.000Z',
+    });
+  });
+
+  it('falls back to sample data only when nothing was ever saved', async () => {
+    const cache = memoryCache();
+    const res = await loadParkings(provider([new Error('HTTP 403')]), undefined, {
+      ...fast,
+      cache,
+    });
     expect(res.source).toBe('mock');
     expect(res.fallbackReason).toBe('HTTP 403');
     expect(res.parkings.length).toBeGreaterThan(0);
     expect(res.parkings.every((p) => p.source === 'mock')).toBe(true);
+    expect(cache.saved).toBeNull();
+  });
+
+  it('stops retrying when the request is cancelled', async () => {
+    const controller = new AbortController();
+    const primary: ParkingProvider = {
+      source: 'izmir-open-data',
+      list: () => {
+        controller.abort();
+        return Promise.reject(new Error('aborted'));
+      },
+    };
+    await expect(
+      loadParkings(primary, undefined, {
+        ...fast,
+        cache: memoryCache(),
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('aborted');
   });
 });
