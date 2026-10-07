@@ -5,10 +5,9 @@ import type { OpeningHours, Parking, ParkingProvider } from './types';
 /**
  * İzmir Büyükşehir open data: "Otopark Doluluk ve Lokasyon Bilgileri".
  *
- * NOT VERIFIED LIVE. The endpoint and schema below come from third-party
- * open-source clients (see docs/inspiration.md); this project's build
- * environment could not reach the API. Verify with docs/data-source.md
- * before relying on it.
+ * Schema checked against a live response on 2026-10-07 (see
+ * docs/data-source.md). Response headers, CORS and update frequency are
+ * still unverified.
  */
 export const IZMIR_PARKING_URL = 'https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar';
 
@@ -41,6 +40,8 @@ export class SchemaDriftError extends Error {
   }
 }
 
+const PLACEHOLDER_HOURS = /^[\s\-–—]*$/;
+
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 /** Normalizes a raw response. Bad records are dropped; schema drift throws. */
@@ -60,9 +61,12 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
     const r = parsed.data;
     const free = r.occupancy.total.free ?? null;
     const occupied = r.occupancy.total.occupied ?? null;
-    const hours: OpeningHours | null = r.openingHours
-      ? Object.fromEntries(Object.entries(r.openingHours).filter(([d]) => DAYS.includes(d)))
-      : null;
+    // Nonstop car parks send "–" for every day; keep only real values.
+    const hourEntries = Object.entries(r.openingHours ?? {}).filter(
+      ([d, v]) => DAYS.includes(d) && !PLACEHOLDER_HOURS.test(v),
+    );
+    const hours: OpeningHours | null =
+      hourEntries.length > 0 ? Object.fromEntries(hourEntries) : null;
     out.push({
       id: r.ufid,
       name: r.name.trim(),
@@ -70,7 +74,9 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       lng: r.lng,
       capacity: free != null && occupied != null ? free + occupied : null,
       free,
-      isIndoor: r.accessories?.covered ?? null,
+      // Live data reports covered:false even for multi-storey car parks
+      // (e.g. "Konak Katlı Otopark"), so only `true` is trusted.
+      isIndoor: r.accessories?.covered === true ? true : null,
       isOpen: r.status === 'Opened' ? true : r.status === 'Closed' ? false : null,
       isPaid: r.isPaid ?? null,
       nonstop: r.nonstop ?? null,
