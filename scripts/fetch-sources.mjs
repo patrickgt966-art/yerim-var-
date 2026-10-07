@@ -35,6 +35,7 @@ async function fetchWithTimeout(url, init = {}, ms = 180_000) {
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
 const OVERPASS_QUERY = `
@@ -45,20 +46,24 @@ out center tags;
 `;
 
 async function overpass() {
-  for (const url of OVERPASS) {
-    try {
-      const res = await fetchWithTimeout(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'yerim-var data refresh (github.com/patrickgt966-art/yerim-var-)',
-        },
-        body: `data=${encodeURIComponent(OVERPASS_QUERY)}`,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return (await res.json()).elements ?? [];
-    } catch (e) {
-      log(`- Overpass ${url} başarısız: ${e.message}`);
+  // Public Overpass servers are often busy (HTTP 429/5xx); retry with a pause.
+  for (let round = 0; round < 3; round++) {
+    if (round > 0) await new Promise((r) => setTimeout(r, 30_000 * round));
+    for (const url of OVERPASS) {
+      try {
+        const res = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'yerim-var data refresh (github.com/patrickgt966-art/yerim-var-)',
+          },
+          body: `data=${encodeURIComponent(OVERPASS_QUERY)}`,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return (await res.json()).elements ?? [];
+      } catch (e) {
+        log(`- Overpass ${url} başarısız (tur ${round + 1}): ${e.message}`);
+      }
     }
   }
   return null;
