@@ -24,30 +24,33 @@ export function PPin({
   const c = useColors();
   if (quiet) {
     const s = selected ? 1.15 : 1;
+    // Transparent 44 pt box: the visible bay is small, the tap target is not.
     return (
-      <View
-        style={{
-          width: 26 * s,
-          height: 34 * s,
-          borderRadius: 8,
-          backgroundColor: brand.navy,
-          borderWidth: 2,
-          borderColor: brand.white,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: brand.navy,
-          shadowOpacity: 0.22,
-          shadowRadius: 4,
-          shadowOffset: { width: 0, height: 3 },
-        }}
-      >
-        <Txt
-          allowFontScaling={false}
-          style={{ fontFamily: fonts.display, fontSize: 14, lineHeight: 17 }}
-          color={brand.white}
+      <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{
+            width: 26 * s,
+            height: 34 * s,
+            borderRadius: 8,
+            backgroundColor: brand.navy,
+            borderWidth: 2,
+            borderColor: brand.white,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: brand.navy,
+            shadowOpacity: 0.22,
+            shadowRadius: 4,
+            shadowOffset: { width: 0, height: 3 },
+          }}
         >
-          P
-        </Txt>
+          <Txt
+            allowFontScaling={false}
+            style={{ fontFamily: fonts.display, fontSize: 14, lineHeight: 17 }}
+            color={brand.white}
+          >
+            P
+          </Txt>
+        </View>
       </View>
     );
   }

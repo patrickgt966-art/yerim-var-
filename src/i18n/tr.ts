@@ -125,6 +125,7 @@ const tr = {
     sourceMock: 'Örnek veri (gerçek değil)',
     sourceIzelman:
       'İzmir Büyükşehir Belediyesi Açık Veri, İzelman otopark envanteri (2022). Bu otopark için anlık doluluk verisi yok.',
+    sourceApple: 'Apple Haritalar. Bu otopark için anlık doluluk verisi yok.',
     sourceOsm:
       '© OpenStreetMap katkıcıları (ODbL). Bu otopark için anlık doluluk verisi yok; konum ve bilgiler gönüllülerce girilmiştir.',
     tariffSource: 'Tarife kaynağı: {{source}}',
@@ -144,6 +145,8 @@ const tr = {
     staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
     staticBodyMunicipal:
       'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
+    staticBodyApple:
+      "Apple Haritalar'da kayıtlı bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.",
     staticBodyMapped:
       'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
   },
@@ -166,7 +169,7 @@ const tr = {
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      'Analitik, reklam ya da takip yok. Konumun cihazından çıkmaz; ağa giden tek istek açık veri sorgusudur.',
+      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple yalnızca aradığın bölgeyi görür. Belediyeye giden tek istek doluluk verisidir.',
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
@@ -176,7 +179,8 @@ const tr = {
   card: {
     municipal: 'Belediye otoparkı',
     mapped: 'Haritada kayıtlı',
-    capacityUnit: 'araçlık',
+    apple: 'Apple Haritalar',
+    capacityUnit: 'araç kapasitesi',
     walkUnit: 'dk yürüme',
     a11yStatic: '{{name}}. {{meta}}. Canlı sayım yok. {{facts}}',
   },

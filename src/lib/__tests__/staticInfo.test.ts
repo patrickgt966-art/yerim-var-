@@ -15,7 +15,7 @@ describe('static card copy', () => {
   it('leads with capacity, then walking time, never a free count', () => {
     expect(staticHeadline({ capacity: 888, walk: 3 }, t)).toEqual({
       value: '888',
-      label: 'araçlık',
+      label: 'araç kapasitesi',
     });
     expect(staticHeadline({ capacity: null, walk: 3 }, t)).toEqual({
       value: '~3',
