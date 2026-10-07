@@ -40,6 +40,8 @@ jobs:
           git add data/
           git diff --cached --quiet && exit 0
           git commit -m 'chore(data): refresh static parking data'
+          # The branch may have moved while the (slow) fetch ran.
+          git pull --rebase origin "${GITHUB_REF_NAME}"
           git push
 
       # Scheduled or manual runs: propose the update as a pull request.
