@@ -80,11 +80,26 @@ Tam yanıt testte fixture olarak duruyor: [`src/data/__tests__/fixtures/izmir-li
 - `isPaid: false` olan yol kenarı kayıtları da var (ör. "24 Kordon 4 (Batı)"). Bu kayıtlarda `payment` alanlarının hepsi `false`.
 - `type: "OffStreet"` alanını "Kapalı otopark" diye yorumlamadık: açık otopark alanları da OffStreet olabilir.
 
+## Tekrarlı çağrılar (2026-10-07)
+
+Aynı gün üç kez çekildi:
+
+| Çağrı | Kayıt sayısı | Boş yer sayıları                                   |
+| ----- | ------------ | -------------------------------------------------- |
+| 1     | 7            | 1, 0, 16, 1, 1, 97 (Hatay), 661 (Konak)            |
+| 2     | 7            | Birebir aynı                                       |
+| 3     | 6            | "Hatay Katlı Pazaryeri" yok; kalanlar birebir aynı |
+
+Çıkarımlar:
+
+- **Sayılar donuk olabilir.** Hiçbir otoparkta değişiklik görülmedi. Kaynak ölçüm zamanı vermediği için bu "Canlı" olarak gösterilmemesi gerektiğini doğruluyor. Uygulamadaki "Güncellendi: HH:mm" yalnızca indirme zamanıdır, ölçüm zamanı değildir.
+- **Kayıt kümesi değişebiliyor.** Bir otopark yanıttan düşebiliyor. Uygulamada detay ekranı bu durumda "bulunamadı" gösterir, favoriler kendi kopyasını sakladığı için kaybolmaz.
+
 ## Doğrulanamayanlar
 
 Tarayıcıda görülen yanıttan bunlar anlaşılmıyor:
 
-- [ ] **Güncelleme sıklığı.** 2 dakika arayla iki çağrı yapıp `free` değerlerinin değişip değişmediğine bakılmalı.
+- [ ] **Güncelleme sıklığı.** Üç çağrıda değişiklik görülmedi; farklı saatlerde (ör. sabah ve akşam) tekrar bakılmalı.
 - [ ] **Yanıt başlıkları** (`Cache-Control`, `Last-Modified`, `ETag`) ve **CORS** (`Access-Control-Allow-Origin`). iOS uygulaması için CORS gerekmez; yalnızca web sürümü için önemli.
 - [ ] **Veri lisansı.** Üçüncü taraf kaynaklara göre İzmir Açık Veri Lisansı, CC BY 4.0 ile uyumlu. Portal sayfasından teyit edilmeli.
 - [ ] **Toplam kayıt sayısı.** Örnekte 7 kayıt var; yanıtın tamamı olup olmadığı belli değil.
