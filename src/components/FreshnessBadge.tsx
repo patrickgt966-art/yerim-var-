@@ -15,6 +15,8 @@ export function freshnessText(f: Freshness, t: TFunction): string {
       return t('freshness.updated', { time: formatClock(f.at) });
     case 'sample':
       return t('freshness.sample');
+    case 'noData':
+      return t('freshness.noData');
     default:
       return t('freshness.unknown');
   }
@@ -24,12 +26,21 @@ export function FreshnessBadge({ freshness }: { freshness: Freshness }) {
   const c = useColors();
   const { t } = useTranslation();
   const fresh = freshness.kind === 'live' || freshness.kind === 'updated';
-  const bg = fresh ? c.badgeFreshBg : freshness.kind === 'sample' ? c.warnBg : c.badgeUnknownBg;
+  const info = freshness.kind === 'noData';
+  const bg = fresh
+    ? c.badgeFreshBg
+    : freshness.kind === 'sample'
+      ? c.warnBg
+      : info
+        ? c.badgeInfoBg
+        : c.badgeUnknownBg;
   const fg = fresh
     ? c.badgeFreshText
     : freshness.kind === 'sample'
       ? c.warnText
-      : c.badgeUnknownText;
+      : info
+        ? c.badgeInfoText
+        : c.badgeUnknownText;
   return (
     <View
       style={[

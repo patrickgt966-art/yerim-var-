@@ -52,18 +52,28 @@ design/           Referans ekranlar (PNG + HTML)
   - **Fiyat tutarı yok**, yalnızca `isPaid`. Tarifeler ayrı ve 2022 tarihli bir CKAN kaynağında, otopark adıyla eşleşiyor.
   - `accessories.covered` güvenilmez (katlı otoparklarda da `false`); yalnızca `true` dikkate alınır.
   - Henüz doğrulanmayanlar: güncelleme sıklığı, yanıt başlıkları/CORS, veri lisansı.
+- **Kapsama (tüm İzmir ili):** Anlık doluluk verisi yalnızca belediye sensörlü 7 otoparkta var. Diğerleri uygulamaya gömülü bir listeden gelir ve kartlarında "Doluluk bilgisi yok" yazar:
+  - İzelman otopark envanteri (İzmir BB açık veri, 2022): yaklaşık 80 resmi otopark; kapasite ve çalışma saatleriyle.
+  - OpenStreetMap (ODbL): ilde herkese açık yaklaşık 1.400 otopark (30 m içindeki çiftler ve izinli/özel otoparklar ayıklanmış). Çoğunun adı ve kapasitesi yok.
+  - Liste `scripts/fetch-sources.mjs` ile oluşturulur ve GitHub Actions'ta her ay yenilenir (`data/sources-report.md`). Uygulama bu kaynaklara bağlanmaz; ağa giden tek istek hâlâ doluluk API'sidir.
+  - Aynı otopark birden çok kaynakta varsa (80 m içinde) öncelik canlı veride, sonra İzelman'dadır.
+  - Kalabalık bölgelerde listede ve haritada en yakın 60 statik otopark gösterilir; canlı verisi olanlar her zaman gösterilir.
+- **Arama:** Apple'ın cihaz içi geocoder'ı yalnızca adres çözer; "İstinye" gibi AVM ve mekân adlarını bulamaz. Bu yüzden önce uygulamaya gömülü yaklaşık 3.100 İzmir yerinde (ilçe, semt, AVM, hastane, üniversite, iskele, istasyon, önemli yer; OpenStreetMap, `data/places-izmir.json`) ve adı olan otoparklarda aranır. Eşleşme büyük/küçük harf, Türkçe karakter ve boşluktan bağımsızdır. Bulunamazsa adres geocoder'ı devreye girer.
+- **Apple Haritalar otopark araması:** Uygulamanın kendi derlemesinde (Expo Go'da değil) sonuç ekranı, hedefin 1,5 km çevresindeki otoparkları da Apple Haritalar'dan ister (`modules/yerim-mapkit`, `MKLocalPointsOfInterestRequest`). Gelen sonuçlarda yalnızca ad, konum ve adres var; "Apple Haritalar" etiketi ve "Canlı sayım yok" ile gösterilir. Bilinen bir otoparka 60 m'den yakın olanlar çıkarılır. Sonuçlar yalnızca bellekte bir saat tutulur. Expo Go'da modül olmadığı için özellik kendiliğinden kapalıdır.
+  - **Henüz cihazda denenmedi.** Derlendiğini doğrulamak için: expo.dev'den bir erişim anahtarı (Access token) oluşturup repoya `EXPO_TOKEN` sırrı olarak ekle, sonra Actions → "iOS build check" → Run workflow. Bu, Apple hesabı gerektirmeyen bir simülatör derlemesi yapar. Cihazda denemek için Apple Developer hesabı gerekir.
 - **Tazelik kuralları** (`src/data/freshness.ts`, testli):
   - Kaynak zaman damgası vermediği için tazelik, verinin cihaza indiği an (`fetchedAt`) ile ölçülür. Kartlarda "Güncellendi: HH:mm" yazar.
   - Veri 15 dakikadan eskiyse veya alınamadıysa boş yer sayısı yerine "Bilinmiyor" yazar.
   - API'ye ulaşılamazsa 3 kez denenir (1 sn ve 3 sn arayla). Yine olmazsa cihazda saklanan son gerçek veri "Çevrimdışı · Son veri: HH:mm" uyarısıyla gösterilir. Hiç kayıt yoksa örnek veriye düşülür ve "Örnek veri gösteriliyor" uyarısı görünür.
   - Açılışta kayıtlı veri hemen gösterilir, yenisi arkadan gelir. Kayıt yalnızca cihazda tutulur.
+  - İndirme sonuç ekranını beklemeden uygulama açılır açılmaz başlar; API ~15 sn sürdüğü için kullanıcı yer ararken genelde tamamlanır.
   - "Canlı" etiketi yalnızca kaynak gerçek bir ölçüm zamanı verirse kullanılır.
-- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 10 sn zaman aşımı, 2 yeniden deneme. Bozuk kayıtlar Zod ile atılır.
+- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 30 sn zaman aşımı, 2 yeniden deneme. Bozuk kayıtlar Zod ile atılır.
 - **Tarifeler:** `data/tariffs.json`. Her kayıtta `validFrom`, `source` ve `verifiedAt` var. Şu an hiçbiri doğrulanmadığı için hepsi "Tahmini" görünür. Resmî kaynaktan doğrulanmadan "Resmi tarife" yazılmaz.
 
 ## Gizlilik
 
-Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Ağa giden tek istek açık veri API'sidir. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
+Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Ağ istekleri: belediyenin doluluk API'si ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
 
 ## Tasarımı olmayan ekranlar
 
@@ -82,6 +92,7 @@ Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve akti
 - `com.yerimvar.app` taslak bundle ID'dir.
 - v1 yalnızca iOS (`platforms: ["ios"]`). Android ön plan ikonu `design/` içinde saklanıyor ve bağlanmadı.
 - "Bildir" butonu `veri-yanlis.yml` issue formunu açar ve "Otopark" alanını doldurur. Issue formları `body` parametresini yok saydığı için alanlar `id` ile doldurulur.
+- Zaman aşımı brifteki 10 sn yerine 30 sn: belediye API'si telefonda (LTE) ~15 sn'de cevap verdi, 10 sn'de uygulama her seferinde örnek veriye düşüyordu.
 
 ## App Store öncesi eksikler
 
@@ -103,5 +114,6 @@ Bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUC
 
 - Kod: MIT (bkz. [`LICENSE`](LICENSE)).
 - Fontlar: Bricolage Grotesque ve Plus Jakarta Sans, SIL Open Font License 1.1 (bkz. [`licenses/`](licenses/)).
+- Veri lisansları: [`licenses/DATA.md`](licenses/DATA.md).
 - "Yerim Var" adı, logo ve ikon MIT kapsamı dışındadır; fork'lar farklı ad ve ikon kullanmalıdır (bkz. [`TRADEMARKS.md`](TRADEMARKS.md)).
-- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com), CC BY 4.0.
+- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com); otopark konumlarının bir kısmı © OpenStreetMap katkıcıları (ODbL).

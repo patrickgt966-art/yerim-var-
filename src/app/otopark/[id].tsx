@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -12,14 +13,16 @@ import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
 import { Txt } from '@/components/Txt';
 import { getFreshness, visibleFree } from '@/data/freshness';
+import { findAppleParking } from '@/data/appleParkings';
 import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
 import { metaLine } from '@/lib/format';
 import { parkHere } from '@/lib/parkHere';
 import { reportWrongData } from '@/lib/report';
+import { isStatic } from '@/lib/staticInfo';
 import { useApp, useIsFavorite } from '@/store/app';
-import { fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, useColors } from '@/theme';
 
 const DAY_ORDER: (keyof OpeningHours)[] = [
   'monday',
@@ -37,7 +40,8 @@ export default function ParkingDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data } = useParkings();
-  const p = data?.parkings.find((x) => x.id === id);
+  const queryClient = useQueryClient();
+  const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
@@ -77,51 +81,93 @@ export default function ParkingDetail() {
         title={p.name}
         back
         right={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
-            accessibilityState={{ selected: isFav }}
-            onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
-            style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon
-              name={isFav ? 'starFilled' : 'star'}
-              size={26}
-              color={isFav ? c.accent : c.text}
-            />
-          </Pressable>
+          // Apple results live only in memory, so a favourite would go stale.
+          p.source === 'apple' ? undefined : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
+              accessibilityState={{ selected: isFav }}
+              onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
+              style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Icon
+                name={isFav ? 'starFilled' : 'star'}
+                size={26}
+                color={isFav ? c.accent : c.text}
+              />
+            </Pressable>
+          )
         }
       />
-      <Txt secondary>{[metaLine(p, t, mode), p.address].filter(Boolean).join(' · ')}</Txt>
+      <Txt secondary>
+        {[metaLine(p, t, mode), p.operator, p.address].filter(Boolean).join(' · ')}
+      </Txt>
       <SampleBanner result={data} />
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ gap: 8, flex: 1 }}>
-          <FreshnessBadge freshness={freshness} />
-          <SlotStrip free={free} capacity={p.capacity} />
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Txt
+      {isStatic(p) ? (
+        <View style={[asym(18, 5), { backgroundColor: c.badgeInfoBg, padding: 14, gap: 6 }]}>
+          <View
             style={{
-              fontFamily: fonts.display,
-              fontSize: free == null ? 20 : 44,
-              lineHeight: free == null ? 26 : 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
             }}
           >
-            {free == null ? t('common.unknown') : String(free)}
-          </Txt>
-          <Txt variant="label" secondary>
-            {t('common.free')}
+            <Txt variant="bodyBold" color={c.badgeInfoText} style={{ flex: 1 }}>
+              {t('detail.staticTitle')}
+            </Txt>
+            {p.capacity != null && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Txt
+                  style={{ fontFamily: fonts.display, fontSize: 30, lineHeight: 34 }}
+                  color={c.badgeInfoText}
+                >
+                  {String(p.capacity)}
+                </Txt>
+                <Txt variant="label" color={c.badgeInfoText}>
+                  {t('card.capacityUnit')}
+                </Txt>
+              </View>
+            )}
+          </View>
+          <Txt variant="caption" color={c.badgeInfoText}>
+            {p.source === 'izelman'
+              ? t('detail.staticBodyMunicipal')
+              : p.source === 'apple'
+                ? t('detail.staticBodyApple')
+                : t('detail.staticBodyMapped')}
           </Txt>
         </View>
-      </View>
+      ) : (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ gap: 8, flex: 1 }}>
+            <FreshnessBadge freshness={freshness} />
+            <SlotStrip free={free} capacity={p.capacity} />
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Txt
+              style={{
+                fontFamily: fonts.display,
+                fontSize: free == null ? 20 : 44,
+                lineHeight: free == null ? 26 : 48,
+              }}
+            >
+              {free == null ? t('common.unknown') : String(free)}
+            </Txt>
+            <Txt variant="label" secondary>
+              {t('common.free')}
+            </Txt>
+          </View>
+        </View>
+      )}
 
       <Button label={t('results.parkHere')} onPress={() => parkHere(p)} />
 
@@ -158,6 +204,8 @@ export default function ParkingDetail() {
           DAY_ORDER.filter((d) => p.openingHours?.[d]).map((d) => (
             <Row key={d} label={t(`detail.days.${d}`)} value={p.openingHours?.[d] ?? ''} />
           ))
+        ) : p.openingHoursText ? (
+          <Txt>{p.openingHoursText}</Txt>
         ) : (
           <Txt secondary>{t('common.unknown')}</Txt>
         )}
@@ -172,7 +220,17 @@ export default function ParkingDetail() {
       </Section>
 
       <Section title={t('detail.source')}>
-        <Txt>{p.source === 'mock' ? t('detail.sourceMock') : t('detail.sourceIzmir')}</Txt>
+        <Txt>
+          {p.source === 'mock'
+            ? t('detail.sourceMock')
+            : p.source === 'osm'
+              ? t('detail.sourceOsm')
+              : p.source === 'izelman'
+                ? t('detail.sourceIzelman')
+                : p.source === 'apple'
+                  ? t('detail.sourceApple')
+                  : t('detail.sourceIzmir')}
+        </Txt>
       </Section>
 
       <Button

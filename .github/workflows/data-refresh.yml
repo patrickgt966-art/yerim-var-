@@ -1,0 +1,56 @@
+name: Data refresh
+
+# Collects static parking data (OpenStreetMap + İzmir open data portal).
+# The app bundles the result; it never calls these services itself.
+
+on:
+  schedule:
+    - cron: '17 4 1 * *' # monthly, 1st day 04:17 UTC
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['scripts/fetch-sources.mjs', '.github/workflows/data-refresh.yml']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: data-refresh-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/fetch-sources.mjs
+      - run: cat data/sources-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Script changes on a working branch: commit the data to that branch.
+      - name: Commit to branch
+        if: github.event_name == 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore(data): refresh static parking data'
+          # The branch may have moved while the (slow) fetch ran.
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push
+
+      # Scheduled or manual runs: propose the update as a pull request.
+      - name: Open pull request
+        if: github.event_name != 'push'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: data/refresh
+          title: 'chore(data): refresh static parking data'
+          commit-message: 'chore(data): refresh static parking data'
+          body: 'Automated run of `scripts/fetch-sources.mjs`. See `data/sources-report.md`.'
+          add-paths: data/

@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import type { RankedParking } from '@/data/useParkings';
 import { metaLine } from '@/lib/format';
+import { isStatic, sourceLabel, staticHeadline } from '@/lib/staticInfo';
 import { useApp } from '@/store/app';
 import { asym, fonts, useColors } from '@/theme';
 
@@ -63,6 +64,46 @@ function BigCount({
   );
 }
 
+/** Right-hand number for car parks without a live count: capacity or walk. */
+function StaticHeadline({ parking: p, size }: { parking: RankedParking; size: number }) {
+  const c = useColors();
+  const { t } = useTranslation();
+  const h = staticHeadline(p, t);
+  if (!h) return null;
+  return (
+    <View style={{ alignItems: 'flex-end' }}>
+      <Txt
+        style={{
+          fontFamily: fonts.display,
+          fontSize: size * 0.8,
+          lineHeight: size * 0.9,
+          letterSpacing: -1,
+        }}
+        color={c.text}
+        maxFontSizeMultiplier={1.4}
+      >
+        {h.value}
+      </Txt>
+      <Txt variant="label" secondary>
+        {h.label}
+      </Txt>
+    </View>
+  );
+}
+
+/** Replaces the slot strip: friendly "no live count" badge and the source. */
+function StaticFacts({ parking: p }: { parking: RankedParking }) {
+  const c = useColors();
+  const { t } = useTranslation();
+  const src = sourceLabel(p, t);
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+      <Tag text={t('freshness.noData')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+      {src && <Tag text={src} bg={c.chipBg} fg={c.text} />}
+    </View>
+  );
+}
+
 export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetail }: Props) {
   const c = useColors();
   const { t } = useTranslation();
@@ -71,11 +112,25 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
   const mode = useApp((s) => s.mode);
   const meta = metaLine(p, t, mode);
 
+  const staticCard = isStatic(p);
+  const a11y = staticCard
+    ? t('card.a11yStatic', {
+        name: p.name,
+        meta,
+        facts: [
+          sourceLabel(p, t),
+          p.capacity != null ? `${p.capacity} ${t('card.capacityUnit')}` : null,
+        ]
+          .filter(Boolean)
+          .join(', '),
+      })
+    : `${p.name}. ${meta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}. ${freshnessText(freshness, t)}`;
+
   if (!featured) {
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${p.name}. ${meta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}. ${freshnessText(freshness, t)}`}
+        accessibilityLabel={a11y}
         accessibilityHint={t('results.details')}
         onPress={onDetail}
         style={[
@@ -102,13 +157,21 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
             </Txt>
           </View>
           <Txt variant="caption" secondary style={{ marginTop: 2 }}>
-            {[meta, freshnessText(freshness, t)].filter(Boolean).join(' · ')}
+            {staticCard ? meta : [meta, freshnessText(freshness, t)].filter(Boolean).join(' · ')}
           </Txt>
           <View style={{ marginTop: 9 }}>
-            <SlotStrip free={free} capacity={p.capacity} />
+            {staticCard ? (
+              <StaticFacts parking={p} />
+            ) : (
+              <SlotStrip free={free} capacity={p.capacity} />
+            )}
           </View>
         </View>
-        <BigCount free={free} capacity={p.capacity} size={34} />
+        {staticCard ? (
+          <StaticHeadline parking={p} size={34} />
+        ) : (
+          <BigCount free={free} capacity={p.capacity} size={34} />
+        )}
       </Pressable>
     );
   }
@@ -128,7 +191,7 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <PBadge />
             {nearest && <Tag text={t('results.nearest')} bg={c.badgeNearBg} fg={c.badgeNearText} />}
-            <FreshnessBadge freshness={freshness} />
+            {!staticCard && <FreshnessBadge freshness={freshness} />}
           </View>
           <Txt
             accessibilityRole="header"
@@ -140,10 +203,18 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
             {meta}
           </Txt>
           <View style={{ marginTop: 9 }}>
-            <SlotStrip free={free} capacity={p.capacity} />
+            {staticCard ? (
+              <StaticFacts parking={p} />
+            ) : (
+              <SlotStrip free={free} capacity={p.capacity} />
+            )}
           </View>
         </View>
-        <BigCount free={free} capacity={p.capacity} size={40} />
+        {staticCard ? (
+          <StaticHeadline parking={p} size={40} />
+        ) : (
+          <BigCount free={free} capacity={p.capacity} size={40} />
+        )}
       </View>
       <View style={{ marginTop: 12, flexDirection: 'row', gap: 10 }}>
         <Button

@@ -13,7 +13,9 @@ export type Freshness =
   /** Too old or missing. The free-space count must be hidden. */
   | { kind: 'unknown' }
   /** Mock data. Never presented as real. */
-  | { kind: 'sample' };
+  | { kind: 'sample' }
+  /** A static record (İzelman inventory, OpenStreetMap) with no occupancy at all. */
+  | { kind: 'noData' };
 
 function parse(iso: string | null | undefined): Date | null {
   if (!iso) return null;
@@ -26,6 +28,8 @@ export function getFreshness(
   now: Date = new Date(),
 ): Freshness {
   if (p.source === 'mock') return { kind: 'sample' };
+  if (p.source === 'osm' || p.source === 'izelman' || p.source === 'apple')
+    return { kind: 'noData' };
   if (p.free == null) return { kind: 'unknown' };
 
   const measured = parse(p.updatedAt);
@@ -46,7 +50,7 @@ export function getFreshness(
 /** Free-space count that may be shown, or null when it must read "Bilinmiyor". */
 export function visibleFree(p: Parking, now: Date = new Date()): number | null {
   const f = getFreshness(p, now);
-  return f.kind === 'unknown' ? null : p.free;
+  return f.kind === 'unknown' || f.kind === 'noData' ? null : p.free;
 }
 
 export type OccupancyLevel = 'plenty' | 'few' | 'full' | 'unknown';

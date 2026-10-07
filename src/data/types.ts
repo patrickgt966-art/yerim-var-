@@ -1,6 +1,11 @@
 export type OccupancyKind = 'live' | 'estimated';
 export type PriceKind = 'official' | 'estimated';
-export type DataSource = 'izmir-open-data' | 'mock';
+/**
+ * Records without occupancy: bundled 'izelman' (municipal inventory, 2022)
+ * and 'osm' (OpenStreetMap), and 'apple' (Apple Maps search on the device).
+ */
+export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm' | 'apple';
+export type StaticSource = 'izelman' | 'osm';
 
 export type OpeningHours = Partial<
   Record<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday', string>
@@ -21,6 +26,13 @@ export type Parking = {
   nonstop: boolean | null;
   openingHours: OpeningHours | null;
   address: string | null;
+  /** Free-text opening hours when the source has no per-day table (OSM syntax). */
+  openingHoursText?: string | null;
+  operator?: string | null;
+  /** True when the name was generated ("Otopark · Bostanlı yakını"), not from the source. */
+  genericName?: boolean;
+  /** 'customers': open to visitors of a shop/mall; 'subscribers': monthly pass holders. */
+  access?: 'customers' | 'subscribers' | null;
   source: DataSource;
   /** Measurement time reported by the source (ISO). The İzmir API has none. */
   updatedAt: string | null;

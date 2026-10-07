@@ -1,5 +1,8 @@
 import { appleMapsUrl, distanceMeters, walkMinutes } from '../geo';
 import { loadParkings } from '../repository';
+import { parkingsQuery } from '../useParkings';
+
+import live from './fixtures/izmir-live-2026-10-07.json';
 import { estimateCost, tariffFor } from '../tariffs';
 import type { ParkingCache } from '../cache';
 import type { Parking, ParkingProvider, ParkingResult } from '../types';
@@ -122,5 +125,31 @@ describe('loadParkings', () => {
         signal: controller.signal,
       }),
     ).rejects.toThrow('aborted');
+  });
+});
+
+describe('parkings query', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('does not read the abort signal, so leaving a screen keeps the download', async () => {
+    globalThis.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => live,
+    })) as unknown as typeof fetch;
+    const fn = parkingsQuery.queryFn as unknown as (ctx: object) => Promise<unknown>;
+    let signalRead = false;
+    const ctx = {};
+    Object.defineProperty(ctx, 'signal', {
+      get() {
+        signalRead = true;
+        return new AbortController().signal;
+      },
+    });
+    await fn(ctx);
+    expect(signalRead).toBe(false);
   });
 });

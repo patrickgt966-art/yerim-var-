@@ -45,8 +45,9 @@ describe('normalizeIzmir', () => {
       { ...sample, ufid: 'b', lat: Number.NaN },
       { ...sample, ufid: 'c', occupancy: { total: { free: -1, occupied: 3 } } },
     ];
-    const out = normalizeIzmir([...bad, { ...sample, ufid: 'ok' }], at);
-    expect(out.map((p) => p.id)).toEqual(['ok']);
+    const good = ['ok1', 'ok2', 'ok3', 'ok4'].map((ufid) => ({ ...sample, ufid }));
+    const out = normalizeIzmir([...bad, ...good], at);
+    expect(out.map((p) => p.id)).toEqual(['ok1', 'ok2', 'ok3', 'ok4']);
   });
 
   it('leaves capacity unknown when a count is missing', () => {
@@ -58,6 +59,13 @@ describe('normalizeIzmir', () => {
   it('throws on schema drift', () => {
     expect(() => normalizeIzmir({ data: [] }, at)).toThrow(SchemaDriftError);
     expect(() => normalizeIzmir([{ id: 1, title: 'x' }], at)).toThrow(SchemaDriftError);
+  });
+
+  it('treats an empty or mostly invalid response as an outage', () => {
+    // Otherwise it would overwrite the last good result saved on the device.
+    expect(() => normalizeIzmir([], at)).toThrow('Boş yanıt');
+    const broken = [1, 2, 3].map((i) => ({ ...sample, ufid: `b${i}`, name: null }));
+    expect(() => normalizeIzmir([...broken, sample], at)).toThrow('Kayıtların çoğu geçersiz');
   });
 
   it('parses a real API response (2026-10-07)', () => {

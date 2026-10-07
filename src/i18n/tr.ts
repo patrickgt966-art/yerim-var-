@@ -18,12 +18,15 @@ const tr = {
     outdoor: 'Açık',
     nonstop: '7/24',
     closed: 'Şu an kapalı',
+    customers: 'Müşterilere açık',
+    subscribers: 'Yalnızca abonelere',
   },
   freshness: {
     live: 'Canlı',
     updated: 'Güncellendi: {{time}}',
     unknown: 'Bilinmiyor',
     sample: 'Örnek veri',
+    noData: 'Canlı sayım yok',
     sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
     offline: 'Çevrimdışı',
     offlineBanner:
@@ -57,7 +60,22 @@ const tr = {
     add: 'Ekle',
     popular: "İzmir'de popüler yerler",
     active: 'Aktif park',
-    notFound: 'Bu adresi bulamadık. Daha açık yazmayı dene.',
+    notFound:
+      'Bu yeri bulamadık. Semt ya da sokak adıyla dene (örn. "Balçova" ya da "Mithatpaşa Cd.").',
+    suggestions: 'Öneriler',
+    kind: {
+      popular: 'Popüler yer',
+      town: 'İlçe / belde',
+      area: 'Semt / mahalle',
+      mall: 'Alışveriş merkezi',
+      hospital: 'Hastane',
+      university: 'Üniversite',
+      pier: 'İskele',
+      station: 'İstasyon',
+      hotel: 'Otel',
+      landmark: 'Önemli yer',
+      parking: 'Otopark',
+    },
     savePrompt: '{{label}} adresini yaz',
     saveFailed: 'Adres bulunamadı.',
     longPressHint: 'Değiştirmek için basılı tut',
@@ -81,6 +99,7 @@ const tr = {
     details: 'Detay',
     empty: 'Bu çevrede otopark bulamadık.',
     loading: 'Otoparklar yükleniyor…',
+    refreshing: 'Yenileniyor…',
     error: 'Veri alınamadı.',
     myLocation: 'Konumun',
     a11yStrip: '{{capacity}} yerden {{free}} boş',
@@ -104,6 +123,11 @@ const tr = {
     source: 'Kaynak',
     sourceIzmir: 'İzmir Büyükşehir Belediyesi Açık Veri',
     sourceMock: 'Örnek veri (gerçek değil)',
+    sourceIzelman:
+      'İzmir Büyükşehir Belediyesi Açık Veri, İzelman otopark envanteri (2022). Bu otopark için anlık doluluk verisi yok.',
+    sourceApple: 'Apple Haritalar. Bu otopark için anlık doluluk verisi yok.',
+    sourceOsm:
+      '© OpenStreetMap katkıcıları (ODbL). Bu otopark için anlık doluluk verisi yok; konum ve bilgiler gönüllülerce girilmiştir.',
     tariffSource: 'Tarife kaynağı: {{source}}',
     report: 'Yanlış bilgi bildir',
     favoriteAdd: 'Favorilere ekle',
@@ -118,6 +142,13 @@ const tr = {
       sunday: 'Pazar',
     },
     notFound: 'Otopark bulunamadı.',
+    staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
+    staticBodyMunicipal:
+      'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
+    staticBodyApple:
+      "Apple Haritalar'da kayıtlı bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.",
+    staticBodyMapped:
+      'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
   },
   favorites: {
     title: 'Favoriler',
@@ -134,16 +165,29 @@ const tr = {
     noAccount: 'Hesap gerekmez. Favorilerin ve aktif parkın yalnızca bu cihazda saklanır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0, doğrulanacak). Yerim Var resmî bir belediye uygulaması değildir.',
+      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL); bu otoparklarda anlık doluluk bilgisi yoktur. Yerim Var resmî bir belediye uygulaması değildir.',
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      'Analitik, reklam ya da takip yok. Konumun cihazından çıkmaz; ağa giden tek istek açık veri sorgusudur.',
+      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple aradığın metni ya da konumunun yaklaşık bölgesini (~100 m) görür. Belediyeye giden tek istek doluluk verisidir.',
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
+  },
+  card: {
+    municipal: 'Belediye otoparkı',
+    mapped: 'Haritada kayıtlı',
+    apple: 'Apple Haritalar',
+    capacityUnit: 'araç kapasitesi',
+    walkUnit: 'dk yürüme',
+    a11yStatic: '{{name}}. {{meta}}. Canlı sayım yok. {{facts}}',
+  },
+  parking: {
+    unnamed: 'Otopark',
+    operatorParking: '{{operator}} otoparkı',
+    nearby: 'Otopark · {{place}} yakını',
   },
   map: { title: 'Harita' },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },

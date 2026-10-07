@@ -59,7 +59,7 @@ export default function ResultsScreen() {
   }, [target, t]);
 
   const nearMode = params.near === '1';
-  const { ranked, data, isLoading, isError, refetch } = useRanked(target);
+  const { ranked, data, isLoading, isError, isFetching, refetch } = useRanked(target);
   // Own flag so the spinner shows only for pull-to-refresh, not the 120 s poll.
   const [pulling, setPulling] = useState(false);
   const onPullRefresh = () => {
@@ -103,6 +103,8 @@ export default function ResultsScreen() {
         {!!label && (
           <Txt variant="caption" secondary>
             {t('results.subtitle', { place: label })}
+            {/* Saved data stays on screen while the slow API answers. */}
+            {isFetching && !!data && !pulling ? ` · ${t('results.refreshing')}` : ''}
           </Txt>
         )}
       </View>

@@ -10,7 +10,7 @@ GET https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar
 
 - Kimlik doğrulama yok (tarayıcıda anahtarsız açıldı).
 - Yanıt kök seviyede bir **JSON dizi**. Sayfalama yok.
-- Yanıt bazen gecikiyor: ilk denemede sekme uzun süre yüklendi. Uygulamadaki 10 sn zaman aşımı ve örnek veriye düşme bu durum için var.
+- **Yanıt yavaş:** iPhone Safari'de (LTE) açılması ~15 sn sürdü. Uygulama ilk sürümde 10 sn sonra vazgeçip örnek veriye düşüyordu; zaman aşımı 30 sn'ye çıkarıldı. Bekleme sırasında cihazda kayıtlı son veri gösterilir.
 - Portal sayfası: https://acikveri.bizizmir.com/dataset/otopark-doluluk-ve-lokasyon-bilgileri
 
 ## Ham örnek
