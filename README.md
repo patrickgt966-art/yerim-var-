@@ -46,17 +46,19 @@ design/           Referans ekranlar (PNG + HTML)
 
 - **Kaynak:** İzmir Büyükşehir Belediyesi Açık Veri Portalı, "Otopark Doluluk ve Lokasyon Bilgileri" ([acikveri.bizizmir.com](https://acikveri.bizizmir.com/dataset/otopark-doluluk-ve-lokasyon-bilgileri)). Uç nokta: `GET https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar`.
 - **Lisans ve atıf:** CC BY 4.0 uyumlu İzmir Açık Veri Lisansı (üçüncü taraf kaynaklara göre; portaldan doğrulanmalı). Atıf Profil ekranında ve burada yer alır.
-- **Canlı doğrulama yapılamadı.** Geliştirme ortamının ağ politikası `openapi.izmir.bel.tr` ve `acikveri.bizizmir.com` alan adlarını engelliyor. Şema, açık kaynak istemcilerden derlendi; ayrıntılar ve yerelde doğrulama komutları [`docs/inspiration.md`](docs/inspiration.md) ("İzmir API bulguları" bölümü) içinde. `docs/data-source.md` (ham örnek, iki aralıklı çağrıyla güncelleme sıklığı, CORS) API'ye erişilebilen bir makinede yazılmalı.
-- Bilinenler (doğrulanmadı):
+- **Şema canlı yanıtla doğrulandı (2026-10-07).** Ayrıntılar, alan tipleri ve ham örnek: [`docs/data-source.md`](docs/data-source.md).
   - Anonim, JSON dizi, sayfalama yok.
   - Kayıtlarda **ölçüm zaman damgası yok**; kapasite `free + occupied` toplamından türetilir.
   - **Fiyat tutarı yok**, yalnızca `isPaid`. Tarifeler ayrı ve 2022 tarihli bir CKAN kaynağında, otopark adıyla eşleşiyor.
+  - `accessories.covered` güvenilmez (katlı otoparklarda da `false`); yalnızca `true` dikkate alınır.
+  - Henüz doğrulanmayanlar: güncelleme sıklığı, yanıt başlıkları/CORS, veri lisansı.
 - **Tazelik kuralları** (`src/data/freshness.ts`, testli):
   - Kaynak zaman damgası vermediği için tazelik, verinin cihaza indiği an (`fetchedAt`) ile ölçülür. Kartlarda "Güncellendi: HH:mm" yazar.
   - Veri 15 dakikadan eskiyse veya alınamadıysa boş yer sayısı yerine "Bilinmiyor" yazar.
-  - API hata verirse örnek veriye düşülür ve "Örnek veri gösteriliyor" uyarısı görünür.
+  - API'ye ulaşılamazsa 3 kez denenir (1 sn ve 3 sn arayla). Yine olmazsa cihazda saklanan son gerçek veri "Çevrimdışı · Son veri: HH:mm" uyarısıyla gösterilir. Hiç kayıt yoksa örnek veriye düşülür ve "Örnek veri gösteriliyor" uyarısı görünür.
+  - Açılışta kayıtlı veri hemen gösterilir, yenisi arkadan gelir. Kayıt yalnızca cihazda tutulur.
   - "Canlı" etiketi yalnızca kaynak gerçek bir ölçüm zamanı verirse kullanılır.
-- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 10 sn zaman aşımı, 2 deneme. Bozuk kayıtlar Zod ile atılır.
+- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 10 sn zaman aşımı, 2 yeniden deneme. Bozuk kayıtlar Zod ile atılır.
 - **Tarifeler:** `data/tariffs.json`. Her kayıtta `validFrom`, `source` ve `verifiedAt` var. Şu an hiçbiri doğrulanmadığı için hepsi "Tahmini" görünür. Resmî kaynaktan doğrulanmadan "Resmi tarife" yazılmaz.
 
 ## Gizlilik
@@ -87,7 +89,7 @@ Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve akti
 - [ ] Gerçek bundle ID (şu an `com.yerimvar.app`, taslak)
 - [ ] Gizlilik politikası URL'si (App Store Connect için zorunlu)
 - [ ] App Store ekran görüntüleri (6.9" ve 6.5")
-- [ ] İzmir API'sinin canlı doğrulaması ve `docs/data-source.md`
+- [ ] İzmir API'sinin güncelleme sıklığı ve yanıt başlıkları (bkz. `docs/data-source.md`)
 - [ ] Veri lisansının portal üzerinden doğrulanması
 - [ ] Doğrulanmamış tarifeler: `data/tariffs.json` içindeki tüm kayıtlar "Tahmini"
 - [ ] Gerçek cihazda test (konum izni, Apple Haritalar devri, Reduce Motion, Dynamic Type, karanlık mod)

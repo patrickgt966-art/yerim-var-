@@ -38,6 +38,7 @@ export default function ProfileScreen() {
           <Txt variant="caption" secondary>
             {t('profile.lastFetch', { time: formatClock(new Date(data.fetchedAt)) })}
             {data.source === 'mock' ? ` · ${t('freshness.sample')}` : ''}
+            {data.offline ? ` · ${t('freshness.offline')}` : ''}
           </Txt>
         )}
       </Section>

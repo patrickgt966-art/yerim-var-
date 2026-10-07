@@ -29,9 +29,9 @@ export default function MapTab() {
         delta={0.06}
         onSelect={(p) => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
       />
-      {data?.source === 'mock' && (
+      {(data?.source === 'mock' || data?.offline) && (
         <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16 }}>
-          <SampleBanner />
+          <SampleBanner result={data} />
         </View>
       )}
     </View>
