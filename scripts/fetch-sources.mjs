@@ -8,7 +8,7 @@
 //   "otopark" is downloaded to data/raw/ for review; known ones are merged.
 //
 // Usage: node scripts/fetch-sources.mjs
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,14 +38,34 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-const OVERPASS_QUERY = `
+const IZMIR_AREA = 'area["boundary"="administrative"]["admin_level"="4"]["name"="İzmir"]->.izmir;';
+
+const PARKING_QUERY = `
 [out:json][timeout:240];
-area["boundary"="administrative"]["admin_level"="4"]["name"="İzmir"]->.izmir;
+${IZMIR_AREA}
 nwr["amenity"="parking"](area.izmir);
 out center tags;
 `;
 
-async function overpass() {
+// Named places people type into search: districts, neighbourhoods, malls,
+// hospitals, universities, piers, stations, landmarks. Apple's on-device
+// geocoder only knows addresses, so "İstinye" alone finds nothing.
+const PLACES_QUERY = `
+[out:json][timeout:240];
+${IZMIR_AREA}
+(
+  node["place"~"^(city|town|suburb|quarter|neighbourhood|village)$"]["name"](area.izmir);
+  nwr["shop"="mall"]["name"](area.izmir);
+  nwr["amenity"~"^(hospital|university|college|ferry_terminal|bus_station|marketplace|theatre|townhall|courthouse)$"]["name"](area.izmir);
+  nwr["tourism"~"^(attraction|museum|theme_park|zoo)$"]["name"](area.izmir);
+  nwr["railway"~"^(station|halt)$"]["name"](area.izmir);
+  nwr["leisure"~"^(stadium|park|marina|beach_resort)$"]["name"](area.izmir);
+  nwr["historic"]["name"](area.izmir);
+);
+out center tags;
+`;
+
+async function overpass(query) {
   // Public Overpass servers are often busy (HTTP 429/5xx); retry with a pause.
   for (let round = 0; round < 3; round++) {
     if (round > 0) await new Promise((r) => setTimeout(r, 30_000 * round));
@@ -57,7 +77,7 @@ async function overpass() {
             'Content-Type': 'application/x-www-form-urlencoded',
             'User-Agent': 'yerim-var data refresh (github.com/patrickgt966-art/yerim-var-)',
           },
-          body: `data=${encodeURIComponent(OVERPASS_QUERY)}`,
+          body: `data=${encodeURIComponent(query)}`,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return (await res.json()).elements ?? [];
@@ -77,8 +97,9 @@ const round = (n) => Math.round(n * 1e6) / 1e6;
 
 function fromOsm(el) {
   const t = el.tags ?? {};
-  // Not usable by the public.
-  if (['private', 'no'].includes(t.access)) return null;
+  // Only car parks the public can use (no permit/residents/employees/...).
+  if (t.access && !['yes', 'permissive', 'customers', 'public', 'destination'].includes(t.access))
+    return null;
   const lat = el.lat ?? el.center?.lat;
   const lng = el.lon ?? el.center?.lon;
   if (typeof lat !== 'number' || typeof lng !== 'number') return null;
@@ -216,10 +237,36 @@ function fromIzelman(row, kind, resourceId) {
   };
 }
 
+// --- Places for search --------------------------------------------------
+
+function placeKind(t) {
+  if (t.place) return ['city', 'town', 'village'].includes(t.place) ? 'town' : 'area';
+  if (t.shop === 'mall') return 'mall';
+  if (t.amenity === 'hospital') return 'hospital';
+  if (['university', 'college'].includes(t.amenity)) return 'university';
+  if (t.amenity === 'ferry_terminal') return 'pier';
+  if (t.amenity === 'bus_station' || t.railway) return 'station';
+  return 'landmark';
+}
+
+function fromPlace(el) {
+  const t = el.tags ?? {};
+  const name = t['name:tr'] ?? t.name;
+  const lat = el.lat ?? el.center?.lat;
+  const lng = el.lon ?? el.center?.lon;
+  if (!name || typeof lat !== 'number' || typeof lng !== 'number') return null;
+  // Compact keys: this file ships inside the app.
+  return {
+    n: name,
+    a: Math.round(lat * 1e5) / 1e5,
+    o: Math.round(lng * 1e5) / 1e5,
+    k: placeKind(t),
+  };
+}
+
 // --- Live API reachability (for the report only) ---------------------------
 
 async function liveApi() {
-  const started = Date.now();
   try {
     const res = await fetchWithTimeout(
       'https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar',
@@ -227,10 +274,45 @@ async function liveApi() {
       60_000,
     );
     const body = await res.json();
-    return `HTTP ${res.status}, ${Array.isArray(body) ? body.length : '?'} kayıt, ${Date.now() - started} ms`;
+    // No timings here: the report must only change when the data does.
+    return `HTTP ${res.status}, ${Array.isArray(body) ? body.length : '?'} kayıt`;
   } catch (e) {
-    return `başarısız (${e.message}, ${Date.now() - started} ms)`;
+    return `başarısız (${e.message})`;
   }
+}
+
+// --- helpers ---------------------------------------------------------------
+
+const meters = (a, b) => {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const x = dLat ** 2 + Math.cos((a.lat * Math.PI) / 180) ** 2 * dLng ** 2;
+  return 6371000 * Math.sqrt(x);
+};
+
+/** Keeps the most informative record of each cluster closer than `m` metres. */
+function dedupe(list, m, score) {
+  const kept = [];
+  for (const p of [...list].sort((a, b) => score(b) - score(a) || a.id.localeCompare(b.id))) {
+    if (!kept.some((k) => meters(k, p) <= m)) kept.push(p);
+  }
+  return kept;
+}
+
+/** Writes JSON, keeping the old generatedAt when the payload is unchanged. */
+async function writeData(file, payload) {
+  let generatedAt = new Date().toISOString();
+  try {
+    const old = JSON.parse(await readFile(out(file), 'utf8'));
+    if (
+      JSON.stringify(old.items ?? old.parkings) ===
+      JSON.stringify(payload.items ?? payload.parkings)
+    )
+      generatedAt = old.generatedAt;
+  } catch {
+    // first run
+  }
+  await writeFile(out(file), JSON.stringify({ ...payload, generatedAt }) + '\n');
 }
 
 // --- main ------------------------------------------------------------------
@@ -238,19 +320,20 @@ async function liveApi() {
 await mkdir(out('data/raw'), { recursive: true });
 log(`# Veri kaynakları raporu`);
 log('');
-log(`Oluşturma: ${new Date().toISOString()}`);
-log('');
 
-const elements = await overpass();
-const osm = (elements ?? []).map(fromOsm).filter(Boolean);
+const elements = await overpass(PARKING_QUERY);
+const osmAll = (elements ?? []).map(fromOsm).filter(Boolean);
+// The same car park is often mapped twice (a node and an area).
+const osm = dedupe(osmAll, 30, (p) => (p.name ? 2 : 0) + (p.capacity ? 1 : 0));
 log('## OpenStreetMap (ODbL)');
 log('');
 if (elements) {
-  const named = osm.filter((p) => p.name).length;
-  const withCap = osm.filter((p) => p.capacity).length;
-  const paid = osm.filter((p) => p.isPaid === true).length;
-  log(`- Ham öğe: ${elements.length}, herkese açık: ${osm.length}`);
-  log(`- Adı olan: ${named}, kapasitesi olan: ${withCap}, ücretli işaretli: ${paid}`);
+  log(
+    `- Ham öğe: ${elements.length}, herkese açık: ${osmAll.length}, çiftler ayıklanınca: ${osm.length}`,
+  );
+  log(
+    `- Adı olan: ${osm.filter((p) => p.name).length}, kapasitesi olan: ${osm.filter((p) => p.capacity).length}, ücretli işaretli: ${osm.filter((p) => p.isPaid === true).length}`,
+  );
 }
 log('');
 
@@ -276,32 +359,48 @@ const izelman = (ckanFound ?? []).flatMap((r) =>
     ? r.rows.map((row) => fromIzelman(row, IZELMAN[r.resource], r.resource)).filter(Boolean)
     : [],
 );
-log(`İzelman envanteri: ${izelman.length} otopark.`);
+log('## Sonuç');
+log('');
+log(`- İzelman envanteri: ${izelman.length} otopark.`);
 
 // Official records win over OSM points of the same car park.
-const DUPLICATE_M = 80;
-const near = (a, b) => {
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const x = dLat ** 2 + Math.cos((a.lat * Math.PI) / 180) ** 2 * dLng ** 2;
-  return 6371000 * Math.sqrt(x) <= DUPLICATE_M;
-};
-const osmKept = osm.filter((o) => !izelman.some((z) => near(o, z)));
-log(`OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
+const osmKept = osm.filter((o) => !izelman.some((z) => meters(o, z) <= 80));
+log(`- OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
 
 if (elements && izelman.length > 0) {
   const parkings = [...izelman, ...osmKept].sort((a, b) => a.id.localeCompare(b.id));
-  const file = {
+  await writeData('data/parkings-static.json', {
     $comment:
       'Generated by scripts/fetch-sources.mjs. izelman-*: İzmir Büyükşehir Belediyesi Açık Veri (İzelman otopark envanteri). osm-*: © OpenStreetMap contributors, ODbL 1.0.',
-    generatedAt: new Date().toISOString(),
     licenses: { izelman: 'İzmir BB Açık Veri Lisansı', osm: 'ODbL-1.0' },
     parkings,
-  };
-  await writeFile(out('data/parkings-static.json'), JSON.stringify(file) + '\n');
-  log(`data/parkings-static.json: ${parkings.length} otopark yazıldı.`);
+  });
+  log(`- data/parkings-static.json: ${parkings.length} otopark.`);
 } else {
   // Keep the previous file rather than ship a partial one.
-  log('Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.');
+  log('- Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.');
 }
+
+const placeEls = await overpass(PLACES_QUERY);
+if (placeEls && placeEls.length > 0) {
+  const all = placeEls.map(fromPlace).filter(Boolean);
+  // One entry per name within 300 m (e.g. a mall's node and building).
+  const seen = new Map();
+  const items = [];
+  for (const p of all.sort((a, b) => a.n.localeCompare(b.n, 'tr') || a.a - b.a || a.o - b.o)) {
+    const prev = seen.get(p.n) ?? [];
+    if (prev.some((q) => meters({ lat: q.a, lng: q.o }, { lat: p.a, lng: p.o }) <= 300)) continue;
+    seen.set(p.n, [...prev, p]);
+    items.push(p);
+  }
+  await writeData('data/places-izmir.json', {
+    $comment:
+      'Generated by scripts/fetch-sources.mjs for search. n=name, a=lat, o=lng, k=kind. © OpenStreetMap contributors, ODbL 1.0.',
+    items,
+  });
+  log(`- data/places-izmir.json: ${items.length} yer (arama için).`);
+} else {
+  log('- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.');
+}
+
 await writeFile(out('data/sources-report.md'), report.join('\n') + '\n');
