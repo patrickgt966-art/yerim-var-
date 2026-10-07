@@ -60,6 +60,12 @@ export default function ResultsScreen() {
 
   const nearMode = params.near === '1';
   const { ranked, data, isLoading, isError, refetch } = useRanked(target);
+  // Own flag so the spinner shows only for pull-to-refresh, not the 120 s poll.
+  const [pulling, setPulling] = useState(false);
+  const onPullRefresh = () => {
+    setPulling(true);
+    void refetch().finally(() => setPulling(false));
+  };
 
   const filtered = useMemo(() => {
     let list: RankedParking[] = ranked;
@@ -199,6 +205,8 @@ export default function ResultsScreen() {
           data={filtered}
           keyExtractor={(p: RankedParking) => p.id}
           ListHeaderComponent={header}
+          refreshing={pulling}
+          onRefresh={onPullRefresh}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item, index }: { item: RankedParking; index: number }) => (
