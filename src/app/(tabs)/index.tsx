@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
 import type { LatLng } from '@/data/geo';
 import { POPULAR_PLACES } from '@/data/places';
+import { searchPlaces, type SearchHit } from '@/data/search';
 import { geocode } from '@/lib/location';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
@@ -105,13 +106,14 @@ export default function SearchScreen() {
   const setMode = useApp((s) => s.setMode);
   const active = useApp((s) => s.active);
 
+  // Bundled İzmir places first: Apple's geocoder only knows addresses.
+  const hits = useMemo(() => searchPlaces(query), [query]);
+  const pick = (h: SearchHit) => openResults(h, h.name);
+
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
-    const local = POPULAR_PLACES.find(
-      (p) => p.name.toLocaleLowerCase('tr') === q.toLocaleLowerCase('tr'),
-    );
-    if (local) return openResults(local, local.name);
+    if (hits[0]) return pick(hits[0]);
     setBusy(true);
     const hit = await geocode(q);
     setBusy(false);
@@ -227,6 +229,48 @@ export default function SearchScreen() {
           )}
         </View>
       </View>
+
+      {hits.length > 0 && (
+        <View
+          accessibilityLabel={t('search.suggestions')}
+          style={[
+            asym(18, 5),
+            {
+              marginHorizontal: 16,
+              marginTop: 12,
+              backgroundColor: c.card,
+              borderWidth: 1,
+              borderColor: c.line,
+              overflow: 'hidden',
+            },
+          ]}
+        >
+          {hits.map((h, i) => (
+            <Pressable
+              key={`${h.name}-${h.lat}-${h.lng}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${h.name}, ${t(`search.kind.${h.kind}`)}`}
+              onPress={() => pick(h)}
+              style={({ pressed }) => ({
+                minHeight: HIT + 4,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                justifyContent: 'center',
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: c.line,
+                backgroundColor: pressed ? c.surface : c.card,
+              })}
+            >
+              <Txt variant="bodyBold" numberOfLines={1}>
+                {h.name}
+              </Txt>
+              <Txt variant="caption" secondary>
+                {t(`search.kind.${h.kind}`)}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
         <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
