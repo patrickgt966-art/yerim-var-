@@ -48,7 +48,7 @@ Kullanıcı gideceği yeri yazar ve çevredeki otoparkları görür: boş yer sa
    - üst bar: geri, konum adı, filtre
    - harita + bottom sheet: "12 otopark · 41 boş yer", "Alsancak'a yürüme mesafesine göre"
    - filtre çipleri: Tümü / Kapalı / İskeleye yakın / Şarj. Verisi olmayan filtreyi gizle, uydurma
-   - ilk kart vurgulu: "En yakın", "Canlı"/"Tahmini", ad, "~2 dk yürüyüş · ₺60/saat · Kapalı · 7/24", yer şeridi, büyük boş yer sayısı, "Buraya park et", "Detay"
+   - ilk kart vurgulu: "En yakın", "Güncellendi: HH:mm" / "Bilinmiyor", ad, "~2 dk yürüyüş · ₺60/saat · Kapalı · 7/24", yer şeridi, büyük boş yer sayısı, "Buraya park et", "Detay"
    - yürüme süresi mesafeden tahmin edilir ve "~" ile gösterilir
 4. **Detay**: saatlik tarife, çalışma saatleri, kapasite, "Resmi tarife / Tahmini", kaynak + son güncelleme. "Bildir" butonu önceden doldurulmuş bir GitHub issue ("fiyat/veri yanlış" şablonu) açar.
 5. **Favoriler ve aktif park**: başlangıç saati, süre ve tahmini ücret sayacı (yerel). Bildirim veya arka plan işi yok.
@@ -66,13 +66,18 @@ Kullanıcı gideceği yeri yazar ve çevredeki otoparkları görür: boş yer sa
   - Muhtemel uç nokta `GET https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar`: anonim, JSON dizi.
   - Kayıtlarda **zaman damgası yok**, kapasite `free + occupied`'dan türetilir.
   - **Fiyat tutarı yok**, yalnızca `isPaid` var. Tarifeler ayrı ve 2022 tarihli bir CKAN kaynağında, otopark adıyla eşleşiyor.
-- Kaynak zaman damgası vermiyorsa, tazelik istemcideki `fetchedAt` ile ölçülür. "Canlı" etiketinin bu durumda nasıl gösterileceğine BANA SOR. Öneri: "Güncellendi: HH:mm"; 15 dakikadan eskiyse boş yer sayısı yerine "Bilinmiyor".
+- KARAR (onaylandı): Kaynak zaman damgası vermediği için tazelik istemcideki `fetchedAt` ile ölçülür.
+  - Kartlarda "Canlı" yerine "Güncellendi: HH:mm" yazar.
+  - Veri 15 dakikadan eskiyse veya alınamadıysa, boş yer sayısı yerine "Bilinmiyor" yazar.
+  - Mock veride "Örnek veri" yazar.
+  - "Canlı" etiketi ancak kaynak gerçek bir ölçüm zamanı verirse kullanılır.
+  - Bu mantık saf bir fonksiyon olsun ve test edilsin.
 - Normalizasyon Zod ile yapılır. Bozuk kayıt atılır, şema kayarsa son başarılı önbellek "çevrimdışı" etiketiyle gösterilir.
 - Çekme: ~120 sn, yalnız uygulama ön plandayken; pull-to-refresh; 10 sn zaman aşımı, 2 deneme.
 - Veri lisansı CC BY 4.0 (doğrula). Atıf ve "Resmî uygulama değildir" notu Profil'de ve README'de yer alır.
 - `ParkingProvider` arayüzü + `IzmirOpenDataProvider` + `MockProvider`. API hata verir ya da zaman aşımına uğrarsa mock'a düş ve arayüzde "Örnek veri gösteriliyor" uyarısı göster.
 - Model alanları: `id`, `name`, `lat`, `lng`, `capacity`, `free`, `isIndoor`, `openingHours`, `source`, `updatedAt` (ISO), `occupancyKind: 'live'|'estimated'`, `priceKind: 'official'|'estimated'`.
-- KURAL: Veri 10 dakikadan eskiyse veya kaynağı canlı sayaç değilse "Tahmini" göster. Doğrulanmamış veri asla "Canlı" diye etiketlenmez. Bu mantık saf bir fonksiyon olsun ve test edilsin.
+- KURAL: Doğrulanmamış veri asla "Canlı" diye etiketlenmez.
 - Fiyatlar `data/tariffs.json` içinde dursun; her kayıtta `validFrom`, `source` (URL) ve `verifiedAt` olsun. Resmi kaynaktan doğrulanmadan "Resmi tarife" yazılmaz.
 - Konum ve favoriler cihazdan çıkmaz. Ağa giden tek istek açık veri API'sidir.
 
