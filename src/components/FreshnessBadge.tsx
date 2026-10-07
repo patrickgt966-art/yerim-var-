@@ -15,6 +15,8 @@ export function freshnessText(f: Freshness, t: TFunction): string {
       return t('freshness.updated', { time: formatClock(f.at) });
     case 'sample':
       return t('freshness.sample');
+    case 'noData':
+      return t('freshness.noData');
     default:
       return t('freshness.unknown');
   }

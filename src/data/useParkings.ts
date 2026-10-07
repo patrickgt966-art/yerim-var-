@@ -5,7 +5,8 @@ import { deviceCache } from './cache';
 import { distanceMeters, walkMinutes, type LatLng } from './geo';
 import { isNearPier } from './places';
 import { loadParkings } from './repository';
-import type { Parking } from './types';
+import { withStatic } from './staticParkings';
+import type { Parking, ParkingResult } from './types';
 
 export const PARKINGS_QUERY_KEY = ['parkings'] as const;
 
@@ -22,8 +23,14 @@ export const parkingsQuery = queryOptions({
   gcTime: Infinity,
 });
 
+/** Adds bundled OpenStreetMap car parks to real data (never to sample data). */
+function addStatic(result: ParkingResult): ParkingResult {
+  if (result.source === 'mock') return result;
+  return { ...result, parkings: withStatic(result.parkings) };
+}
+
 export function useParkings() {
-  return useQuery(parkingsQuery);
+  return useQuery({ ...parkingsQuery, select: addStatic });
 }
 
 /**
@@ -49,6 +56,8 @@ export async function warmUpParkings(client: QueryClient) {
   await client.prefetchQuery(parkingsQuery);
 }
 
+export const MAX_STATIC_RESULTS = 60;
+
 export type RankedParking = Parking & {
   distance: number;
   walk: number;
@@ -61,15 +70,20 @@ export function rankByDistance(
   target: LatLng,
   radiusMeters = 1500,
 ): RankedParking[] {
-  return list
-    .map((p) => ({
-      ...p,
-      distance: distanceMeters(target, p),
-      walk: walkMinutes(target, p),
-      nearPier: isNearPier(p),
-    }))
-    .filter((p) => p.distance <= radiusMeters)
+  const sorted = list
+    .map((p) => ({ p, distance: distanceMeters(target, p) }))
+    .filter((x) => x.distance <= radiusMeters)
     .sort((a, b) => a.distance - b.distance);
+  // Dense areas have hundreds of static car parks; keep the list and map
+  // light, but never drop one that has occupancy data.
+  let statics = 0;
+  const out: RankedParking[] = [];
+  for (const { p, distance } of sorted) {
+    const isStatic = p.source === 'osm' || p.source === 'izelman';
+    if (isStatic && ++statics > MAX_STATIC_RESULTS) continue;
+    out.push({ ...p, distance, walk: walkMinutes(target, p), nearPier: isNearPier(p) });
+  }
+  return out;
 }
 
 export function useRanked(target: LatLng | null, radiusMeters?: number) {

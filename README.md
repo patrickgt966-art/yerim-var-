@@ -52,6 +52,12 @@ design/           Referans ekranlar (PNG + HTML)
   - **Fiyat tutarı yok**, yalnızca `isPaid`. Tarifeler ayrı ve 2022 tarihli bir CKAN kaynağında, otopark adıyla eşleşiyor.
   - `accessories.covered` güvenilmez (katlı otoparklarda da `false`); yalnızca `true` dikkate alınır.
   - Henüz doğrulanmayanlar: güncelleme sıklığı, yanıt başlıkları/CORS, veri lisansı.
+- **Kapsama (tüm İzmir ili):** Anlık doluluk verisi yalnızca belediye sensörlü 7 otoparkta var. Diğerleri uygulamaya gömülü bir listeden gelir ve kartlarında "Doluluk bilgisi yok" yazar:
+  - İzelman otopark envanteri (İzmir BB açık veri, 2022): yaklaşık 80 resmi otopark; kapasite ve çalışma saatleriyle.
+  - OpenStreetMap (ODbL): ilde herkese açık yaklaşık 1.500 otopark. Çoğunun adı ve kapasitesi yok.
+  - Liste `scripts/fetch-sources.mjs` ile oluşturulur ve GitHub Actions'ta her ay yenilenir (`data/sources-report.md`). Uygulama bu kaynaklara bağlanmaz; ağa giden tek istek hâlâ doluluk API'sidir.
+  - Aynı otopark birden çok kaynakta varsa (80 m içinde) öncelik canlı veride, sonra İzelman'dadır.
+  - Kalabalık bölgelerde listede ve haritada en yakın 60 statik otopark gösterilir; canlı verisi olanlar her zaman gösterilir.
 - **Tazelik kuralları** (`src/data/freshness.ts`, testli):
   - Kaynak zaman damgası vermediği için tazelik, verinin cihaza indiği an (`fetchedAt`) ile ölçülür. Kartlarda "Güncellendi: HH:mm" yazar.
   - Veri 15 dakikadan eskiyse veya alınamadıysa boş yer sayısı yerine "Bilinmiyor" yazar.
@@ -105,5 +111,6 @@ Bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUC
 
 - Kod: MIT (bkz. [`LICENSE`](LICENSE)).
 - Fontlar: Bricolage Grotesque ve Plus Jakarta Sans, SIL Open Font License 1.1 (bkz. [`licenses/`](licenses/)).
+- Veri lisansları: [`licenses/DATA.md`](licenses/DATA.md).
 - "Yerim Var" adı, logo ve ikon MIT kapsamı dışındadır; fork'lar farklı ad ve ikon kullanmalıdır (bkz. [`TRADEMARKS.md`](TRADEMARKS.md)).
-- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com), CC BY 4.0.
+- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com); otopark konumlarının bir kısmı © OpenStreetMap katkıcıları (ODbL).

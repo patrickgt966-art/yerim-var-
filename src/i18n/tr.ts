@@ -18,12 +18,15 @@ const tr = {
     outdoor: 'Açık',
     nonstop: '7/24',
     closed: 'Şu an kapalı',
+    customers: 'Müşterilere açık',
+    subscribers: 'Yalnızca abonelere',
   },
   freshness: {
     live: 'Canlı',
     updated: 'Güncellendi: {{time}}',
     unknown: 'Bilinmiyor',
     sample: 'Örnek veri',
+    noData: 'Doluluk bilgisi yok',
     sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
     offline: 'Çevrimdışı',
     offlineBanner:
@@ -105,6 +108,10 @@ const tr = {
     source: 'Kaynak',
     sourceIzmir: 'İzmir Büyükşehir Belediyesi Açık Veri',
     sourceMock: 'Örnek veri (gerçek değil)',
+    sourceIzelman:
+      'İzmir Büyükşehir Belediyesi Açık Veri, İzelman otopark envanteri (2022). Bu otopark için anlık doluluk verisi yok.',
+    sourceOsm:
+      '© OpenStreetMap katkıcıları (ODbL). Bu otopark için anlık doluluk verisi yok; konum ve bilgiler gönüllülerce girilmiştir.',
     tariffSource: 'Tarife kaynağı: {{source}}',
     report: 'Yanlış bilgi bildir',
     favoriteAdd: 'Favorilere ekle',
@@ -135,7 +142,7 @@ const tr = {
     noAccount: 'Hesap gerekmez. Favorilerin ve aktif parkın yalnızca bu cihazda saklanır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0, doğrulanacak). Yerim Var resmî bir belediye uygulaması değildir.',
+      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar: © OpenStreetMap katkıcıları (ODbL); bunlarda anlık doluluk bilgisi yoktur. Yerim Var resmî bir belediye uygulaması değildir.',
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
@@ -145,6 +152,10 @@ const tr = {
       'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
+  },
+  parking: {
+    unnamed: 'Otopark',
+    operatorParking: '{{operator}} otoparkı',
   },
   map: { title: 'Harita' },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },

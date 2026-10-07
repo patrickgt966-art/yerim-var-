@@ -92,7 +92,9 @@ export default function ParkingDetail() {
           </Pressable>
         }
       />
-      <Txt secondary>{[metaLine(p, t, mode), p.address].filter(Boolean).join(' · ')}</Txt>
+      <Txt secondary>
+        {[metaLine(p, t, mode), p.operator, p.address].filter(Boolean).join(' · ')}
+      </Txt>
       <SampleBanner result={data} />
 
       <View
@@ -158,6 +160,8 @@ export default function ParkingDetail() {
           DAY_ORDER.filter((d) => p.openingHours?.[d]).map((d) => (
             <Row key={d} label={t(`detail.days.${d}`)} value={p.openingHours?.[d] ?? ''} />
           ))
+        ) : p.openingHoursText ? (
+          <Txt>{p.openingHoursText}</Txt>
         ) : (
           <Txt secondary>{t('common.unknown')}</Txt>
         )}
@@ -172,7 +176,15 @@ export default function ParkingDetail() {
       </Section>
 
       <Section title={t('detail.source')}>
-        <Txt>{p.source === 'mock' ? t('detail.sourceMock') : t('detail.sourceIzmir')}</Txt>
+        <Txt>
+          {p.source === 'mock'
+            ? t('detail.sourceMock')
+            : p.source === 'osm'
+              ? t('detail.sourceOsm')
+              : p.source === 'izelman'
+                ? t('detail.sourceIzelman')
+                : t('detail.sourceIzmir')}
+        </Txt>
       </Section>
 
       <Button

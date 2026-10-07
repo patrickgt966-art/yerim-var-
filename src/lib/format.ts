@@ -26,6 +26,11 @@ export function metaLine(
     priceText(p, t, mode),
     p.isIndoor == null ? null : p.isIndoor ? t('common.indoor') : t('common.outdoor'),
     p.isOpen === false ? t('common.closed') : p.nonstop ? t('common.nonstop') : null,
+    p.access === 'customers'
+      ? t('common.customers')
+      : p.access === 'subscribers'
+        ? t('common.subscribers')
+        : null,
   ];
   return parts.filter(Boolean).join(' · ');
 }
