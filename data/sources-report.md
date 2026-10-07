@@ -2,8 +2,8 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 1552, herkese açık: 1417, çiftler ayıklanınca: 1353
-- Adı olan: 52, kapasitesi olan: 37, ücretli işaretli: 64
+- Ham öğe: 1651, herkese açık: 1504, çiftler ayıklanınca: 1431
+- Adı olan: 51, kapasitesi olan: 41, ücretli işaretli: 73
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -22,7 +22,7 @@
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
-- OSM'den İzelman ile çakışan 35 kayıt çıkarıldı.
-- data/parkings-static.json: 1400 otopark.
-- Overpass alınamadı (yer adları; 3 tur, tüm sunucular).
-- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.
+- OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
+- Adsız otoparklardan yakın yer adı bulunan: 690.
+- data/parkings-static.json: 1466 otopark.
+- data/places-izmir.json: 3462 yer (arama için).
