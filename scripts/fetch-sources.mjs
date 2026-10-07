@@ -65,7 +65,7 @@ ${IZMIR_AREA}
 out center tags;
 `;
 
-async function overpass(query) {
+async function overpass(query, label) {
   // Public Overpass servers are often busy (HTTP 429/5xx); retry with a pause.
   for (let round = 0; round < 3; round++) {
     if (round > 0) await new Promise((r) => setTimeout(r, 30_000 * round));
@@ -86,10 +86,12 @@ async function overpass(query) {
         if (body.remark) throw new Error(`kısmi sonuç: ${body.remark}`);
         return body.elements ?? [];
       } catch (e) {
-        log(`- Overpass ${url} başarısız (tur ${round + 1}): ${e.message}`);
+        // Console only: retries vary per run and must not change the report.
+        console.warn(`Overpass ${url} başarısız (tur ${round + 1}): ${e.message}`);
       }
     }
   }
+  log(`- Overpass alınamadı (${label}; 3 tur, tüm sunucular).`);
   return null;
 }
 
@@ -333,7 +335,7 @@ await mkdir(out('data/raw'), { recursive: true });
 log(`# Veri kaynakları raporu`);
 log('');
 
-const elements = await overpass(PARKING_QUERY);
+const elements = await overpass(PARKING_QUERY, 'otoparklar');
 const osmAll = (elements ?? []).map(fromOsm).filter(Boolean);
 // The same car park is often mapped twice (a node and an area).
 const osm = dedupe(osmAll, 30, (p) => (p.name ? 2 : 0) + (p.capacity ? 1 : 0));
@@ -352,7 +354,8 @@ log('');
 const ckanFound = await portal();
 log('## İzmir açık veri portalı ("otopark" araması)');
 log('');
-for (const r of ckanFound ?? []) {
+// Sorted so the report does not change with the portal's result order.
+for (const r of [...(ckanFound ?? [])].sort((a, b) => a.resource.localeCompare(b.resource))) {
   log(
     `- **${r.title}** / ${r.resourceName} (${r.format}, ${r.license ?? 'lisans?'}, güncelleme: ${r.lastModified ?? '?'})` +
       (r.records != null ? ` — ${r.records} kayıt; alanlar: ${r.fields.join(', ')}` : '') +
@@ -393,7 +396,7 @@ if (elements && izelman.length > 0) {
   log('- Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.');
 }
 
-const placeEls = await overpass(PLACES_QUERY);
+const placeEls = await overpass(PLACES_QUERY, 'yer adları');
 if (placeEls && placeEls.length > 0) {
   const all = placeEls.map(fromPlace).filter(Boolean);
   // One entry per name within 300 m (e.g. a mall's node and building).
