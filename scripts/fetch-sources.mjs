@@ -115,7 +115,7 @@ function fromOsm(el) {
     id: `osm-${el.type}-${el.id}`,
     // A bare "Otopark" is a description, not a name.
     name:
-      [t['name:tr'], t.name].find((n) => n && n.trim().toLocaleLowerCase('tr') !== 'otopark') ??
+      [t.name, t['name:tr']].find((n) => n && n.trim().toLocaleLowerCase('tr') !== 'otopark') ??
       null,
     lat: round(lat),
     lng: round(lng),
@@ -392,24 +392,23 @@ const namingPlaces =
   places ??
   (await readFile(out('data/places-izmir.json'), 'utf8')
     .then((txt) => JSON.parse(txt).items ?? [])
-    .catch(() => []));
+    .catch((e) => {
+      log(`- Uyarı: yedek yer listesi okunamadı (${e.message}); adsız otoparklar adlandırılmadı.`);
+      return [];
+    }));
 
-// Hotels and towns make poor landmarks for a car park; neighbourhoods,
-// malls, stations and the like are what people recognise.
-const LANDMARK_KINDS = new Set([
-  'area',
-  'mall',
-  'station',
-  'pier',
-  'hospital',
-  'university',
-  'landmark',
-]);
-function nearestPlace(p, maxM = 400) {
+// Only public reference points. Hospitals, campuses, malls and hotels are
+// left out: "Otopark · X yakını" next to them reads as if the car park
+// belonged to them (and might be for their visitors only).
+const LANDMARK_KINDS = new Set(['area', 'station', 'pier', 'landmark']);
+const usableLandmark = (n) => n.length <= 28 && !/[()]/.test(n);
+function nearestPlace(p, maxM = 250) {
+  // Car parks restricted to customers/subscribers keep the plain name.
+  if (p.access) return null;
   let best = null;
   let bestM = maxM;
   for (const q of namingPlaces) {
-    if (!LANDMARK_KINDS.has(q.k)) continue;
+    if (!LANDMARK_KINDS.has(q.k) || !usableLandmark(q.n)) continue;
     const m = meters(p, { lat: q.a, lng: q.o });
     if (m < bestM) {
       best = q.n;
