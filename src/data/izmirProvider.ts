@@ -47,12 +47,12 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 /** Normalizes a raw response. Bad records are dropped; schema drift throws. */
 export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
   if (!Array.isArray(raw)) throw new SchemaDriftError('Yanıt bir dizi değil');
-  if (raw.length > 0) {
-    const anyValid = raw.some(
-      (r) => r && typeof r === 'object' && REQUIRED_KEYS.every((k) => k in (r as object)),
-    );
-    if (!anyValid) throw new SchemaDriftError('Zorunlu alanlar hiçbir kayıtta yok');
-  }
+  // An empty list is an outage, not "no car parks": keep the saved data.
+  if (raw.length === 0) throw new SchemaDriftError('Boş yanıt');
+  const anyValid = raw.some(
+    (r) => r && typeof r === 'object' && REQUIRED_KEYS.every((k) => k in (r as object)),
+  );
+  if (!anyValid) throw new SchemaDriftError('Zorunlu alanlar hiçbir kayıtta yok');
 
   const out: Parking[] = [];
   for (const item of raw) {
@@ -89,6 +89,10 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       occupancyKind: 'estimated',
     });
   }
+  // Most records failing validation means the schema changed under us.
+  if (out.length < raw.length / 2) {
+    throw new SchemaDriftError(`Kayıtların çoğu geçersiz (${out.length}/${raw.length})`);
+  }
   return out;
 }
 
@@ -104,7 +108,8 @@ export class IzmirOpenDataProvider implements ParkingProvider {
   async list(signal?: AbortSignal): Promise<Parking[]> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-    signal?.addEventListener('abort', () => controller.abort());
+    const onAbort = () => controller.abort();
+    signal?.addEventListener('abort', onAbort);
     try {
       const res = await fetch(this.url, {
         headers: { Accept: 'application/json' },
@@ -121,6 +126,7 @@ export class IzmirOpenDataProvider implements ParkingProvider {
       throw e;
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
     }
   }
 }

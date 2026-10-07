@@ -1,4 +1,4 @@
-import i18n from 'i18next';
+import { t } from 'i18next';
 
 import raw from '../../data/parkings-static.json';
 import { distanceMeters } from './geo';
@@ -33,8 +33,8 @@ export const DUPLICATE_RADIUS_M = 80;
 
 function displayName(r: StaticRecord): string {
   if (r.name) return r.name;
-  if (r.operator) return i18n.t('parking.operatorParking', { operator: r.operator });
-  return i18n.t('parking.unnamed');
+  if (r.operator) return t('parking.operatorParking', { operator: r.operator });
+  return t('parking.unnamed');
 }
 
 export function toParking(r: StaticRecord, generatedAt: string): Parking {

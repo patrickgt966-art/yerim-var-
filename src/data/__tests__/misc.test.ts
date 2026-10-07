@@ -1,5 +1,6 @@
 import { appleMapsUrl, distanceMeters, walkMinutes } from '../geo';
 import { loadParkings } from '../repository';
+import { parkingsQuery } from '../useParkings';
 import { estimateCost, tariffFor } from '../tariffs';
 import type { ParkingCache } from '../cache';
 import type { Parking, ParkingProvider, ParkingResult } from '../types';
@@ -122,5 +123,22 @@ describe('loadParkings', () => {
         signal: controller.signal,
       }),
     ).rejects.toThrow('aborted');
+  });
+});
+
+describe('parkings query', () => {
+  it('does not read the abort signal, so leaving a screen keeps the download', () => {
+    const fn = parkingsQuery.queryFn as unknown as (ctx: object) => unknown;
+    const ctx = {};
+    let signalRead = false;
+    Object.defineProperty(ctx, 'signal', {
+      get() {
+        signalRead = true;
+        return new AbortController().signal;
+      },
+    });
+    // Start and immediately ignore the promise; only the signal access matters.
+    void Promise.resolve(fn(ctx)).catch(() => undefined);
+    expect(signalRead).toBe(false);
   });
 });

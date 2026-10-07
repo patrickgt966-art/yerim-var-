@@ -12,7 +12,10 @@ export const PARKINGS_QUERY_KEY = ['parkings'] as const;
 
 export const parkingsQuery = queryOptions({
   queryKey: PARKINGS_QUERY_KEY,
-  queryFn: ({ signal }) => loadParkings(undefined, undefined, { signal }),
+  // No `signal`: TanStack cancels a query whose signal was read when its last
+  // screen unmounts, which would throw away a ~15 s download. Let it finish
+  // so the result is cached for the next screen.
+  queryFn: () => loadParkings(),
   staleTime: 60_000,
   // Refetch only while the app is in the foreground (see focusManager in _layout).
   refetchInterval: 120_000,
