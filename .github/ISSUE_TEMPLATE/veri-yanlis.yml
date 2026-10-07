@@ -1,0 +1,52 @@
+name: Fiyat / veri yanlış
+description: Bir otoparkın fiyatı, saatleri, konumu veya kapasitesi yanlış.
+title: 'Veri yanlış: '
+labels: ['veri']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teşekkürler! Uygulamadaki "Bildir" butonu otopark bilgilerini aşağıya önceden doldurur.
+        Doluluk verisi İzmir Büyükşehir Belediyesi açık veri portalından gelir; anlık doluluk hatalarını düzeltemeyebiliriz ama tarife ve otopark bilgilerini güncelleyebiliriz.
+  - type: input
+    id: otopark
+    attributes:
+      label: Otopark
+      description: Adı ve varsa uygulamadaki kimliği.
+      placeholder: Alsancak Katlı Otopark (izmir-123)
+    validations:
+      required: true
+  - type: dropdown
+    id: tur
+    attributes:
+      label: Ne yanlış?
+      multiple: true
+      options:
+        - Fiyat / tarife
+        - Çalışma saatleri
+        - Konum
+        - Kapasite
+        - Kapalı / açık otopark bilgisi
+        - Boş yer sayısı
+        - Otopark artık yok
+        - Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: dogrusu
+    attributes:
+      label: Doğrusu ne?
+      description: Örneğin "0-1 saat 70 ₺, 1-2 saat 100 ₺".
+    validations:
+      required: true
+  - type: input
+    id: kaynak
+    attributes:
+      label: Kaynak
+      description: Bilginin dayanağı. İşletmecinin sitesi, girişteki tabelanın fotoğrafı, resmi duyuru… Resmi kaynak olmadan "Resmi tarife" etiketi verilmez.
+      placeholder: https://…
+  - type: input
+    id: tarih
+    attributes:
+      label: Ne zaman gördün?
+      placeholder: 2026-10-07

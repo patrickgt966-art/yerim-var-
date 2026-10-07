@@ -1,0 +1,47 @@
+{
+  "$comment": "Coordinates are approximate (±100 m) and only used for search shortcuts and the 'İskeleye yakın' filter.",
+  "popular": [
+    {
+      "id": "saat-kulesi",
+      "name": "Saat Kulesi",
+      "district": "Konak",
+      "icon": "tower",
+      "lat": 38.4189,
+      "lng": 27.1287
+    },
+    {
+      "id": "kordon",
+      "name": "Kordon",
+      "district": "Alsancak",
+      "icon": "waves",
+      "lat": 38.4381,
+      "lng": 27.1415
+    },
+    {
+      "id": "kemeralti",
+      "name": "Kemeraltı",
+      "district": "Konak",
+      "icon": "arch",
+      "lat": 38.4192,
+      "lng": 27.131
+    },
+    {
+      "id": "karsiyaka-iskelesi",
+      "name": "Karşıyaka İskelesi",
+      "district": "Karşıyaka",
+      "icon": "ferry",
+      "lat": 38.4555,
+      "lng": 27.1185
+    }
+  ],
+  "piers": [
+    { "name": "Konak İskelesi", "lat": 38.4185, "lng": 27.1265 },
+    { "name": "Pasaport İskelesi", "lat": 38.4296, "lng": 27.1342 },
+    { "name": "Alsancak İskelesi", "lat": 38.4433, "lng": 27.1446 },
+    { "name": "Karşıyaka İskelesi", "lat": 38.4555, "lng": 27.1185 },
+    { "name": "Bostanlı İskelesi", "lat": 38.4567, "lng": 27.0982 },
+    { "name": "Göztepe İskelesi", "lat": 38.3983, "lng": 27.0895 },
+    { "name": "Üçkuyular İskelesi", "lat": 38.3953, "lng": 27.0717 },
+    { "name": "Bayraklı İskelesi", "lat": 38.4628, "lng": 27.1597 }
+  ]
+}
