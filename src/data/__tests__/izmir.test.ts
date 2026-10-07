@@ -1,4 +1,4 @@
-import { normalizeIzmir, SchemaDriftError } from '../izmirProvider';
+import { IzmirOpenDataProvider, normalizeIzmir, SchemaDriftError } from '../izmirProvider';
 
 import live from './fixtures/izmir-live-2026-10-07.json';
 
@@ -70,5 +70,23 @@ describe('normalizeIzmir', () => {
     // covered:false is unreliable for a multi-storey car park.
     expect(konak?.isIndoor).toBeNull();
     expect(out.every((p) => p.updatedAt === null && p.occupancyKind === 'estimated')).toBe(true);
+  });
+});
+
+describe('IzmirOpenDataProvider', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  it('reports a timeout by name', async () => {
+    globalThis.fetch = jest.fn(
+      (_url: unknown, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
+        }),
+    ) as unknown as typeof fetch;
+    const provider = new IzmirOpenDataProvider('https://example.test', 10);
+    await expect(provider.list()).rejects.toThrow('Zaman aşımı');
   });
 });

@@ -112,6 +112,12 @@ export class IzmirOpenDataProvider implements ParkingProvider {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: unknown = await res.json();
       return normalizeIzmir(json, new Date().toISOString());
+    } catch (e) {
+      // Name the timeout plainly instead of a generic "Aborted".
+      if (controller.signal.aborted && !signal?.aborted) {
+        throw new Error(`Zaman aşımı (${this.timeoutMs / 1000} sn)`);
+      }
+      throw e;
     } finally {
       clearTimeout(timer);
     }

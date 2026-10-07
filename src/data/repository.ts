@@ -54,6 +54,8 @@ export async function loadParkings(
   }
 
   const reason = error instanceof Error ? error.message : String(error);
+  // Shows up in the `expo start` terminal during development only.
+  if (__DEV__) console.warn(`[yerim-var] İzmir verisi alınamadı: ${reason}`);
   const cached = await cache.load();
   if (cached) return { ...cached, offline: true, fallbackReason: reason };
 
