@@ -1,11 +1,11 @@
 # Veri kaynakları raporu
 
-Oluşturma: 2026-10-07T18:23:41.303Z
+Oluşturma: 2026-10-07T18:25:09.409Z
 
-- Overpass https://overpass-api.de/api/interpreter başarısız: HTTP 504
-- Overpass https://overpass.kumi.systems/api/interpreter başarısız: HTTP 500
 ## OpenStreetMap (ODbL)
 
+- Ham öğe: 1651, herkese açık: 1529
+- Adı olan: 65, kapasitesi olan: 44, ücretli işaretli: 76
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -19,8 +19,8 @@ Oluşturma: 2026-10-07T18:23:41.303Z
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 7 kayıt, 24756 ms
+- HTTP 200, 7 kayıt, 20085 ms
 
 İzelman envanteri: 82 otopark.
-OSM'den İzelman ile çakışan 0 kayıt çıkarıldı.
-Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.
+OSM'den İzelman ile çakışan 50 kayıt çıkarıldı.
+data/parkings-static.json: 1561 otopark yazıldı.
