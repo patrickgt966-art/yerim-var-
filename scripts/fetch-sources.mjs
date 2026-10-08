@@ -328,6 +328,27 @@ function fromFood(el) {
   return Object.fromEntries(Object.entries(rec).filter(([, v]) => v != null));
 }
 
+/** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
+const foldTr = (s) =>
+  s
+    .toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Mis-tagged places that are not somewhere to eat out (pharmacies, school
+// canteens) and names without at least two Latin letters ("." / "404").
+const NOT_FOOD = /(eczane|anaokulu|ilkokulu|ortaokulu|lisesi)/i;
+const usableFoodName = (n) => (foldTr(n).match(/[a-z]/g) ?? []).length >= 2 && !NOT_FOOD.test(n);
+
 const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : '0%');
 
 // --- Live API reachability (for the report only) ---------------------------
@@ -522,9 +543,12 @@ log('## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)');
 log('');
 const foodEls = await overpass(FOOD_QUERY, 'yeme-içme');
 if (foodEls && foodEls.length > 0) {
-  const all = foodEls.map(fromFood).filter(Boolean);
-  // Same name within 50 m is one place (node + building outline); keep the
-  // record with the most details.
+  const parsed = foodEls.map(fromFood).filter(Boolean);
+  const all = parsed.filter((f) => usableFoodName(f.n));
+  log(`- Ayıklanan (anlamsız ad / yeme-içme dışı): ${parsed.length - all.length}`);
+  // Same name (ignoring case and Turkish letters) within 50 m is one place,
+  // e.g. a node plus a building outline; keep the record with the most details.
+  // Wider would merge real chain branches (two Starbucks ~75 m apart).
   const detail = (f) => Object.keys(f).length;
   const food = [];
   const sortedFood = [...all].sort(
@@ -532,7 +556,8 @@ if (foodEls && foodEls.length > 0) {
   );
   for (const f of sortedFood) {
     const dup = food.some(
-      (q) => q.n === f.n && meters({ lat: q.a, lng: q.o }, { lat: f.a, lng: f.o }) <= 50,
+      (q) =>
+        foldTr(q.n) === foldTr(f.n) && meters({ lat: q.a, lng: q.o }, { lat: f.a, lng: f.o }) <= 50,
     );
     if (!dup) food.push(f);
   }
