@@ -39,7 +39,7 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
 - [ ] **"Burada yer var / dolu" kullanıcı bildirimi.** Canlı verisi olmayan otoparklar için. Sunucu gerekir.
 - [ ] **Belediyeyle iletişim:** daha fazla sensörlü otoparkın açık veriye eklenmesi, veri güncelleme sıklığı ve zaman damgası alanı talebi. Kapsamı en çok bu artırır.
 
-## Fikir: Restoran + park (perşembe akşamı konuşulacak)
+## Restoran + park (8 Ekim'de konuşuldu)
 
 **Ürün fikri (2026-10-08):** Yerim Var, "gideceğin yere arabayla gitme" uygulaması olur. Kullanıcı nereye gideceğine karar verir, uygulama oraya varmanın park kısmını çözer.
 
@@ -61,7 +61,8 @@ Karar taslağı: doğrudan rezervasyon yerine **ara → listele → restoranın 
 
 Sıra:
 
-- [ ] **Akış (hemen, sunucusuz):** Ana sayfada Restoran/Otopark modu, kategoriler, restoran listesi ve detayı ("Nereye park edersin?"), haritada restoran pinleri, favorilerde iki sekme, rota özeti. Veri: OpenStreetMap + Apple Haritalar araması.
+- [ ] **Akış (hemen, sunucusuz), 4 parça:** (1) restoran verisini bağlamak, restoran listesi ve detayı; (2) ana sayfada Restoran/Otopark modu ve kategoriler; (3) haritada restoran pinleri; (4) favorilerde iki sekme ve rota özeti. Her parça kendi başına çalışır ve ayrı kaydedilir.
+- [ ] **Akışın kapsamı:** Ana sayfada Restoran/Otopark modu, kategoriler, restoran listesi ve detayı ("Nereye park edersin?"), haritada restoran pinleri, favorilerde iki sekme, rota özeti. Veri: OpenStreetMap + Apple Haritalar araması.
 - [ ] **Veri toplama:** Semt seçimi ve fiyat/ortam etiketleri; restoran kayıt formu.
 - [ ] **Hesap gelince:** Kullanıcı puanları, yorumlar, profil.
 
@@ -71,6 +72,27 @@ Sıra:
 - [ ] **2. aşama, iş birliği:** Mevcut rezervasyon platformlarına bağlanmak (masa müsaitliği uygulamada görünür, rezervasyonu platform yapar). Hangi platformların bunu dışarıya açtığı araştırılmalı.
 - [ ] **3. aşama, kendi sistemimiz:** Sunucu, hesap (SMS doğrulama), restoran paneli, KVKK. Ancak 1. ve 2. aşama talep gösterirse. Fark yaratabilecek fikirler: rezervasyonla birlikte otopark yeri, otopark ücretini restoranın karşılaması.
 - Dikkat: Park ana iş olarak kalsın. Hesap ve kişisel veri gelince gizlilik metni ve App Store bilgileri değişir. App Store adı "Otopark Bul" yerine daha genel olabilir.
+
+**Bekleyen kararlar**
+
+- [ ] Fiyat ve ortam etiketlemesine hangi 2–3 semtle başlanacak?
+- [ ] Restoran kayıt formu: başlangıç için Google Form yeterli mi?
+- [ ] Sonnet kontrolü her adımda mı, her parçanın sonunda mı (limit tasarrufu)?
+
+**Restoran verisinin durumu**
+
+- `data/food-izmir.json`: OpenStreetMap'ten 2.172 yeme-içme yeri (temizlendi: 7 hatalı kayıt silindi, 3 çift birleştirildi). Bilgi doluluğu düşük: mutfak türü %29, telefon %9, saat %8.
+- [ ] Belediye portalındaki "Turizm Tesisleri", "Turuncu Çember Sertifikası Alan İşletmeler" ve "Yiyecek, İçecek Büfeleri" veri setlerinin içeriğine bakmak (telefon, adres, konum var mı?).
+
+**Taslaklar**
+
+- Ekran taslağı (tuval): https://claude.ai/artifact/Qar9Jakc6hHYL4YcVTt18n
+- Dokunarak gezilen prototip: https://claude.ai/artifact/EH2NWRTH6tWMfocm13mUA9
+
+## Bekleyenler ve çalışma kuralı
+
+- [ ] [PR #3](https://github.com/patrickgt966-art/yerim-var-/pull/3)'ü birleştirmek (son çalışmaların hepsi orada).
+- Çalışma kuralı: her değişiklik bir alt ajana (Sonnet) ayrıca kontrol ettirilir; bulguları düzeltilip öyle kaydedilir.
 
 ## 3. App Store öncesi
 
