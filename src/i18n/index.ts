@@ -8,7 +8,6 @@ export const SUPPORTED = ['tr'] as const;
 
 const device = getLocales()[0]?.languageCode ?? 'tr';
 
- 
 // eslint-disable-next-line import/no-named-as-default-member
 void i18n.use(initReactI18next).init({
   resources: { tr: { translation: tr } },

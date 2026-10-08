@@ -65,11 +65,30 @@ ${IZMIR_AREA}
 out center tags;
 `;
 
+// Places to eat and drink, for the "Restoran + park" idea (docs/ROADMAP.md).
+// Collected for review only; the app does not use this file yet.
+const FOOD_QUERY = `
+[out:json][timeout:240];
+${IZMIR_AREA}
+nwr["amenity"~"^(restaurant|cafe|fast_food|bar|pub|ice_cream|food_court|biergarten)$"]["name"](area.izmir);
+out center tags;
+`;
+
+// One shared budget for every Overpass query so a slow day cannot run past
+// the workflow's timeout; later queries simply fail and keep their old file.
+const OVERPASS_DEADLINE = Date.now() + 20 * 60_000;
+
 async function overpass(query, label) {
   // Public Overpass servers are often busy (HTTP 429/5xx); retry with a pause.
-  for (let round = 0; round < 3; round++) {
+  const outOfTime = () => {
+    if (Date.now() <= OVERPASS_DEADLINE) return false;
+    console.warn(`Overpass süre bütçesi doldu (${label}).`);
+    return true;
+  };
+  for (let round = 0; round < 3 && !outOfTime(); round++) {
     if (round > 0) await new Promise((r) => setTimeout(r, 30_000 * round));
     for (const url of OVERPASS) {
+      if (outOfTime()) break;
       try {
         const res = await fetchWithTimeout(url, {
           method: 'POST',
@@ -91,7 +110,7 @@ async function overpass(query, label) {
       }
     }
   }
-  log(`- Overpass alınamadı (${label}; 3 tur, tüm sunucular).`);
+  log(`- Overpass alınamadı (${label}; tüm sunucular ve denemeler).`);
   return null;
 }
 
@@ -273,6 +292,64 @@ function fromPlace(el) {
     k: placeKind(t),
   };
 }
+
+// --- Food places (review data) -------------------------------------------
+
+const yes = (v) => (v === 'yes' ? true : v === 'no' ? false : null);
+
+function fromFood(el) {
+  const t = el.tags ?? {};
+  const name = t.name ?? t['name:tr'];
+  const lat = el.lat ?? el.center?.lat;
+  const lng = el.lon ?? el.center?.lon;
+  if (!name || typeof lat !== 'number' || typeof lng !== 'number') return null;
+  const cuisine = (t.cuisine ?? '')
+    .split(/[;,]/)
+    .map((c) => c.trim().toLowerCase())
+    .filter(Boolean);
+  const street = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
+  // Compact keys; null/empty fields are dropped below to keep the file small.
+  const rec = {
+    id: `osm-${el.type[0]}${el.id}`,
+    n: name.trim(),
+    a: Math.round(lat * 1e5) / 1e5,
+    o: Math.round(lng * 1e5) / 1e5,
+    k: t.amenity,
+    c: cuisine.length ? cuisine : null,
+    h: t.opening_hours ?? null,
+    p: t.phone ?? t['contact:phone'] ?? null,
+    w: t.website ?? t['contact:website'] ?? null,
+    ig: t['contact:instagram'] ?? null,
+    ad: street || null,
+    out: yes(t.outdoor_seating),
+    wc: t.wheelchair === 'yes' ? true : t.wheelchair === 'no' ? false : null,
+    res: t.reservation ?? null,
+  };
+  return Object.fromEntries(Object.entries(rec).filter(([, v]) => v != null));
+}
+
+/** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
+const foldTr = (s) =>
+  s
+    .toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Mis-tagged places that are not somewhere to eat out (pharmacies, school
+// canteens) and names without at least two Latin letters ("." / "404").
+const NOT_FOOD = /(eczane|anaokulu|ilkokulu|ortaokulu|lisesi)/i;
+const usableFoodName = (n) => (foldTr(n).match(/[a-z]/g) ?? []).length >= 2 && !NOT_FOOD.test(n);
+
+const pct = (n, total) => (total ? `${Math.round((n / total) * 100)}%` : '0%');
 
 // --- Live API reachability (for the report only) ---------------------------
 
@@ -457,6 +534,80 @@ if (places) {
   if (wrote) log(`- data/places-izmir.json: ${places.length} yer (arama için).`);
 } else {
   log('- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.');
+}
+
+// --- Food places -----------------------------------------------------------
+
+log('');
+log('## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)');
+log('');
+const foodEls = await overpass(FOOD_QUERY, 'yeme-içme');
+if (foodEls && foodEls.length > 0) {
+  const parsed = foodEls.map(fromFood).filter(Boolean);
+  const all = parsed.filter((f) => usableFoodName(f.n));
+  log(`- Ayıklanan (anlamsız ad / yeme-içme dışı): ${parsed.length - all.length}`);
+  // Same name (ignoring case and Turkish letters) within 50 m is one place,
+  // e.g. a node plus a building outline; keep the record with the most details.
+  // Wider would merge real chain branches (two Starbucks ~75 m apart).
+  const detail = (f) => Object.keys(f).length;
+  const food = [];
+  const sortedFood = [...all].sort(
+    (x, y) => detail(y) - detail(x) || x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o,
+  );
+  for (const f of sortedFood) {
+    const dup = food.some(
+      (q) =>
+        foldTr(q.n) === foldTr(f.n) && meters({ lat: q.a, lng: q.o }, { lat: f.a, lng: f.o }) <= 50,
+    );
+    if (!dup) food.push(f);
+  }
+  food.sort((x, y) => x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o);
+  const by = (key) => food.filter((f) => f[key] != null).length;
+  const kinds = {};
+  for (const f of food) kinds[f.k] = (kinds[f.k] ?? 0) + 1;
+  const cuisines = {};
+  for (const f of food) for (const c of f.c ?? []) cuisines[c] = (cuisines[c] ?? 0) + 1;
+  const topCuisines = Object.entries(cuisines)
+    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+    .slice(0, 15)
+    .map(([c, n]) => `${c} ${n}`)
+    .join(', ');
+  log(
+    `- Toplam: ${food.length} (${Object.entries(kinds)
+      .sort()
+      .map(([k, n]) => `${k} ${n}`)
+      .join(', ')})`,
+  );
+  log(
+    `- Mutfak türü: ${pct(by('c'), food.length)}, çalışma saati: ${pct(by('h'), food.length)}, telefon: ${pct(by('p'), food.length)}, web: ${pct(by('w'), food.length)}, Instagram: ${pct(by('ig'), food.length)}`,
+  );
+  log(`- En sık mutfak türleri: ${topCuisines || '—'}`);
+  const wrote = await writeData('data/food-izmir.json', {
+    $comment:
+      'Generated by scripts/fetch-sources.mjs. Review data for the restaurant idea; not used by the app yet. Keys: n name, a lat, o lng, k amenity, c cuisine[], h opening_hours, p phone, w website, ig instagram, ad address, out outdoor seating, wc wheelchair, res reservation. © OpenStreetMap contributors, ODbL 1.0.',
+    items: food,
+  });
+  if (wrote) log(`- data/food-izmir.json: ${food.length} yer.`);
+} else {
+  log('- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.');
+}
+
+// Other open sources: what the municipal portal has on food and tourism.
+log('');
+log('## İzmir açık veri portalında yeme-içme / turizm veri setleri');
+log('');
+for (const q of ['restoran', 'lokanta', 'kafe', 'turizm', 'işletme']) {
+  try {
+    const r = await ckan('package_search', { q, rows: '20' });
+    const titles = (r.results ?? [])
+      .map((pkg) => pkg.title)
+      .sort((x, y) => x.localeCompare(y, 'tr'));
+    log(`- "${q}": ${titles.length ? titles.join(' · ') : 'sonuç yok'}`);
+  } catch (e) {
+    // Fixed text: a varying error message would change the report every run.
+    console.warn(`CKAN "${q}": ${e.message}`);
+    log(`- "${q}": arama başarısız`);
+  }
 }
 
 await writeFile(out('data/sources-report.md'), report.join('\n') + '\n');

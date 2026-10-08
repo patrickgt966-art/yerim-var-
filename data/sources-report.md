@@ -17,7 +17,7 @@
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 7 kayıt
+- HTTP 200, 6 kayıt
 
 ## Sonuç
 
@@ -25,4 +25,20 @@
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
 - Adsız otoparklardan yakın yer adı bulunan: 690.
 - data/parkings-static.json: 1466 otopark.
-- data/places-izmir.json: 3462 yer (arama için).
+- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.
+
+## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
+
+- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
+- Toplam: 2172 (bar 82, biergarten 4, cafe 832, fast_food 414, food_court 24, ice_cream 20, pub 29, restaurant 767)
+- Mutfak türü: 29%, çalışma saati: 8%, telefon: 9%, web: 6%, Instagram: 1%
+- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
+- data/food-izmir.json: 2172 yer.
+
+## İzmir açık veri portalında yeme-içme / turizm veri setleri
+
+- "restoran": sonuç yok
+- "lokanta": sonuç yok
+- "kafe": İzelman Kitap Kafe Konum Verisi
+- "turizm": Bademsu Fabrikası Üretim Verileri · Günübirlik Gezi Tekneleri Bilgileri · Halk Ekmek Büfeleri Satış Noktaları · Halk Ekmek Fabrikası Üretim Verileri · Halkın Bakkalı Siparişi Alınan Paket Tür ve Miktarları · İlçelerde Yaşayan T.C. Vatandaşı ve Yabancı Uyruklu Nüfus  Bilgileri · İzmir İli Müze ve Ören Yerleri Ziyaret Saatleri · İzmir Su Fabrikası Üretim Verileri · Kamu Kurum ve Kuruluşları · Kruvaziyer Gemi Bilgileri · Müze Ziyaretçi İstatistikleri · Ören Yerleri İstatikleri · Turizm Amaçlı Sportif Faaliyetler · Turizm Bilgilendirme Ofisleri Konum Verisi · Turizm Tesisleri · Turuncu Çember Sertifikası Alan İşletmeler Listesi · Yiyecek, İçecek Büfeleri
+- "işletme": 1.Sınıf Gayri Müessese Kapsamındaki İşletme Sayısı İle Akaryakıt Ve/Veya Otogaz Satış İstasyonu Sayısı · Günübirlik Gezi Tekneleri Bilgileri · Tesisler ve Atıksu Miktarları · Turizm Amaçlı Sportif Faaliyetler · Turizm Tesisleri
