@@ -89,6 +89,12 @@ Sıra:
 - Ekran taslağı (tuval): https://claude.ai/artifact/Qar9Jakc6hHYL4YcVTt18n
 - Dokunarak gezilen prototip: https://claude.ai/artifact/EH2NWRTH6tWMfocm13mUA9
 
+## Yapay zeka (8 Ekim'de seçildi: 1 ve 4)
+
+- [ ] **Konuşur gibi arama:** "Kordon'da çocukla gidebileceğim, parkı kolay bir balıkçı, kişi başı 500 TL altı" gibi bir cümle filtrelere (konum, mutfak, bütçe, ortam, park kolaylığı) çevrilir. Önce telefonun içindeki Apple yapay zekasıyla (ücretsiz, veri cihazdan çıkmaz, yalnızca destekleyen iPhone'larda); desteklemeyen telefonlarda normal arama devam eder. Uygulamanın kendi derlemesi gerekir.
+- [ ] **Arka planda veri tamamlama:** Restoranlarda eksik mutfak türü (ve mümkünse ortam) ad ve web sitesinden tahmin edilir. Bu iş bizim veri sürecimizde yapılır, kullanıcıya gösterilmez; sonuçlar "tahmini" diye işaretlenir ve elle kontrol edilir.
+- Sonraya: "Senin için" önerileri, tabela fotoğrafından fiyat okuma, bulut yapay zeka (sunucu ve hesaplarla birlikte; maliyet ve gizlilik o zaman planlanır).
+
 ## Bekleyenler ve çalışma kuralı
 
 - [ ] [PR #3](https://github.com/patrickgt966-art/yerim-var-/pull/3)'ü birleştirmek (son çalışmaların hepsi orada).
