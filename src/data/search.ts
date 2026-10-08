@@ -15,11 +15,18 @@ export type PlaceKind =
   | 'station'
   | 'hotel'
   | 'landmark'
-  | 'parking';
+  | 'parking'
+  | 'apple';
 
-export type SearchHit = { name: string; kind: PlaceKind } & LatLng;
+/** `subtitle` replaces the kind label when set (e.g. an Apple Maps address). */
+export type SearchHit = { name: string; kind: PlaceKind; subtitle?: string } & LatLng;
 
-type RawPlace = { n: string; a: number; o: number; k: Exclude<PlaceKind, 'popular' | 'parking'> };
+type RawPlace = {
+  n: string;
+  a: number;
+  o: number;
+  k: Exclude<PlaceKind, 'popular' | 'parking' | 'apple'>;
+};
 
 /** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
 export function fold(s: string): string {
@@ -42,6 +49,7 @@ type Entry = SearchHit & { key: string; compact: string; rank: number };
 
 // Higher wins on equal match quality.
 const KIND_RANK: Record<PlaceKind, number> = {
+  apple: 0,
   popular: 9,
   mall: 8,
   town: 7,

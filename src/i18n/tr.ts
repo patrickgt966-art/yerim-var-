@@ -75,6 +75,7 @@ const tr = {
       hotel: 'Otel',
       landmark: 'Önemli yer',
       parking: 'Otopark',
+      apple: 'Apple Haritalar',
     },
     savePrompt: '{{label}} adresini yaz',
     saveFailed: 'Adres bulunamadı.',

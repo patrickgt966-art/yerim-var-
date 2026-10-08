@@ -4,7 +4,7 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
 
 ## 1. Sıradaki işler
 
-- [ ] **Listede olmayan yerleri Apple Haritalar'da anlık aramak.** "Sevil 2 İş Hanı" gibi gömülü listede olmayan bir yer yazılınca Apple Haritalar'a sorulur (`modules/yerim-mapkit` içine `MKLocalSearch` ile yer araması). Sıra: gömülü liste → Apple yer araması → adres araması. Yalnızca uygulamanın kendi derlemesinde çalışır.
+- [x] **Listede olmayan yerleri Apple Haritalar'da anlık aramak.** (Kodlandı; uygulamanın kendi derlemesinde cihazda denenmesi gerekiyor.) "Sevil 2 İş Hanı" gibi gömülü listede olmayan bir yer yazılınca Apple Haritalar'a sorulur (`modules/yerim-mapkit` içine `MKLocalSearch` ile yer araması). Sıra: gömülü liste → Apple yer araması → adres araması. Yalnızca uygulamanın kendi derlemesinde çalışır.
   - Bu iş, apartmanları ve iş hanlarını listeye gömme fikrinin yerini alır. Gömülü liste küçük kalır (ilçe, semt, AVM, iskele, istasyon, belediye otoparkları); uzun kuyruk anlık gelir.
 - [ ] **Yürüme süresinin kontrolü.** Şu an kuş uçuşu mesafeden hesaplanıyor, bu yüzden olduğundan kısa çıkabilir. Gerçek yürüme süreleriyle karşılaştırılıp bir düzeltme katsayısı eklenecek. Uygulamanın kendi derlemesinde gerçek süre Apple'dan alınacak (`MKDirections`, yürüyüş).
 - [ ] **Belediyenin Şubat 2026 tarifelerini bağlamak.** Veri `data/raw/` içindeki "Otopark Ücretleri" XLSX'inde. Otopark adıyla eşleştirilip `data/tariffs.json`'a kaynak ve tarihle eklenecek. Böylece fiyat ve "2 saat park" tahmini gerçek veriyle çalışır.

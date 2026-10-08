@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
@@ -13,10 +14,21 @@ import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
 import type { LatLng } from '@/data/geo';
 import { POPULAR_PLACES } from '@/data/places';
-import { searchPlaces, type SearchHit } from '@/data/search';
+import {
+  APPLE_MIN_CHARS,
+  mergeHits,
+  searchApplePlaces,
+  useAppleSuggestions,
+} from '@/data/appleSearch';
+import { fold, searchPlaces, type SearchHit } from '@/data/search';
 import { geocode } from '@/lib/location';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
+
+function hitSubtitle(h: SearchHit, t: TFunction): string {
+  const kind = t(`search.kind.${h.kind}`);
+  return h.subtitle ? `${kind} · ${h.subtitle}` : kind;
+}
 
 function openResults(target: LatLng, label: string) {
   router.push({
@@ -107,7 +119,18 @@ export default function SearchScreen() {
   const active = useApp((s) => s.active);
 
   // Bundled İzmir places first: Apple's geocoder only knows addresses.
-  const hits = useMemo(() => searchPlaces(query), [query]);
+  const local = useMemo(() => searchPlaces(query), [query]);
+  // Places our list does not know come from Apple Maps (native builds only).
+  const apple = useAppleSuggestions(query);
+  // Use Apple results only for exactly the text in the box: the request is
+  // debounced, so they may belong to an earlier, shorter query.
+  const appleCurrent =
+    apple.forQuery === fold(query.trim()) && query.trim().length >= APPLE_MIN_CHARS;
+  const hits = useMemo(
+    () => mergeHits(local, appleCurrent ? (apple.data ?? []) : []),
+    [local, appleCurrent, apple.data],
+  );
+
   const pick = (h: SearchHit) => openResults(h, h.name);
 
   const submit = async () => {
@@ -115,6 +138,11 @@ export default function SearchScreen() {
     if (!q) return;
     if (hits[0]) return pick(hits[0]);
     setBusy(true);
+    const [fromApple] = await searchApplePlaces(q);
+    if (fromApple) {
+      setBusy(false);
+      return pick(fromApple);
+    }
     const hit = await geocode(q);
     setBusy(false);
     if (!hit) return Alert.alert(t('search.notFound'));
@@ -247,9 +275,9 @@ export default function SearchScreen() {
         >
           {hits.map((h, i) => (
             <Pressable
-              key={`${h.name}-${h.lat}-${h.lng}`}
+              key={`${i}-${h.name}-${h.lat}-${h.lng}`}
               accessibilityRole="button"
-              accessibilityLabel={`${h.name}, ${t(`search.kind.${h.kind}`)}`}
+              accessibilityLabel={`${h.name}, ${hitSubtitle(h, t)}`}
               onPress={() => pick(h)}
               style={({ pressed }) => ({
                 minHeight: HIT + 4,
@@ -264,8 +292,8 @@ export default function SearchScreen() {
               <Txt variant="bodyBold" numberOfLines={1}>
                 {h.name}
               </Txt>
-              <Txt variant="caption" secondary>
-                {t(`search.kind.${h.kind}`)}
+              <Txt variant="caption" secondary numberOfLines={1}>
+                {hitSubtitle(h, t)}
               </Txt>
             </Pressable>
           ))}

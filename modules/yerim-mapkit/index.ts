@@ -7,8 +7,25 @@ export type ApplePlace = {
   address: string;
 };
 
+export type ApplePlaceResult = ApplePlace & {
+  phone: string;
+  url: string;
+  /** MKPointOfInterestCategory raw value, e.g. "MKPOICategoryRestaurant"; "" for addresses. */
+  category: string;
+};
+
 type NativeModule = {
-  searchParkingAsync(latitude: number, longitude: number, radiusMeters: number): Promise<ApplePlace[]>;
+  searchPlacesAsync(
+    query: string,
+    latitude: number,
+    longitude: number,
+    radiusMeters: number,
+  ): Promise<ApplePlaceResult[]>;
+  searchParkingAsync(
+    latitude: number,
+    longitude: number,
+    radiusMeters: number,
+  ): Promise<ApplePlace[]>;
 };
 
 /**
