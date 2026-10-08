@@ -41,6 +41,17 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
 
 ## Fikir: Restoran + park (perşembe akşamı konuşulacak)
 
+**Ürün fikri (2026-10-08):** Yerim Var, "gideceğin yere arabayla gitme" uygulaması olur. Kullanıcı nereye gideceğine karar verir, uygulama oraya varmanın park kısmını çözer.
+
+- İki giriş kapısı aynı akışa çıkar:
+  - **Restoran Bul:** Kategori ya da aramayla restoranı seç. Restoran sayfasında "Yakındaki otoparklar" hazır gelir. Rezervasyonu yap, otoparkı seç, uygulama yürüyüşü gösterir ("otopark 150 m, restorana 5 dk").
+  - **Otopark Bul:** Bugünkü uygulama.
+- Asıl değer bağlantıda: **yer seç → park yeri bul → yürü → otur.** Restoran uygulamaları parkı, otopark uygulamaları "nereye gidiyorum" sorusunu çözmüyor.
+- Genişleyebilir: aynı akış kafe, kuaför, hastane, AVM ve konser alanı için de çalışır ("Gideceğin yerin yanında yerin var").
+- Tasarım taslağı (12 ekran) fikri anlatmak için; görünüm aynı olmak zorunda değil. Taslaktan akılda kalanlar: ana sayfada iki büyük kart, kategoriler, haritada Restoranlar/Otoparklar geçişi, restoran detayında "Yakındaki Otoparklar" sekmesi, otopark + yürüyüş rota özeti, favorilerde iki sekme.
+- Uygulamaya geçerken: her restoran ve otopark kartında boş yer sayısı görünmeli. Puan, yorum, fotoğraf ve kişi başı fiyatın açık kaynağı yok. Yol tarifi Apple Haritalar'a devredilir. Rezervasyon bizim sistemimize geçene kadar hesap gerekmez.
+- Bu akşam konuşulacaklar: hangi kapıyla başlanacağı, restoran dışında hangi yer türlerinin geleceği, rezervasyonun hangi aşamada olacağı.
+
 Karar taslağı: doğrudan rezervasyon yerine **ara → listele → restoranın kendi rezervasyon sayfasına yönlendir**. Asıl fark park: "restoranı seç → yanındaki boş otoparkı gör → rezervasyon yap → oraya park et".
 
 - [ ] **1. aşama, yönlendirme (sunucu yok):** Aramada "Konak et restoranı" gibi sorgular restoranları listeler. Her restoranın yanında "Yakınında 3 otopark · en yakında 14 boş yer" yazar. Restoran ekranında "Rezervasyon yap" (restoranın sitesi), "Ara" ve "Buraya park et" düğmeleri olur.
