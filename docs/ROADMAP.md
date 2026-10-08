@@ -54,6 +54,17 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
 
 Karar taslağı: doğrudan rezervasyon yerine **ara → listele → restoranın kendi rezervasyon sayfasına yönlendir**. Asıl fark park: "restoranı seç → yanındaki boş otoparkı gör → rezervasyon yap → oraya park et".
 
+**Karar (2026-10-08):** Tasarım taslağındaki akış (12 ekran) eldeki veriyle kurulacak; görünüm kendi markamızla. Puan, yorum, fotoğraf ve fiyat için ücretli kaynak kullanılmayacak, şu iki yolla toplanacak:
+
+1. **Kendimiz toplarız:** Seçilen semtlerde ("Yerim Var önerir") fiyat aralığı, ortam etiketleri ve fotoğraf elle eklenir. Taslak liste `data/food-izmir.json`'dan çıkarılır.
+2. **Restoranlar kendisi girer:** Basit bir kayıt formu (ad, konum, telefon, fiyat aralığı, fotoğraf); onaydan sonra listeye girer. Sunucu ya da form servisi gerekir; seçimi ayrıca yapılacak.
+
+Sıra:
+
+- [ ] **Akış (hemen, sunucusuz):** Ana sayfada Restoran/Otopark modu, kategoriler, restoran listesi ve detayı ("Nereye park edersin?"), haritada restoran pinleri, favorilerde iki sekme, rota özeti. Veri: OpenStreetMap + Apple Haritalar araması.
+- [ ] **Veri toplama:** Semt seçimi ve fiyat/ortam etiketleri; restoran kayıt formu.
+- [ ] **Hesap gelince:** Kullanıcı puanları, yorumlar, profil.
+
 - [ ] **1. aşama, yönlendirme (sunucu yok):** Aramada "Konak et restoranı" gibi sorgular restoranları listeler. Her restoranın yanında "Yakınında 3 otopark · en yakında 14 boş yer" yazar. Restoran ekranında "Rezervasyon yap" (restoranın sitesi), "Ara" ve "Buraya park et" düğmeleri olur.
   - Veri: Apple Haritalar araması (ad, adres, telefon, web sitesi; uygulamanın kendi derlemesinde) ve OpenStreetMap restoranları (mutfak türüyle, yedek olarak).
   - Apple yer aramasıyla aynı altyapı; o işten hemen sonra yapılması doğal.
