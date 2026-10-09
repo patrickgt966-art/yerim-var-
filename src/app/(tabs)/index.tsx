@@ -550,7 +550,10 @@ export default function SearchScreen() {
               {guide === 'greeting' ? t('search.guideHello') : t('search.guideUnknown')}
             </Txt>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {(['search.exampleKofte', 'search.exampleBreakfast', 'search.exampleFish'] as const).map(
+              {(food
+                ? (['search.exampleKofte', 'search.exampleBreakfast', 'search.exampleFish'] as const)
+                : (['search.exampleAlsancak', 'search.exampleKonak', 'search.exampleBornova'] as const)
+              ).map(
                 (key) => (
                   <Pressable
                     key={key}
