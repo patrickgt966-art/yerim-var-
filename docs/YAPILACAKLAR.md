@@ -24,6 +24,7 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 11. İngilizce arayüz
 12. Doğal dille arama ("Alsancak'ta akşam 2 saat")
 13. ROADMAP.md güncellemesi
+14. Ana sayfadaki "Otopark / Restoran" geçiş düğmesi: şimdilik kalıyor; ileride tek arama kutusuna geçiş düşünülecek
 
 ## Akıllı arama planı
 
