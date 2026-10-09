@@ -36,6 +36,12 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 - Ev / İş, "İzmir'de popüler" (yer + yemek aramaları karışık), ortada "Yerim!" düğmesi
 - Durum: şimdilik geçiş düğmesi kalıyor (karar: C); kullanıcı onaylarsa ana sayfa bu taslağa göre kurulur
 
+### Veri doğruluğu (sırada)
+- Foursquare açık verisi (Apache 2.0) ile çapraz kontrol: kapanmış yerleri çıkar, güncel olanları "doğrulanmış" say. Gerekli: Foursquare Places portalına ücretsiz kayıt + erişim anahtarı → GitHub Secrets'a `FSQ_TOKEN` (kullanıcı ekler).
+- Uygulamada "Burası kapanmış mı?" bildirimi (Cloudflare sunucusu üzerinden; birkaç bildirimde yer gizlenir)
+- Apple Haritalar kontrolü (Apple Developer hesabından sonra): "Apple Haritalar'da da kayıtlı" işareti
+- Denetim sayfası: https://claude.ai/artifact/JBSBiMWJuDVaMuhfuWrnxo (50 rastgele Overture yeri)
+
 ## Akıllı arama planı
 
 ### Faz A: telefonda (şimdi)
