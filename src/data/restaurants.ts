@@ -563,6 +563,19 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'tantuni',
     'meat',
     'grill',
+    'pirzola',
+    'kuzu',
+    'antrikot',
+    'biftek',
+    'sis',
+    'sis kebap',
+    'kanat',
+    'ciger',
+    'kasap',
+    'et lokantasi',
+    'tandir',
+    'kuzu tandir',
+    'kavurma',
   ],
   lokanta: [
     'lokanta',
@@ -573,9 +586,21 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'lokantasi',
     'ogle yemegi',
   ],
-  fish: ['balik', 'balikci', 'deniz urunleri', 'midye', 'fish', 'seafood'],
-  cafe: ['kafe', 'kahve', 'cafe', 'coffee'],
-  meyhane: ['meyhane', 'bar', 'pub', 'meze'],
+  fish: [
+    'balik',
+    'balikci',
+    'deniz urunleri',
+    'midye',
+    'fish',
+    'seafood',
+    'levrek',
+    'cipura',
+    'hamsi',
+    'kalamar',
+    'karides',
+  ],
+  cafe: ['kafe', 'kahve', 'cafe', 'coffee', 'cay', 'cay bahcesi', 'kahvehane'],
+  meyhane: ['meyhane', 'bar', 'pub', 'meze', 'raki'],
   // Çiğ köfte is not meat (see CATEGORY_RULES.meat.notNames).
   fast: [
     'burger',
@@ -589,15 +614,73 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'pide',
     'tost',
     'durum',
+    'hamburger',
+    'kumpir',
+    'sandvic',
+    'wrap',
   ],
-  dessert: ['tatli', 'dondurma', 'pastane', 'baklava', 'dessert'],
+  dessert: [
+    'tatli',
+    'dondurma',
+    'pastane',
+    'baklava',
+    'dessert',
+    'kunefe',
+    'sutlac',
+    'profiterol',
+    'waffle',
+  ],
 };
+
+/** Turkish case/occupation suffixes, longest first, for single-word stemming. */
+const QUERY_SUFFIXES = [
+  'larda',
+  'lerde',
+  'lari',
+  'leri',
+  'lar',
+  'ler',
+  'dan',
+  'den',
+  'tan',
+  'ten',
+  'da',
+  'de',
+  'ta',
+  'te',
+  'ya',
+  'ye',
+  'yi',
+  'yu',
+  'si',
+  'su',
+  'ci',
+  'cu',
+];
+
+function exactCategory(f: string): FoodCategory | null {
+  return FOOD_CATEGORIES.find((cat) => CATEGORY_WORDS[cat].includes(f)) ?? null;
+}
+
+/** The word minus one trailing suffix (stem of at least 3 chars), or null. */
+function stripSuffix(w: string): string | null {
+  const suf = QUERY_SUFFIXES.find((s) => w.endsWith(s) && w.length - s.length >= 3);
+  return suf ? w.slice(0, w.length - suf.length) : null;
+}
 
 /** The category a search text names outright ("balık", "kahvaltı"), or null. */
 export function categoryForQuery(q: string): FoodCategory | null {
   const f = fold(q.trim());
   if (!f) return null;
-  return FOOD_CATEGORIES.find((cat) => CATEGORY_WORDS[cat].includes(f)) ?? null;
+  const exact = exactCategory(f);
+  if (exact || f.includes(' ')) return exact;
+  // "köfteci", "köftecide": try the stem with one, then two suffixes removed.
+  const one = stripSuffix(f);
+  if (!one) return null;
+  const c1 = exactCategory(one);
+  if (c1) return c1;
+  const two = stripSuffix(one);
+  return two ? exactCategory(two) : null;
 }
 
 /** Per-row parking data computed in a single pass over the car parks. */

@@ -25,6 +25,30 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 12. Doğal dille arama ("Alsancak'ta akşam 2 saat")
 13. ROADMAP.md güncellemesi
 
+## Akıllı arama planı
+
+### Faz A: telefonda (şimdi)
+0. Veri kontrolü (uzak ilçelerde restoran/otopark sayısı)
+1. Metin temizleme: selamlaşma, küfür (tam kelime), dolgu, nitelik kelimeleri ("Puan bilgimiz yok")
+2. Türkçe ek çözme (köfteci → köfte, mendereste → Menderes)
+3. İlçe ve semt tanıma (30 ilçe + merkez noktaları)
+4. Kategori kelimelerini genişletme (pirzola, kuzu, antrikot…)
+5. Tek kutuda iki okuma: isim + kategori
+6. "Otopark şart" filtresi (kendi otoparkı veya ≤300 m), boş sonuçta 500 m / yakın ilçe seçenekleri
+7. Olumsuz cümle güvenliği; emin olunamayan cümle "belirsiz" işaretlenir
+8. "Şunu anladım" etiketleri (kaldırılabilir)
+9. Yönlendirme kartı (selam, küfür, anlamsız metin)
+10. Senaryo cümleleri otomatik test
+
+### Faz B: Haiku (Anthropic API hesabından sonra)
+- Cloudflare aracı sunucu, anahtar koda girmez
+- Sadece "belirsiz" cümleler gider; selam, küfür, konum asla
+- Haiku sadece çevirir, sonucu bizim veri bulur
+- Önbellek, günlük sınır, onay ekranı, gizlilik sayfası
+
+### Faz C: Apple iş yeri araması (Apple Developer hesabından sonra)
+- Veritabanında olmayan dükkânlar + yanındaki otoparklar
+
 ## Apple Developer hesabından sonra
 
 14. Dev build (Expo Go yerine)
