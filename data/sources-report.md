@@ -2,8 +2,9 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 1651, herkese açık: 1504, çiftler ayıklanınca: 1431
-- Adı olan: 51, kapasitesi olan: 41, ücretli işaretli: 73
+- Ham öğe: 1729, herkese açık: 1576, çiftler ayıklanınca: 1454
+- Adı olan: 52, kapasitesi olan: 41, ücretli işaretli: 72
+- Giriş noktasından türeyen: 22, bina olarak işaretli: 1
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -23,14 +24,17 @@
 
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 661.
-- data/parkings-static.json: 1466 otopark.
-- data/places-izmir.json: 3428 yer (arama için).
+- Adsız otoparklardan yakın yer adı bulunan: 685.
+- data/parkings-static.json: 1489 otopark.
+- data/places-izmir.json: 3504 yer (arama için).
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Overpass alınamadı (yeme-içme; tüm sunucular ve denemeler).
-- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
+- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
+- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
+- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
+- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
+- data/food-izmir.json: 2435 yer.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
