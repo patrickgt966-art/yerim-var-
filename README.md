@@ -1,8 +1,8 @@
 # Yerim Var
 
-İzmir için boş otopark bulma uygulaması (iOS, Expo). Gideceğin yeri yaz, çevredeki otoparkları boş yer sayısı, ücret ve yürüme süresiyle gör. "Buraya park et" Apple Haritalar'ı açar; uygulamanın kendisi yol tarifi vermez.
+İzmir için yemek ve park asistanı (iOS, Expo). Gideceğin yeri ya da canının çektiği yemeği yaz; Yerim restoranları yanındaki otoparklarla, otoparkları boş yer sayısı, ücret ve yürüme süresiyle gösterir. "Buraya park et" Apple Haritalar'ı açar; uygulamanın kendisi yol tarifi vermez.
 
-_English: Yerim Var ("I've got a spot") is an open-source iOS app for finding free parking spaces in İzmir, Turkey, using the city's open data._
+_English: Yerim Var ("I've got a spot") is an open-source iOS assistant for İzmir, Turkey: tell it where you are going or what you want to eat, and it finds places with parking next to them, using the city's open data._
 
 > **Resmî uygulama değildir.** Yerim Var, İzmir Büyükşehir Belediyesi ile bağlantılı değildir.
 
@@ -88,7 +88,7 @@ Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve akti
 
 ## Varsayımlar ve küçük kararlar
 
-- `app.json` adı "Yerim Var: Otopark Bul"; ana ekranda `CFBundleDisplayName` ile "Yerim Var" görünür. App Store'daki listeleme adı App Store Connect'te ayrıca girilir.
+- `app.json` adı "Yerim Var: Yemek ve Park"; ana ekranda `CFBundleDisplayName` ile "Yerim Var" görünür. App Store'daki listeleme adı App Store Connect'te ayrıca girilir.
 - `com.yerimvar.app` taslak bundle ID'dir.
 - v1 yalnızca iOS (`platforms: ["ios"]`). Android ön plan ikonu `design/` içinde saklanıyor ve bağlanmadı.
 - "Bildir" butonu `veri-yanlis.yml` issue formunu açar ve "Otopark" alanını doldurur. Issue formları `body` parametresini yok saydığı için alanlar `id` ile doldurulur.

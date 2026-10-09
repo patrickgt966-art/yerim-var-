@@ -2,7 +2,7 @@
 
 Bu depodaki **kod** MIT lisanslıdır (bkz. [`LICENSE`](LICENSE)). Aşağıdakiler MIT lisansının **kapsamı dışındadır** ve yalnızca bu proje tarafından kullanılabilir:
 
-- "Yerim Var" adı ve "Yerim Var: Otopark Bul" uygulama adı
+- "Yerim Var" adı ve "Yerim Var: Yemek ve Park" uygulama adı
 - `yerim [var!]` wordmark'ı
 - Marka işareti (kesik çizgili park yerinde yukarıdan görünen turuncu araba) ve uygulama ikonu: `assets/brand/`, `assets/icon.png`, `assets/splash-icon.png`, `design/yerim-var-icon-1024.png`, `design/yerim-var-android-foreground-432.png`
 

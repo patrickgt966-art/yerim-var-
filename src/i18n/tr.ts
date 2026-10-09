@@ -48,7 +48,7 @@ const tr = {
       'İnternet yok · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
   },
   onboarding: {
-    tagline: 'Gideceğin yerin yanında boş park yeri bul.',
+    tagline: 'Ne yiyeceğini ya da nereye gideceğini söyle, yanındaki park yerini biz bulalım.',
     start: 'Başla',
     next: 'Devam',
     howTitle: 'Dürüst veri',
@@ -56,7 +56,7 @@ const tr = {
       'Boş yer sayılarını İzmir Büyükşehir Belediyesi açık verisinden alırız. Ne zaman güncellendiğini her kartta yazarız. Veri eskiyse sayıyı göstermeyiz.',
     locTitle: 'Yakınındakileri göster',
     locBody:
-      'Konumunu yalnızca yakındaki otoparkları sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de arama ile kullanabilirsin.',
+      'Konumunu yalnızca yakındaki restoranları ve otoparkları sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de arama ile kullanabilirsin.',
     allow: 'Konuma izin ver',
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
@@ -75,9 +75,9 @@ const tr = {
   },
   search: {
     title1: 'Nereye ',
-    title2: 'park',
-    title3: '\nedeceksin?',
-    placeholder: 'Gideceğin yeri yaz',
+    title2: 'gidiyoruz',
+    title3: '?',
+    placeholder: 'Yer, yemek ya da otopark yaz',
     a11yInput: 'Gideceğin yer',
     a11yLocate: 'Konumumun yakınında ara',
     now: 'Şimdi park',
@@ -274,7 +274,7 @@ const tr = {
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple aradığın metni ya da konumunun yaklaşık bölgesini (~100 m) görür. Belediyeye giden tek istek doluluk verisidir.',
+      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer, restoran ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple aradığın metni ya da konumunun yaklaşık bölgesini (~100 m) görür. Belediyeye giden tek istek doluluk verisidir.',
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',

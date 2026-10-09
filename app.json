@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Yerim Var: Otopark Bul",
+    "name": "Yerim Var: Yemek ve Park",
     "slug": "yerim-var",
     "scheme": "yerimvar",
     "version": "0.1.0",
@@ -14,7 +14,7 @@
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDisplayName": "Yerim Var",
-        "NSLocationWhenInUseUsageDescription": "Yakınındaki boş otoparkları göstermek için konumunu kullanırız.",
+        "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
@@ -51,7 +51,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Yakınındaki boş otoparkları göstermek için konumunu kullanırız.",
+          "locationWhenInUsePermission": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız.",
           "isIosBackgroundLocationEnabled": false,
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false
