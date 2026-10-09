@@ -61,6 +61,10 @@ ${IZMIR_AREA}
   nwr["railway"~"^(station|halt)$"]["name"](area.izmir);
   nwr["leisure"~"^(stadium|park|marina|beach_resort)$"]["name"](area.izmir);
   nwr["historic"]["name"](area.izmir);
+  // Office towers, business centres and iş hanları people navigate to
+  // (Folkart, Megapol, Ege Perla, "Sevil 2 İş Hanı"…); apartments stay out.
+  nwr["building"]["name"~"(tower|towers|kule|kuleleri|plaza|perla|megapol|iş merkezi|is merkezi|iş hanı|is hani|işhanı|ishani|business center)",i](area.izmir);
+  nwr["office"]["name"~"(tower|towers|kule|plaza|iş merkezi|iş hanı)",i](area.izmir);
 );
 out center tags;
 `;
