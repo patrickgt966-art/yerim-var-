@@ -100,7 +100,11 @@ Sıra:
 ## Bekleyenler ve çalışma kuralı
 
 - [ ] [PR #3](https://github.com/patrickgt966-art/yerim-var-/pull/3)'ü birleştirmek (son çalışmaların hepsi orada).
-- Çalışma kuralı: her değişiklik bir alt ajana (Sonnet) ayrıca kontrol ettirilir; bulguları düzeltilip öyle kaydedilir.
+- Çalışma kuralı: lider Opus planlar ve karar verir; işler `.claude/agents/` altındaki üç Sonnet ajanına dağıtılır:
+  - `sonnet-researcher`: kodda ve web'de araştırma (dosya değiştirmez).
+  - `sonnet-worker`: kodu yazar, kontrolleri çalıştırır (commit etmez).
+  - `sonnet-reviewer`: değişikliği inceler (dosya değiştirmez).
+  Her değişiklik `sonnet-reviewer`'a kontrol ettirilir; bulgular düzeltilip öyle kaydedilir. Limit sıkışıkken küçük işleri lider kendisi yapar, büyük parçalar yazıcı + kontrolcüye bölünür.
 
 ## 3. App Store öncesi
 
