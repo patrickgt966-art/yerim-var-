@@ -231,10 +231,12 @@ export function telUrl(phone: string): string | null {
   return null;
 }
 
-export type FoodCategory = 'breakfast' | 'meat' | 'fish' | 'cafe' | 'meyhane' | 'fast' | 'dessert';
+export type FoodCategory =
+  'breakfast' | 'soup' | 'meat' | 'fish' | 'cafe' | 'meyhane' | 'fast' | 'dessert';
 
 export const FOOD_CATEGORIES: FoodCategory[] = [
   'breakfast',
+  'soup',
   'meat',
   'fish',
   'cafe',
@@ -264,42 +266,98 @@ function hasWordStart(name: string, kw: string): boolean {
 // Name keywords are folded (see search.ts) and only used to FILTER; they are
 // never shown as a fact about the place.
 const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
-  breakfast: { cuisines: ['breakfast'], names: ['kahvalt'] },
+  breakfast: {
+    cuisines: ['breakfast'],
+    names: ['kahvalt', 'borek', 'pogaca', 'simit', 'gozleme', 'menemenci'],
+  },
+  soup: { cuisines: ['soup'], names: ['corba', 'iskembe', 'kelle paca', 'paca'] },
   meat: {
     cuisines: ['steak_house', 'kebab', 'grill', 'barbecue', 'meat', 'meatball'],
-    names: ['kebap', 'kebab', 'kofte', 'ocakbasi', 'et lokantasi', 'steak', 'mangal'],
+    names: [
+      'kebap',
+      'kebab',
+      'kofte',
+      'ocakbasi',
+      'et lokantasi',
+      'steak',
+      'mangal',
+      'izgara',
+      'kasap',
+      'ciger',
+      'kokorec',
+      'tantuni',
+    ],
     notNames: ['cig kofte', 'cigkofte'],
   },
-  fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik'] },
+  fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik', 'midye'] },
   cafe: { kinds: ['cafe'], cuisines: ['coffee_shop'] },
   meyhane: { kinds: ['bar', 'pub', 'biergarten'], cuisines: ['meyhane'], names: ['meyhane'] },
   fast: {
     kinds: ['fast_food'],
     cuisines: ['burger', 'pizza', 'chicken', 'sandwich', 'doner'],
-    names: ['doner', 'burger', 'pizza'],
+    names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun'],
   },
   dessert: {
     kinds: ['ice_cream'],
     cuisines: ['dessert', 'ice_cream', 'cake', 'pastry'],
-    names: ['tatli', 'pastane', 'dondurma', 'baklava'],
+    names: ['tatli', 'pastane', 'dondurma', 'baklava', 'kunefe'],
   },
 };
 
-export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
-  const rule = CATEGORY_RULES[cat];
-  if (rule.kinds?.includes(r.kind)) return true;
-  if (rule.cuisines && r.cuisines.some((c) => rule.cuisines!.includes(c))) return true;
-  if (rule.names) {
-    const name = fold(r.name);
-    if (rule.notNames?.some((k) => name.includes(k))) return false;
-    if (rule.names.some((k) => hasWordStart(name, k))) return true;
-  }
-  return false;
+/** Categories the name alone points to ("Bülent Börek" → breakfast). */
+function nameCategories(r: Restaurant): FoodCategory[] {
+  const name = fold(r.name);
+  return FOOD_CATEGORIES.filter((cat) => {
+    const rule = CATEGORY_RULES[cat];
+    if (!rule.names || rule.notNames?.some((k) => name.includes(k))) return false;
+    return rule.names.some((k) => hasWordStart(name, k));
+  });
 }
 
-/** First matching category, used for the card icon. */
+/**
+ * OSM cuisine tags win; then what the name says ("X Köfte" → meat); the broad
+ * OSM kind (fast_food, cafe…) counts only when the name points nowhere else,
+ * so a börek shop tagged fast_food is breakfast, not burgers.
+ */
+export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
+  const rule = CATEGORY_RULES[cat];
+  if (rule.cuisines && r.cuisines.some((c) => rule.cuisines!.includes(c))) return true;
+  const byName = nameCategories(r);
+  if (byName.includes(cat)) return true;
+  return byName.length === 0 && !!rule.kinds?.includes(r.kind);
+}
+
+/** Best category for the card icon: cuisine tag, then name, then kind. */
 export function categoryOf(r: Restaurant): FoodCategory | null {
-  return FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
+  // The place's own first cuisine tag decides ("Ada balık": fish before breakfast).
+  for (const c of r.cuisines) {
+    const cat = FOOD_CATEGORIES.find((k) => CATEGORY_RULES[k].cuisines?.includes(c));
+    if (cat) return cat;
+  }
+  return nameCategories(r)[0] ?? FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
+}
+
+/** Search rings for a category: widen until enough places turn up. */
+export const CATEGORY_RADII_M = [1000, 3000, 6000];
+const CATEGORY_MIN_RESULTS = 5;
+
+/**
+ * Places of one category around `target`, widening 1 → 3 → 6 km until at
+ * least a handful turn up. Never falls back to other categories.
+ */
+export function restaurantsInCategory(
+  target: LatLng,
+  cat: FoodCategory,
+  list?: Restaurant[],
+): { items: NearbyRestaurant[]; radiusM: number } {
+  let items: NearbyRestaurant[] = [];
+  let radiusM = CATEGORY_RADII_M[0]!;
+  for (const r of CATEGORY_RADII_M) {
+    radiusM = r;
+    items = restaurantsNear(target, r, 5000, list).filter((x) => matchesCategory(x, cat));
+    if (items.length >= CATEGORY_MIN_RESULTS) break;
+  }
+  return { items, radiusM };
 }
 
 /** How many of the optional OSM fields the place has filled in. */
@@ -358,7 +416,8 @@ export function rankRestaurants(rows: RestaurantRow[], sort: RestaurantSort): Re
 }
 
 const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
-  breakfast: ['kahvalti'],
+  breakfast: ['kahvalti', 'borek', 'pogaca', 'simit', 'gozleme'],
+  soup: ['corba', 'iskembe', 'kelle paca', 'paca'],
   meat: ['kebap', 'kebab', 'et', 'izgara', 'kofte', 'mangal', 'steak', 'ocakbasi'],
   fish: ['balik', 'balikci', 'deniz urunleri'],
   cafe: ['kafe', 'kahve', 'cafe'],

@@ -211,7 +211,8 @@ const tr = {
     a11yCategory: '{{name}} yerlerini göster',
     popularFood: 'Yemek için popüler semtler',
     cats: {
-      breakfast: 'Kahvaltı',
+      breakfast: 'Kahvaltı & Börek',
+      soup: 'Çorba',
       meat: 'Et & Izgara',
       fish: 'Balık',
       cafe: 'Kafe',
@@ -225,6 +226,8 @@ const tr = {
     freeSpotsAt: '{{count}} boş yer (saat {{time}})',
     noParking: 'Yakında otopark bilgisi yok',
     empty: 'Bu çevrede restoran bulamadık.',
+    emptyCat: '6 km içinde {{cat}} yeri bulamadık. Başka bir kategori dene.',
+    widened: 'Yakında az olduğu için {{km}} km içinde arandı.',
     a11yRow: '{{name}}. {{meta}}. {{parking}}',
     notFound: 'Mekan bulunamadı.',
     hours: 'Çalışma saatleri (OpenStreetMap)',

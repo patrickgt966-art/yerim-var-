@@ -20,9 +20,9 @@ import {
   cuisineLabels,
   FOOD_CATEGORIES,
   kindLabel,
-  matchesCategory,
   parkingInfo,
   rankRestaurants,
+  restaurantsInCategory,
   restaurantsNear,
   type FoodCategory,
   type RestaurantRow,
@@ -71,18 +71,15 @@ export default function RestaurantsScreen() {
     [params.lat, params.lng, lat, lng],
   );
 
-  // Wider pool than we show, so category chips reflect everything in range.
   const all = useMemo(() => (target ? restaurantsNear(target, 1000, 600) : []), [target]);
-  const catsPresent = useMemo(
-    () => FOOD_CATEGORIES.filter((cat) => all.some((r) => matchesCategory(r, cat))),
-    [all],
+  // A category never falls back to unrelated places: it searches wider instead.
+  const active: Filter = filter;
+  const inCat = useMemo(
+    () => (target && active !== 'all' ? restaurantsInCategory(target, active) : null),
+    [target, active],
   );
-  // A preselected category with nothing in range falls back to all.
-  const active: Filter = filter === 'all' || catsPresent.includes(filter) ? filter : 'all';
-  const shown = useMemo(
-    () => (active === 'all' ? all : all.filter((r) => matchesCategory(r, active))),
-    [all, active],
-  );
+  const shown = inCat ? inCat.items : all;
+  const widenedKm = inCat && inCat.radiusM > 1000 ? inCat.radiusM / 1000 : null;
 
   // Nearest car park per row, with its free count only when it is fresh.
   const built = useMemo<RestaurantRow[]>(() => {
@@ -105,6 +102,7 @@ export default function RestaurantsScreen() {
           place,
           count: rows.length,
         })}
+        {widenedKm && rows.length > 0 ? `\n${t('food.widened', { km: widenedKm })}` : ''}
       </Txt>
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
@@ -156,7 +154,7 @@ export default function RestaurantsScreen() {
               selected={active === 'all'}
               onPress={() => setFilter('all')}
             />
-            {catsPresent.map((cat) => (
+            {FOOD_CATEGORIES.map((cat) => (
               <Chip
                 key={cat}
                 label={t(`food.cats.${cat}`)}
@@ -173,7 +171,13 @@ export default function RestaurantsScreen() {
         keyExtractor={(x) => x.r.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListEmptyComponent={<Txt secondary>{t('food.empty')}</Txt>}
+        ListEmptyComponent={
+          <Txt secondary>
+            {active === 'all'
+              ? t('food.empty')
+              : t('food.emptyCat', { cat: t(`food.cats.${active}`) })}
+          </Txt>
+        }
         renderItem={({ item, index }) => (
           <Row row={item} target={target} best={index === 0 && topEasy} />
         )}
