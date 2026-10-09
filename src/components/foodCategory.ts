@@ -5,6 +5,7 @@ import type { IconName } from './Icon';
 /** Icon per food category; `cutlery` is the fallback for uncategorised places. */
 export const CATEGORY_ICON: Record<FoodCategory, IconName> = {
   breakfast: 'egg',
+  soup: 'bowl',
   meat: 'flame',
   fish: 'fish',
   cafe: 'cup',

@@ -27,6 +27,7 @@ export type IconName =
   | 'glass'
   | 'burger'
   | 'icecream'
+  | 'bowl'
   | 'cutlery';
 
 type Props = { name: IconName; size?: number; color: string; strokeWidth?: number };
@@ -136,6 +137,9 @@ export function Icon({ name, size = 24, color, strokeWidth = 2 }: Props) {
           d="M4 11a8 6 0 0 1 16 0zM3 15h18M4 15.5h16v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"
           {...common}
         />
+      )}
+      {name === 'bowl' && (
+        <Path d="M4 11h16a8 8 0 0 1-16 0zM9 4c0 2 2 2 2 4M14 4c0 2 2 2 2 4" {...common} />
       )}
       {name === 'icecream' && <Path d="M7.5 12a4.5 4.5 0 1 1 9 0zM8 12l4 9 4-9" {...common} />}
       {name === 'cutlery' && (

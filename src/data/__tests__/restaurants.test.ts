@@ -9,6 +9,7 @@ import {
   cuisineLabels,
   infoScore,
   matchesCategory,
+  restaurantsInCategory,
   nearbyParkingCount,
   rankRestaurants,
   type RestaurantRow,
@@ -306,5 +307,62 @@ describe('parkingInfo', () => {
     expect(res.parking?.distanceM).toBeGreaterThan(110);
     expect(res.parking?.distanceM).toBeLessThan(130);
     expect(parkingInfo(origin, [park('far', 900)])).toEqual({ parking: null, nearbyCount: 0 });
+  });
+});
+
+describe('category inference from the name', () => {
+  const mk = (n: string, k: string, c?: string[]) =>
+    toRestaurant({ id: n, n, a: 38.42, o: 27.13, k, ...(c ? { c } : {}) });
+
+  it('puts a börek shop tagged fast_food under breakfast only', () => {
+    const r = mk('Bülent Börekçilik', 'fast_food');
+    expect(matchesCategory(r, 'breakfast')).toBe(true);
+    expect(matchesCategory(r, 'fast')).toBe(false);
+    expect(matchesCategory(r, 'fish')).toBe(false);
+    expect(matchesCategory(r, 'meat')).toBe(false);
+    expect(categoryOf(r)).toBe('breakfast');
+  });
+
+  it('reads meat and soup from the name', () => {
+    expect(matchesCategory(mk('Köfteci Yusuf', 'fast_food'), 'meat')).toBe(true);
+    expect(matchesCategory(mk('Lezzet Çorba Evi', 'restaurant'), 'soup')).toBe(true);
+    expect(matchesCategory(mk('Kelle Paça Salonu', 'restaurant'), 'soup')).toBe(true);
+  });
+
+  it('still uses the kind when the name says nothing', () => {
+    expect(matchesCategory(mk('Burger Point', 'fast_food'), 'fast')).toBe(true);
+    expect(matchesCategory(mk('Ayşe Hanım', 'fast_food'), 'fast')).toBe(true);
+  });
+});
+
+describe('restaurantsInCategory', () => {
+  const at = (n: string, dLat: number) =>
+    toRestaurant({ id: n, n, a: 38.42 + dLat, o: 27.13, k: 'restaurant', c: ['seafood'] });
+  const center = { lat: 38.42, lng: 27.13 };
+
+  it('widens the radius until enough places appear', () => {
+    // ~2.2 km north: none within 1 km, five within 3 km.
+    const list = [1, 2, 3, 4, 5].map((i) => at(`b${i}`, 0.02));
+    const { items, radiusM } = restaurantsInCategory(center, 'fish', list);
+    expect(radiusM).toBe(3000);
+    expect(items).toHaveLength(5);
+  });
+
+  it('never returns other categories', () => {
+    const list = [toRestaurant({ id: 'x', n: 'Bülent Börek', a: 38.42, o: 27.13, k: 'fast_food' })];
+    expect(restaurantsInCategory(center, 'fish', list).items).toHaveLength(0);
+  });
+});
+
+describe('restaurantsInCategory edges', () => {
+  const center = { lat: 38.42, lng: 27.13 };
+  it('stays at 1 km when enough places are close', () => {
+    const list = [1, 2, 3, 4, 5].map((i) =>
+      toRestaurant({ id: `f${i}`, n: `F${i}`, a: 38.42, o: 27.13, k: 'restaurant', c: ['fish'] }),
+    );
+    expect(restaurantsInCategory(center, 'fish', list).radiusM).toBe(1000);
+  });
+  it('reports 6 km and nothing when the category is absent', () => {
+    expect(restaurantsInCategory(center, 'soup', [])).toEqual({ items: [], radiusM: 6000 });
   });
 });
