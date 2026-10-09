@@ -9,6 +9,8 @@ export function PBadge({ size = 22, inverted = false }: { size?: number; inverte
   return (
     <View
       accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[
         asym(size * 0.32, size * 0.09),
         {

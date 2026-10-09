@@ -1,8 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { AccessibilityInfo, findNodeHandle, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
@@ -134,6 +134,16 @@ export default function Onboarding() {
   const insets = useSafeAreaInsets();
   const setOnboarded = useApp((s) => s.setOnboarded);
   const [page, setPage] = useState(0);
+  // After "Devam" VoiceOver focus would stay on the old button: move it to the new heading.
+  const headerRef = useRef<Text>(null);
+  useEffect(() => {
+    if (page === 0) return;
+    const id = setTimeout(() => {
+      const node = headerRef.current ? findNodeHandle(headerRef.current) : null;
+      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+    }, 600);
+    return () => clearTimeout(id);
+  }, [page]);
 
   const finish = () => {
     setOnboarded(true);
@@ -156,6 +166,8 @@ export default function Onboarding() {
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
             <Animated.View entering={FadeInDown.delay(200).duration(600)}>
               <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
                 style={[
                   asym(18, 6),
                   {
@@ -236,7 +248,7 @@ export default function Onboarding() {
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
             >
-              <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
+              <Txt ref={headerRef} variant="display" color="#FFFFFF" accessibilityRole="header">
                 {t('onboarding.howTitle')}
               </Txt>
               <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
@@ -252,7 +264,7 @@ export default function Onboarding() {
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
             >
-              <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
+              <Txt ref={headerRef} variant="display" color="#FFFFFF" accessibilityRole="header">
                 {t('onboarding.locTitle')}
               </Txt>
               <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">

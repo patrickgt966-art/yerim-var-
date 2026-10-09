@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import type { LatLng } from '@/data/geo';
+import { distanceMeters, type LatLng } from '@/data/geo';
 import { isInIzmirArea, POPULAR_PLACES } from '@/data/places';
 import {
   allRestaurants,
@@ -108,19 +108,36 @@ export function ModeSwitch({
 
 let folded: { r: Restaurant; key: string }[] | null = null;
 
-/** Up to 5 restaurants whose name contains the query (min 2 characters). */
-export function matchRestaurants(query: string, limit = 5): Restaurant[] {
+/** Same-name chain branches kept in the suggestions (the nearest ones). */
+const MAX_SAME_NAME = 2;
+
+/**
+ * Up to `limit` restaurants whose name contains the query (min 2 characters),
+ * names that start with it first, each group nearest to `from` first (the
+ * user, else the search target; Kordon when neither is known). A chain keeps
+ * only its nearest branches.
+ */
+export function matchRestaurants(query: string, limit = 5, from: LatLng = FALLBACK): Restaurant[] {
   const q = fold(query.trim());
   if (q.length < 2) return [];
   if (!folded) folded = allRestaurants().map((r) => ({ r, key: fold(r.name) }));
-  const starts: Restaurant[] = [];
-  const inside: Restaurant[] = [];
+  const starts: { r: Restaurant; d: number }[] = [];
+  const inside: { r: Restaurant; d: number }[] = [];
   for (const x of folded) {
-    if (x.key.startsWith(q)) starts.push(x.r);
-    else if (x.key.includes(q)) inside.push(x.r);
-    if (starts.length >= limit) break;
+    const hit = x.key.startsWith(q) ? starts : x.key.includes(q) ? inside : null;
+    if (hit) hit.push({ r: x.r, d: distanceMeters(from, x.r) });
   }
-  return [...starts, ...inside].slice(0, limit);
+  const perName = new Map<string, number>();
+  const out: Restaurant[] = [];
+  for (const { r } of [starts, inside].flatMap((g) => g.sort((a, b) => a.d - b.d))) {
+    const key = fold(r.name);
+    const n = perName.get(key) ?? 0;
+    if (n >= MAX_SAME_NAME) continue;
+    perName.set(key, n + 1);
+    out.push(r);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /** Restaurant-name suggestions, shown above place suggestions. */
@@ -210,7 +227,7 @@ export function CategoryGrid() {
             }}
           >
             {pending === cat ? (
-              <ActivityIndicator color={brand.navy} />
+              <ActivityIndicator color={brand.navy} accessibilityLabel={t('a11y.loading')} />
             ) : (
               <Icon name={CATEGORY_ICON[cat]} size={24} color={brand.navy} />
             )}

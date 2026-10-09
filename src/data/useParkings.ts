@@ -1,8 +1,11 @@
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
+import { isClosedNow } from '@/lib/openNow';
+import { useNow } from '@/lib/useNow';
 import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
+import { visibleFree } from './freshness';
 import { distanceMeters, walkMinutes, type LatLng } from './geo';
 import { isNearPier } from './places';
 import { loadParkings } from './repository';
@@ -27,14 +30,45 @@ export const parkingsQuery = queryOptions({
   gcTime: Infinity,
 });
 
-/** Adds bundled OpenStreetMap car parks to real data (never to sample data). */
-function addStatic(result: ParkingResult): ParkingResult {
-  if (result.source === 'mock') return result;
-  return { ...result, parkings: withStatic(result.parkings) };
+/**
+ * Shown until the first download (or a saved result) arrives: no live
+ * records, only the bundled car parks are added by `addStatic`. It carries no
+ * fallbackReason, so nothing claims the download failed.
+ */
+export const STATIC_ONLY_PLACEHOLDER: ParkingResult = {
+  parkings: [],
+  source: 'static-only',
+  fetchedAt: new Date(0).toISOString(),
+};
+
+// One merge per result object, shared by every screen that observes the query.
+const merged = new WeakMap<ParkingResult, ParkingResult>();
+
+/**
+ * Adds bundled OpenStreetMap/İzelman car parks to real data. Sample data is
+ * never displayed when the bundled car parks exist: they replace it, marked
+ * 'static-only' (the fallbackReason is kept), so no fake counts or pins show.
+ */
+export function addStatic(result: ParkingResult): ParkingResult {
+  const hit = merged.get(result);
+  if (hit) return hit;
+  let out: ParkingResult;
+  if (result.source === 'mock') {
+    const statics = withStatic([]);
+    out = statics.length > 0 ? { ...result, source: 'static-only', parkings: statics } : result;
+  } else {
+    out = { ...result, parkings: withStatic(result.parkings) };
+  }
+  merged.set(result, out);
+  return out;
 }
 
 export function useParkings() {
-  return useQuery({ ...parkingsQuery, select: addStatic });
+  return useQuery({
+    ...parkingsQuery,
+    select: addStatic,
+    placeholderData: STATIC_ONLY_PLACEHOLDER,
+  });
 }
 
 /**
@@ -95,32 +129,79 @@ export const LIVE_PREFERENCE_METERS = 400;
 
 const STATIC_SOURCES = new Set(['osm', 'izelman', 'apple']);
 
+type Openable = Partial<Pick<Parking, 'isOpen' | 'nonstop' | 'openingHours' | 'openingHoursText'>>;
+
 /**
  * Static car parks (OSM, İzelman, Apple) carry no occupancy. If the nearest
- * entry is one, move car parks from a live source that lie within
- * LIVE_PREFERENCE_METERS of it ahead of all static ones. Input must already
- * be sorted by distance; relative order inside each group is kept.
+ * open entry is one, move car parks from a live source that lie within
+ * LIVE_PREFERENCE_METERS of it ahead of all static ones. Closed car parks
+ * (see openState) are never promoted and end up after open/unknown ones.
+ * Input must already be sorted by distance; relative order inside each group
+ * is kept.
  */
-export function preferLive<T extends { source: string; distance: number }>(ranked: T[]): T[] {
-  const first = ranked[0];
-  if (!first || !STATIC_SOURCES.has(first.source)) return ranked;
-  const limit = first.distance + LIVE_PREFERENCE_METERS;
-  const promoted = ranked.filter((p) => !STATIC_SOURCES.has(p.source) && p.distance <= limit);
-  if (promoted.length === 0) return ranked;
-  const rest = ranked.filter((p) => !promoted.includes(p));
-  return [...promoted, ...rest];
+export function preferLive<T extends { source: string; distance: number } & Openable>(
+  ranked: T[],
+  now: Date = new Date(),
+): T[] {
+  const closed = new Set(ranked.filter((p) => isClosedNow(p, now)));
+  const open = closed.size === 0 ? ranked : ranked.filter((p) => !closed.has(p));
+  const first = open[0];
+  let head: T[] = open;
+  if (first && STATIC_SOURCES.has(first.source)) {
+    const limit = first.distance + LIVE_PREFERENCE_METERS;
+    const promoted = open.filter((p) => !STATIC_SOURCES.has(p.source) && p.distance <= limit);
+    if (promoted.length > 0) head = [...promoted, ...open.filter((p) => !promoted.includes(p))];
+  }
+  if (head === ranked) return ranked;
+  return closed.size === 0 ? head : [...head, ...ranked.filter((p) => closed.has(p))];
 }
+
+/**
+ * "Hemen bul": moves the first open car park with a visible free space to the
+ * top, but only when it lies within LIVE_PREFERENCE_METERS of the nearest open
+ * one. Returns the list unchanged otherwise.
+ */
+export function promoteFree<T extends Parking & { distance: number }>(
+  list: T[],
+  now: Date = new Date(),
+): T[] {
+  const open = list.filter((p) => !isClosedNow(p, now));
+  const nearest = open.reduce((m, p) => Math.min(m, p.distance), Infinity);
+  const i = list.findIndex(
+    (p) =>
+      !isClosedNow(p, now) &&
+      (visibleFree(p, now) ?? 0) > 0 &&
+      p.distance <= nearest + LIVE_PREFERENCE_METERS,
+  );
+  return i > 0 ? [list[i]!, ...list.filter((_, j) => j !== i)] : list;
+}
+
+/** Radii tried in turn when the area is empty (metres). */
+export const WIDEN_RADII_METERS = [5000, 10_000];
 
 export function useRanked(target: LatLng | null, radiusMeters?: number) {
   const q = useParkings();
   // Apple Maps car parks around the target, where the native module exists.
   const apple = useAppleParkings(target);
-  const ranked = useMemo(() => {
-    if (!q.data || !target) return [];
+  // Re-rank every minute so open/closed state follows the clock.
+  const minute = Math.floor(useNow(60_000) / 60_000);
+  const { ranked, widenedKm } = useMemo(() => {
+    if (!q.data || !target) return { ranked: [] as RankedParking[], widenedKm: null };
     // Never mix real Apple results into sample data.
     const list =
       q.data.source === 'mock' ? q.data.parkings : withApple(q.data.parkings, apple.data ?? []);
-    return preferLive(rankByDistance(list, target, radiusMeters));
-  }, [q.data, apple.data, target, radiusMeters]);
-  return { ...q, ranked };
+    const now = new Date(minute * 60_000);
+    let found = rankByDistance(list, target, radiusMeters);
+    let km: number | null = null;
+    // Province towns (Özdere, Dalyan…) have no car park within the default radius.
+    // Only the default radius widens; callers that pass a radius (restaurant page) keep it.
+    for (const r of radiusMeters === undefined ? WIDEN_RADII_METERS : []) {
+      if (found.length > 0) continue;
+      found = rankByDistance(list, target, r);
+      km = r / 1000;
+    }
+    return { ranked: preferLive(found, now), widenedKm: found.length > 0 ? km : null };
+  }, [q.data, apple.data, target, radiusMeters, minute]);
+  /** `widenedKm`: 5 or 10 when the list only appeared after widening the search, else null. */
+  return { ...q, ranked, widenedKm };
 }

@@ -24,12 +24,16 @@ import { Txt } from '@/components/Txt';
 import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
 import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
-import { useRanked, type RankedParking } from '@/data/useParkings';
+import { promoteFree, useRanked, type RankedParking } from '@/data/useParkings';
+import { useAnnounce, useScreenReader } from '@/lib/a11y';
+import { disabledInfo } from '@/lib/disabledSpots';
 import { currentLocation } from '@/lib/location';
+import { isClosedNow } from '@/lib/openNow';
+import { firstParam, parseLatLng } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
-type Filter = 'all' | 'indoor' | 'nearPier';
+type Filter = 'all' | 'indoor' | 'nearPier' | 'disabled';
 type Notice = 'outside' | 'failed' | 'denied';
 
 const LOCATION_TIMEOUT_MS = 6000;
@@ -40,22 +44,27 @@ export default function ResultsScreen() {
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
-    lat?: string;
-    lng?: string;
-    label?: string;
-    near?: string;
+    lat?: string | string[];
+    lng?: string | string[];
+    label?: string | string[];
+    near?: string | string[];
   }>();
   const mapRef = useRef<MapView>(null);
 
-  const [target, setTarget] = useState<LatLng | null>(() => {
-    const lat = Number(params.lat);
-    const lng = Number(params.lng);
-    return Number.isFinite(lat) && Number.isFinite(lng) && params.lat ? { lat, lng } : null;
+  // Any target (typed, saved Ev/İş, params) outside İzmir falls back to the city centre.
+  const [initial] = useState(() => {
+    const parsed = parseLatLng(params.lat, params.lng);
+    return { parsed, outside: !!parsed && !isInIzmirArea(parsed) };
   });
-  const [label, setLabel] = useState(params.label ?? '');
+  const [target, setTarget] = useState<LatLng | null>(() =>
+    initial.outside ? IZMIR_CENTER : initial.parsed,
+  );
+  const [label, setLabel] = useState(() =>
+    initial.outside ? t('common.izmir') : (firstParam(params.label) ?? ''),
+  );
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(initial.outside ? 'outside' : null);
 
   // "Hemen bul" / locate: resolve the user's position, falling back to the city centre.
   useEffect(() => {
@@ -82,8 +91,9 @@ export default function ResultsScreen() {
     };
   }, [target, t]);
 
-  const nearMode = params.near === '1';
-  const { ranked, data, isLoading, isError, isFetching, refetch } = useRanked(target);
+  const nearMode = firstParam(params.near) === '1';
+  const { ranked, data, isLoading, isPlaceholderData, isError, isFetching, refetch, widenedKm } =
+    useRanked(target);
   // Own flag so the spinner shows only for pull-to-refresh, not the 120 s poll.
   const [pulling, setPulling] = useState(false);
   const onPullRefresh = () => {
@@ -95,26 +105,61 @@ export default function ResultsScreen() {
     let list: RankedParking[] = ranked;
     if (filter === 'indoor') list = list.filter((p) => p.isIndoor === true);
     if (filter === 'nearPier') list = list.filter((p) => p.nearPier);
-    // "Hemen bul": put the nearest parking that has a visible free space first.
-    if (nearMode) {
-      const firstFree = list.findIndex((p) => (visibleFree(p) ?? 0) > 0);
-      if (firstFree > 0) list = [list[firstFree]!, ...list.filter((_, i) => i !== firstFree)];
-    }
+    if (filter === 'disabled') list = list.filter((p) => disabledInfo(p) != null);
+    // "Hemen bul": put the nearest open parking with a visible free space first,
+    // unless it is much farther than the nearest one.
+    if (nearMode) list = promoteFree(list);
     if (selectedId) {
       const i = list.findIndex((p) => p.id === selectedId);
       if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
     }
     return list;
   }, [ranked, filter, nearMode, selectedId]);
+  // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
+  const nearestId = useMemo(() => {
+    let best: RankedParking | null = null;
+    for (const p of filtered) {
+      if (!isClosedNow(p) && (!best || p.distance < best.distance)) best = p;
+    }
+    return best?.id ?? null;
+  }, [filtered]);
 
   const totalFree = filtered.reduce<number | null>((sum, p) => {
     const f = visibleFree(p);
     return f == null || sum == null ? sum : sum + f;
   }, 0);
   // Cached counts are too old and the download is still running.
-  const liveIncoming = isFetching && !!data && data.source !== 'mock' && lacksFreshCounts(ranked);
+  // While only the bundled car parks show (first download running), say live counts are coming.
+  const liveIncoming =
+    isFetching &&
+    !!data &&
+    data.source !== 'mock' &&
+    ((isPlaceholderData && ranked.length > 0) || lacksFreshCounts(ranked));
   const anyIndoorKnown = ranked.some((p) => p.isIndoor != null);
   const anyNearPier = ranked.some((p) => p.nearPier);
+  const anyDisabled = ranked.some((p) => disabledInfo(p) != null);
+
+  // Screen reader: the map is hidden (the list is the way in) and changes are spoken.
+  const screenReader = useScreenReader();
+  const resultsReady = !!target && !isLoading && !isPlaceholderData && !isError;
+  useAnnounce(
+    resultsReady
+      ? t('a11y.resultsSummary', {
+          place: label || t('common.izmir'),
+          summary: [
+            t('results.summaryUnknown', { count: filtered.length }),
+            widenedKm != null ? t('results.widened', { km: widenedKm }) : null,
+          ]
+            .filter(Boolean)
+            .join('. '),
+        })
+      : null,
+    400,
+  );
+  useAnnounce(liveIncoming ? t('results.liveIncoming') : null);
+  useAnnounce(
+    notice ? t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed') : null,
+  );
 
   const snapPoints = useMemo(() => ['30%', '58%', '92%'], []);
 
@@ -133,6 +178,13 @@ export default function ResultsScreen() {
           label={t('results.nearPier')}
           selected={filter === 'nearPier'}
           onPress={() => setFilter('nearPier')}
+        />
+      )}
+      {anyDisabled && (
+        <Chip
+          label={t('a11y.disabledFilter')}
+          selected={filter === 'disabled'}
+          onPress={() => setFilter('disabled')}
         />
       )}
       {target && (
@@ -166,6 +218,11 @@ export default function ResultsScreen() {
             {isFetching && !!data && !pulling && !liveIncoming
               ? ` · ${t('results.refreshing')}`
               : ''}
+          </Txt>
+        )}
+        {widenedKm != null && (
+          <Txt variant="caption" secondary>
+            {t('results.widened', { km: widenedKm })}
           </Txt>
         )}
         {liveIncoming && (
@@ -209,18 +266,25 @@ export default function ResultsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       {target ? (
-        <ParkingMap
-          ref={mapRef}
-          parkings={filtered}
-          center={target}
-          targetLabel={label}
-          selectedId={selectedId}
-          onSelect={(p) => setSelectedId(p.id)}
-          bottomInset={260}
-        />
+        // With a screen reader on, the list below is the way in; the map is skipped.
+        <View
+          style={{ flex: 1 }}
+          accessibilityElementsHidden={screenReader}
+          importantForAccessibility={screenReader ? 'no-hide-descendants' : 'auto'}
+        >
+          <ParkingMap
+            ref={mapRef}
+            parkings={filtered}
+            center={target}
+            targetLabel={label}
+            selectedId={selectedId}
+            onSelect={(p) => setSelectedId(p.id)}
+            bottomInset={260}
+          />
+        </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={c.text} />
+          <ActivityIndicator color={c.text} accessibilityLabel={t('a11y.loading')} />
         </View>
       )}
 
@@ -255,7 +319,11 @@ export default function ResultsScreen() {
         >
           <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
         </Pressable>
-        <Txt style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }} numberOfLines={1}>
+        <Txt
+          accessibilityRole="header"
+          style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}
+          numberOfLines={1}
+        >
           {label || t('common.izmir')}
         </Txt>
       </View>
@@ -284,7 +352,13 @@ export default function ResultsScreen() {
               <ParkingCard
                 parking={item}
                 featured={index === 0}
-                nearest={index === 0 && !selectedId}
+                nearest={item.id === nearestId && !selectedId}
+                freeTag={
+                  index === 0 &&
+                  !selectedId &&
+                  item.id !== nearestId &&
+                  (visibleFree(item) ?? 0) > 0
+                }
                 onParkHere={() => parkHere(item)}
                 onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: item.id } })}
               />
@@ -292,7 +366,7 @@ export default function ResultsScreen() {
           )}
           ListEmptyComponent={
             <View style={{ padding: 20, gap: 12 }}>
-              {isLoading || !target ? (
+              {isLoading || isPlaceholderData || !target ? (
                 <Txt secondary>{t('results.loading')}</Txt>
               ) : isError ? (
                 <>

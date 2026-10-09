@@ -34,13 +34,19 @@ export default function ProfileScreen() {
       <Txt secondary>{t('profile.noAccount')}</Txt>
       <Section title={t('profile.data')}>
         <Txt>{t('profile.dataBody')}</Txt>
-        {data && (
+        {data && data.source === 'static-only' ? (
+          // Placeholder: nothing was downloaded yet. With a reason: the download failed.
+          data.fallbackReason ? (
+            <Txt variant="caption" secondary>
+              {t('freshness.staticOnlyBanner')}
+            </Txt>
+          ) : null
+        ) : data ? (
           <Txt variant="caption" secondary>
             {t('profile.lastFetch', { time: formatClock(new Date(data.fetchedAt)) })}
-            {data.source === 'mock' ? ` · ${t('freshness.sample')}` : ''}
             {data.offline ? ` · ${t('freshness.offline')}` : ''}
           </Txt>
-        )}
+        ) : null}
       </Section>
       <Section title={t('profile.privacy')}>
         <Txt>{t('profile.privacyBody')}</Txt>

@@ -1,5 +1,10 @@
 const tr = {
   brand: { name: 'Yerim Var', wordmarkA: 'yerim', wordmarkB: 'var!', a11yTitle: 'Yerim var!' },
+  notFound: {
+    title: 'Sayfa bulunamadı',
+    body: 'Aradığın sayfa yok ya da bağlantı eskimiş olabilir.',
+    home: 'Ana sayfaya dön',
+  },
   common: {
     back: 'Geri',
     close: 'Kapat',
@@ -14,8 +19,8 @@ const tr = {
     paid: 'Ücretli',
     freeOfCharge: 'Ücretsiz',
     priceUnknown: 'Ücret bilinmiyor',
-    indoor: 'Kapalı',
-    outdoor: 'Açık',
+    indoor: 'Üstü kapalı',
+    outdoor: 'Açık alan',
     nonstop: '7/24',
     a11yMinutes: 'yaklaşık {{count}} dakika yürüme',
     a11yPerHour: 'saatlik {{price}} lira',
@@ -36,6 +41,8 @@ const tr = {
     noDataShort: 'Bilgi yok',
     sampleBanner:
       'Deneme bilgisi gösteriliyor, gerçek değil. Belediye verisine şu an ulaşılamıyor.',
+    staticOnlyBanner:
+      'Belediye verisine şu an ulaşılamıyor. Otopark konumları gösteriliyor, boş yer bilgisi yok.',
     offline: 'İnternet yok',
     offlineBanner:
       'İnternet yok · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
@@ -129,9 +136,12 @@ const tr = {
     summaryUnknown: '{{count}} otopark',
     subtitle: '{{place}} yürüme mesafesine göre',
     all: 'Tümü',
-    indoor: 'Kapalı',
+    indoor: 'Üstü kapalı',
     nearPier: 'İskeleye yakın',
     nearest: 'En yakın',
+    freeSpace: 'Boş yer var',
+    maybeClosed: 'Kapalı olabilir',
+    widened: '{{km}} km içinde arandı',
     parkHere: 'Buraya park et',
     details: 'Detay',
     empty: 'Bu çevrede otopark bulamadık.',
@@ -362,6 +372,20 @@ const tr = {
     detail: 'Detay',
     goParking: 'Otoparka git',
     nearestParking: 'En yakın otopark {{distance}} m',
+  },
+  a11y: {
+    disabledCount: 'Engelli yeri: {{free}} boş ({{capacity}} yerden)',
+    disabledExists: 'Engelli yeri var',
+    disabledFilter: 'Engelli yeri',
+    levelPlenty: 'Bol yer',
+    levelFew: 'Az kaldı',
+    levelFull: 'Dolu',
+    suggestionCount: '{{count}} öneri',
+    suggestionNone: 'Öneri yok',
+    resultsSummary: '{{place}}. {{summary}}',
+    loading: 'Yükleniyor',
+    stillParkedYes: 'Evet, hâlâ park hâlindeyim',
+    showList: 'Listeyi göster',
   },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },
 };

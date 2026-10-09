@@ -15,7 +15,8 @@ const count = z.number().finite().nonnegative();
 
 const RecordSchema = z.object({
   ufid: z.string().min(1),
-  name: z.string().min(1),
+  // Trim first: a blank name is no name and the record is dropped.
+  name: z.string().trim().min(1),
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
   type: z.string().optional(),
@@ -26,7 +27,13 @@ const RecordSchema = z.object({
   openingHours: z.record(z.string(), z.string()).nullish(),
   occupancy: z.object({
     total: z.object({ free: count.nullish(), occupied: count.nullish() }),
+    // Present on some records only; a malformed block must not drop the record.
+    disabled: z
+      .object({ free: count.nullish(), occupied: count.nullish() })
+      .nullish()
+      .catch(undefined),
   }),
+  accessibility: z.object({ disabled: z.boolean().nullish() }).partial().nullish().catch(undefined),
   accessories: z.object({ covered: z.boolean().nullish() }).partial().nullish(),
 });
 
@@ -39,6 +46,13 @@ export class SchemaDriftError extends Error {
     this.name = 'SchemaDriftError';
   }
 }
+
+/** Longest name we keep. */
+const MAX_NAME_LENGTH = 120;
+
+/** Space counts are whole numbers; a fraction means the source is unsure, so it is unknown. */
+const wholeOrNull = (n: number | null | undefined): number | null =>
+  n != null && Number.isInteger(n) ? n : null;
 
 const PLACEHOLDER_HOURS = /^[\s\-–—]*$/;
 
@@ -55,12 +69,21 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
   if (!anyValid) throw new SchemaDriftError('Zorunlu alanlar hiçbir kayıtta yok');
 
   const out: Parking[] = [];
+  const seen = new Set<string>();
   for (const item of raw) {
     const parsed = RecordSchema.safeParse(item);
     if (!parsed.success) continue;
     const r = parsed.data;
-    const free = r.occupancy.total.free ?? null;
-    const occupied = r.occupancy.total.occupied ?? null;
+    // Duplicate ids would break list keys and favourites: keep the first.
+    if (seen.has(r.ufid)) continue;
+    seen.add(r.ufid);
+    const free = wholeOrNull(r.occupancy.total.free);
+    const occupied = wholeOrNull(r.occupancy.total.occupied);
+    const dFree = wholeOrNull(r.occupancy.disabled?.free);
+    const dOccupied = wholeOrNull(r.occupancy.disabled?.occupied);
+    const dTotal = dFree != null && dOccupied != null ? dFree + dOccupied : null;
+    // 0 + 0 means the source has no disabled bays to count.
+    const dCapacity = dTotal != null && dTotal > 0 ? dTotal : null;
     // Nonstop car parks send "–" for every day; keep only real values.
     const hourEntries = Object.entries(r.openingHours ?? {}).filter(
       ([d, v]) => DAYS.includes(d) && !PLACEHOLDER_HOURS.test(v),
@@ -69,7 +92,7 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       hourEntries.length > 0 ? Object.fromEntries(hourEntries) : null;
     out.push({
       id: r.ufid,
-      name: r.name.trim(),
+      name: r.name.slice(0, MAX_NAME_LENGTH),
       lat: r.lat,
       lng: r.lng,
       capacity: free != null && occupied != null ? free + occupied : null,
@@ -82,6 +105,12 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       nonstop: r.nonstop ?? null,
       openingHours: hours,
       address: r.address ? r.address : null,
+      ...(dFree != null && dCapacity != null
+        ? { disabledFree: dFree, disabledCapacity: dCapacity }
+        : {}),
+      ...(dCapacity != null || r.accessibility?.disabled === true
+        ? { hasDisabledSpots: true }
+        : {}),
       source: 'izmir-open-data',
       // The source has no measurement timestamp; never invent one.
       updatedAt: null,

@@ -9,6 +9,8 @@ export function PMark({ size = 30, radius }: { size?: number; radius?: number })
   return (
     <View
       accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={[
         asym(radius ?? size * 0.3, radius ? radius * 0.3 : size * 0.1),
         {

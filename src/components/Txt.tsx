@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Text, type TextProps } from 'react-native';
 
 import { fonts, useColors } from '@/theme';
@@ -13,7 +14,12 @@ const sizes: Record<Variant, { fontFamily: string; fontSize: number; lineHeight?
   label: { fontFamily: fonts.bodyBold, fontSize: 12, lineHeight: 16 },
 };
 
-type Props = TextProps & { variant?: Variant; color?: string; secondary?: boolean };
+type Props = TextProps & {
+  variant?: Variant;
+  color?: string;
+  secondary?: boolean;
+  ref?: Ref<Text>;
+};
 
 /** Text with brand fonts. Font scaling stays on for Dynamic Type. */
 export function Txt({ variant = 'body', color, secondary, style, ...rest }: Props) {

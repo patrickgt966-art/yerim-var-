@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
@@ -73,6 +73,7 @@ type FavTab = 'parkings' | 'restaurants';
 function FavTabs({ tab, onChange }: { tab: FavTab; onChange: (t: FavTab) => void }) {
   const c = useColors();
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
   const options: { id: FavTab; label: string }[] = [
     { id: 'parkings', label: t('favorites.tabParkings') },
     { id: 'restaurants', label: t('favorites.tabRestaurants') },
@@ -81,7 +82,7 @@ function FavTabs({ tab, onChange }: { tab: FavTab; onChange: (t: FavTab) => void
     <View
       accessibilityRole="tablist"
       accessibilityLabel={t('favorites.tabsLabel')}
-      style={{ flexDirection: 'row', gap: 8 }}
+      style={{ flexDirection: 'row', flexWrap: fontScale > 1.2 ? 'wrap' : 'nowrap', gap: 8 }}
     >
       {options.map((o) => {
         const selected = tab === o.id;
@@ -121,7 +122,7 @@ function RestaurantFavorites() {
   const { t } = useTranslation();
   const ids = useApp((s) => s.favoriteRestaurants);
   const toggle = useApp((s) => s.toggleFavoriteRestaurant);
-  const { data } = useParkings();
+  const { data, isPlaceholderData } = useParkings();
   // Ids no longer in the bundled data are skipped silently.
   const items = useMemo(
     () => ids.map((id) => getRestaurant(id)).filter((r): r is Restaurant => r != null),
@@ -142,7 +143,7 @@ function RestaurantFavorites() {
               count: Math.max(nearbyCount, 1),
               distance: parking.distanceM,
             })
-          : data
+          : data && !isPlaceholderData
             ? t('food.noParking')
             : '';
         const free =

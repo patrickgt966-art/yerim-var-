@@ -58,15 +58,17 @@ export function PPin({
   const bg =
     level === 'plenty' ? c.plenty : level === 'few' ? c.few : level === 'full' ? c.full : '#5C7580';
   const scale = selected ? 1.15 : 1;
+  // Full pins are hollow with an "×" instead of relying on red alone.
+  const full = level === 'full';
   return (
     <View
       style={{
         width: 34 * scale,
         height: 48 * scale,
         borderRadius: 10,
-        backgroundColor: bg,
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
+        backgroundColor: full ? '#FFFFFF' : bg,
+        borderWidth: full ? 3 : 2,
+        borderColor: full ? bg : '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#0B3C49',
@@ -85,7 +87,7 @@ export function PPin({
           borderRadius: 6,
           borderWidth: 1.5,
           borderStyle: 'dashed',
-          borderColor: 'rgba(255,255,255,0.75)',
+          borderColor: full ? bg : 'rgba(255,255,255,0.75)',
         }}
       />
       <View
@@ -96,7 +98,7 @@ export function PPin({
           borderTopRightRadius: 5,
           borderBottomRightRadius: 5,
           borderBottomLeftRadius: 2,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: full ? bg : '#FFFFFF',
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 1,
@@ -105,15 +107,15 @@ export function PPin({
         <Txt
           allowFontScaling={false}
           style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 15 }}
-          color="#0B3C49"
+          color={full ? '#FFFFFF' : '#0B3C49'}
         >
-          P
+          {full ? '×' : 'P'}
         </Txt>
       </View>
       <Txt
         allowFontScaling={false}
         style={{ fontFamily: fonts.display, fontSize: 16, lineHeight: 19 }}
-        color="#FFFFFF"
+        color={full ? bg : '#FFFFFF'}
       >
         {free == null ? '?' : String(free)}
       </Txt>

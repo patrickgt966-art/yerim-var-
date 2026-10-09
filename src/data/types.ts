@@ -5,6 +5,11 @@ export type PriceKind = 'official' | 'estimated';
  * and 'osm' (OpenStreetMap), and 'apple' (Apple Maps search on the device).
  */
 export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm' | 'apple';
+/**
+ * Where a whole result comes from. 'static-only' is the bundled car parks
+ * alone, shown while the first download runs or when no real data exists.
+ */
+export type ResultSource = DataSource | 'static-only';
 export type StaticSource = 'izelman' | 'osm';
 
 export type OpeningHours = Partial<
@@ -33,6 +38,14 @@ export type Parking = {
   genericName?: boolean;
   /** 'customers': open to visitors of a shop/mall; 'subscribers': monthly pass holders. */
   access?: 'customers' | 'subscribers' | null;
+  /** Disabled-bay count from the live source; null/undefined when the source has none. */
+  disabledFree?: number | null;
+  /** Disabled-bay capacity: live (free + occupied) or the OSM `capacity:disabled` tag. */
+  disabledCapacity?: number | null;
+  /** True when the source says the car park has disabled bays (even without a count). */
+  hasDisabledSpots?: boolean | null;
+  /** OSM `wheelchair` tag ("yes" | "limited" | "no"). */
+  wheelchair?: 'yes' | 'limited' | 'no' | null;
   source: DataSource;
   /** Measurement time reported by the source (ISO). The İzmir API has none. */
   updatedAt: string | null;
@@ -43,7 +56,7 @@ export type Parking = {
 
 export type ParkingResult = {
   parkings: Parking[];
-  source: DataSource;
+  source: ResultSource;
   fetchedAt: string;
   /** Set when the primary provider failed (we show cached or sample data). */
   fallbackReason?: string;

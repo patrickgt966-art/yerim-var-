@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { TFunction } from 'i18next';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -42,10 +42,14 @@ import {
 } from '@/data/appleSearch';
 import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
 import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
+import { useAnnounce } from '@/lib/a11y';
 import { currentLocation, geocode, reverseStreet } from '@/lib/location';
 import { currentLocationLabel } from '@/lib/park';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
+
+/** A stuck address lookup must not leave the busy/saving flags set. */
+const GEOCODE_TIMEOUT_MS = 8000;
 
 function hitSubtitle(h: SearchHit, t: TFunction): string {
   return [
@@ -101,7 +105,7 @@ function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean 
         if (saving) return;
         setSaving(true);
         try {
-          const hit = await geocode(text);
+          const hit = await geocode(text, GEOCODE_TIMEOUT_MS);
           if (!hit) return Alert.alert(t('search.saveFailed'));
           const saved: SavedPlace = { label: text.trim(), ...hit };
           setPlace(saved);
@@ -167,7 +171,7 @@ function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean 
     >
       {!place && <DashedFrame color={c.dashed} radius={16} tight={5} />}
       {saving ? (
-        <ActivityIndicator color={c.text} />
+        <ActivityIndicator color={c.text} accessibilityLabel={t('a11y.loading')} />
       ) : (
         <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
       )}
@@ -211,8 +215,17 @@ export default function SearchScreen() {
 
   // Bundled İzmir places first: Apple's geocoder only knows addresses.
   // "Bornova balık" searches the place part only; the category word is applied on submit.
-  const split = useMemo(() => (food ? splitPlaceAndCategory(query) : null), [food, query]);
-  const local = useMemo(() => searchPlaces(split ? split.placeQuery : query), [split, query]);
+  // Typing stays responsive: the local search lags one render behind the text box.
+  const deferredQuery = useDeferredValue(query);
+  const settled = deferredQuery === query;
+  const split = useMemo(
+    () => (food ? splitPlaceAndCategory(deferredQuery) : null),
+    [food, deferredQuery],
+  );
+  const local = useMemo(
+    () => searchPlaces(split ? split.placeQuery : deferredQuery),
+    [split, deferredQuery],
+  );
   // Places our list does not know come from Apple Maps (native builds only).
   const apple = useAppleSuggestions(query);
   // Use Apple results only for exactly the text in the box: the request is
@@ -228,13 +241,31 @@ export default function SearchScreen() {
     food ? openFood(target, label, cat) : openResults(target, label);
   // Place + category ("Bornova balık") opens the restaurant list there with the category.
   const pick = (h: SearchHit) => go(h, h.name, split?.cat);
-  const foodMatches = useMemo(() => (food ? matchRestaurants(query) : []), [food, query]);
+  const foodMatches = useMemo(
+    () => (food ? matchRestaurants(deferredQuery) : []),
+    [food, deferredQuery],
+  );
+
+  // VoiceOver does not read a list that appears while typing: say how many, once typing pauses.
+  const suggestionCount = hits.length + foodMatches.length;
+  useAnnounce(
+    query.trim().length >= 2 && settled
+      ? suggestionCount > 0
+        ? t('a11y.suggestionCount', { count: suggestionCount })
+        : t('a11y.suggestionNone')
+      : null,
+    700,
+    query.trim(),
+  );
 
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
+    // The deferred `split` may lag behind the text box; read the current text.
+    const current = food ? splitPlaceAndCategory(query) : null;
+    const pickNow = (h: SearchHit) => go(h, h.name, current?.cat);
     if (food) {
-      const cat = split ? null : categoryForQuery(q);
+      const cat = current ? null : categoryForQuery(q);
       if (cat) {
         if (locating) return;
         setLocating(true);
@@ -242,17 +273,19 @@ export default function SearchScreen() {
         return;
       }
     }
-    if (hits[0]) return pick(hits[0]);
-    if (food && foodMatches[0])
+    // Suggestions that lag behind the text box are not trusted on submit.
+    if (settled && hits[0]) return pickNow(hits[0]);
+    if (settled && food && foodMatches[0])
       return router.push({ pathname: '/restoran/[id]', params: { id: foodMatches[0].id } });
     setBusy(true);
-    const [fromApple] = await searchApplePlaces(q);
-    if (fromApple) {
+    let hit: LatLng | null = null;
+    try {
+      const [fromApple] = await searchApplePlaces(q);
+      if (fromApple) return pickNow(fromApple);
+      hit = await geocode(q, GEOCODE_TIMEOUT_MS);
+    } finally {
       setBusy(false);
-      return pick(fromApple);
     }
-    const hit = await geocode(q);
-    setBusy(false);
     if (!hit) return Alert.alert(t('search.notFound'));
     go(hit, q);
   };
@@ -372,7 +405,11 @@ export default function SearchScreen() {
               }}
             />
             {busy || locating ? (
-              <ActivityIndicator color={c.text} style={{ width: HIT }} />
+              <ActivityIndicator
+                color={c.text}
+                style={{ width: HIT }}
+                accessibilityLabel={t('a11y.loading')}
+              />
             ) : (
               <Pressable
                 accessibilityRole="button"

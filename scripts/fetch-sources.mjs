@@ -151,6 +151,9 @@ function fromOsm(el) {
     operator: t.operator ?? null,
     address: street || t['addr:full'] || null,
     access: t.access === 'customers' ? 'customers' : null,
+    // Only emitted when tagged, so untagged records stay as small as before.
+    ...(int(t['capacity:disabled']) ? { disabledCapacity: int(t['capacity:disabled']) } : {}),
+    ...(['yes', 'limited', 'no'].includes(t.wheelchair) ? { wheelchair: t.wheelchair } : {}),
     source: 'osm',
   };
 }

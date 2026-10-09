@@ -34,15 +34,26 @@ export async function currentLocation(ask = true, timeoutMs?: number): Promise<L
 }
 
 /** On-device geocoding (Apple on iOS). Biased to İzmir by appending the city. */
-export async function geocode(query: string): Promise<LatLng | null> {
+export async function geocode(query: string, timeoutMs?: number): Promise<LatLng | null> {
   const q = query.trim();
   if (!q) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const withCity = /izmir|i̇zmir/i.test(q) ? q : `${q}, İzmir`;
-    const [hit] = await Location.geocodeAsync(withCity);
+    const lookup = Location.geocodeAsync(withCity);
+    const [hit] = timeoutMs
+      ? await Promise.race([
+          lookup,
+          new Promise<never[]>((resolve) => {
+            timer = setTimeout(() => resolve([]), timeoutMs);
+          }),
+        ])
+      : await lookup;
     return hit ? { lat: hit.latitude, lng: hit.longitude } : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
