@@ -53,5 +53,6 @@ export type ParkingResult = {
 
 export interface ParkingProvider {
   readonly source: DataSource;
-  list(signal?: AbortSignal): Promise<Parking[]>;
+  /** `attempt` is 0 for the first try; providers may use it to pick a timeout. */
+  list(signal?: AbortSignal, attempt?: number): Promise<Parking[]>;
 }

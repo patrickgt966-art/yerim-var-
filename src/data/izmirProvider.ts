@@ -102,12 +102,16 @@ export class IzmirOpenDataProvider implements ParkingProvider {
   constructor(
     private readonly url = IZMIR_PARKING_URL,
     // The API took ~15 s on a phone (2026-10-07); the brief's 10 s was too short.
+    // Retries get this long; the first attempt is shorter so a hung request
+    // gives up sooner (see `firstTimeoutMs`).
     private readonly timeoutMs = 30_000,
+    private readonly firstTimeoutMs = Math.min(20_000, timeoutMs),
   ) {}
 
-  async list(signal?: AbortSignal): Promise<Parking[]> {
+  async list(signal?: AbortSignal, attempt = 0): Promise<Parking[]> {
+    const limitMs = attempt === 0 ? this.firstTimeoutMs : this.timeoutMs;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), limitMs);
     const onAbort = () => controller.abort();
     signal?.addEventListener('abort', onAbort);
     try {
@@ -121,7 +125,7 @@ export class IzmirOpenDataProvider implements ParkingProvider {
     } catch (e) {
       // Name the timeout plainly instead of a generic "Aborted".
       if (controller.signal.aborted && !signal?.aborted) {
-        throw new Error(`Zaman aşımı (${this.timeoutMs / 1000} sn)`);
+        throw new Error(`Zaman aşımı (${limitMs / 1000} sn)`);
       }
       throw e;
     } finally {

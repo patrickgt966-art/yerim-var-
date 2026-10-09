@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
@@ -9,8 +9,8 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { formatClock } from '@/data/freshness';
-import type { LatLng } from '@/data/geo';
-import { IZMIR_CENTER } from '@/data/places';
+import { distanceMeters, type LatLng } from '@/data/geo';
+import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import {
   cuisineLabels,
   kindLabel,
@@ -38,10 +38,33 @@ export default function MapTab() {
   const [mode, setMode] = useState<Mode>(params.mode === 'food' ? 'food' : 'parkings');
   const [selected, setSelected] = useState<Restaurant | null>(null);
 
-  useEffect(() => {
-    // Do not prompt here; onboarding asks once.
-    void currentLocation(false).then((loc) => setCenter(loc ?? IZMIR_CENTER));
-  }, []);
+  const [outside, setOutside] = useState(false);
+  const wasInside = useRef<boolean | null>(null);
+
+  // Re-check on every visit (permission or position may have changed). Do not
+  // prompt here; onboarding asks once.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void currentLocation(false).then((loc) => {
+        if (cancelled) return;
+        const inside = !!loc && isInIzmirArea(loc);
+        setOutside(!!loc && !inside);
+        // Keep the same object when the fix is unchanged so the map is not rebuilt.
+        // Only move the map for a real change (> 300 m, or inside/outside İzmir),
+        // so a remount does not drop the user's pan.
+        const switched = wasInside.current !== inside;
+        wasInside.current = inside;
+        setCenter((prev) => {
+          const next = inside ? loc : IZMIR_CENTER;
+          return prev && !switched && distanceMeters(prev, next) <= 300 ? prev : next;
+        });
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   // Params from "Haritada gör" override the centre and mode; `ts` makes a repeat visit count.
   const paramCenter = useMemo<LatLng | null>(() => {
@@ -145,9 +168,25 @@ export default function MapTab() {
           );
         })}
       </View>
-      {showBanner && (
-        <View style={{ position: 'absolute', top: bannerTop, left: 16, right: 16 }}>
-          <SampleBanner result={data} />
+      {((outside && !paramCenter) || showBanner) && (
+        <View style={{ position: 'absolute', top: bannerTop, left: 16, right: 16, gap: 8 }}>
+          {outside && !paramCenter && (
+            <View
+              style={[
+                asym(14, 4),
+                {
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.line,
+                },
+              ]}
+            >
+              <Txt variant="caption">{t('map.outsideIzmir')}</Txt>
+            </View>
+          )}
+          {showBanner && <SampleBanner result={data} />}
         </View>
       )}
       {mode === 'food' && selected && (

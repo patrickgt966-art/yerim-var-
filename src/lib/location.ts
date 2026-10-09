@@ -45,3 +45,17 @@ export async function geocode(query: string): Promise<LatLng | null> {
     return null;
   }
 }
+
+/** Street-level address for a point, or null when unavailable. */
+export async function reverseStreet(
+  loc: LatLng,
+): Promise<{ street: string | null; name: string | null } | null> {
+  try {
+    const [a] = await Location.reverseGeocodeAsync({ latitude: loc.lat, longitude: loc.lng });
+    if (!a) return null;
+    const street = a.street ? [a.street, a.streetNumber].filter(Boolean).join(' ') : null;
+    return { street, name: null };
+  } catch {
+    return null;
+  }
+}

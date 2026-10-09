@@ -1,8 +1,16 @@
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,20 +21,24 @@ import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
-import { visibleFree } from '@/data/freshness';
+import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
-import { IZMIR_CENTER } from '@/data/places';
+import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { useRanked, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
 import { parkHere } from '@/lib/parkHere';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
 type Filter = 'all' | 'indoor' | 'nearPier';
+type Notice = 'outside' | 'failed' | 'denied';
+
+const LOCATION_TIMEOUT_MS = 6000;
 
 export default function ResultsScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
     lat?: string;
     lng?: string;
@@ -43,16 +55,28 @@ export default function ResultsScreen() {
   const [label, setLabel] = useState(params.label ?? '');
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   // "Hemen bul" / locate: resolve the user's position, falling back to the city centre.
   useEffect(() => {
     if (target) return;
     let cancelled = false;
-    void currentLocation().then((loc) => {
+    void (async () => {
+      const loc = await currentLocation(true, LOCATION_TIMEOUT_MS);
+      let denied = false;
+      if (!loc) {
+        try {
+          denied = !(await Location.getForegroundPermissionsAsync()).granted;
+        } catch {
+          denied = false;
+        }
+      }
       if (cancelled) return;
-      setTarget(loc ?? IZMIR_CENTER);
-      setLabel(loc ? t('results.myLocation') : 'İzmir');
-    });
+      const inside = !!loc && isInIzmirArea(loc);
+      setTarget(inside ? loc : IZMIR_CENTER);
+      setLabel(inside ? t('results.myLocation') : t('common.izmir'));
+      setNotice(inside ? null : loc ? 'outside' : denied ? 'denied' : 'failed');
+    })();
     return () => {
       cancelled = true;
     };
@@ -87,10 +111,45 @@ export default function ResultsScreen() {
     const f = visibleFree(p);
     return f == null || sum == null ? sum : sum + f;
   }, 0);
+  // Cached counts are too old and the download is still running.
+  const liveIncoming = isFetching && !!data && data.source !== 'mock' && lacksFreshCounts(ranked);
   const anyIndoorKnown = ranked.some((p) => p.isIndoor != null);
   const anyNearPier = ranked.some((p) => p.nearPier);
 
   const snapPoints = useMemo(() => ['30%', '58%', '92%'], []);
+
+  const chips = (
+    <>
+      <Chip label={t('results.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
+      {anyIndoorKnown && (
+        <Chip
+          label={t('results.indoor')}
+          selected={filter === 'indoor'}
+          onPress={() => setFilter('indoor')}
+        />
+      )}
+      {anyNearPier && (
+        <Chip
+          label={t('results.nearPier')}
+          selected={filter === 'nearPier'}
+          onPress={() => setFilter('nearPier')}
+        />
+      )}
+      {target && (
+        <Chip
+          label={t('food.nearby')}
+          selected={false}
+          onPress={() =>
+            router.push({
+              pathname: '/restoranlar',
+              params: { lat: String(target.lat), lng: String(target.lng), label },
+            })
+          }
+        />
+      )}
+      {/* "Şarj" is hidden until the data source reports charging points. */}
+    </>
+  );
 
   const header = (
     <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
@@ -104,49 +163,46 @@ export default function ResultsScreen() {
           <Txt variant="caption" secondary>
             {t('results.subtitle', { place: label })}
             {/* Saved data stays on screen while the slow API answers. */}
-            {isFetching && !!data && !pulling ? ` · ${t('results.refreshing')}` : ''}
+            {isFetching && !!data && !pulling && !liveIncoming
+              ? ` · ${t('results.refreshing')}`
+              : ''}
           </Txt>
         )}
+        {liveIncoming && (
+          <View
+            accessibilityRole="progressbar"
+            accessibilityLabel={t('results.liveIncoming')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}
+          >
+            <ActivityIndicator size="small" color={c.text} />
+            <Txt variant="caption" secondary>
+              {t('results.liveIncoming')}
+            </Txt>
+          </View>
+        )}
       </View>
+      {notice && (
+        <View style={{ gap: 8 }}>
+          <Txt variant="caption" secondary>
+            {t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed')}
+          </Txt>
+          {notice === 'denied' && (
+            <Button
+              kind="secondary"
+              label={t('results.locationPermission')}
+              onPress={() => void Linking.openSettings()}
+            />
+          )}
+        </View>
+      )}
       <SampleBanner result={data} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        <Chip
-          label={t('results.all')}
-          selected={filter === 'all'}
-          onPress={() => setFilter('all')}
-        />
-        {anyIndoorKnown && (
-          <Chip
-            label={t('results.indoor')}
-            selected={filter === 'indoor'}
-            onPress={() => setFilter('indoor')}
-          />
-        )}
-        {anyNearPier && (
-          <Chip
-            label={t('results.nearPier')}
-            selected={filter === 'nearPier'}
-            onPress={() => setFilter('nearPier')}
-          />
-        )}
-        {target && (
-          <Chip
-            label={t('food.nearby')}
-            selected={false}
-            onPress={() =>
-              router.push({
-                pathname: '/restoranlar',
-                params: { lat: String(target.lat), lng: String(target.lng), label },
-              })
-            }
-          />
-        )}
-        {/* "Şarj" is hidden until the data source reports charging points. */}
-      </ScrollView>
+      {fontScale > 1.2 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{chips}</View>
+      ) : (
+        <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+          {chips}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -200,7 +256,7 @@ export default function ResultsScreen() {
           <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
         </Pressable>
         <Txt style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }} numberOfLines={1}>
-          {label || 'İzmir'}
+          {label || t('common.izmir')}
         </Txt>
       </View>
 
@@ -213,7 +269,7 @@ export default function ResultsScreen() {
           borderTopRightRadius: 32,
         }}
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
-        accessibilityLabel="Otopark listesi"
+        accessibilityLabel={t('results.a11yList')}
       >
         <BottomSheetFlatList
           data={filtered}

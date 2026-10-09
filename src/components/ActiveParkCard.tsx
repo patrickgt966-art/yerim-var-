@@ -1,25 +1,62 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, View } from 'react-native';
 
-import { appleWalkingUrl, walkMinutes } from '@/data/geo';
+import { appleWalkingUrl, appleWalkToUrl, walkMinutes } from '@/data/geo';
 import { estimateCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
-import type { ActivePark } from '@/store/app';
+import { currentLocation } from '@/lib/location';
+import { needsStillParkedPrompt } from '@/lib/park';
+import { useApp, type ActivePark } from '@/store/app';
 import { asym, fonts, useColors } from '@/theme';
 
 import { Button } from './Button';
 import { PBadge } from './PBadge';
 import { Txt } from './Txt';
+import { useNow } from '@/lib/useNow';
 
-export function useNow(intervalMs = 30_000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
+/** Shared by home and Favoriler so the wording and the confirm are identical. */
+export function confirmEndPark(t: TFunction, endPark: () => void) {
+  Alert.alert(t('favorites.endConfirmTitle'), t('favorites.endConfirmBody'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('favorites.endConfirmYes'), style: 'destructive', onPress: endPark },
+  ]);
+}
+
+/** "Hâlâ park hâlinde misin?" with Evet / Bitir; shown for parks older than 12 h. */
+export function StillParkedPrompt() {
+  const { t } = useTranslation();
+  const endPark = useApp((s) => s.endPark);
+  const confirmPark = useApp((s) => s.confirmPark);
+  return (
+    <View style={{ gap: 8 }}>
+      <Txt variant="bodyBold">{t('search.stillParkedTitle')}</Txt>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Button
+          kind="secondary"
+          label={t('search.stillParkedYes')}
+          onPress={confirmPark}
+          style={{ flex: 1 }}
+        />
+        <Button
+          kind="danger"
+          label={t('favorites.end')}
+          onPress={() => confirmEndPark(t, endPark)}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </View>
+  );
+}
+
+async function walkToCar(active: ActivePark, failed: string) {
+  const from = await currentLocation(false, 3000);
+  const url = from
+    ? appleWalkingUrl(from, active, active.name)
+    : appleWalkToUrl(active, active.name);
+  await Linking.openURL(url).catch(() => Alert.alert(failed));
 }
 
 export function ActiveParkCard({ active }: { active: ActivePark }) {
@@ -31,10 +68,13 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
   const duration = durationText(elapsed, t);
   const sub = [active.note, duration].filter(Boolean).join(' · ');
   const dest = active.destination;
+  const endPark = useApp((s) => s.endPark);
+  const stale = needsStillParkedPrompt(active, now);
+  const [busy, setBusy] = useState(false);
   const card = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ₺${cost}` : ''}`}
+      accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ${t('common.a11yLira', { price: cost })}` : ''}`}
       onPress={() => router.push('/favoriler')}
       style={[
         asym(22, 6),
@@ -65,14 +105,48 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
       )}
     </Pressable>
   );
-  if (!dest) return card;
+  const actions = (
+    <View style={{ gap: 8, paddingHorizontal: 4 }}>
+      {stale && <StillParkedPrompt />}
+      <Button
+        label={t('search.goToCar')}
+        disabled={busy}
+        onPress={() => {
+          if (busy) return;
+          setBusy(true);
+          void walkToCar(active, t('food.openFailed')).finally(() => setBusy(false));
+        }}
+      />
+      {!stale && (
+        <Button
+          kind="danger"
+          label={t('favorites.end')}
+          onPress={() => confirmEndPark(t, endPark)}
+        />
+      )}
+    </View>
+  );
+  if (!dest)
+    return (
+      <View style={{ gap: 8 }}>
+        {card}
+        {actions}
+      </View>
+    );
   const minutes = walkMinutes(active, dest);
   const summary = t('food.routeSummary', { park: active.name, count: minutes, name: dest.name });
   return (
     <View style={{ gap: 8 }}>
       {card}
       <View style={{ gap: 8, paddingHorizontal: 4 }}>
-        <Txt variant="caption" accessibilityLabel={summary}>
+        <Txt
+          variant="caption"
+          accessibilityLabel={t('food.a11yRouteSummary', {
+            park: active.name,
+            count: minutes,
+            name: dest.name,
+          })}
+        >
           {summary}
         </Txt>
         <View style={{ flexDirection: 'row' }}>
@@ -87,6 +161,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
           />
         </View>
       </View>
+      {actions}
     </View>
   );
 }

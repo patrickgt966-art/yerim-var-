@@ -94,7 +94,7 @@ export default function RestaurantDetail() {
             <Icon
               name={isFav ? 'starFilled' : 'star'}
               size={26}
-              color={isFav ? c.accent : c.text}
+              color={isFav ? c.accentStrong : c.text}
             />
           </Pressable>
         }
@@ -155,7 +155,15 @@ export default function RestaurantDetail() {
               }
               onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
             />
-            <Txt variant="caption" secondary style={{ paddingHorizontal: 4 }}>
+            <Txt
+              variant="caption"
+              secondary
+              style={{ paddingHorizontal: 4 }}
+              accessibilityLabel={t('food.a11yRouteLine', {
+                distance: Math.round(distanceMeters(p, r)),
+                count: walkMinutes(p, r),
+              })}
+            >
               {t('food.routeLine', {
                 distance: Math.round(distanceMeters(p, r)),
                 count: walkMinutes(p, r),

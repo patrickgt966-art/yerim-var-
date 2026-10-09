@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -39,7 +39,7 @@ export default function ParkingDetail() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data } = useParkings();
+  const { data, isLoading } = useParkings();
   const queryClient = useQueryClient();
   const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
@@ -57,7 +57,11 @@ export default function ParkingDetail() {
         }}
       >
         <ScreenHeader title="" back />
-        <Txt secondary>{t('detail.notFound')}</Txt>
+        {isLoading || !data ? (
+          <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
+        ) : (
+          <Txt secondary>{t('detail.notFound')}</Txt>
+        )}
       </View>
     );
   }
@@ -93,13 +97,18 @@ export default function ParkingDetail() {
               <Icon
                 name={isFav ? 'starFilled' : 'star'}
                 size={26}
-                color={isFav ? c.accent : c.text}
+                color={isFav ? c.accentStrong : c.text}
               />
             </Pressable>
           )
         }
       />
-      <Txt secondary>
+      <Txt
+        secondary
+        accessibilityLabel={[metaLine(p, t, mode, true), p.operator, p.address]
+          .filter(Boolean)
+          .join(' · ')}
+      >
         {[metaLine(p, t, mode), p.operator, p.address].filter(Boolean).join(' · ')}
       </Txt>
       <SampleBanner result={data} />
@@ -199,7 +208,9 @@ export default function ParkingDetail() {
 
       <Section title={t('detail.hours')}>
         {p.nonstop ? (
-          <Txt variant="bodyBold">{t('common.nonstop')}</Txt>
+          <Txt variant="bodyBold" accessibilityLabel={t('common.a11yNonstop')}>
+            {t('common.nonstop')}
+          </Txt>
         ) : p.openingHours && Object.keys(p.openingHours).length > 0 ? (
           DAY_ORDER.filter((d) => p.openingHours?.[d]).map((d) => (
             <Row key={d} label={t(`detail.days.${d}`)} value={p.openingHours?.[d] ?? ''} />

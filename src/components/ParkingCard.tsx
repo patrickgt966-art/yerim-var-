@@ -111,12 +111,13 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
   const free = visibleFree(p);
   const mode = useApp((s) => s.mode);
   const meta = metaLine(p, t, mode);
+  const spokenMeta = metaLine(p, t, mode, true);
 
   const staticCard = isStatic(p);
   const a11y = staticCard
     ? t('card.a11yStatic', {
         name: p.name,
-        meta,
+        meta: spokenMeta,
         facts: [
           sourceLabel(p, t),
           p.capacity != null ? `${p.capacity} ${t('card.capacityUnit')}` : null,
@@ -124,7 +125,7 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
           .filter(Boolean)
           .join(', '),
       })
-    : `${p.name}. ${meta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}. ${freshnessText(freshness, t)}`;
+    : `${p.name}. ${spokenMeta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}. ${freshnessText(freshness, t)}`;
 
   if (!featured) {
     return (
@@ -179,7 +180,10 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
   return (
     <View style={[asym(22, 6), { padding: 14, backgroundColor: c.surface }]}>
       <DashedFrame color={c.text} radius={22} tight={6} strokeWidth={2} dash={[8, 6]} />
+      {/* One VoiceOver stop for the info block; the two buttons stay separate. */}
       <View
+        accessible
+        accessibilityLabel={a11y}
         style={{
           flexDirection: 'row',
           alignItems: 'flex-start',
@@ -193,12 +197,7 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
             {nearest && <Tag text={t('results.nearest')} bg={c.badgeNearBg} fg={c.badgeNearText} />}
             {!staticCard && <FreshnessBadge freshness={freshness} />}
           </View>
-          <Txt
-            accessibilityRole="header"
-            style={{ fontFamily: fonts.display, fontSize: 18, marginTop: 7 }}
-          >
-            {p.name}
-          </Txt>
+          <Txt style={{ fontFamily: fonts.display, fontSize: 18, marginTop: 7 }}>{p.name}</Txt>
           <Txt variant="caption" secondary style={{ marginTop: 2 }}>
             {meta}
           </Txt>

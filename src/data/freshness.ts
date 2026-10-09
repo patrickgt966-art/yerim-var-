@@ -68,3 +68,38 @@ export function formatClock(d: Date): string {
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 }
+
+/** Short Turkish age such as "5 dk", "2 sa", "3 gün" (for "… önce"). */
+export function formatAge(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  if (min < 60) return `${min} dk`;
+  const hours = Math.round(min / 60);
+  if (hours < 24) return `${hours} sa`;
+  return `${Math.round(hours / 24)} gün`;
+}
+
+/**
+ * True when there is a non-static car park but none car park has a count we may show (typically cached
+ * data older than 15 min). While a download runs this means "live data is
+ * on its way".
+ */
+export function lacksFreshCounts(list: Parking[], now: Date = new Date()): boolean {
+  const live = list.filter(
+    (p) => p.source !== 'osm' && p.source !== 'izelman' && p.source !== 'apple',
+  );
+  // Nothing live in the list (empty or static-only area): no data can arrive.
+  if (live.length === 0) return false;
+  return !list.some(
+    (p) =>
+      p.source !== 'osm' &&
+      p.source !== 'izelman' &&
+      p.source !== 'apple' &&
+      visibleFree(p, now) != null,
+  );
+}
+
+/** Age of an ISO timestamp as short Turkish text; "" if it cannot be read. */
+export function ageSince(iso: string, now: Date = new Date()): string {
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? '' : formatAge(now.getTime() - t);
+}

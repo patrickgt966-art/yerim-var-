@@ -17,7 +17,11 @@ async function openMaps(p: Parking) {
 /** "Buraya park et": optionally start the local parking timer, then hand off to Apple Maps. */
 export function parkHere(p: Parking, destination?: ParkDestination) {
   const t = i18n.t.bind(i18n);
-  Alert.alert(t('results.parkConfirmTitle'), t('results.parkConfirmBody'), [
+  const current = useApp.getState().active;
+  const body = current
+    ? `${t('results.parkConfirmBody')}\n\n${t('results.parkReplaceBody', { name: current.name })}`
+    : t('results.parkConfirmBody');
+  Alert.alert(t('results.parkConfirmTitle'), body, [
     {
       text: t('results.parkConfirmYes'),
       onPress: () => {

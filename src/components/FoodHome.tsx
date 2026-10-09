@@ -147,11 +147,11 @@ export function RestaurantSuggestions({ matches }: { matches: Restaurant[] }) {
               backgroundColor: pressed ? c.surface : c.card,
             })}
           >
-            <Txt variant="bodyBold" numberOfLines={1}>
+            <Txt variant="bodyBold" numberOfLines={2}>
               {r.name}
             </Txt>
             {sub !== '' && (
-              <Txt variant="caption" secondary numberOfLines={1}>
+              <Txt variant="caption" secondary numberOfLines={2}>
                 {sub}
               </Txt>
             )}

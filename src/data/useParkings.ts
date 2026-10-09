@@ -90,6 +90,27 @@ export function rankByDistance(
   return out;
 }
 
+/** Within this extra distance a car park with data beats one without. */
+export const LIVE_PREFERENCE_METERS = 400;
+
+const STATIC_SOURCES = new Set(['osm', 'izelman', 'apple']);
+
+/**
+ * Static car parks (OSM, İzelman, Apple) carry no occupancy. If the nearest
+ * entry is one, move car parks from a live source that lie within
+ * LIVE_PREFERENCE_METERS of it ahead of all static ones. Input must already
+ * be sorted by distance; relative order inside each group is kept.
+ */
+export function preferLive<T extends { source: string; distance: number }>(ranked: T[]): T[] {
+  const first = ranked[0];
+  if (!first || !STATIC_SOURCES.has(first.source)) return ranked;
+  const limit = first.distance + LIVE_PREFERENCE_METERS;
+  const promoted = ranked.filter((p) => !STATIC_SOURCES.has(p.source) && p.distance <= limit);
+  if (promoted.length === 0) return ranked;
+  const rest = ranked.filter((p) => !promoted.includes(p));
+  return [...promoted, ...rest];
+}
+
 export function useRanked(target: LatLng | null, radiusMeters?: number) {
   const q = useParkings();
   // Apple Maps car parks around the target, where the native module exists.
@@ -99,7 +120,7 @@ export function useRanked(target: LatLng | null, radiusMeters?: number) {
     // Never mix real Apple results into sample data.
     const list =
       q.data.source === 'mock' ? q.data.parkings : withApple(q.data.parkings, apple.data ?? []);
-    return rankByDistance(list, target, radiusMeters);
+    return preferLive(rankByDistance(list, target, radiusMeters));
   }, [q.data, apple.data, target, radiusMeters]);
   return { ...q, ranked };
 }

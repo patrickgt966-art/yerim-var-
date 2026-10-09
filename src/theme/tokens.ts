@@ -2,12 +2,14 @@
 export const brand = {
   navy: '#0B3C49',
   orange: '#FF8A1F',
+  /** Darker orange for orange-on-white graphics (5.2:1 on white). */
+  orangeStrong: '#C2410C',
   orangeLight: '#FFB27A',
   yellow: '#FFE08A',
   cream: '#FFF1E3',
   surface: '#F4F7F8',
-  line: '#D3DCDF',
-  textSecondary: '#5C7580',
+  line: '#B5C3C8',
+  textSecondary: '#4F6A75',
   white: '#FFFFFF',
 } as const;
 
@@ -29,6 +31,8 @@ export type Palette = {
   primary: string;
   onPrimary: string;
   accent: string;
+  /** Accent for icons/lines on the card background (>= 4.5:1). */
+  accentStrong: string;
   chipBg: string;
   hero: string;
   onHero: string;
@@ -49,7 +53,7 @@ export type Palette = {
 };
 
 export const lightPalette: Palette = {
-  bg: brand.surface,
+  bg: brand.white,
   surface: brand.surface,
   card: brand.white,
   text: brand.navy,
@@ -60,6 +64,7 @@ export const lightPalette: Palette = {
   primary: brand.navy,
   onPrimary: brand.white,
   accent: brand.orange,
+  accentStrong: brand.orangeStrong,
   chipBg: '#E6EEF0',
   hero: brand.navy,
   onHero: brand.white,
@@ -91,6 +96,7 @@ export const darkPalette: Palette = {
   primary: brand.orange,
   onPrimary: '#061F26',
   accent: brand.orange,
+  accentStrong: brand.orange,
   chipBg: '#16424E',
   hero: '#082D37',
   onHero: brand.white,

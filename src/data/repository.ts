@@ -3,8 +3,14 @@ import { IzmirOpenDataProvider } from './izmirProvider';
 import { MockProvider } from './mockProvider';
 import type { ParkingProvider, ParkingResult } from './types';
 
-/** Waits before the 2nd and 3rd attempt: 3 attempts in total. */
+/** Waits before the 2nd and 3rd attempt: up to 3 attempts in total. */
 export const RETRY_DELAYS_MS = [1000, 3000];
+
+/**
+ * No new attempt starts once this much time has passed, so a slow API costs
+ * at most ~20 s + 1 s + 30 s before the cache fallback (not ~94 s).
+ */
+export const RETRY_START_LIMIT_MS = 30_000;
 
 export type LoadOptions = {
   signal?: AbortSignal;
@@ -27,7 +33,7 @@ function wait(ms: number, signal?: AbortSignal) {
  * Loads parkings in this order:
  * 1. the primary provider, retried with RETRY_DELAYS_MS;
  * 2. the last good result saved on the device, flagged `offline`;
- * 3. sample data, flagged by `source: 'mock'` ("Örnek veri gösteriliyor").
+ * 3. sample data, flagged by `source: 'mock'` ("Deneme bilgisi gösteriliyor").
  */
 export async function loadParkings(
   primary: ParkingProvider = new IzmirOpenDataProvider(),
@@ -35,10 +41,14 @@ export async function loadParkings(
   { signal, cache = deviceCache, retryDelaysMs = RETRY_DELAYS_MS }: LoadOptions = {},
 ): Promise<ParkingResult> {
   let error: unknown;
+  const startedAt = Date.now();
   for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
-    if (attempt > 0) await wait(retryDelaysMs[attempt - 1] ?? 0, signal);
+    if (attempt > 0) {
+      if (Date.now() - startedAt >= RETRY_START_LIMIT_MS) break;
+      await wait(retryDelaysMs[attempt - 1] ?? 0, signal);
+    }
     try {
-      const parkings = await primary.list(signal);
+      const parkings = await primary.list(signal, attempt);
       const result: ParkingResult = {
         parkings,
         source: primary.source,

@@ -18,6 +18,7 @@ import { walkMinutes, type LatLng } from '@/data/geo';
 import {
   categoryOf,
   cuisineLabels,
+  formatDistance,
   FOOD_CATEGORIES,
   kindLabel,
   parkingInfo,
@@ -35,6 +36,8 @@ type Filter = 'all' | FoodCategory;
 
 const SHOW_LIMIT = 60;
 const EASY_PARK_M = 200;
+/** Beyond this the walking time stops being a useful hint. */
+const FAR_WALK_M = 1200;
 
 /** Close car park that is not known to be full. */
 function isClose(p: RestaurantRow['parking']): boolean {
@@ -87,9 +90,12 @@ export default function RestaurantsScreen() {
     const now = new Date();
     return shown.map((r) => ({ r, ...parkingInfo(r, parkings, now) }));
   }, [shown, data]);
-  const rows = useMemo(() => rankRestaurants(built, sort).slice(0, SHOW_LIMIT), [built, sort]);
+  const rows = useMemo(
+    () => rankRestaurants(built, sort, active === 'all' ? undefined : active).slice(0, SHOW_LIMIT),
+    [built, sort, active],
+  );
 
-  const place = params.label || 'İzmir';
+  const place = params.label || t('common.izmir');
   const topEasy = sort === 'parkEase' && rows[0] ? isBest(rows[0].parking) : false;
 
   return (
@@ -179,25 +185,42 @@ export default function RestaurantsScreen() {
           </Txt>
         }
         renderItem={({ item, index }) => (
-          <Row row={item} target={target} best={index === 0 && topEasy} />
+          <Row row={item} target={target} best={index === 0 && topEasy} widened={!!widenedKm} />
         )}
       />
     </View>
   );
 }
 
-function Row({ row, target, best }: { row: RestaurantRow; target: LatLng | null; best: boolean }) {
+function Row({
+  row,
+  target,
+  best,
+  widened,
+}: {
+  row: RestaurantRow;
+  target: LatLng | null;
+  best: boolean;
+  widened: boolean;
+}) {
   const c = useColors();
   const { t } = useTranslation();
   const { r, parking, nearbyCount } = row;
   const cat = categoryOf(r);
-  const meta = [
-    kindLabel(r.kind, t),
-    ...cuisineLabels(r.cuisines, t).slice(0, 2),
-    target ? t('food.walk', { count: walkMinutes(target, r) }) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const metaParts = (walkKey: 'food.walk' | 'food.a11yWalk') =>
+    [
+      kindLabel(r.kind, t),
+      ...cuisineLabels(r.cuisines, t).slice(0, 2),
+      // Far results of a widened search: a plain distance, "~60 dk yürüme" would mislead.
+      widened && r.distanceM > FAR_WALK_M
+        ? t('food.distanceFromPoint', { distance: formatDistance(r.distanceM) })
+        : target
+          ? t(walkKey, { count: walkMinutes(target, r) })
+          : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  const meta = metaParts('food.walk');
   const near = parking
     ? t('food.nearbyParkings', { count: Math.max(nearbyCount, 1), distance: parking.distanceM })
     : t('food.noParking');
@@ -211,7 +234,11 @@ function Row({ row, target, best }: { row: RestaurantRow; target: LatLng | null;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('food.a11yRow', { name: r.name, meta, parking: parkText })}
+      accessibilityLabel={t('food.a11yRow', {
+        name: r.name,
+        meta: metaParts('food.a11yWalk'),
+        parking: parkText,
+      })}
       onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
       style={[
         asym(22, 6),

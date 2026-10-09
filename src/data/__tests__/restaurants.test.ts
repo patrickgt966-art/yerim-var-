@@ -12,6 +12,7 @@ import {
   restaurantsInCategory,
   nearbyParkingCount,
   rankRestaurants,
+  type FoodCategory,
   type RestaurantRow,
   getRestaurant,
   kindLabel,
@@ -185,7 +186,56 @@ describe('categories', () => {
 
   it('categoryOf returns the first match or null', () => {
     expect(categoryOf(mk('Balık Evi', 'restaurant'))).toBe('fish');
-    expect(categoryOf(mk('Plain', 'restaurant'))).toBeNull();
+    expect(categoryOf(mk('Plain', 'restaurant'))).toBe('lokanta');
+    expect(categoryOf(mk('Plain', 'other'))).toBeNull();
+  });
+});
+
+describe('category excludes, pubs and lokanta', () => {
+  const mk = (n: string, k: string, c?: string[]) => toRestaurant({ id: n, n, a: 1, o: 2, k, c });
+
+  it('drops hookah, club, market, hotel and similar from family categories', () => {
+    expect(matchesCategory(mk('Bıyık Nargile Evi', 'cafe'), 'cafe')).toBe(false);
+    expect(matchesCategory(mk('Kayra Beach Club', 'cafe'), 'cafe')).toBe(false);
+    expect(matchesCategory(mk('Mill Market', 'fast_food'), 'fast')).toBe(false);
+    expect(matchesCategory(mk('Mordoğan Balık Market', 'restaurant', ['seafood']), 'fish')).toBe(
+      false,
+    );
+    expect(matchesCategory(mk('Butik Otel Cafe', 'cafe'), 'cafe')).toBe(false);
+    expect(matchesCategory(mk('Köy Şarküteri', 'cafe'), 'cafe')).toBe(false);
+    expect(matchesCategory(mk('Kardeşler Büfe', 'fast_food'), 'fast')).toBe(true);
+    expect(categoryOf(mk('Mill Market', 'fast_food'))).toBeNull();
+  });
+
+  it('keeps pubs and bars in Meyhane only', () => {
+    const pub = mk('Laruv GastroPub & Cocktails', 'restaurant', ['pizza']);
+    expect(matchesCategory(pub, 'meyhane')).toBe(true);
+    expect(matchesCategory(pub, 'fast')).toBe(false);
+    expect(matchesCategory(pub, 'lokanta')).toBe(false);
+    expect(categoryOf(pub)).toBe('meyhane');
+    expect(matchesCategory(mk('Cute Gastro Pub', 'restaurant', ['burger']), 'fast')).toBe(false);
+    expect(matchesCategory(mk('Kayra Beach Club', 'bar'), 'meyhane')).toBe(true);
+    // "Barbaros" is no bar; a café named "Espresso Bar" stays a café.
+    expect(matchesCategory(mk('Barbaros Burger', 'fast_food'), 'fast')).toBe(true);
+    expect(matchesCategory(mk('Espresso Bar', 'cafe'), 'cafe')).toBe(true);
+  });
+
+  it('needs a sweet signal for dessert, not just a coffee shop', () => {
+    expect(matchesCategory(mk('Marache Coffee', 'cafe', ['ice_cream']), 'dessert')).toBe(false);
+    expect(matchesCategory(mk('Hip Hop Cafe', 'cafe', ['ice_cream']), 'dessert')).toBe(false);
+    expect(matchesCategory(mk('Kahve ve Dondurma', 'cafe', ['ice_cream']), 'dessert')).toBe(true);
+    expect(matchesCategory(mk('Gelata', 'ice_cream'), 'dessert')).toBe(true);
+  });
+
+  it('lokanta: named lokanta or a plain restaurant with no other category', () => {
+    expect(matchesCategory(mk('Plain', 'restaurant'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Plain', 'food_court'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Plain', 'cafe'), 'lokanta')).toBe(false);
+    expect(matchesCategory(mk('Esnaf Lokantası', 'cafe'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Anne Sofrası', 'restaurant'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Balık Evi', 'restaurant'), 'lokanta')).toBe(false);
+    expect(categoryOf(mk('Lezize Ev Yemekleri', 'restaurant'))).toBe('lokanta');
+    expect(categoryForQuery('ev yemekleri')).toBe('lokanta');
   });
 });
 
@@ -264,6 +314,54 @@ describe('rankRestaurants', () => {
       'bare-close',
       'rich-far',
     ]);
+  });
+});
+
+describe('rankRestaurants park ease with distance', () => {
+  const mkRow = (
+    id: string,
+    distanceM: number,
+    parking: RestaurantRow['parking'],
+    kind = 'restaurant',
+    n = id,
+  ): RestaurantRow => ({
+    r: { ...toRestaurant({ id, n, a: 1, o: 2, k: kind }), distanceM },
+    parking,
+    nearbyCount: parking ? 1 : 0,
+  });
+  const unknown = (d: number) => ({ distanceM: d, free: null, at: null });
+  const free = (d: number) => ({ distanceM: d, free: 5, at: new Date() });
+  const ids = (rows: RestaurantRow[], cat?: FoodCategory) =>
+    rankRestaurants(rows, 'parkEase', cat).map((x) => x.r.id);
+
+  it('a near restaurant with a close car park beats a far one', () => {
+    expect(ids([mkRow('far', 2216, unknown(62)), mkRow('near', 162, unknown(180))])).toEqual([
+      'near',
+      'far',
+    ]);
+  });
+
+  it('a far restaurant wins only with a clearly better park class', () => {
+    // Same class: nearer wins even with a farther car park.
+    expect(ids([mkRow('far', 1500, free(50)), mkRow('near', 200, free(300))])).toEqual([
+      'near',
+      'far',
+    ]);
+    // Fresh free vs unknown at similar distances: free wins.
+    expect(ids([mkRow('unk', 300, unknown(100)), mkRow('free', 400, free(150))])).toEqual([
+      'free',
+      'unk',
+    ]);
+  });
+
+  it('sinks street stands below restaurants in fish and meat only', () => {
+    const rows = [
+      mkRow('stand', 100, null, 'fast_food'),
+      mkRow('midye', 100, null, 'restaurant', 'Midye Dolma Ali'),
+      mkRow('real', 400, null),
+    ];
+    expect(ids(rows, 'fish')).toEqual(['real', 'stand', 'midye']);
+    expect(ids(rows).slice(0, 2).sort()).toEqual(['midye', 'stand']);
   });
 });
 

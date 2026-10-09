@@ -54,7 +54,15 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         }}
       >
         <Icon name={ICONS[route.name] ?? 'search'} color={color} strokeWidth={focused ? 2.2 : 2} />
-        <Txt variant="label" color={color} numberOfLines={1} maxFontSizeMultiplier={1.4}>
+        <Txt
+          variant="label"
+          color={color}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          maxFontSizeMultiplier={1.6}
+          style={{ textAlign: 'center' }}
+        >
           {label}
         </Txt>
         <View
@@ -63,7 +71,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             width: 18,
             borderRadius: 2,
             borderTopWidth: focused ? 3 : 0,
-            borderColor: c.accent,
+            borderColor: c.accentStrong,
             borderStyle: 'dashed',
           }}
         />
@@ -112,8 +120,8 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         variant="label"
         secondary
         style={{ textAlign: 'center', marginTop: 3 }}
-        maxFontSizeMultiplier={1.4}
-        numberOfLines={1}
+        maxFontSizeMultiplier={1.6}
+        numberOfLines={2}
         adjustsFontSizeToFit
         minimumFontScale={0.8}
       >
@@ -124,6 +132,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
 
   return (
     <View
+      accessibilityRole="tablist"
       style={{
         flexDirection: 'row',
         paddingBottom: Math.max(insets.bottom, 8),

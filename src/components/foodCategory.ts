@@ -7,6 +7,7 @@ export const CATEGORY_ICON: Record<FoodCategory, IconName> = {
   breakfast: 'egg',
   soup: 'bowl',
   meat: 'flame',
+  lokanta: 'cutlery',
   fish: 'fish',
   cafe: 'cup',
   meyhane: 'glass',
