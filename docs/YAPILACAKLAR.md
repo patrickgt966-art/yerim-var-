@@ -24,7 +24,17 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 11. İngilizce arayüz
 12. Doğal dille arama ("Alsancak'ta akşam 2 saat")
 13. ROADMAP.md güncellemesi
-14. Ana sayfadaki "Otopark / Restoran" geçiş düğmesi: şimdilik kalıyor; ileride tek arama kutusuna geçiş düşünülecek
+
+## Fikirler (yapılacaklar listesiyle birlikte sunulur)
+
+### Tek ekran ana sayfa (taslak hazır)
+- Taslak: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU → "Ana sayfa · Tek sekme (taslak)"
+- "Otopark / Restoran" geçiş düğmesi kalkar; tek arama kutusu: "Yer, yemek ya da otopark yaz" (sohbeti açar)
+- Üstte iki hızlı düğme: "Yakınımda otopark" ve "Yakınımda yemek"
+- Aktif park kartı (sadece park edilmişse), "Canın ne çekiyor?" 8 yemek kategorisi, "Yerim'e sor" örnek cümleleri
+- "Yakınında": otoparklar ve restoranlar aynı listede (otoparkta boş yer, restoranda yanındaki otopark mesafesi)
+- Ev / İş, "İzmir'de popüler" (yer + yemek aramaları karışık), ortada "Yerim!" düğmesi
+- Durum: şimdilik geçiş düğmesi kalıyor (karar: C); kullanıcı onaylarsa ana sayfa bu taslağa göre kurulur
 
 ## Akıllı arama planı
 

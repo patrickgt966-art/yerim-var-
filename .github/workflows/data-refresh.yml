@@ -1,6 +1,6 @@
 name: Data refresh
 
-# Collects static parking data (OpenStreetMap + İzmir open data portal).
+# Collects static parking data (OpenStreetMap + İzmir open data portal + Overture Maps).
 # The app bundles the result; it never calls these services itself.
 
 on:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['claude/**']
-    paths: ['scripts/fetch-sources.mjs', '.github/workflows/data-refresh.yml']
+    paths: ['scripts/fetch-sources.mjs', 'scripts/fetch-overture.py', '.github/workflows/data-refresh.yml']
 
 permissions:
   contents: write
@@ -30,6 +30,11 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/fetch-sources.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyarrow shapely
+      - run: python scripts/fetch-overture.py
       - run: cat data/sources-report.md >> "$GITHUB_STEP_SUMMARY"
 
       # Script changes on a working branch: commit the data to that branch.

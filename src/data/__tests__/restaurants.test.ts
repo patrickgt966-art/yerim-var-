@@ -186,6 +186,12 @@ describe('categories', () => {
     expect(matchesCategory(mk('Plain', 'restaurant'), 'fish')).toBe(false);
   });
 
+  it('puts bakeries in breakfast and pastry shops in dessert', () => {
+    expect(matchesCategory(mk('Köşe Fırın', 'bakery'), 'breakfast')).toBe(true);
+    expect(matchesCategory(mk('Köşe', 'pastry'), 'dessert')).toBe(true);
+    expect(matchesCategory(mk('Köşe', 'confectionery'), 'dessert')).toBe(true);
+  });
+
   it('categoryOf returns the first match or null', () => {
     expect(categoryOf(mk('Balık Evi', 'restaurant'))).toBe('fish');
     expect(categoryOf(mk('Plain', 'restaurant'))).toBe('lokanta');
