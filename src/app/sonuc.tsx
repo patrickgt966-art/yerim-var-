@@ -133,6 +133,18 @@ export default function ResultsScreen() {
             onPress={() => setFilter('nearPier')}
           />
         )}
+        {target && (
+          <Chip
+            label={t('food.nearby')}
+            selected={false}
+            onPress={() =>
+              router.push({
+                pathname: '/restoranlar',
+                params: { lat: String(target.lat), lng: String(target.lng), label },
+              })
+            }
+          />
+        )}
         {/* "Şarj" is hidden until the data source reports charging points. */}
       </ScrollView>
     </View>

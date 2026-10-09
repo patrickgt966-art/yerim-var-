@@ -19,7 +19,15 @@ export type IconName =
   | 'arch'
   | 'ferry'
   | 'arrow'
-  | 'external';
+  | 'external'
+  | 'cup'
+  | 'fish'
+  | 'flame'
+  | 'egg'
+  | 'glass'
+  | 'burger'
+  | 'icecream'
+  | 'cutlery';
 
 type Props = { name: IconName; size?: number; color: string; strokeWidth?: number };
 
@@ -98,6 +106,44 @@ export function Icon({ name, size = 24, color, strokeWidth = 2 }: Props) {
       )}
       {name === 'arrow' && <Path d="M5 12h14M13 6l6 6-6 6" {...common} />}
       {name === 'external' && <Path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" {...common} />}
+      {name === 'cup' && (
+        <>
+          <Path
+            d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16"
+            {...common}
+          />
+          <Path d="M8 3v2M12 3v2" {...common} />
+        </>
+      )}
+      {name === 'fish' && (
+        <>
+          <Path d="M3 12c3-5 9-6 13-3l5-3v12l-5-3c-4 3-10 2-13-3z" {...common} />
+          <Circle cx={8} cy={11} r={0.6} {...common} />
+        </>
+      )}
+      {name === 'flame' && (
+        <Path
+          d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z"
+          {...common}
+        />
+      )}
+      {name === 'egg' && (
+        <Path d="M12 3c-3.5 0-6.5 6-6.5 10.5a6.5 6.5 0 0 0 13 0C18.5 9 15.5 3 12 3z" {...common} />
+      )}
+      {name === 'glass' && <Path d="M5 4h14l-7 8zM12 12v8M8 20h8" {...common} />}
+      {name === 'burger' && (
+        <Path
+          d="M4 11a8 6 0 0 1 16 0zM3 15h18M4 15.5h16v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"
+          {...common}
+        />
+      )}
+      {name === 'icecream' && <Path d="M7.5 12a4.5 4.5 0 1 1 9 0zM8 12l4 9 4-9" {...common} />}
+      {name === 'cutlery' && (
+        <Path
+          d="M7 3v7M4.5 3v5a2.5 2.5 0 0 0 5 0V3M7 11v10M17 21V3c-2.5 1.5-3 5-3 8h3"
+          {...common}
+        />
+      )}
     </Svg>
   );
 }
