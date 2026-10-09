@@ -99,7 +99,7 @@ Sıra:
 
 ## Bekleyenler ve çalışma kuralı
 
-- [ ] [PR #3](https://github.com/patrickgt966-art/yerim-var-/pull/3)'ü birleştirmek (son çalışmaların hepsi orada).
+- [x] PR'lar birleştirildi (#3–#7).
 - Çalışma kuralı: lider Opus planlar ve karar verir; işler `.claude/agents/` altındaki üç Sonnet ajanına dağıtılır:
   - `sonnet-researcher`: kodda ve web'de araştırma (dosya değiştirmez).
   - `sonnet-worker`: kodu yazar, kontrolleri çalıştırır (commit etmez).
@@ -111,7 +111,8 @@ Sıra:
 - [ ] Apple Developer hesabı (99 $/yıl). Apple Haritalar özellikleri ve TestFlight için gerekli.
 - [ ] `EXPO_TOKEN` sırrı ve "iOS build check" çalıştırmak (isteğe bağlı derleme doğrulaması).
 - [ ] GitHub ayarı: "Allow GitHub Actions to create and approve pull requests" (aylık veri PR'ları için).
-- [ ] Gizlilik politikası sayfası (GitHub Pages yeterli) ve App Store ekran görüntüleri.
+- [x] Gizlilik politikası sayfası: `docs/gizlilik.html` (Türkçe + İngilizce). Yayınlamak için GitHub'da Settings → Pages → "Deploy from a branch", `main` ve `/docs` seçilir; adres `https://patrickgt966-art.github.io/yerim-var-/gizlilik.html` olur.
+- [ ] App Store ekran görüntüleri.
 - [ ] Gerçek bundle ID.
 - [ ] TestFlight ile birkaç kişiye beta.
 - [ ] VoiceOver ve Dynamic Type ile cihazda erişilebilirlik turu.

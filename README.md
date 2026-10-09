@@ -98,7 +98,7 @@ Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve akti
 
 - [ ] Apple Developer hesabı
 - [ ] Gerçek bundle ID (şu an `com.yerimvar.app`, taslak)
-- [ ] Gizlilik politikası URL'si (App Store Connect için zorunlu)
+- [ ] Gizlilik politikası URL'si (App Store Connect için zorunlu). Metin hazır: `docs/gizlilik.html`; GitHub Pages açılınca adres `https://patrickgt966-art.github.io/yerim-var-/gizlilik.html` olur.
 - [ ] App Store ekran görüntüleri (6.9" ve 6.5")
 - [ ] İzmir API'sinin güncelleme sıklığı ve yanıt başlıkları (bkz. `docs/data-source.md`)
 - [ ] Veri lisansının portal üzerinden doğrulanması

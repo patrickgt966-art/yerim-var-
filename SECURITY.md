@@ -15,7 +15,7 @@ Açığın ne olduğunu, nasıl tekrar üretileceğini ve olası etkisini yaz. �
 
 ## Kapsam
 
-Uygulamanın hesabı ve sunucusu yoktur. Ağa giden tek istek İzmir Büyükşehir Belediyesi açık veri API'sinedir. Özellikle ilgilendiklerimiz:
+Uygulamanın hesabı ve sunucusu yoktur. Ağa giden istekler İzmir Büyükşehir Belediyesi açık veri API'sine ve Apple Haritalar'a (harita, adres ve yer araması) gider; ayrıntılar [gizlilik politikasında](docs/gizlilik.html). Özellikle ilgilendiklerimiz:
 
 - Konumun veya cihazdaki verilerin (favoriler, aktif park) cihaz dışına sızması
 - API yanıtındaki kötü niyetli veriyle uygulamanın çökertilmesi veya yanıltıcı içerik gösterilmesi

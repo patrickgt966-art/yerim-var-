@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yerim Var · Gizlilik Politikası</title>
+<style>
+  :root { --bg: #F4F7F8; --text: #0B3C49; --muted: #5C7580; --line: #D3DCDF; --accent: #FF8A1F; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #071E25; --text: #E8F0F2; --muted: #9DB3BB; --line: #1E3C46; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 32px 0 8px; }
+  p, li { color: var(--text); }
+  .muted { color: var(--muted); font-size: 14px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+  a { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+<h1>Gizlilik Politikası</h1>
+<p class="muted">Yerim Var: Otopark Bul · Son güncelleme: 9 Ekim 2026 · <a href="#en">English below</a></p>
+
+<p>Yerim Var, İzmir'de otopark ve gideceğin yerin yanındaki park yerini bulmana yardım eden açık kaynaklı bir uygulamadır. Hesap, sunucu, analitik, reklam ve takip yoktur. Senden kişisel veri toplamıyor, saklamıyor ve kimseye satmıyoruz.</p>
+
+<h2>Cihazında kalan bilgiler</h2>
+<ul>
+  <li><strong>Favorilerin</strong> (otoparklar ve restoranlar), <strong>ev/iş kayıtların</strong> ve <strong>aktif park bilgin</strong> yalnızca telefonunda saklanır. Uygulamayı silince bunlar da silinir.</li>
+  <li>Son indirilen otopark doluluk verisi, internet yokken gösterebilmek için telefonunda önbelleğe alınır.</li>
+</ul>
+
+<h2>Konum</h2>
+<p>Konumunu yalnızca uygulama açıkken ve sen izin verirsen, yakınındaki otoparkları ve restoranları göstermek, yürüme mesafesini hesaplamak ve park ettiğin yeri kaydetmek için kullanırız. Konumun bize gönderilmez; mesafe hesapları telefonunda yapılır. Arka planda konum kullanılmaz.</p>
+
+<h2>Uygulamanın bağlandığı servisler</h2>
+<table>
+  <tr><th>Servis</th><th>Ne gönderilir</th><th>Neden</th></tr>
+  <tr><td>İzmir Büyükşehir Belediyesi açık veri API'si</td><td>Kişisel veri içermeyen standart bir istek</td><td>Otoparkların doluluk bilgisini almak</td></tr>
+  <tr><td>Apple Haritalar (harita, adres ve yer araması)</td><td>Arama kutusuna yazdığın metin (yer aramasında arama alanı İzmir'in tamamıdır, konumun gönderilmez); otopark aramasında arama noktasının (konumun ya da aradığın yerin) ~100 m'ye yuvarlanmış yaklaşık bölgesi; harita gösterirken ekrandaki bölgenin harita görüntüleri</td><td>Harita göstermek, yer ve otopark bulmak</td></tr>
+</table>
+<p>Bu servisler, her internet bağlantısında olduğu gibi IP adresini görebilir. Apple'ın verileri nasıl işlediği için <a href="https://www.apple.com/legal/privacy/">Apple Gizlilik Politikası</a>'na bakabilirsin.</p>
+
+<h2>Dış bağlantılar</h2>
+<p>Bir restoranın telefonunu aradığında, web sitesini ya da Instagram sayfasını açtığında ilgili uygulama ya da site açılır. Yol tarifi istediğinde hedefin (yürüyüş tarifinde başlangıç noktanın da) koordinatları Apple Haritalar uygulamasına aktarılır. Oradaki işlemler o hizmetin kendi gizlilik kurallarına tabidir.</p>
+<p>Bir otoparkın bilgisini hatalı diye bildirirsen GitHub'da otoparkın adı ve kimliği önceden doldurulmuş bir kayıt sayfası açılır. Göndermezsen hiçbir şey paylaşılmaz. GitHub kayıtları herkese açıktır; içine kişisel bilgi yazma.</p>
+
+<h2>Çocuklar</h2>
+<p>Uygulama kimseden kişisel veri toplamadığı için çocuklardan da toplamaz.</p>
+
+<h2>Değişiklikler ve iletişim</h2>
+<p>Favorilerini uygulamadan tek tek kaldırabilir, tüm bilgileri uygulamayı silerek silebilirsin. Bu politika değişirse bu sayfayı güncelleriz. Sorular için <a href="https://github.com/patrickgt966-art/yerim-var-/issues">GitHub sayfamızdan</a> bize yazabilirsin. Uygulamanın kaynak kodu açıktır; ne yaptığını herkes kontrol edebilir.</p>
+
+<hr>
+
+<h1 id="en">Privacy Policy</h1>
+<p class="muted">Yerim Var: Otopark Bul · Last updated: 9 October 2026</p>
+
+<p>Yerim Var is an open-source app that helps you find parking in İzmir, including next to the place you are going. There are no accounts, servers, analytics, ads or tracking. We do not collect, store or sell personal data.</p>
+
+<h2>Data that stays on your device</h2>
+<ul>
+  <li>Your <strong>favourites</strong> (car parks and restaurants), <strong>home/work places</strong> and <strong>active parking</strong> are stored only on your phone and are deleted with the app.</li>
+  <li>The last downloaded occupancy data is cached on your phone so it can be shown offline.</li>
+</ul>
+
+<h2>Location</h2>
+<p>With your permission, your location is used only while the app is open, to show nearby car parks and restaurants, calculate walking distances and save where you parked. It is never sent to us; distances are calculated on your phone. No background location is used.</p>
+
+<h2>Services the app connects to</h2>
+<table>
+  <tr><th>Service</th><th>What is sent</th><th>Why</th></tr>
+  <tr><td>İzmir Metropolitan Municipality open data API</td><td>A standard request with no personal data</td><td>Car park occupancy</td></tr>
+  <tr><td>Apple Maps (map, address and place search)</td><td>The text you type in search (place search covers all of İzmir and does not include your location); for car park search, the approximate area of the search point (your location or the place you searched), rounded to ~100 m; map imagery for the area shown on screen</td><td>Showing the map, finding places and car parks</td></tr>
+</table>
+<p>Like any internet connection, these services can see your IP address. See the <a href="https://www.apple.com/legal/privacy/">Apple Privacy Policy</a> for how Apple handles data.</p>
+
+<h2>External links</h2>
+<p>Calling a restaurant or opening its website or Instagram page opens the relevant app or site. Asking for directions passes the destination coordinates (and, for walking directions, the starting point) to the Apple Maps app. These follow their own privacy rules.</p>
+<p>If you report wrong car park data, GitHub opens with the car park's name and ID prefilled. Nothing is shared unless you submit it. GitHub issues are public, so do not include personal information.</p>
+
+<h2>Children</h2>
+<p>The app collects no personal data from anyone, including children.</p>
+
+<h2>Changes and contact</h2>
+<p>You can remove favourites one by one in the app, and delete everything by deleting the app. If this policy changes, we will update this page. Questions: <a href="https://github.com/patrickgt966-art/yerim-var-/issues">GitHub issues</a>. The source code is public, so anyone can check what the app does.</p>
+</main>
+</body>
+</html>
