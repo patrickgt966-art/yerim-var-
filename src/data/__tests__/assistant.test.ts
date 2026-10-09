@@ -35,6 +35,34 @@ describe('assistant', () => {
     expect(c3.ctx.requireParking).toBe(true);
     expect(c3.ctx.cat).toBe('fish');
     expect(c3.ctx.place?.label).toBe('Bornova');
+    expect(
+      c3.reply.actions.some(
+        (a) =>
+          a.kind === 'refine' &&
+          (a.patch as { requireParking?: boolean }).requireParking === false,
+      ),
+    ).toBe(true);
+  });
+
+  it('puts the no-ratings note before the found text', async () => {
+    const r = await answer('bornovadaki en iyi etçi', emptyContext('food'), deps);
+    expect(r.reply.text.startsWith('chat.noRatings\n')).toBe(true);
+  });
+
+  it('keeps the place when the user says "burada"', async () => {
+    const c = await answer('Konak', emptyContext('park'), deps);
+    const r = await answer('burada yemek', c.ctx, deps);
+    expect(r.ctx.place?.label).toBe(c.ctx.place?.label);
+    expect(r.ctx.section).toBe('food');
+  });
+
+  it('treats a parking word with a place as a car-park search', async () => {
+    const c = await answer('bornova balık', emptyContext('food'), deps);
+    const r = await answer('Alsancak otopark', c.ctx, deps);
+    expect(r.ctx.section).toBe('park');
+    expect(r.ctx.requireParking).toBe(false);
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+    expect(r.reply.cards.every((x) => x.kind === 'parking')).toBe(true);
   });
 
   it('offers to widen when no restaurant has parking close by', async () => {
@@ -77,5 +105,11 @@ describe('assistant', () => {
       const p = parkings.find((x) => x.id === c.id)!;
       expect(c.free).toBe(visibleFree(p));
     }
+  });
+
+  it('finds a restaurant by name', async () => {
+    const r = await answer('Bülent Börek', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.foundName')).toBe(true);
+    expect(r.reply.cards[0]?.name.startsWith('Bülent Börek')).toBe(true);
   });
 });

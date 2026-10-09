@@ -88,7 +88,7 @@ const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan 
 const QUALITY = words('saglam guzel lezzetli meshur unlu kaliteli harika efsane en iyi');
 const PARKING = words('park parki parkli parkyeri');
 const NEAR_ME = words(
-  'yakinimda yakinda yakindaki yakin burada buraya burda etrafimda cevremde',
+  'yakinimda yakinda yakindaki yakin etrafimda cevremde',
 );
 const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok');
 

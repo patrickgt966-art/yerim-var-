@@ -3,6 +3,7 @@ import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
 import { parseQuery } from '@/data/intent';
 import {
+  allRestaurants,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
@@ -10,7 +11,7 @@ import {
   withParkingWithin,
   type FoodCategory,
 } from '@/data/restaurants';
-import { searchPlaces } from '@/data/search';
+import { fold, searchPlaces } from '@/data/search';
 import type { Parking } from '@/data/types';
 import { openState } from '@/lib/openNow';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
@@ -145,6 +146,46 @@ export async function answer(
     );
   }
 
+  const folded = fold(text);
+  if (folded.split(' ').length >= 2) {
+    const matches = allRestaurants().filter((r) => fold(r.name).startsWith(folded));
+    const first = matches[0];
+    if (first) {
+      const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+      const nearest = matches
+        .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
+        .sort((a, b) => a.distanceM - b.distanceM)
+        .slice(0, MAX_CARDS);
+      const rows = buildRestaurantRows(
+        nearest,
+        deps.parkings,
+        target,
+        deps.now ?? new Date(),
+      );
+      const cards: ChatCard[] = rows.map((row) => ({
+        kind: 'restaurant',
+        id: row.r.id,
+        name: row.r.name,
+        distanceM: row.r.distanceM,
+        parkingM: row.parking?.distanceM ?? null,
+        open: 'unknown',
+      }));
+      const actions: ChatAction[] = ctx.place
+        ? [
+            {
+              kind: 'refine',
+              label: t('chat.actFoodHere'),
+              patch: { section: 'food', cat: null, dish: null },
+            },
+          ]
+        : [];
+      return plain(
+        { text: t('chat.foundName', { name: first.name, count: matches.length }), cards, actions },
+        ctx,
+      );
+    }
+  }
+
   const next: ChatContext = { ...ctx };
   if (it.cat) {
     next.cat = it.cat;
@@ -155,8 +196,13 @@ export async function answer(
     next.dish = null;
     next.section = 'food';
   }
-  if (it.mentionsParking) {
-    if (next.section === 'food') next.requireParking = true;
+  if (it.mentionsParking && (it.cat || it.food)) {
+    next.requireParking = true;
+  } else if (it.mentionsParking && (it.district || it.placeQuery)) {
+    next.section = 'park';
+    next.requireParking = false;
+  } else if (it.mentionsParking) {
+    if (ctx.section === 'food') next.requireParking = true;
     else next.section = 'park';
   }
 
@@ -265,7 +311,7 @@ function runFood(
           what,
           withPark: withPark.length,
         });
-    if (quality) text += ' ' + t('chat.noRatings');
+    if (quality) text = t('chat.noRatings') + '\n' + text;
     const cards: ChatCard[] = shown.slice(0, MAX_CARDS).map((row) => ({
       kind: 'restaurant',
       id: row.r.id,
@@ -280,6 +326,12 @@ function runFood(
         kind: 'refine',
         label: t('chat.actOnlyParking'),
         patch: { requireParking: true },
+      });
+    } else {
+      actions.push({
+        kind: 'refine',
+        label: t('chat.actDropParking'),
+        patch: { requireParking: false },
       });
     }
     actions.push({

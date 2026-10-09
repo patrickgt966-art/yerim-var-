@@ -182,6 +182,7 @@ describe('localPart', () => {
   it('flags near-me and parking mentions', () => {
     expect(search('yakınımda balıkçı').nearMe).toBe(true);
     expect(search('Bornova balıkçı').nearMe).toBe(false);
+    expect(parseQuery('burada yemek')).toMatchObject({ nearMe: false });
     const r = search('otoparklı olsun');
     expect(r).toMatchObject({ cat: null, placeQuery: '', mentionsParking: true });
   });
