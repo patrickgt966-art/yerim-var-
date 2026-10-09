@@ -248,8 +248,11 @@ export default function SearchScreen() {
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
+    // The deferred `split` may lag behind the text box; read the current text.
+    const current = food ? splitPlaceAndCategory(query) : null;
+    const pickNow = (h: SearchHit) => go(h, h.name, current?.cat);
     if (food) {
-      const cat = split ? null : categoryForQuery(q);
+      const cat = current ? null : categoryForQuery(q);
       if (cat) {
         if (locating) return;
         setLocating(true);
@@ -258,14 +261,14 @@ export default function SearchScreen() {
       }
     }
     // Suggestions that lag behind the text box are not trusted on submit.
-    if (settled && hits[0]) return pick(hits[0]);
+    if (settled && hits[0]) return pickNow(hits[0]);
     if (settled && food && foodMatches[0])
       return router.push({ pathname: '/restoran/[id]', params: { id: foodMatches[0].id } });
     setBusy(true);
     let hit: LatLng | null = null;
     try {
       const [fromApple] = await searchApplePlaces(q);
-      if (fromApple) return pick(fromApple);
+      if (fromApple) return pickNow(fromApple);
       hit = await geocode(q, GEOCODE_TIMEOUT_MS);
     } finally {
       setBusy(false);

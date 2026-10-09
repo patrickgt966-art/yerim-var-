@@ -14,12 +14,13 @@ import { Chip } from './Chip';
  */
 export function ModeChips({ mode, onChange }: { mode: ParkMode; onChange: (m: ParkMode) => void }) {
   const { t } = useTranslation();
-  const { data } = useParkings();
-  const hidden = !data || !hasRealTariffs(data.parkings);
+  const { data, isPlaceholderData } = useParkings();
+  // The placeholder has no live records yet: neither hide the chips nor reset the mode.
+  const hidden = !isPlaceholderData && (!data || !hasRealTariffs(data.parkings));
   // With the chips hidden nobody could switch back from "2 saat", so fall back to "Şimdi".
   useEffect(() => {
-    if (data && hidden && mode !== 'now') onChange('now');
-  }, [data, hidden, mode, onChange]);
+    if (data && !isPlaceholderData && hidden && mode !== 'now') onChange('now');
+  }, [data, isPlaceholderData, hidden, mode, onChange]);
   if (hidden) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>

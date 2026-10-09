@@ -66,22 +66,14 @@ export const CURATED_PLACES: CuratedPlace[] = [
     lng: 27.0783,
     aliases: ['aassm', 'saygun sanat merkezi'],
   },
-  // Kültürpark centre; the AKM building lies inside the park.
+  // Kültürpark centre; the Atatürk Kültür Merkezi (AKM) lies inside the park.
   {
     name: 'Kültürpark',
     district: 'Alsancak',
     kind: 'landmark',
     lat: 38.4279,
     lng: 27.1455,
-    aliases: ['fuar', 'izmir fuari', 'izmir fuar', 'fuar izmir'],
-  },
-  {
-    name: 'Atatürk Kültür Merkezi (Kültürpark)',
-    district: 'Alsancak',
-    kind: 'landmark',
-    lat: 38.4279,
-    lng: 27.1455,
-    aliases: ['akm', 'ataturk kultur merkezi'],
+    aliases: ['fuar', 'izmir fuari', 'izmir fuar', 'fuar izmir', 'akm', 'ataturk kultur merkezi'],
   },
   // Beside the "Liman -1" street car park on Liman Caddesi.
   {
@@ -90,15 +82,12 @@ export const CURATED_PLACES: CuratedPlace[] = [
     kind: 'pier',
     lat: 38.4408,
     lng: 27.1424,
-    aliases: ['kruvaziyer'],
-  },
-  {
-    name: 'Alsancak Kruvaziyer Terminali',
-    district: 'Alsancak',
-    kind: 'pier',
-    lat: 38.4408,
-    lng: 27.1424,
-    aliases: ['cruise terminal'],
+    aliases: [
+      'kruvaziyer',
+      'kruvaziyer terminali',
+      'alsancak kruvaziyer terminali',
+      'cruise terminal',
+    ],
   },
   // OSM "İzmir Şehirlerarası Otobüs Terminali".
   {

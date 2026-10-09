@@ -162,7 +162,18 @@ function buildIndex(): Entry[] {
   const curated = CURATED_PLACES.map((p) =>
     entry({ name: p.name, lat: p.lat, lng: p.lng, kind: p.kind, district: p.district }, p.aliases),
   );
-  return [...popular, ...curated, ...places, ...parkings];
+  // A curated place stands for any other entry within 300 m that has its name
+  // or one of its aliases (the OSM "Efes", "Kültürpark"): list it once.
+  const dup = (e: Entry) =>
+    curated.some(
+      (c) => (c.key === e.key || c.aliases.includes(e.key)) && distanceMeters(c, e) <= SAME_PLACE_M,
+    );
+  return [
+    ...popular.filter((e) => !dup(e)),
+    ...curated,
+    ...places.filter((e) => !dup(e)),
+    ...parkings.filter((e) => !dup(e)),
+  ];
 }
 
 let towns: (LatLng & { name: string })[] | null = null;

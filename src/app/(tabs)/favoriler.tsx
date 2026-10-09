@@ -121,7 +121,7 @@ function RestaurantFavorites() {
   const { t } = useTranslation();
   const ids = useApp((s) => s.favoriteRestaurants);
   const toggle = useApp((s) => s.toggleFavoriteRestaurant);
-  const { data } = useParkings();
+  const { data, isPlaceholderData } = useParkings();
   // Ids no longer in the bundled data are skipped silently.
   const items = useMemo(
     () => ids.map((id) => getRestaurant(id)).filter((r): r is Restaurant => r != null),
@@ -142,7 +142,7 @@ function RestaurantFavorites() {
               count: Math.max(nearbyCount, 1),
               distance: parking.distanceM,
             })
-          : data
+          : data && !isPlaceholderData
             ? t('food.noParking')
             : '';
         const free =

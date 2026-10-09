@@ -82,7 +82,8 @@ export default function ResultsScreen() {
   }, [target, t]);
 
   const nearMode = firstParam(params.near) === '1';
-  const { ranked, data, isLoading, isError, isFetching, refetch } = useRanked(target);
+  const { ranked, data, isLoading, isPlaceholderData, isError, isFetching, refetch } =
+    useRanked(target);
   // Own flag so the spinner shows only for pull-to-refresh, not the 120 s poll.
   const [pulling, setPulling] = useState(false);
   const onPullRefresh = () => {
@@ -111,7 +112,12 @@ export default function ResultsScreen() {
     return f == null || sum == null ? sum : sum + f;
   }, 0);
   // Cached counts are too old and the download is still running.
-  const liveIncoming = isFetching && !!data && data.source !== 'mock' && lacksFreshCounts(ranked);
+  // While only the bundled car parks show (first download running), say live counts are coming.
+  const liveIncoming =
+    isFetching &&
+    !!data &&
+    data.source !== 'mock' &&
+    ((isPlaceholderData && ranked.length > 0) || lacksFreshCounts(ranked));
   const anyIndoorKnown = ranked.some((p) => p.isIndoor != null);
   const anyNearPier = ranked.some((p) => p.nearPier);
 
@@ -291,7 +297,7 @@ export default function ResultsScreen() {
           )}
           ListEmptyComponent={
             <View style={{ padding: 20, gap: 12 }}>
-              {isLoading || !target ? (
+              {isLoading || isPlaceholderData || !target ? (
                 <Txt secondary>{t('results.loading')}</Txt>
               ) : isError ? (
                 <>

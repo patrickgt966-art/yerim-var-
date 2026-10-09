@@ -1,5 +1,6 @@
 import '@/i18n';
 
+import { distanceMeters } from '../geo';
 import { fold, searchPlaces, splitPlaceAndCategory } from '../search';
 
 describe('fold', () => {
@@ -145,9 +146,9 @@ describe('curated places and aliases', () => {
     ['folkart', 'Folkart Towers'],
     ['manas bulvarı', 'Manas Bulvarı'],
     ['aassm', 'Ahmed Adnan Saygun Sanat Merkezi'],
-    ['akm', 'Atatürk Kültür Merkezi (Kültürpark)'],
+    ['akm', 'Kültürpark'],
     ['alsancak limanı', 'Alsancak Limanı'],
-    ['kruvaziyer terminali', 'Alsancak Kruvaziyer Terminali'],
+    ['kruvaziyer terminali', 'Alsancak Limanı'],
     ['otogar', 'İzmir Otogarı'],
     ['bus station', 'İzmir Otogarı'],
     ['hisarönü', 'Hisarönü'],
@@ -177,4 +178,18 @@ describe('splitPlaceAndCategory with new food words', () => {
   ])('%s', (q, placeQuery, cat) => {
     expect(splitPlaceAndCategory(q)).toEqual({ placeQuery, cat });
   });
+});
+
+describe('curated places are listed once', () => {
+  it.each(['efes', 'ephesus', 'liman', 'alsancak limanı', 'port', 'fuar', 'akm', 'kültürpark'])(
+    '%s has no two hits within 150 m (car parks aside)',
+    (q) => {
+      const hits = searchPlaces(q, 10);
+      for (const [i, a] of hits.entries())
+        for (const b of hits.slice(i + 1))
+          expect(distanceMeters(a, b) <= 150 && a.kind === b.kind && a.kind !== 'parking').toBe(
+            false,
+          );
+    },
+  );
 });

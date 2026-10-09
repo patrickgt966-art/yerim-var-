@@ -64,7 +64,7 @@ export default function RestaurantsScreen() {
     label?: string | string[];
     cat?: string | string[];
   }>();
-  const { data } = useParkings();
+  const { data, isPlaceholderData } = useParkings();
   const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilter] = useState<Filter>(initial);
   const [sort, setSort] = useState<RestaurantSort>('parkEase');
@@ -89,8 +89,14 @@ export default function RestaurantsScreen() {
     return buildRestaurantRows(shown, data?.parkings ?? [], target, new Date());
   }, [shown, data, target]);
   const rows = useMemo(
-    () => rankRestaurants(built, sort, active === 'all' ? undefined : active).slice(0, SHOW_LIMIT),
-    [built, sort, active],
+    () =>
+      rankRestaurants(
+        built,
+        // Without live data the park-ease order would jump once it arrives.
+        isPlaceholderData ? 'distance' : sort,
+        active === 'all' ? undefined : active,
+      ).slice(0, SHOW_LIMIT),
+    [built, sort, active, isPlaceholderData],
   );
 
   const place = firstParam(params.label) || t('common.izmir');
@@ -183,7 +189,13 @@ export default function RestaurantsScreen() {
           </Txt>
         }
         renderItem={({ item, index }) => (
-          <Row row={item} target={target} best={index === 0 && topEasy} widened={!!widenedKm} />
+          <Row
+            row={item}
+            target={target}
+            best={index === 0 && topEasy}
+            widened={!!widenedKm}
+            parkPending={isPlaceholderData}
+          />
         )}
       />
     </View>
@@ -195,11 +207,13 @@ function Row({
   target,
   best,
   widened,
+  parkPending,
 }: {
   row: RestaurantRow;
   target: LatLng | null;
   best: boolean;
   widened: boolean;
+  parkPending: boolean;
 }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -221,7 +235,9 @@ function Row({
   const meta = metaParts('food.walk');
   const near = parking
     ? t('food.nearbyParkings', { count: Math.max(nearbyCount, 1), distance: parking.distanceM })
-    : t('food.noParking');
+    : parkPending
+      ? ''
+      : t('food.noParking');
   const free =
     parking && parking.free != null && parking.at
       ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
