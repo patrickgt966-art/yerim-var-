@@ -422,6 +422,8 @@ export function categoryOf(r: Restaurant): FoodCategory | null {
 
 /** Search rings for a category: widen until enough places turn up. */
 export const CATEGORY_RADII_M = [1000, 3000, 6000];
+/** Wider rings for when the user asks to search a larger area. */
+export const WIDE_RADII_M = [6000, 15000];
 const CATEGORY_MIN_RESULTS = 5;
 
 /**
@@ -432,10 +434,11 @@ export function restaurantsInCategory(
   target: LatLng,
   cat: FoodCategory,
   list?: Restaurant[],
+  radii: readonly number[] = CATEGORY_RADII_M,
 ): { items: NearbyRestaurant[]; radiusM: number } {
   let items: NearbyRestaurant[] = [];
-  let radiusM = CATEGORY_RADII_M[0]!;
-  for (const r of CATEGORY_RADII_M) {
+  let radiusM = radii[0]!;
+  for (const r of radii) {
     radiusM = r;
     items = restaurantsNear(target, r, 5000, list).filter((x) => matchesCategory(x, cat));
     if (items.length >= CATEGORY_MIN_RESULTS) break;
@@ -531,6 +534,13 @@ export function rankRestaurants(
     if (ia !== ib) return ib - ia;
     return a.r.distanceM - b.r.distanceM;
   });
+}
+
+/** Rows whose nearest car park is known and within `maxM` metres. */
+export function withParkingWithin<
+  T extends { parking: { distanceM: number } | null | undefined },
+>(rows: T[], maxM: number): T[] {
+  return rows.filter((row) => !!row.parking && row.parking.distanceM <= maxM);
 }
 
 const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
