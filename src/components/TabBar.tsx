@@ -3,9 +3,8 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
-import { HIT, useColors } from '@/theme';
+import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
-import { CarMark } from './CarMark';
 import { Icon, type IconName } from './Icon';
 import { Txt } from './Txt';
 
@@ -72,37 +71,53 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
     );
   });
 
+  // "Yerim!": the app's promise as the main action, in the brand's one orange button.
   const center = (
-    <View key="find" style={{ flex: 1, alignItems: 'center' }}>
+    <View key="find" style={{ flex: 1.5, alignItems: 'center' }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t('tabs.findNow')}
-        accessibilityHint="Konumuna en yakın boş yeri olan otoparkı gösterir"
+        accessibilityLabel={`${t('tabs.yerim')} ${t('tabs.findNow')}`}
+        accessibilityHint={t('tabs.findHint')}
         onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
-        style={{
-          marginTop: -26,
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          borderWidth: 4,
-          borderColor: c.bg,
-          backgroundColor: '#0B3C49',
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#0B3C49',
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-        }}
+        style={({ pressed }) => [
+          asym(20, 6),
+          {
+            marginTop: -22,
+            minWidth: 76,
+            maxWidth: '96%',
+            height: 54,
+            paddingHorizontal: 10,
+            backgroundColor: c.accent,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.85 : 1,
+            shadowColor: '#0B3C49',
+            shadowOpacity: 0.28,
+            shadowRadius: 9,
+            shadowOffset: { width: 0, height: 6 },
+          },
+        ]}
       >
-        <CarMark size={32} glass="#0B3C49" wheels={false} lights={false} />
+        <Txt
+          style={{ fontFamily: fonts.display, fontSize: 19, color: brand.navy }}
+          maxFontSizeMultiplier={1.2}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          {t('tabs.yerim')}
+        </Txt>
       </Pressable>
       <Txt
         variant="label"
-        style={{ textAlign: 'center', marginTop: 2 }}
+        secondary
+        style={{ textAlign: 'center', marginTop: 3 }}
         maxFontSizeMultiplier={1.4}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
-        {t('tabs.findNow')}
+        {t('tabs.yerimHint')}
       </Txt>
     </View>
   );
