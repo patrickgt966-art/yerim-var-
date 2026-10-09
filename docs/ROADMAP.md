@@ -9,7 +9,7 @@ Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya. Her deği�
 - [ ] **Yürüme süresinin kontrolü.** Şu an kuş uçuşu mesafeden hesaplanıyor, bu yüzden olduğundan kısa çıkabilir. Gerçek yürüme süreleriyle karşılaştırılıp bir düzeltme katsayısı eklenecek. Uygulamanın kendi derlemesinde gerçek süre Apple'dan alınacak (`MKDirections`, yürüyüş).
 - [ ] **Belediyenin Şubat 2026 tarifelerini bağlamak.** Veri `data/raw/` içindeki "Otopark Ücretleri" XLSX'inde. Otopark adıyla eşleştirilip `data/tariffs.json`'a kaynak ve tarihle eklenecek. Böylece fiyat ve "2 saat park" tahmini gerçek veriyle çalışır.
 - [x] **Fazla genel otopark adlarını ayıklamak.** "Çocuk parkı", "Halk Park", "Merkez", "Pazaryeri", "Atatürk Büstü" gibi her yerde olan adlar ve apartman/site adları artık "X yakını" için kullanılmıyor (`GENERIC_LANDMARK`, `scripts/fetch-sources.mjs`). 37 otoparkın adı değişti; 22'si yakınında uygun yer olmadığı için "Adsız otopark" oldu.
-- [ ] **Kontrol edilmemiş son değişiklikler:** veri görevinde `git pull --rebase` ve ana dalla birleştirme.
+- [x] **Kontrol edilmemiş son değişiklikler:** veri görevinde `git pull --rebase`, ana dalla birleştirme ve restoranlarda 50 m birleştirme. Sonnet kontrol etti (2026-10-09), sorun yok. Not: aynı anda iki veri güncellemesi gelirse görev çakışıp durur; bir sonraki çalışma düzeltir.
 
 ## 2. Önerilen yeni özellikler
 
