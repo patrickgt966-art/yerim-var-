@@ -75,111 +75,121 @@ export default function RestaurantDetail() {
   const nearest = ranked.slice(0, 3);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + 8,
-        paddingHorizontal: 20,
-        paddingBottom: insets.bottom + 32,
-        gap: 14,
-      }}
-    >
-      <ScreenHeader
-        title={r.name}
-        back
-        right={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}
-            accessibilityState={{ selected: isFav }}
-            onPress={() => toggleFavorite(r.id)}
-            style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon
-              name={isFav ? 'starFilled' : 'star'}
-              size={26}
-              color={isFav ? c.accentStrong : c.text}
-            />
-          </Pressable>
-        }
-      />
-      {!!meta && <Txt secondary>{meta}</Txt>}
-
-      {!!r.openingHours && (
-        <View style={{ gap: 2 }}>
-          <Txt variant="label" secondary>
-            {t('food.hours')}
-          </Txt>
-          <Txt>{r.openingHours}</Txt>
-        </View>
-      )}
-      {facts.map((f) => (
-        <Txt key={f} variant="caption" secondary>
-          {f}
-        </Txt>
-      ))}
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-        {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
-        {!!r.website && (
-          <Button
-            kind="secondary"
-            label={t('food.website')}
-            onPress={() => open(webUrl(r.website!))}
-          />
-        )}
-        {!!r.instagram && (
-          <Button
-            kind="secondary"
-            label={t('food.instagram')}
-            onPress={() => open(instagramUrl(r.instagram!))}
-          />
-        )}
-        <Button
-          kind="secondary"
-          label={t('food.directions')}
-          onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
+    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
+      {/* Header stays fixed so "back" is always reachable while the page scrolls. */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 6 }}>
+        <ScreenHeader
+          title={r.name}
+          back
+          right={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}
+              accessibilityState={{ selected: isFav }}
+              onPress={() => toggleFavorite(r.id)}
+              style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Icon
+                name={isFav ? 'starFilled' : 'star'}
+                size={26}
+                color={isFav ? c.accentStrong : c.text}
+              />
+            </Pressable>
+          }
         />
       </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingBottom: insets.bottom + 32,
+          gap: 14,
+        }}
+      >
+        {!!meta && <Txt secondary>{meta}</Txt>}
 
-      <Txt variant="title" accessibilityRole="header" style={{ marginTop: 6 }}>
-        {t('food.parkTitle')}
-      </Txt>
-      {nearest.length === 0 ? (
-        <Txt secondary>{isLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
-      ) : (
-        nearest.map((p, i) => (
-          <View key={p.id} style={{ gap: 6 }}>
-            <ParkingCard
-              parking={p}
-              featured={i === 0}
-              nearest={i === 0 && openState(p) !== 'closed'}
-              onParkHere={() =>
-                parkHere(p, { kind: 'restaurant', id: r.id, name: r.name, lat: r.lat, lng: r.lng })
-              }
-              onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
-            />
-            <Txt
-              variant="caption"
-              secondary
-              style={{ paddingHorizontal: 4 }}
-              accessibilityLabel={t('food.a11yRouteLine', {
-                distance: Math.round(distanceMeters(p, r)),
-                count: walkMinutes(p, r),
-              })}
-            >
-              {t('food.routeLine', {
-                distance: Math.round(distanceMeters(p, r)),
-                count: walkMinutes(p, r),
-              })}
+        {!!r.openingHours && (
+          <View style={{ gap: 2 }}>
+            <Txt variant="label" secondary>
+              {t('food.hours')}
             </Txt>
+            <Txt>{r.openingHours}</Txt>
           </View>
-        ))
-      )}
+        )}
+        {facts.map((f) => (
+          <Txt key={f} variant="caption" secondary>
+            {f}
+          </Txt>
+        ))}
 
-      <Txt variant="caption" secondary style={{ marginTop: 10 }}>
-        {t('food.footer')}
-      </Txt>
-    </ScrollView>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
+          {!!r.website && (
+            <Button
+              kind="secondary"
+              label={t('food.website')}
+              onPress={() => open(webUrl(r.website!))}
+            />
+          )}
+          {!!r.instagram && (
+            <Button
+              kind="secondary"
+              label={t('food.instagram')}
+              onPress={() => open(instagramUrl(r.instagram!))}
+            />
+          )}
+          <Button
+            kind="secondary"
+            label={t('food.directions')}
+            onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
+          />
+        </View>
+
+        <Txt variant="title" accessibilityRole="header" style={{ marginTop: 6 }}>
+          {t('food.parkTitle')}
+        </Txt>
+        {nearest.length === 0 ? (
+          <Txt secondary>{isLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
+        ) : (
+          nearest.map((p, i) => (
+            <View key={p.id} style={{ gap: 6 }}>
+              <ParkingCard
+                parking={p}
+                featured={i === 0}
+                nearest={i === 0 && openState(p) !== 'closed'}
+                onParkHere={() =>
+                  parkHere(p, {
+                    kind: 'restaurant',
+                    id: r.id,
+                    name: r.name,
+                    lat: r.lat,
+                    lng: r.lng,
+                  })
+                }
+                onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
+              />
+              <Txt
+                variant="caption"
+                secondary
+                style={{ paddingHorizontal: 4 }}
+                accessibilityLabel={t('food.a11yRouteLine', {
+                  distance: Math.round(distanceMeters(p, r)),
+                  count: walkMinutes(p, r),
+                })}
+              >
+                {t('food.routeLine', {
+                  distance: Math.round(distanceMeters(p, r)),
+                  count: walkMinutes(p, r),
+                })}
+              </Txt>
+            </View>
+          ))
+        )}
+
+        <Txt variant="caption" secondary style={{ marginTop: 10 }}>
+          {t('food.footer')}
+        </Txt>
+      </ScrollView>
+    </View>
   );
 }
