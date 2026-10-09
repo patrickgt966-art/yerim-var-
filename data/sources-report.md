@@ -24,9 +24,9 @@
 
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 685.
+- Adsız otoparklardan yakın yer adı bulunan: 672.
 - data/parkings-static.json: 1489 otopark.
-- data/places-izmir.json: 3504 yer (arama için).
+- data/places-izmir.json: 3466 yer (arama için).
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
