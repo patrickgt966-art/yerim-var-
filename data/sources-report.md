@@ -51,6 +51,5 @@
 - Raw candidates (food kinds inside the polygon): 20431
 - Kept (confidence >= 0.6): 15874
 - Removed as OSM duplicates: 1102
-- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6150
 - Per kind: bar 969, cafe 3897, fast_food 749, food_court 4, restaurant 9153
-- data/food-overture-izmir.json: 2.29 MB
+- data/food-overture-izmir.json: 2.25 MB
