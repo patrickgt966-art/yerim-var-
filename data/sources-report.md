@@ -17,15 +17,15 @@
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 7 kayıt
+- HTTP 200, 6 kayıt
 
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 652.
+- Adsız otoparklardan yakın yer adı bulunan: 668.
 - data/parkings-static.json: 1466 otopark.
-- data/places-izmir.json: 3387 yer (arama için).
+- data/places-izmir.json: 3462 yer (arama için).
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
