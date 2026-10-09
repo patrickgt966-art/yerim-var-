@@ -121,6 +121,13 @@ const tr = {
     goToCar: 'Aracıma git',
     stillParkedTitle: 'Hâlâ park hâlinde misin?',
     stillParkedYes: 'Evet',
+    guideHello: 'Merhaba! Ne arıyorsun?',
+    guideUnknown: 'Bunu anlayamadım. Ne aramak istersin?',
+    exampleKofte: 'Köfteci',
+    exampleBreakfast: 'Kahvaltı',
+    exampleFish: 'Balıkçı',
+    foodIntent: '{{what}} · {{where}}',
+    nearMe: 'Yakınımda',
   },
   picker: {
     titleSearch: 'Haritada işaretle',

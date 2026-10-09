@@ -25,6 +25,8 @@ export type QueryIntent =
       quality: boolean;
       /** Words we could not place: a candidate for a later AI step. */
       uncertain: boolean;
+      /** The user wants food: a category, or a generic food word like "yemek". */
+      food: boolean;
     };
 
 /** The 30 districts of İzmir. */
@@ -71,7 +73,11 @@ const ABUSE = words(
   'aq amk amq aqq sikim sikerim siktir sik orospu pic yarrak amina anani ananin anan got gotveren salak aptal gerizekali mal oc lan',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari',
+);
+// Words that mean "food in general"; they stay filler for place purposes.
+const FOOD_WORDS = words(
+  'yemek yiyelim yiyecek yiyecegim yiyebilirim yiyebilecegim restoran karnim acim ac',
 );
 // Case suffixes left as their own token by apostrophes ("Alsancak'ta").
 const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan nden');
@@ -118,15 +124,38 @@ function namesToken(token: string): boolean {
   );
 }
 
+const nameWords = (name: string) => fold(name).split(' ');
+
+/** The top search hit has a name word equal to the token. */
+function equalsNameWord(token: string): boolean {
+  return searchPlaces(token, 1).some((h) => nameWords(h.name).some((w) => w === token));
+}
+
+/** Suffixes from shortest to longest, for stem detection. */
+const PLACE_SUFFIXES_SHORT_FIRST = [...PLACE_SUFFIXES].sort((a, b) => a.length - b.length);
+
 /** "mendereste" -> "menderes" when the stem names a place and the word does not. */
 function placeStem(token: string): string {
   if (namesToken(token)) return token;
-  for (const suf of PLACE_SUFFIXES) {
+  let firstPrefix: string | null = null;
+  for (const suf of PLACE_SUFFIXES_SHORT_FIRST) {
     if (!token.endsWith(suf) || token.length - suf.length < 3) continue;
     const stem = token.slice(0, token.length - suf.length);
-    if (namesToken(stem)) return stem;
+    if (equalsNameWord(stem)) return stem;
+    if (firstPrefix === null && namesToken(stem)) firstPrefix = stem;
   }
-  return token;
+  return firstPrefix ?? token;
+}
+
+/** Place tokens: kept as typed when one hit's name words cover them all, else stemmed. */
+function placeTokens(tokens: string[]): string[] {
+  if (tokens.length === 0) return tokens;
+  const hit = searchPlaces(tokens.join(' '), 1)[0];
+  if (hit) {
+    const nw = nameWords(hit.name);
+    if (tokens.every((t) => nw.some((w) => w.startsWith(t)))) return tokens;
+  }
+  return tokens.map(placeStem);
 }
 
 /** Split a free-text query into chit-chat, or place / dish / filters. */
@@ -138,10 +167,12 @@ export function parseQuery(raw: string): QueryIntent {
   let rest = all.filter(
     (t) => !GREETING.has(t) && !ABUSE.has(t) && !FILLER.has(t) && !SUFFIX_TOKENS.has(t),
   );
+  // Generic food words ("yemek", "acım") count even though they are filler.
+  const foodWord = all.some((t) => FOOD_WORDS.has(t));
   if (rest.length === 0) {
     if (all.some((t) => ABUSE.has(t))) return { kind: 'abuse' };
     if (all.some((t) => GREETING.has(t))) return { kind: 'greeting' };
-    return { kind: 'empty' };
+    if (!foodWord) return { kind: 'empty' };
   }
 
   // 'iyi' is a greeting word, so it is checked on the full token list.
@@ -167,12 +198,46 @@ export function parseQuery(raw: string): QueryIntent {
   rest = rest.filter((t) => !isParking(t) && !NEGATION.has(t));
   const requireParking = hasPark && cat !== null;
 
-  const placeQuery = rest.map(placeStem).join(' ');
-  if (placeQuery === '' && !cat && !hasPark) return { kind: 'empty' };
+  const food = cat !== null || foodWord;
+  const placeQuery = placeTokens(rest).join(' ');
+  if (placeQuery === '' && !cat && !hasPark && !food) return { kind: 'empty' };
 
   const district = IZMIR_DISTRICTS.find((d) => fold(d.name) === placeQuery) ?? null;
   const uncertain = placeQuery !== '' && !district && searchPlaces(placeQuery, 1).length === 0;
   const text = cat ? [placeQuery, dish].filter(Boolean).join(' ') : placeQuery;
 
-  return { kind: 'search', text, cat, dish, district, placeQuery, requireParking, quality, uncertain };
+  // Show the dish as typed (Turkish letters) when the raw words line up with the folded ones.
+  let shownDish = dish;
+  if (dish) {
+    const rawWords = raw
+      .toLocaleLowerCase('tr')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .split(' ')
+      .filter(Boolean);
+    if (rawWords.length === all.length) {
+      const dishTokens = dish.split(' ');
+      const at = all.findIndex((_, i) => all.slice(i, i + dishTokens.length).join(' ') === dish);
+      if (at >= 0) shownDish = rawWords.slice(at, at + dishTokens.length).join(' ');
+    }
+  }
+
+  return {
+    kind: 'search',
+    text,
+    cat,
+    dish: shownDish,
+    district,
+    placeQuery,
+    requireParking,
+    quality,
+    uncertain,
+    food,
+  };
+}
+
+/** Text the local place search should use for a query. */
+export function localPart(q: string): string {
+  const it = parseQuery(q);
+  if (it.kind !== 'search') return '';
+  return it.district?.name ?? (it.cat || it.food ? it.placeQuery : it.placeQuery || q);
 }

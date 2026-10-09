@@ -36,8 +36,9 @@ import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
 import type { LatLng } from '@/data/geo';
 import { POPULAR_PLACES } from '@/data/places';
-import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
-import { splitPlaceAndCategory, type SearchHit } from '@/data/search';
+import { localPart, parseQuery } from '@/data/intent';
+import type { FoodCategory } from '@/data/restaurants';
+import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
 import { useAnnounce } from '@/lib/a11y';
 import { currentLocation, reverseStreet } from '@/lib/location';
 import { currentLocationLabel } from '@/lib/park';
@@ -45,9 +46,6 @@ import { pickerParams } from '@/lib/pickPlace';
 import { resolvePlace, usePlaceSearch } from '@/lib/usePlaceSearch';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
-
-/** In food mode only the place part of "Bornova balık" is searched locally. */
-const placePart = (q: string) => splitPlaceAndCategory(q)?.placeQuery ?? q;
 
 function hitSubtitle(h: SearchHit, t: TFunction): string {
   return [
@@ -233,7 +231,9 @@ export default function SearchScreen() {
 
   // Bundled İzmir places first: Apple's geocoder only knows addresses.
   // "Bornova balık" searches the place part only; the category word is applied on submit.
-  const { hits, settled, deferredQuery } = usePlaceSearch(query, food ? placePart : undefined);
+  const { hits, settled, deferredQuery } = usePlaceSearch(query, localPart);
+  const intent = useMemo(() => parseQuery(deferredQuery), [deferredQuery]);
+  const guide = query.trim().length >= 2 && settled && intent.kind !== 'search' ? intent.kind : null;
   const split = useMemo(
     () => (food ? splitPlaceAndCategory(deferredQuery) : null),
     [food, deferredQuery],
@@ -263,18 +263,72 @@ export default function SearchScreen() {
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
-    // The deferred `split` may lag behind the text box; read the current text.
-    const current = food ? splitPlaceAndCategory(query) : null;
-    const pickNow = (h: SearchHit) => go(h, h.name, current?.cat);
-    if (food) {
-      const cat = current ? null : categoryForQuery(q);
-      if (cat) {
+    const it = parseQuery(q);
+    // The guide card is already on screen.
+    if (it.kind !== 'search') return;
+    // A strong restaurant name match opens that restaurant.
+    const qf = fold(q);
+    if (qf.split(' ').length >= 2) {
+      const r = matchRestaurants(q, 1)[0];
+      if (r && fold(r.name).startsWith(qf)) {
+        return router.push({ pathname: '/restoran/[id]', params: { id: r.id } });
+      }
+    }
+    if (it.cat) {
+      const opts = {
+        park: it.requireParking || undefined,
+        dish: it.dish ?? undefined,
+        quality: it.quality || undefined,
+      };
+      if (it.district) {
+        openFood({ lat: it.district.lat, lng: it.district.lng }, it.district.name, it.cat, opts);
+        return;
+      } else if (it.placeQuery) {
+        const h = searchPlaces(it.placeQuery, 1)[0];
+        if (h) {
+          openFood(h, h.name, it.cat, opts);
+          return;
+        }
+      } else {
         if (locating) return;
         setLocating(true);
-        await openFoodNearMe(t('results.myLocation'), cat).finally(() => setLocating(false));
+        await openFoodNearMe(t('results.myLocation'), it.cat, false, opts).finally(() =>
+          setLocating(false),
+        );
         return;
       }
     }
+    if (!it.cat && it.food) {
+      const opts = {
+        park: it.requireParking || undefined,
+        dish: it.dish ?? undefined,
+        quality: it.quality || undefined,
+      };
+      if (it.district) {
+        openFood({ lat: it.district.lat, lng: it.district.lng }, it.district.name, undefined, opts);
+        return;
+      } else if (it.placeQuery) {
+        const h = searchPlaces(it.placeQuery, 1)[0];
+        if (h) {
+          openFood(h, h.name, undefined, opts);
+          return;
+        }
+      } else {
+        if (locating) return;
+        setLocating(true);
+        await openFoodNearMe(t('results.myLocation'), undefined, false, opts).finally(() =>
+          setLocating(false),
+        );
+        return;
+      }
+    }
+    if (!it.cat && !it.food && it.district) {
+      go({ lat: it.district.lat, lng: it.district.lng }, it.district.name);
+      return;
+    }
+    // The deferred `split` may lag behind the text box; read the current text.
+    const current = food ? splitPlaceAndCategory(query) : null;
+    const pickNow = (h: SearchHit) => go(h, h.name, current?.cat);
     // Suggestions that lag behind the text box are not trusted on submit.
     if (settled && hits[0]) return pickNow(hits[0]);
     if (settled && food && foodMatches[0])
@@ -307,12 +361,23 @@ export default function SearchScreen() {
         cat: food ? splitPlaceAndCategory(q)?.cat : undefined,
       }),
     });
+  const foodIntent =
+    !guide && intent.kind === 'search' && (intent.cat || intent.food)
+      ? t('search.foodIntent', {
+          what:
+            (intent.cat ? t(`food.cats.${intent.cat}`) : t('food.all')) +
+            (intent.dish ? ` · ${intent.dish}` : '') +
+            (intent.requireParking ? ' · 🅿️' : ''),
+          where: intent.district?.name ?? (intent.placeQuery || t('search.nearMe')),
+        })
+      : null;
   const showMapRow =
     query.trim().length >= 3 &&
     settled &&
     hits.length === 0 &&
     foodMatches.length === 0 &&
-    !(food && categoryForQuery(query.trim()));
+    !(intent.kind === 'search' && intent.cat) &&
+    !guide;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -465,6 +530,52 @@ export default function SearchScreen() {
           </View>
         </View>
 
+        {guide && (
+          <View
+            accessibilityLiveRegion="polite"
+            style={[
+              asym(18, 5),
+              {
+                marginHorizontal: 16,
+                marginTop: 12,
+                padding: 16,
+                gap: 12,
+                backgroundColor: c.card,
+                borderWidth: 1,
+                borderColor: c.line,
+              },
+            ]}
+          >
+            <Txt variant="bodyBold">
+              {guide === 'greeting' ? t('search.guideHello') : t('search.guideUnknown')}
+            </Txt>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {(['search.exampleKofte', 'search.exampleBreakfast', 'search.exampleFish'] as const).map(
+                (key) => (
+                  <Pressable
+                    key={key}
+                    accessibilityRole="button"
+                    onPress={() => setQuery(t(key))}
+                    style={({ pressed }) => [
+                      asym(14, 4),
+                      {
+                        minHeight: 44,
+                        paddingHorizontal: 14,
+                        justifyContent: 'center',
+                        backgroundColor: pressed ? c.surface : c.card,
+                        borderWidth: 1,
+                        borderColor: c.line,
+                      },
+                    ]}
+                  >
+                    <Txt variant="bodyBold">{t(key)}</Txt>
+                  </Pressable>
+                ),
+              )}
+            </View>
+          </View>
+        )}
+
         {showMapRow && (
           <Pressable
             accessibilityRole="button"
@@ -491,7 +602,7 @@ export default function SearchScreen() {
           </Pressable>
         )}
 
-        {(hits.length > 0 || foodMatches.length > 0) && (
+        {!guide && (hits.length > 0 || foodMatches.length > 0 || foodIntent) && (
           <View
             accessibilityLabel={t('search.suggestions')}
             style={[
@@ -506,6 +617,24 @@ export default function SearchScreen() {
               },
             ]}
           >
+            {foodIntent && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={foodIntent}
+                onPress={() => void submit()}
+                style={({ pressed }) => ({
+                  minHeight: HIT + 4,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  justifyContent: 'center',
+                  backgroundColor: pressed ? c.surface : c.card,
+                })}
+              >
+                <Txt variant="bodyBold" numberOfLines={2}>
+                  {foodIntent}
+                </Txt>
+              </Pressable>
+            )}
             {food && <RestaurantSuggestions matches={foodMatches} />}
             {hits.map((h, i) => (
               <Pressable
@@ -518,7 +647,7 @@ export default function SearchScreen() {
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   justifyContent: 'center',
-                  borderTopWidth: i === 0 && foodMatches.length === 0 ? 0 : 1,
+                  borderTopWidth: i === 0 && foodMatches.length === 0 && !foodIntent ? 0 : 1,
                   borderTopColor: c.line,
                   backgroundColor: pressed ? c.surface : c.card,
                 })}

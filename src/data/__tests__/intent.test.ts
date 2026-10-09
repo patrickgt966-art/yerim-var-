@@ -1,6 +1,6 @@
 import '@/i18n';
 
-import { IZMIR_DISTRICTS, parseQuery } from '../intent';
+import { IZMIR_DISTRICTS, localPart, parseQuery } from '../intent';
 import { categoryForQuery } from '../restaurants';
 
 function search(q: string) {
@@ -69,6 +69,39 @@ describe('parseQuery', () => {
   it('does not take the airport for the district', () => {
     expect(search('Adnan Menderes Havalimanı').district).toBeNull();
   });
+
+  it('knows dishes that name a category', () => {
+    expect(search('bornovada iskender')).toMatchObject({ cat: 'meat' });
+    expect(search('bornovada iskender').district?.name).toBe('Bornova');
+    expect(search('mantı').cat).toBe('lokanta');
+    expect(search('balık ekmek')).toMatchObject({ cat: 'fish', placeQuery: '' });
+  });
+
+  it('strips the shortest suffix that leaves a place name', () => {
+    expect(search('kordonda balık').placeQuery).toBe('kordon');
+  });
+
+  it('treats chatty verbs as filler', () => {
+    expect(search('kahvaltı yapacak yer')).toMatchObject({ placeQuery: '', uncertain: false });
+  });
+
+  it('flags generic food without a category', () => {
+    expect(search('nerede yemek yiyebilirim')).toMatchObject({
+      cat: null,
+      food: true,
+      placeQuery: '',
+      uncertain: false,
+    });
+    expect(search('ege üniversitesi yakınında yemek')).toMatchObject({
+      food: true,
+      placeQuery: 'ege universitesi',
+    });
+  });
+
+  it('shows the dish with Turkish letters', () => {
+    expect(parseQuery('bana köfteci bul')).toMatchObject({ dish: 'köfteci' });
+    expect(parseQuery('çay bahçesi')).toMatchObject({ dish: 'çay bahçesi' });
+  });
 });
 
 describe('IZMIR_DISTRICTS', () => {
@@ -96,5 +129,24 @@ describe('categoryForQuery stems', () => {
 
   it('returns null for a single letter', () => {
     expect(categoryForQuery('a')).toBeNull();
+  });
+});
+
+describe('localPart', () => {
+  it('is empty for chit-chat and a bare category', () => {
+    expect(localPart('selam')).toBe('');
+    expect(localPart('bana köfteci bul')).toBe('');
+  });
+
+  it('keeps only the place part when a category is present', () => {
+    expect(localPart("Alsancak'ta kahvaltı")).toBe('alsancak');
+  });
+
+  it('keeps the raw text when there is no category', () => {
+    expect(localPart('Konak')).toBe('Konak');
+  });
+
+  it('gives the district for a car-park text', () => {
+    expect(localPart('konakta otopark')).toBe('Konak');
   });
 });
