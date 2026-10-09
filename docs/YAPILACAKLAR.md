@@ -43,8 +43,17 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 ### Faz B: Haiku (Anthropic API hesabından sonra)
 - Cloudflare aracı sunucu, anahtar koda girmez
 - Sadece "belirsiz" cümleler gider; selam, küfür, konum asla
-- Haiku sadece çevirir, sonucu bizim veri bulur
-- Önbellek, günlük sınır, onay ekranı, gizlilik sayfası
+- Haiku sadece çevirir, sonucu bizim veri ve Apple bulur
+- Önbellek, onay ekranı, gizlilik sayfası
+- İşlem sırası: bizim veri → Apple (temiz metin) → Haiku (tek çağrı, Apple için arama metni de döner) → bizim veri + Apple → Haritada işaretle
+
+**Haklar (karar verildi):**
+- Sohbet ve kurallı arama herkese sınırsız
+- ✨ Akıllı yardım (Haiku): ücretsiz günde 5, abone sınırsız (adil kullanım ~200/gün)
+- Haiku'nun kullanıldığı cevapta "✨ Akıllı yardım" etiketi
+- Hak bitince: bizim veri + Apple araması aynen çalışır; Yerim bir kez "Bugünkü akıllı yardım hakkın bitti, yarın yenilenir. Yerim+ ile sınırsız." der
+- Sayaç sunucuda, rastgele cihaz numarasıyla; kişisel veri yok, kayıt ertesi gün silinir
+- Abonelik doğrulaması Apple üzerinden (abonelik altyapısıyla birlikte)
 
 ### Faz C: Apple iş yeri araması (Apple Developer hesabından sonra)
 - Veritabanında olmayan dükkânlar + yanındaki otoparklar
