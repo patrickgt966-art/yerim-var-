@@ -25,3 +25,9 @@ export function appleMapsUrl(dest: LatLng, name?: string): string {
   const q = name ? `&q=${encodeURIComponent(name)}` : '';
   return `http://maps.apple.com/?daddr=${dest.lat},${dest.lng}&dirflg=d${q}`;
 }
+
+/** Apple Maps walking directions between two points (no routing in the app). */
+export function appleWalkingUrl(from: LatLng, to: LatLng, name?: string): string {
+  const q = name ? `&q=${encodeURIComponent(name)}` : '';
+  return `http://maps.apple.com/?saddr=${from.lat},${from.lng}&daddr=${to.lat},${to.lng}&dirflg=w${q}`;
+}

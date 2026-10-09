@@ -4,14 +4,19 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { LatLng } from '@/data/geo';
 
+import { migrateAppState } from './migrate';
+
 export type SavedPlace = { label: string } & LatLng;
 export type FavoriteParking = { id: string; name: string } & LatLng;
+export type ParkDestination = { kind: 'restaurant'; id: string; name: string } & LatLng;
 export type ActivePark = {
   parkingId: string;
   name: string;
   startedAt: string;
   hourly: number | null;
   note?: string;
+  /** Where the user is walking to after parking (set from a restaurant page). */
+  destination?: ParkDestination;
 } & LatLng;
 export type ParkMode = 'now' | 'twoHours';
 
@@ -20,12 +25,14 @@ type State = {
   home: SavedPlace | null;
   work: SavedPlace | null;
   favorites: FavoriteParking[];
+  favoriteRestaurants: string[];
   active: ActivePark | null;
   mode: ParkMode;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
   setWork: (p: SavedPlace | null) => void;
   toggleFavorite: (p: FavoriteParking) => void;
+  toggleFavoriteRestaurant: (id: string) => void;
   startPark: (p: ActivePark) => void;
   endPark: () => void;
   setMode: (m: ParkMode) => void;
@@ -38,6 +45,7 @@ export const useApp = create<State>()(
       home: null,
       work: null,
       favorites: [],
+      favoriteRestaurants: [],
       active: null,
       mode: 'now',
       setOnboarded: (onboarded) => set({ onboarded }),
@@ -49,19 +57,27 @@ export const useApp = create<State>()(
             ? s.favorites.filter((f) => f.id !== p.id)
             : [...s.favorites, p],
         })),
+      toggleFavoriteRestaurant: (id) =>
+        set((s) => ({
+          favoriteRestaurants: s.favoriteRestaurants.includes(id)
+            ? s.favoriteRestaurants.filter((x) => x !== id)
+            : [...s.favoriteRestaurants, id],
+        })),
       startPark: (active) => set({ active }),
       endPark: () => set({ active: null }),
       setMode: (mode) => set({ mode }),
     }),
     {
       name: 'yerim-var/app',
-      version: 1,
+      version: 2,
+      migrate: migrateAppState as never,
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ onboarded, home, work, favorites, active, mode }) => ({
+      partialize: ({ onboarded, home, work, favorites, favoriteRestaurants, active, mode }) => ({
         onboarded,
         home,
         work,
         favorites,
+        favoriteRestaurants,
         active,
         mode,
       }),
@@ -70,3 +86,6 @@ export const useApp = create<State>()(
 );
 
 export const useIsFavorite = (id: string) => useApp((s) => s.favorites.some((f) => f.id === id));
+
+export const useIsFavoriteRestaurant = (id: string) =>
+  useApp((s) => s.favoriteRestaurants.includes(id));

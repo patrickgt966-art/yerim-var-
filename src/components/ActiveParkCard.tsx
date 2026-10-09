@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Alert, Linking, Pressable, View } from 'react-native';
 
+import { appleWalkingUrl, walkMinutes } from '@/data/geo';
 import { estimateCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import type { ActivePark } from '@/store/app';
 import { asym, fonts, useColors } from '@/theme';
 
+import { Button } from './Button';
 import { PBadge } from './PBadge';
 import { Txt } from './Txt';
 
@@ -28,7 +30,8 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
   const cost = estimateCost(active.hourly, elapsed / 60000);
   const duration = durationText(elapsed, t);
   const sub = [active.note, duration].filter(Boolean).join(' · ');
-  return (
+  const dest = active.destination;
+  const card = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ₺${cost}` : ''}`}
@@ -61,5 +64,29 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
         </Txt>
       )}
     </Pressable>
+  );
+  if (!dest) return card;
+  const minutes = walkMinutes(active, dest);
+  const summary = t('food.routeSummary', { park: active.name, count: minutes, name: dest.name });
+  return (
+    <View style={{ gap: 8 }}>
+      {card}
+      <View style={{ gap: 8, paddingHorizontal: 4 }}>
+        <Txt variant="caption" accessibilityLabel={summary}>
+          {summary}
+        </Txt>
+        <View style={{ flexDirection: 'row' }}>
+          <Button
+            kind="secondary"
+            label={t('food.walkingRoute')}
+            onPress={() =>
+              Linking.openURL(appleWalkingUrl(active, dest, dest.name)).catch(() =>
+                Alert.alert(t('food.openFailed')),
+              )
+            }
+          />
+        </View>
+      </View>
+    </View>
   );
 }
