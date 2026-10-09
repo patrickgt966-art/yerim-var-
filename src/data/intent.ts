@@ -149,7 +149,11 @@ function namesToken(token: string): boolean {
   return searchPlaces(token, 1).some((h) =>
     fold(h.name)
       .split(' ')
-      .some((w) => w.startsWith(token)),
+      .some(
+        (w) =>
+          w === token ||
+          (w.startsWith(token) && token.length >= 5 && token.length >= 0.7 * w.length),
+      ),
   );
 }
 
@@ -299,6 +303,9 @@ export function parseQuery(raw: string): QueryIntent {
       rest = [...rest.slice(0, i), ...rest.slice(i + len)];
     }
   }
+
+  // A food word (or the dish phrase) is never a place.
+  rest = rest.filter((t) => categoryForQuery(t) === null);
 
   // A car-park word only narrows a food search; alone it is the app default.
   const hasPark = rest.some(isParking);

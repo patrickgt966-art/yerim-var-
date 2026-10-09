@@ -125,6 +125,24 @@ describe('assistant', () => {
     expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
   });
 
+  it('flags an unknown or named dish', async () => {
+    const r = await answer('mantıcı', emptyContext('food'), deps);
+    expect(
+      r.reply.text.includes('chat.dishUnknown') || r.reply.text.includes('chat.dishNamed'),
+    ).toBe(true);
+  });
+
+  it('does not call a plain category word an unknown dish', async () => {
+    const r = await answer('yakınımda kahve', emptyContext('food'), deps);
+    expect(r.reply.text).not.toContain('chat.dishUnknown');
+  });
+
+  it('does not take a food word for a neighbourhood', async () => {
+    const r = await answer('bana en yakın tavuk pilavcı bul', emptyContext('park'), deps);
+    expect(r.ctx.place).toBeNull();
+    expect(r.reply.text).not.toContain('Tavukçukuru');
+  });
+
   describe('with the AI layer', () => {
     type Ai = NonNullable<AssistantDeps['ai']>;
     const aiDeps = (ai: Partial<Ai>): AssistantDeps => ({

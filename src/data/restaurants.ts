@@ -604,6 +604,8 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kuru fasulye',
     'pilav',
     'sulu yemek',
+    'tavuk pilav',
+    'tavuk',
   ],
   fish: [
     'balik',
@@ -635,6 +637,7 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'tost',
     'durum',
     'hamburger',
+    'tavuk doner',
     'kumpir',
     'sandvic',
     'wrap',
@@ -704,7 +707,16 @@ export function categoryForQuery(q: string): FoodCategory | null {
   const f = fold(q.trim());
   if (!f) return null;
   const exact = exactCategory(f);
-  if (exact || f.includes(' ')) return exact;
+  if (exact) return exact;
+  if (f.includes(' ')) {
+    // "tavuk pilavcı": a two-word phrase whose last word carries one suffix.
+    const parts = f.split(' ');
+    if (parts.length !== 2) return null;
+    const [first, last] = parts;
+    if (first === undefined || last === undefined) return null;
+    const stem = stripSuffix(last);
+    return stem ? exactCategory(`${first} ${stem}`) : null;
+  }
   // "köfteci", "köftecide": try the stem with one, then two suffixes removed.
   const one = stripSuffix(f);
   if (!one) return null;
@@ -712,6 +724,19 @@ export function categoryForQuery(q: string): FoodCategory | null {
   if (c1) return c1;
   const two = stripSuffix(one);
   return two ? exactCategory(two) : null;
+}
+
+/** The folded dish minus up to two suffixes on its last word, as far as it is still a category word. */
+export function dishStem(dish: string): string {
+  const f = fold(dish.trim());
+  if (!f || exactCategory(f)) return f;
+  const parts = f.split(' ');
+  let last: string | null = parts.pop() ?? '';
+  for (let i = 0; i < 2 && last; i++) {
+    last = stripSuffix(last);
+    if (last && exactCategory([...parts, last].join(' '))) return [...parts, last].join(' ');
+  }
+  return f;
 }
 
 /** Per-row parking data computed in a single pass over the car parks. */
