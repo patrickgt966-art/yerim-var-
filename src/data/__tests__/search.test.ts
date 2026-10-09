@@ -53,7 +53,7 @@ describe('multi-word queries', () => {
   const first = (q: string) => searchPlaces(q)[0]?.name;
 
   it('matches every word against the name', () => {
-    expect(first('alsancak limanı')).toBe('Alsancak');
+    expect(first('alsancak limanı')).toBe('Alsancak Limanı');
     expect(first('liman')).toBe('Alsancak');
     expect(first('alsancak otopark')).toBe('Alsancak');
     expect(first('kemeraltı çarşısı')).toBe('Kemeraltı');
@@ -76,7 +76,6 @@ describe('multi-word queries', () => {
     expect(searchPlaces('agora')[0]?.name).toMatch(/Agora Açık Hava/);
     const efes = searchPlaces('efes');
     expect(efes[0]?.far).toBeUndefined();
-    expect(efes.some((h) => h.far)).toBe(true);
     const ege = searchPlaces('ege universitesi')[0]!;
     expect(ege.far).toBeUndefined();
   });
@@ -106,5 +105,76 @@ describe('splitPlaceAndCategory', () => {
     expect(splitPlaceAndCategory('Bornova')).toBeNull();
     expect(splitPlaceAndCategory('balık')).toBeNull();
     expect(splitPlaceAndCategory('Saat Kulesi')).toBeNull();
+  });
+});
+
+describe('ranking of exact names', () => {
+  const top = (q: string) => searchPlaces(q, 3).map((h) => `${h.name}|${h.kind}`);
+
+  it('puts a town before its same-named neighbourhood and look-alikes', () => {
+    expect(top('çeşme')[0]).toBe('Çeşme|town');
+    expect(top('selçuk')[0]).toBe('Selçuk|town');
+  });
+
+  it('puts a landmark before street car parks', () => {
+    expect(searchPlaces('efes')[0]?.name).toMatch(/^Efes/);
+    expect(searchPlaces('efes')[0]?.kind).not.toBe('parking');
+    expect(searchPlaces('hilton')[0]?.kind).not.toBe('parking');
+    expect(searchPlaces('ephesus')[0]?.name).toBe('Efes Antik Kenti');
+  });
+
+  it('prefers a university for its name or abbreviation', () => {
+    expect(searchPlaces('dokuz eylül')[0]?.kind).toBe('university');
+    expect(searchPlaces('deü')[0]?.name).toBe('Dokuz Eylül Üniversitesi');
+    expect(searchPlaces('ege tıp')[0]?.name).toBe('Ege Üniversitesi Hastanesi');
+  });
+
+  it('keeps hospitals reachable behind the area', () => {
+    expect(searchPlaces('tepecik').some((h) => h.kind === 'hospital')).toBe(true);
+    expect(searchPlaces('tepecik hastanesi')[0]?.kind).toBe('hospital');
+  });
+
+  it('marks far only outside the province', () => {
+    expect(searchPlaces('selçuk')[0]?.far).toBeUndefined();
+    expect(searchPlaces('izmir fuarı')[0]?.far).toBeUndefined();
+  });
+});
+
+describe('curated places and aliases', () => {
+  it.each([
+    ['folkart', 'Folkart Towers'],
+    ['manas bulvarı', 'Manas Bulvarı'],
+    ['aassm', 'Ahmed Adnan Saygun Sanat Merkezi'],
+    ['akm', 'Atatürk Kültür Merkezi (Kültürpark)'],
+    ['alsancak limanı', 'Alsancak Limanı'],
+    ['kruvaziyer terminali', 'Alsancak Kruvaziyer Terminali'],
+    ['otogar', 'İzmir Otogarı'],
+    ['bus station', 'İzmir Otogarı'],
+    ['hisarönü', 'Hisarönü'],
+    ['izmir fuarı', 'Kültürpark'],
+    ['fuar', 'Kültürpark'],
+    ['clock tower', 'Saat Kulesi'],
+    ['old bazaar', 'Kemeraltı'],
+    ['promenade', 'Kordon'],
+    ['airport', 'Adnan Menderes Havalimanı'],
+    ['pier', 'Konak Pier'],
+  ])('%s finds %s first', (q, name) => {
+    expect(searchPlaces(q)[0]?.name).toBe(name);
+  });
+
+  it('does not let "car park" match Çarşı', () => {
+    expect(searchPlaces('car park').some((h) => /çarşı/i.test(h.name))).toBe(false);
+    expect(searchPlaces('parking').some((h) => /çarşı/i.test(h.name))).toBe(false);
+  });
+});
+
+describe('splitPlaceAndCategory with new food words', () => {
+  it.each([
+    ['buca çiğköfte', 'buca', 'fast'],
+    ['alsancak kokoreç', 'alsancak', 'meat'],
+    ['kemeraltı boyoz', 'kemeralti', 'breakfast'],
+    ['bostanlı serpme kahvaltı', 'bostanli', 'breakfast'],
+  ])('%s', (q, placeQuery, cat) => {
+    expect(splitPlaceAndCategory(q)).toEqual({ placeQuery, cat });
   });
 });

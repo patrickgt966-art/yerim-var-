@@ -1,7 +1,7 @@
 import { t } from 'i18next';
 
 import raw from '../../data/parkings-static.json';
-import { distanceMeters } from './geo';
+import { gridIndex, near } from './geo';
 import type { Parking, StaticSource } from './types';
 
 /**
@@ -85,8 +85,9 @@ export function staticParkings(): Parking[] {
 
 /** Live records first; static ones are added unless they duplicate a live one. */
 export function withStatic(live: Parking[], statics: Parking[] = staticParkings()): Parking[] {
-  const extra = statics.filter(
-    (s) => !live.some((l) => distanceMeters(l, s) <= DUPLICATE_RADIUS_M),
-  );
+  if (live.length === 0) return [...statics];
+  // Grid lookup instead of live × static distance checks.
+  const index = gridIndex(live, DUPLICATE_RADIUS_M);
+  const extra = statics.filter((s) => near(index, s, DUPLICATE_RADIUS_M).length === 0);
   return [...live, ...extra];
 }

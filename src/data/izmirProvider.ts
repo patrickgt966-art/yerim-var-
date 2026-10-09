@@ -15,7 +15,8 @@ const count = z.number().finite().nonnegative();
 
 const RecordSchema = z.object({
   ufid: z.string().min(1),
-  name: z.string().min(1),
+  // Trim first: a blank name is no name and the record is dropped.
+  name: z.string().trim().min(1),
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
   type: z.string().optional(),
@@ -40,6 +41,13 @@ export class SchemaDriftError extends Error {
   }
 }
 
+/** Longest name we keep. */
+const MAX_NAME_LENGTH = 120;
+
+/** Space counts are whole numbers; a fraction means the source is unsure, so it is unknown. */
+const wholeOrNull = (n: number | null | undefined): number | null =>
+  n != null && Number.isInteger(n) ? n : null;
+
 const PLACEHOLDER_HOURS = /^[\s\-–—]*$/;
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -55,12 +63,16 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
   if (!anyValid) throw new SchemaDriftError('Zorunlu alanlar hiçbir kayıtta yok');
 
   const out: Parking[] = [];
+  const seen = new Set<string>();
   for (const item of raw) {
     const parsed = RecordSchema.safeParse(item);
     if (!parsed.success) continue;
     const r = parsed.data;
-    const free = r.occupancy.total.free ?? null;
-    const occupied = r.occupancy.total.occupied ?? null;
+    // Duplicate ids would break list keys and favourites: keep the first.
+    if (seen.has(r.ufid)) continue;
+    seen.add(r.ufid);
+    const free = wholeOrNull(r.occupancy.total.free);
+    const occupied = wholeOrNull(r.occupancy.total.occupied);
     // Nonstop car parks send "–" for every day; keep only real values.
     const hourEntries = Object.entries(r.openingHours ?? {}).filter(
       ([d, v]) => DAYS.includes(d) && !PLACEHOLDER_HOURS.test(v),
@@ -69,7 +81,7 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       hourEntries.length > 0 ? Object.fromEntries(hourEntries) : null;
     out.push({
       id: r.ufid,
-      name: r.name.trim(),
+      name: r.name.slice(0, MAX_NAME_LENGTH),
       lat: r.lat,
       lng: r.lng,
       capacity: free != null && occupied != null ? free + occupied : null,

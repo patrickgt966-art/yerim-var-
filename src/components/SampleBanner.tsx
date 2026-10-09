@@ -19,6 +19,9 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
   if (!result) return null;
   let text: string | null = null;
   if (result.source === 'mock') text = t('freshness.sampleBanner');
+  // No fallbackReason: the first download is still running, nothing has failed yet.
+  else if (result.source === 'static-only' && result.fallbackReason)
+    text = t('freshness.staticOnlyBanner');
   else if (result.offline)
     text = t('freshness.offlineBanner', {
       time: formatClock(new Date(result.fetchedAt)),

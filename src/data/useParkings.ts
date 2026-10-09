@@ -27,14 +27,45 @@ export const parkingsQuery = queryOptions({
   gcTime: Infinity,
 });
 
-/** Adds bundled OpenStreetMap car parks to real data (never to sample data). */
-function addStatic(result: ParkingResult): ParkingResult {
-  if (result.source === 'mock') return result;
-  return { ...result, parkings: withStatic(result.parkings) };
+/**
+ * Shown until the first download (or a saved result) arrives: no live
+ * records, only the bundled car parks are added by `addStatic`. It carries no
+ * fallbackReason, so nothing claims the download failed.
+ */
+export const STATIC_ONLY_PLACEHOLDER: ParkingResult = {
+  parkings: [],
+  source: 'static-only',
+  fetchedAt: new Date(0).toISOString(),
+};
+
+// One merge per result object, shared by every screen that observes the query.
+const merged = new WeakMap<ParkingResult, ParkingResult>();
+
+/**
+ * Adds bundled OpenStreetMap/İzelman car parks to real data. Sample data is
+ * never displayed when the bundled car parks exist: they replace it, marked
+ * 'static-only' (the fallbackReason is kept), so no fake counts or pins show.
+ */
+export function addStatic(result: ParkingResult): ParkingResult {
+  const hit = merged.get(result);
+  if (hit) return hit;
+  let out: ParkingResult;
+  if (result.source === 'mock') {
+    const statics = withStatic([]);
+    out = statics.length > 0 ? { ...result, source: 'static-only', parkings: statics } : result;
+  } else {
+    out = { ...result, parkings: withStatic(result.parkings) };
+  }
+  merged.set(result, out);
+  return out;
 }
 
 export function useParkings() {
-  return useQuery({ ...parkingsQuery, select: addStatic });
+  return useQuery({
+    ...parkingsQuery,
+    select: addStatic,
+    placeholderData: STATIC_ONLY_PLACEHOLDER,
+  });
 }
 
 /**

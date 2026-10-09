@@ -18,6 +18,7 @@ import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
 import { metaLine } from '@/lib/format';
+import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { reportWrongData } from '@/lib/report';
 import { isStatic } from '@/lib/staticInfo';
@@ -38,8 +39,10 @@ export default function ParkingDetail() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, isLoading } = useParkings();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  // `?id=a&id=b` arrives as an array.
+  const id = firstParam(params.id);
+  const { data, isLoading, isPlaceholderData } = useParkings();
   const queryClient = useQueryClient();
   const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
@@ -57,7 +60,7 @@ export default function ParkingDetail() {
         }}
       >
         <ScreenHeader title="" back />
-        {isLoading || !data ? (
+        {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
         ) : (
           <Txt secondary>{t('detail.notFound')}</Txt>

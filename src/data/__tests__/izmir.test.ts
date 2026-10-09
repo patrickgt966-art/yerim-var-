@@ -81,6 +81,32 @@ describe('normalizeIzmir', () => {
   });
 });
 
+describe('normalizeIzmir hardening', () => {
+  const pad = ['p1', 'p2', 'p3'].map((ufid) => ({ ...sample, ufid }));
+
+  it('drops blank and whitespace-only names', () => {
+    const out = normalizeIzmir([{ ...sample, ufid: 'b1', name: '   ' }, ...pad], at);
+    expect(out.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
+  });
+  it('keeps the first of duplicate ids', () => {
+    const out = normalizeIzmir([{ ...sample, ufid: 'p1', name: 'Second' }, ...pad, pad[0]], at);
+    expect(out.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
+    expect(out[0]?.name).toBe('Second');
+  });
+  it('treats non-integer counts as unknown but keeps the record', () => {
+    const [r] = normalizeIzmir(
+      [{ ...sample, occupancy: { total: { free: 2.5, occupied: 10 } } }, ...pad],
+      at,
+    );
+    expect(r?.free).toBeNull();
+    expect(r?.capacity).toBeNull();
+  });
+  it('caps the name length', () => {
+    const [r] = normalizeIzmir([{ ...sample, name: 'x'.repeat(500) }], at);
+    expect(r?.name).toHaveLength(120);
+  });
+});
+
 describe('IzmirOpenDataProvider', () => {
   const realFetch = globalThis.fetch;
   afterEach(() => {

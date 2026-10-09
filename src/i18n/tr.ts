@@ -1,5 +1,10 @@
 const tr = {
   brand: { name: 'Yerim Var', wordmarkA: 'yerim', wordmarkB: 'var!', a11yTitle: 'Yerim var!' },
+  notFound: {
+    title: 'Sayfa bulunamadı',
+    body: 'Aradığın sayfa yok ya da bağlantı eskimiş olabilir.',
+    home: 'Ana sayfaya dön',
+  },
   common: {
     back: 'Geri',
     close: 'Kapat',
@@ -36,6 +41,8 @@ const tr = {
     noDataShort: 'Bilgi yok',
     sampleBanner:
       'Deneme bilgisi gösteriliyor, gerçek değil. Belediye verisine şu an ulaşılamıyor.',
+    staticOnlyBanner:
+      'Belediye verisine şu an ulaşılamıyor. Otopark konumları gösteriliyor, boş yer bilgisi yok.',
     offline: 'İnternet yok',
     offlineBanner:
       'İnternet yok · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',

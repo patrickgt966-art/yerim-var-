@@ -26,6 +26,7 @@ import type { LatLng } from '@/data/geo';
 import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { useRanked, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
+import { firstParam, parseLatLng } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
@@ -40,19 +41,17 @@ export default function ResultsScreen() {
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
-    lat?: string;
-    lng?: string;
-    label?: string;
-    near?: string;
+    lat?: string | string[];
+    lng?: string | string[];
+    label?: string | string[];
+    near?: string | string[];
   }>();
   const mapRef = useRef<MapView>(null);
 
   const [target, setTarget] = useState<LatLng | null>(() => {
-    const lat = Number(params.lat);
-    const lng = Number(params.lng);
-    return Number.isFinite(lat) && Number.isFinite(lng) && params.lat ? { lat, lng } : null;
+    return parseLatLng(params.lat, params.lng);
   });
-  const [label, setLabel] = useState(params.label ?? '');
+  const [label, setLabel] = useState(firstParam(params.label) ?? '');
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -82,7 +81,7 @@ export default function ResultsScreen() {
     };
   }, [target, t]);
 
-  const nearMode = params.near === '1';
+  const nearMode = firstParam(params.near) === '1';
   const { ranked, data, isLoading, isError, isFetching, refetch } = useRanked(target);
   // Own flag so the spinner shows only for pull-to-refresh, not the 120 s poll.
   const [pulling, setPulling] = useState(false);

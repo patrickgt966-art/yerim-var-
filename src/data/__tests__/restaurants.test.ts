@@ -464,3 +464,57 @@ describe('restaurantsInCategory edges', () => {
     expect(restaurantsInCategory(center, 'soup', [])).toEqual({ items: [], radiusM: 6000 });
   });
 });
+
+describe('new food words', () => {
+  it.each([
+    ['kokoreç', 'meat'],
+    ['tantuni', 'meat'],
+    ['midye', 'fish'],
+    ['çiğköfte', 'fast'],
+    ['çiğ köfte', 'fast'],
+    ['lahmacun', 'fast'],
+    ['pide', 'fast'],
+    ['tost', 'fast'],
+    ['dürüm', 'fast'],
+    ['döner', 'fast'],
+    ['hızlı yemek', 'fast'],
+    ['boyoz', 'breakfast'],
+    ['gevrek', 'breakfast'],
+    ['kumru', 'breakfast'],
+    ['menemen', 'breakfast'],
+    ['serpme kahvaltı', 'breakfast'],
+    ['kahvaltı salonu', 'breakfast'],
+    ['brunch', 'breakfast'],
+    ['restoran', 'lokanta'],
+    ['lokantası', 'lokanta'],
+    ['öğle yemeği', 'lokanta'],
+    ['meze', 'meyhane'],
+    ['fish', 'fish'],
+    ['breakfast', 'breakfast'],
+    ['coffee', 'cafe'],
+    ['dessert', 'dessert'],
+    ['soup', 'soup'],
+    ['kebab', 'meat'],
+  ] as const)('%s is %s', (q, cat) => {
+    expect(categoryForQuery(q)).toBe(cat);
+  });
+
+  it('leaves salata alone', () => {
+    expect(categoryForQuery('salata')).toBeNull();
+  });
+
+  it('counts çiğ köfte as fast, not meat', () => {
+    const r = toRestaurant({ id: 'x', n: 'Battalbey Çiğköfte', a: 38.4, o: 27.1, k: 'fast_food' });
+    expect(matchesCategory(r, 'fast')).toBe(true);
+    expect(matchesCategory(r, 'meat')).toBe(false);
+    const r2 = toRestaurant({ id: 'y', n: 'Mr. Çiğ Köfte', a: 38.4, o: 27.1, k: 'restaurant' });
+    expect(matchesCategory(r2, 'fast')).toBe(true);
+  });
+
+  it('knows boyoz, gevrek and kumru places as breakfast', () => {
+    for (const n of ['Simit & Boyoz Center', 'İpek Gevrek', 'Kumrucu Hasan']) {
+      const r = toRestaurant({ id: n, n, a: 38.4, o: 27.1, k: 'restaurant' });
+      expect(matchesCategory(r, 'breakfast')).toBe(true);
+    }
+  });
+});

@@ -12,6 +12,7 @@ import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { useRanked } from '@/data/useParkings';
+import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { useApp, useIsFavoriteRestaurant } from '@/store/app';
 import { HIT, useColors } from '@/theme';
@@ -33,7 +34,9 @@ export default function RestaurantDetail() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  // `?id=a&id=b` arrives as an array.
+  const id = firstParam(params.id);
   const r = getRestaurant(id ?? '');
   const target = useMemo(() => (r ? { lat: r.lat, lng: r.lng } : null), [r]);
   const tel = r?.phone ? telUrl(r.phone) : null;

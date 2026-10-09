@@ -269,7 +269,17 @@ function hasWordStart(name: string, kw: string): boolean {
 const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   breakfast: {
     cuisines: ['breakfast'],
-    names: ['kahvalt', 'borek', 'pogaca', 'simit', 'gozleme', 'menemenci'],
+    names: [
+      'kahvalt',
+      'borek',
+      'pogaca',
+      'simit',
+      'gozleme',
+      'menemenci',
+      'boyoz',
+      'gevrek',
+      'kumru',
+    ],
   },
   soup: { cuisines: ['soup'], names: ['corba', 'iskembe', 'kelle paca', 'paca'] },
   meat: {
@@ -301,7 +311,7 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   fast: {
     kinds: ['fast_food'],
     cuisines: ['burger', 'pizza', 'chicken', 'sandwich', 'doner'],
-    names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun'],
+    names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun', 'cig kofte', 'cigkofte'],
   },
   dessert: {
     kinds: ['ice_cream'],
@@ -524,15 +534,63 @@ export function rankRestaurants(
 }
 
 const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
-  breakfast: ['kahvalti', 'borek', 'pogaca', 'simit', 'gozleme'],
-  soup: ['corba', 'iskembe', 'kelle paca', 'paca'],
-  meat: ['kebap', 'kebab', 'et', 'izgara', 'kofte', 'mangal', 'steak', 'ocakbasi'],
-  lokanta: ['lokanta', 'ev yemegi', 'ev yemekleri', 'esnaf lokantasi'],
-  fish: ['balik', 'balikci', 'deniz urunleri'],
-  cafe: ['kafe', 'kahve', 'cafe'],
-  meyhane: ['meyhane', 'bar', 'pub'],
-  fast: ['burger', 'pizza', 'fast food', 'doner'],
-  dessert: ['tatli', 'dondurma', 'pastane', 'baklava'],
+  breakfast: [
+    'kahvalti',
+    'borek',
+    'pogaca',
+    'simit',
+    'gozleme',
+    'boyoz',
+    'gevrek',
+    'kumru',
+    'menemen',
+    'serpme kahvalti',
+    'kahvalti salonu',
+    'brunch',
+    'breakfast',
+  ],
+  soup: ['corba', 'iskembe', 'kelle paca', 'paca', 'soup'],
+  meat: [
+    'kebap',
+    'kebab',
+    'et',
+    'izgara',
+    'kofte',
+    'mangal',
+    'steak',
+    'ocakbasi',
+    'kokorec',
+    'tantuni',
+    'meat',
+    'grill',
+  ],
+  lokanta: [
+    'lokanta',
+    'ev yemegi',
+    'ev yemekleri',
+    'esnaf lokantasi',
+    'restoran',
+    'lokantasi',
+    'ogle yemegi',
+  ],
+  fish: ['balik', 'balikci', 'deniz urunleri', 'midye', 'fish', 'seafood'],
+  cafe: ['kafe', 'kahve', 'cafe', 'coffee'],
+  meyhane: ['meyhane', 'bar', 'pub', 'meze'],
+  // Çiğ köfte is not meat (see CATEGORY_RULES.meat.notNames).
+  fast: [
+    'burger',
+    'pizza',
+    'fast food',
+    'doner',
+    'hizli yemek',
+    'cigkofte',
+    'cig kofte',
+    'lahmacun',
+    'pide',
+    'tost',
+    'durum',
+  ],
+  dessert: ['tatli', 'dondurma', 'pastane', 'baklava', 'dessert'],
 };
 
 /** The category a search text names outright ("balık", "kahvaltı"), or null. */

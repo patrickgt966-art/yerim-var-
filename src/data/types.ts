@@ -5,6 +5,11 @@ export type PriceKind = 'official' | 'estimated';
  * and 'osm' (OpenStreetMap), and 'apple' (Apple Maps search on the device).
  */
 export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm' | 'apple';
+/**
+ * Where a whole result comes from. 'static-only' is the bundled car parks
+ * alone, shown while the first download runs or when no real data exists.
+ */
+export type ResultSource = DataSource | 'static-only';
 export type StaticSource = 'izelman' | 'osm';
 
 export type OpeningHours = Partial<
@@ -43,7 +48,7 @@ export type Parking = {
 
 export type ParkingResult = {
   parkings: Parking[];
-  source: DataSource;
+  source: ResultSource;
   fetchedAt: string;
   /** Set when the primary provider failed (we show cached or sample data). */
   fallbackReason?: string;

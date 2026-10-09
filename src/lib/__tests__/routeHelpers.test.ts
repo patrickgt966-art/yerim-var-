@@ -2,6 +2,9 @@ import { appleWalkingUrl, appleWalkToUrl } from '@/data/geo';
 import { currentLocationLabel, needsStillParkedPrompt } from '@/lib/park';
 import { migrateAppState, persistedData, sanitizeAppState } from '@/store/migrate';
 
+/** A start time that is always inside the 30 day window. */
+const recent = new Date(Date.now() - 3600_000).toISOString();
+
 describe('appleWalkingUrl', () => {
   it('builds walking directions from park to destination', () => {
     const url = appleWalkingUrl({ lat: 38.4, lng: 27.1 }, { lat: 38.41, lng: 27.12 }, 'Çiğ Köfte');
@@ -52,7 +55,7 @@ describe('migrateAppState validation', () => {
     expect(n.active).toBeNull();
   });
   it('keeps a valid active park', () => {
-    const active = { startedAt: '2026-01-01T10:00:00.000Z', name: 'a', lat: 1, lng: 2 };
+    const active = { startedAt: recent, name: 'a', lat: 1, lng: 2 };
     expect((migrateAppState({ active }, 2) as { active: unknown }).active).toEqual(active);
   });
 });
@@ -97,7 +100,7 @@ describe('sanitizeAppState', () => {
     expect(s.work).toEqual(good);
   });
   it('drops an active park with bad coordinates or name', () => {
-    const base = { name: 'P', startedAt: '2026-01-01T10:00:00.000Z', lat: 1, lng: 2 };
+    const base = { name: 'P', startedAt: recent, lat: 1, lng: 2 };
     expect(
       (sanitizeAppState({ active: { ...base, lat: 'x' } }) as { active: unknown }).active,
     ).toBeNull();
@@ -130,5 +133,61 @@ describe('persistedData', () => {
   it('returns an empty object for missing or invalid input', () => {
     expect(persistedData(null)).toEqual({});
     expect(persistedData('abc')).toEqual({});
+  });
+});
+
+describe('active park sanitising', () => {
+  const base = { name: 'P', startedAt: recent, lat: 1, lng: 2, hourly: 20, parkingId: 'x' };
+  const clean = (active: unknown) =>
+    (sanitizeAppState({ active }) as { active: Record<string, unknown> | null }).active;
+  const dest = { kind: 'restaurant', id: 'r1', name: 'R', lat: 38.4, lng: 27.1 };
+
+  it('keeps a valid destination and drops only a bad one', () => {
+    expect(clean({ ...base, destination: dest })?.destination).toEqual(dest);
+    for (const bad of [
+      { ...dest, kind: 'other' },
+      { ...dest, lat: NaN },
+      { ...dest, id: 3 },
+      'junk',
+    ]) {
+      const a = clean({ ...base, destination: bad });
+      expect(a).not.toBeNull();
+      expect(a).not.toHaveProperty('destination');
+    }
+  });
+  it('turns an invalid hourly price into unknown', () => {
+    expect(clean({ ...base, hourly: -5 })?.hourly).toBeNull();
+    expect(clean({ ...base, hourly: 'abc' })?.hourly).toBeNull();
+    expect(clean({ ...base, hourly: null })?.hourly).toBeNull();
+    expect(clean({ ...base, hourly: 0 })?.hourly).toBe(0);
+  });
+  it('clamps a slightly-future start to now and drops a far-future or old one', () => {
+    const soon = new Date(Date.now() + 3600_000).toISOString();
+    const fixed = clean({ ...base, startedAt: soon })?.startedAt as string;
+    expect(new Date(fixed).getTime()).toBeLessThanOrEqual(Date.now());
+    expect(
+      clean({ ...base, startedAt: new Date(Date.now() + 3 * 86400_000).toISOString() }),
+    ).toBeNull();
+    expect(
+      clean({ ...base, startedAt: new Date(Date.now() - 31 * 86400_000).toISOString() }),
+    ).toBeNull();
+  });
+  it('drops a confirmedAt in the future or unparsable', () => {
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    expect(clean({ ...base, confirmedAt: future })).not.toHaveProperty('confirmedAt');
+    expect(clean({ ...base, confirmedAt: 'nope' })).not.toHaveProperty('confirmedAt');
+    expect(clean({ ...base, confirmedAt: recent })?.confirmedAt).toBe(recent);
+  });
+  it('dedupes favourites and restaurant ids, and coerces onboarded', () => {
+    const f = { id: 'a', name: 'A', lat: 38.4, lng: 27.1 };
+    const out = sanitizeAppState({
+      favorites: [{ id: 'a' }, f, { ...f, name: 'again' }],
+      favoriteRestaurants: ['r', 'r', 's'],
+      onboarded: 'yes',
+    }) as Record<string, unknown>;
+    expect(out.favorites).toEqual([f]);
+    expect(out.favoriteRestaurants).toEqual(['r', 's']);
+    expect(out.onboarded).toBe(false);
+    expect((sanitizeAppState({ onboarded: true }) as { onboarded: boolean }).onboarded).toBe(true);
   });
 });

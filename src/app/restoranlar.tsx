@@ -21,7 +21,6 @@ import {
   formatDistance,
   FOOD_CATEGORIES,
   kindLabel,
-  parkingInfo,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
@@ -29,6 +28,8 @@ import {
   type RestaurantRow,
   type RestaurantSort,
 } from '@/data/restaurants';
+import { firstParam, parseLatLng } from '@/lib/params';
+import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { useParkings } from '@/data/useParkings';
 import { asym, brand, fonts, useColors } from '@/theme';
 
@@ -49,29 +50,28 @@ function isBest(p: RestaurantRow['parking']): boolean {
   return !!p && p.free != null && p.free > 0;
 }
 
+function RowSeparator() {
+  return <View style={{ height: 10 }} />;
+}
+
 export default function RestaurantsScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
-    lat?: string;
-    lng?: string;
-    label?: string;
-    cat?: string;
+    lat?: string | string[];
+    lng?: string | string[];
+    label?: string | string[];
+    cat?: string | string[];
   }>();
   const { data } = useParkings();
-  const initial = FOOD_CATEGORIES.find((x) => x === params.cat) ?? 'all';
+  const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilter] = useState<Filter>(initial);
   const [sort, setSort] = useState<RestaurantSort>('parkEase');
 
-  const lat = Number(params.lat);
-  const lng = Number(params.lng);
   const target = useMemo<LatLng | null>(
-    () =>
-      params.lat && params.lng && Number.isFinite(lat) && Number.isFinite(lng)
-        ? { lat, lng }
-        : null,
-    [params.lat, params.lng, lat, lng],
+    () => parseLatLng(params.lat, params.lng),
+    [params.lat, params.lng],
   );
 
   const all = useMemo(() => (target ? restaurantsNear(target, 1000, 600) : []), [target]);
@@ -86,16 +86,14 @@ export default function RestaurantsScreen() {
 
   // Nearest car park per row, with its free count only when it is fresh.
   const built = useMemo<RestaurantRow[]>(() => {
-    const parkings = data?.parkings ?? [];
-    const now = new Date();
-    return shown.map((r) => ({ r, ...parkingInfo(r, parkings, now) }));
-  }, [shown, data]);
+    return buildRestaurantRows(shown, data?.parkings ?? [], target, new Date());
+  }, [shown, data, target]);
   const rows = useMemo(
     () => rankRestaurants(built, sort, active === 'all' ? undefined : active).slice(0, SHOW_LIMIT),
     [built, sort, active],
   );
 
-  const place = params.label || t('common.izmir');
+  const place = firstParam(params.label) || t('common.izmir');
   const topEasy = sort === 'parkEase' && rows[0] ? isBest(rows[0].parking) : false;
 
   return (
@@ -176,7 +174,7 @@ export default function RestaurantsScreen() {
         data={rows}
         keyExtractor={(x) => x.r.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        ItemSeparatorComponent={RowSeparator}
         ListEmptyComponent={
           <Txt secondary>
             {active === 'all'

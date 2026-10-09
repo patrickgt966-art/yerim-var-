@@ -1,6 +1,6 @@
 import raw from '../../data/places-izmir.json';
 import { distanceMeters, type LatLng } from './geo';
-import { IZMIR_CENTER, POPULAR_PLACES } from './places';
+import { CURATED_PLACES, IZMIR_CENTER, isInIzmirArea, POPULAR_PLACES } from './places';
 import { categoryForQuery, type FoodCategory } from './restaurants';
 import { staticParkings } from './staticParkings';
 
@@ -26,7 +26,7 @@ export type SearchHit = {
   subtitle?: string;
   /** Nearest district / town name, shown after the kind. */
   district?: string;
-  /** More than 30 km from the İzmir centre. */
+  /** Outside the İzmir province box (see isInIzmirArea). */
   far?: boolean;
 } & LatLng;
 
@@ -62,6 +62,8 @@ type Entry = SearchHit & {
   words: string[];
   districtWords: string[];
   hay: string;
+  /** Folded alternative names that count as an exact match. */
+  aliases: string[];
   /** Metres from IZMIR_CENTER. */
   d: number;
 };
@@ -88,7 +90,16 @@ const PENALTY_FROM_M = 15_000;
 const FAR_M = 30_000;
 
 // Words that add no meaning to a place search ("alsancak otopark", "izmir otogar").
-const FILLER = new Set(['izmir', 'otopark', 'otoparki', 'park', 'yakini', 'yakin', 'civari']);
+const FILLER = new Set([
+  'izmir',
+  'otopark',
+  'otoparki',
+  'park',
+  'parking',
+  'yakini',
+  'yakin',
+  'civari',
+]);
 // Generic nouns: used when the name has them, ignored when it does not.
 const OPTIONAL = new Set(['carsi', 'carsisi', 'liman', 'limani', 'otogar', 'otogari']);
 // A generic noun on its own points to the best known place for it.
@@ -99,9 +110,30 @@ const ALIAS: Record<string, string> = {
   carsisi: 'kemeralti',
 };
 
+// Whole queries (folded) that stand for another search: abbreviations and the
+// English words visitors type. Food words live in restaurants.ts.
+const QUERY_ALIAS: Record<string, string> = {
+  deu: 'dokuz eylul universitesi',
+  'ege tip': 'ege universitesi hastanesi',
+  'clock tower': 'saat kulesi',
+  bazaar: 'kemeralti',
+  'old bazaar': 'kemeralti',
+  ferry: 'iskele',
+  pier: 'konak pier',
+  promenade: 'kordon',
+  'kordon promenade': 'kordon',
+  airport: 'adnan menderes havalimani',
+  'bus station': 'izmir otogari',
+  'cruise port': 'alsancak limani',
+  port: 'alsancak limani',
+  ephesus: 'efes antik kenti',
+};
+// Queries that name a university or hospital even without the word for it.
+const INSTITUTION_QUERIES = new Set(['deu', 'ege tip', 'dokuz eylul']);
+
 let index: Entry[] | null = null;
 
-function entry(hit: SearchHit): Entry {
+function entry(hit: SearchHit, aliases: string[] = []): Entry {
   const key = fold(hit.name);
   return {
     ...hit,
@@ -109,6 +141,7 @@ function entry(hit: SearchHit): Entry {
     compact: key.replace(/ /g, ''),
     rank: KIND_RANK[hit.kind],
     hay: key,
+    aliases,
     words: key.split(' '),
     districtWords: hit.district ? fold(hit.district).split(' ') : [],
     d: distanceMeters(hit, IZMIR_CENTER),
@@ -126,7 +159,10 @@ function buildIndex(): Entry[] {
   const parkings = staticParkings()
     .filter((p) => !p.genericName)
     .map((p) => entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'parking' }));
-  return [...popular, ...places, ...parkings];
+  const curated = CURATED_PLACES.map((p) =>
+    entry({ name: p.name, lat: p.lat, lng: p.lng, kind: p.kind, district: p.district }, p.aliases),
+  );
+  return [...popular, ...curated, ...places, ...parkings];
 }
 
 let towns: (LatLng & { name: string })[] | null = null;
@@ -149,7 +185,11 @@ function nearestTown(p: LatLng): string | undefined {
 
 /** Query words that carry meaning, with generic nouns mapped to a known place. */
 function contentTokens(q: string): string[] {
-  return q.split(' ').filter((t) => t && !FILLER.has(t));
+  const all = q.split(' ');
+  // "car park" is filler, but "car" alone must not match Çarşı.
+  return all.filter(
+    (t, i) => t && !FILLER.has(t) && !(t === 'car' && /^park(ing)?$/.test(all[i + 1] ?? '')),
+  );
 }
 
 /** The known place a lone generic noun stands for ("liman"), if any. */
@@ -202,6 +242,8 @@ function tokenScore(e: Entry, tokens: { vs: string[]; optional: boolean }[]): nu
 export function searchPlaces(query: string, limit = 6): SearchHit[] {
   let q = fold(query);
   if (q.length < 2) return [];
+  const wantsInstitution = INSTITUTION_QUERIES.has(q);
+  q = QUERY_ALIAS[q] ?? q;
   const alias = aliasFor(contentTokens(q));
   if (alias) q = alias;
   const qc = q.replace(/ /g, '');
@@ -213,21 +255,35 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
     // Only optional when something else in the query is required.
     optional: !allOptional && OPTIONAL.has(w),
   }));
+  // A known abbreviation lifts universities / hospitals clearly; the plain words
+  // "üniversite" / "hastane" only break ties (they already match by name).
+  const institutionBoost = wantsInstitution
+    ? 150
+    : words.some((w) => w.startsWith('universite') || w.startsWith('hastane'))
+      ? 10
+      : 0;
   const scored: { e: Entry; score: number }[] = [];
   for (const e of index) {
     let score = 0;
-    if (e.key === q || e.compact === qc) score = 400;
+    const exact =
+      e.key === q || e.compact === qc || e.aliases.includes(q) || e.aliases.includes(qc);
+    if (exact) score = 400;
     else if (e.key.startsWith(q) || e.compact.startsWith(qc)) score = 300;
     else if (e.key.includes(` ${q}`)) score = 200;
     else if (e.compact.includes(qc)) score = 100;
     if (tokens.length > 0 && score < 250) score = Math.max(score, tokenScore(e, tokens));
     if (score === 0) continue;
     const near = e.d < NEAR_CITY_M ? 40 * (1 - e.d / NEAR_CITY_M) : 0;
-    const far = e.d > PENALTY_FROM_M ? Math.min(((e.d - PENALTY_FROM_M) / 1000) * 3, 250) : 0;
-    scored.push({
-      e,
-      score: score + e.rank * 5 - Math.min(e.key.length, 40) / 4 + near - far,
-    });
+    // An exact name is what the user typed: distance never demotes it.
+    const far =
+      !exact && e.d > PENALTY_FROM_M ? Math.min(((e.d - PENALTY_FROM_M) / 1000) * 3, 250) : 0;
+    let adjust = e.rank * 5 - Math.min(e.key.length, 40) / 4 + near - far;
+    // An exact town beats a same-named neighbourhood ("Selçuk"); a lone word
+    // names a place before it names a car park ("Efes", "Hilton").
+    if (exact && e.kind === 'town') adjust += 50;
+    if (words.length === 1 && e.kind === 'parking') adjust -= 30;
+    if (e.kind === 'university' || e.kind === 'hospital') adjust += institutionBoost;
+    scored.push({ e, score: score + adjust });
   }
   scored.sort((a, b) => b.score - a.score);
   const out: SearchHit[] = [];
@@ -249,7 +305,7 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
       lat: e.lat,
       lng: e.lng,
       ...(e.kind === 'town' ? {} : { district: e.district ?? nearestTown(e) }),
-      ...(e.d > FAR_M ? { far: true } : {}),
+      ...(isInIzmirArea(e) ? {} : { far: true }),
     });
     if (out.length >= limit) break;
   }

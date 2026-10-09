@@ -21,6 +21,7 @@ import {
 } from '@/data/restaurants';
 import { rankByDistance, useParkings } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
+import { parseLatLng } from '@/lib/params';
 import { asym, fonts, HIT, useColors } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,7 +34,12 @@ export default function MapTab() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data } = useParkings();
-  const params = useLocalSearchParams<{ mode?: string; lat?: string; lng?: string; ts?: string }>();
+  const params = useLocalSearchParams<{
+    mode?: string;
+    lat?: string | string[];
+    lng?: string | string[];
+    ts?: string;
+  }>();
   const [center, setCenter] = useState<LatLng | null>(null);
   const [mode, setMode] = useState<Mode>(params.mode === 'food' ? 'food' : 'parkings');
   const [selected, setSelected] = useState<Restaurant | null>(null);
@@ -67,13 +73,10 @@ export default function MapTab() {
   );
 
   // Params from "Haritada gör" override the centre and mode; `ts` makes a repeat visit count.
-  const paramCenter = useMemo<LatLng | null>(() => {
-    const lat = Number(params.lat);
-    const lng = Number(params.lng);
-    return params.lat && params.lng && Number.isFinite(lat) && Number.isFinite(lng)
-      ? { lat, lng }
-      : null;
-  }, [params.lat, params.lng]);
+  const paramCenter = useMemo<LatLng | null>(
+    () => parseLatLng(params.lat, params.lng),
+    [params.lat, params.lng],
+  );
   // Adjust state while rendering when the params change (no effect needed).
   const paramKey = `${params.mode ?? ''}|${params.ts ?? ''}|${params.lat ?? ''}|${params.lng ?? ''}`;
   const [seenKey, setSeenKey] = useState(paramKey);
@@ -100,7 +103,10 @@ export default function MapTab() {
 
   const switchTop = insets.top + 8;
   const bannerTop = switchTop + HIT + SWITCH_GAP;
-  const showBanner = data?.source === 'mock' || data?.offline;
+  const showBanner =
+    data?.source === 'mock' ||
+    (data?.source === 'static-only' && !!data.fallbackReason) ||
+    data?.offline;
   const pick = (m: Mode) => {
     setMode(m);
     setSelected(null);

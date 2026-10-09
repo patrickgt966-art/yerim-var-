@@ -2,13 +2,32 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient } from '@tanstack/react-query';
 
 import { deviceCache } from '../cache';
-import type { ParkingResult } from '../types';
+import type { Parking, ParkingResult } from '../types';
 import { PARKINGS_QUERY_KEY, primeParkingsFromCache, warmUpParkings } from '../useParkings';
 
 import live from './fixtures/izmir-live-2026-10-07.json';
 
+const parking: Parking = {
+  id: 'p1',
+  name: 'Test',
+  lat: 38.4,
+  lng: 27.1,
+  capacity: 100,
+  free: 10,
+  isIndoor: null,
+  isOpen: null,
+  isPaid: null,
+  nonstop: null,
+  openingHours: null,
+  address: null,
+  source: 'izmir-open-data',
+  updatedAt: null,
+  fetchedAt: '2026-10-07T10:00:00.000Z',
+  occupancyKind: 'estimated',
+};
+
 const result: ParkingResult = {
-  parkings: [],
+  parkings: [parking],
   source: 'izmir-open-data',
   fetchedAt: '2026-10-07T10:00:00.000Z',
 };
@@ -28,6 +47,40 @@ describe('deviceCache', () => {
 
   it('ignores corrupt entries', async () => {
     await AsyncStorage.setItem('parkings-cache-v1', '{not json');
+    expect(await deviceCache.load()).toBeNull();
+  });
+});
+
+describe('deviceCache validation', () => {
+  beforeEach(() => AsyncStorage.clear());
+  const put = (v: unknown) => AsyncStorage.setItem('parkings-cache-v1', JSON.stringify(v));
+
+  it('drops unusable records and keeps the good ones', async () => {
+    await put({
+      ...result,
+      parkings: [
+        null,
+        42,
+        { ...parking, id: 7 },
+        { ...parking, id: 'nan', lat: null },
+        { ...parking, id: 'far', lat: 200 },
+        { ...parking, id: 'str', free: '3' },
+        { ...parking, id: 'nosrc', source: undefined },
+        parking,
+      ],
+    });
+    expect((await deviceCache.load())?.parkings.map((p) => p.id)).toEqual(['p1']);
+  });
+  it('treats a cache with no usable record as no cache', async () => {
+    await put({ ...result, parkings: [null] });
+    expect(await deviceCache.load()).toBeNull();
+    await put({ ...result, parkings: [] });
+    expect(await deviceCache.load()).toBeNull();
+  });
+  it('rejects an unparsable fetchedAt and static-only results', async () => {
+    await put({ ...result, fetchedAt: 'yesterday' });
+    expect(await deviceCache.load()).toBeNull();
+    await put({ ...result, source: 'static-only' });
     expect(await deviceCache.load()).toBeNull();
   });
 });
