@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { LatLng } from '@/data/geo';
 
-import { migrateAppState, sanitizeAppState } from './migrate';
+import { migrateAppState, persistedData } from './migrate';
 
 export type SavedPlace = { label: string } & LatLng;
 export type FavoriteParking = { id: string; name: string } & LatLng;
@@ -79,10 +79,7 @@ export const useApp = create<State>()(
       version: 3,
       migrate: migrateAppState as never,
       // Same-version corrupt data never goes through migrate, so sanitise on every rehydrate.
-      merge: (persisted, current) => ({
-        ...current,
-        ...((sanitizeAppState(persisted) as object | null | undefined) ?? {}),
-      }),
+      merge: (persisted, current) => ({ ...current, ...persistedData(persisted) }),
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ onboarded, home, work, favorites, favoriteRestaurants, active, mode }) => ({
         onboarded,

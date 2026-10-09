@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -14,7 +15,12 @@ import { Chip } from './Chip';
 export function ModeChips({ mode, onChange }: { mode: ParkMode; onChange: (m: ParkMode) => void }) {
   const { t } = useTranslation();
   const { data } = useParkings();
-  if (!data || !hasRealTariffs(data.parkings)) return null;
+  const hidden = !data || !hasRealTariffs(data.parkings);
+  // With the chips hidden nobody could switch back from "2 saat", so fall back to "Şimdi".
+  useEffect(() => {
+    if (data && hidden && mode !== 'now') onChange('now');
+  }, [data, hidden, mode, onChange]);
+  if (hidden) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>
       <Chip

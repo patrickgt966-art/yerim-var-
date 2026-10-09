@@ -1,6 +1,6 @@
 import { appleWalkingUrl, appleWalkToUrl } from '@/data/geo';
 import { currentLocationLabel, needsStillParkedPrompt } from '@/lib/park';
-import { migrateAppState, sanitizeAppState } from '@/store/migrate';
+import { migrateAppState, persistedData, sanitizeAppState } from '@/store/migrate';
 
 describe('appleWalkingUrl', () => {
   it('builds walking directions from park to destination', () => {
@@ -109,5 +109,26 @@ describe('sanitizeAppState', () => {
   it('resets an unknown mode', () => {
     expect((sanitizeAppState({ mode: 'weird' }) as { mode: string }).mode).toBe('now');
     expect((sanitizeAppState({ mode: 'twoHours' }) as { mode: string }).mode).toBe('twoHours');
+  });
+});
+
+describe('persistedData', () => {
+  it('drops corrupt favourite entries and non-string restaurant ids', () => {
+    const out = persistedData({
+      favorites: [null, { id: 1 }, { id: 'a', name: 'A', lat: 38.4, lng: 27.1 }],
+      favoriteRestaurants: ['osm-1', 5, null],
+    });
+    expect(out.favorites).toEqual([{ id: 'a', name: 'A', lat: 38.4, lng: 27.1 }]);
+    expect(out.favoriteRestaurants).toEqual(['osm-1']);
+  });
+
+  it('keeps only data keys, so a stray key cannot replace an action', () => {
+    const out = persistedData({ setHome: 'x', mode: 'now', onboarded: true });
+    expect(out).toEqual({ mode: 'now', onboarded: true });
+  });
+
+  it('returns an empty object for missing or invalid input', () => {
+    expect(persistedData(null)).toEqual({});
+    expect(persistedData('abc')).toEqual({});
   });
 });
