@@ -121,7 +121,6 @@ export default function RestaurantsScreen() {
   );
   const header = (
     <View>
-      <ScreenHeader title={t('food.title')} back />
       <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
         {t(sort === 'parkEase' ? 'food.subtitle' : 'food.subtitleNearest', {
           place,
@@ -192,6 +191,10 @@ export default function RestaurantsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
+      {/* Fixed so "back" stays reachable while the list scrolls. */}
+      <View style={{ paddingHorizontal: 20 }}>
+        <ScreenHeader title={t('food.title')} back />
+      </View>
       <FlatList
         data={rows}
         keyExtractor={(x) => x.r.id}

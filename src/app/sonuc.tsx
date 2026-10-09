@@ -38,6 +38,9 @@ type Notice = 'outside' | 'failed' | 'denied';
 
 const LOCATION_TIMEOUT_MS = 6000;
 
+/** Top bar (52) plus its 8 pt gaps above and below. */
+const TOP_BAR_SPACE = 68;
+
 export default function ResultsScreen() {
   const c = useColors();
   const { t } = useTranslation();
@@ -161,7 +164,7 @@ export default function ResultsScreen() {
     notice ? t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed') : null,
   );
 
-  const snapPoints = useMemo(() => ['30%', '58%', '92%'], []);
+  const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
 
   const chips = (
     <>
@@ -288,49 +291,11 @@ export default function ResultsScreen() {
         </View>
       )}
 
-      {/* Top bar */}
-      <View
-        style={[
-          asym(26, 7),
-          {
-            position: 'absolute',
-            top: insets.top + 8,
-            left: 16,
-            right: 16,
-            minHeight: 52,
-            paddingLeft: 4,
-            paddingRight: 4,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: c.card,
-            shadowColor: '#0B3C49',
-            shadowOpacity: 0.14,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
-          },
-        ]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('common.back')}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
-          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
-        </Pressable>
-        <Txt
-          accessibilityRole="header"
-          style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}
-          numberOfLines={1}
-        >
-          {label || t('common.izmir')}
-        </Txt>
-      </View>
-
       <BottomSheet
         index={1}
         snapPoints={snapPoints}
+        // The fully open sheet stops below the floating top bar, so "back" never hides.
+        topInset={insets.top + TOP_BAR_SPACE}
         backgroundStyle={{
           backgroundColor: c.card,
           borderTopLeftRadius: 32,
@@ -380,6 +345,46 @@ export default function ResultsScreen() {
           }
         />
       </BottomSheet>
+
+      {/* Top bar: after the sheet so it always stays on top and reachable. */}
+      <View
+        style={[
+          asym(26, 7),
+          {
+            position: 'absolute',
+            top: insets.top + 8,
+            left: 16,
+            right: 16,
+            minHeight: 52,
+            paddingLeft: 4,
+            paddingRight: 4,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: c.card,
+            shadowColor: '#0B3C49',
+            shadowOpacity: 0.14,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
+        </Pressable>
+        <Txt
+          accessibilityRole="header"
+          style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}
+          numberOfLines={1}
+        >
+          {label || t('common.izmir')}
+        </Txt>
+      </View>
     </View>
   );
 }
