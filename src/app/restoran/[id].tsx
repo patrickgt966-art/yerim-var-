@@ -1,18 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, ScrollView, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
-import { appleMapsUrl, walkMinutes } from '@/data/geo';
+import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { useRanked } from '@/data/useParkings';
 import { parkHere } from '@/lib/parkHere';
-import { useColors } from '@/theme';
+import { useApp, useIsFavoriteRestaurant } from '@/store/app';
+import { HIT, useColors } from '@/theme';
 
 const NEAR_RADIUS_M = 1000;
 
@@ -36,6 +38,8 @@ export default function RestaurantDetail() {
   const target = useMemo(() => (r ? { lat: r.lat, lng: r.lng } : null), [r]);
   const tel = r?.phone ? telUrl(r.phone) : null;
   const { ranked, isLoading } = useRanked(target, NEAR_RADIUS_M);
+  const isFav = useIsFavoriteRestaurant(id ?? '');
+  const toggleFavorite = useApp((s) => s.toggleFavoriteRestaurant);
 
   const open = (url: string) => {
     Linking.openURL(url).catch(() => Alert.alert(t('food.openFailed')));
@@ -76,7 +80,25 @@ export default function RestaurantDetail() {
         gap: 14,
       }}
     >
-      <ScreenHeader title={r.name} back />
+      <ScreenHeader
+        title={r.name}
+        back
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}
+            accessibilityState={{ selected: isFav }}
+            onPress={() => toggleFavorite(r.id)}
+            style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon
+              name={isFav ? 'starFilled' : 'star'}
+              size={26}
+              color={isFav ? c.accent : c.text}
+            />
+          </Pressable>
+        }
+      />
       {!!meta && <Txt secondary>{meta}</Txt>}
 
       {!!r.openingHours && (
@@ -128,11 +150,16 @@ export default function RestaurantDetail() {
               parking={p}
               featured={i === 0}
               nearest={i === 0}
-              onParkHere={() => parkHere(p)}
+              onParkHere={() =>
+                parkHere(p, { kind: 'restaurant', id: r.id, name: r.name, lat: r.lat, lng: r.lng })
+              }
               onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
             />
             <Txt variant="caption" secondary style={{ paddingHorizontal: 4 }}>
-              {t('food.parkWalk', { count: walkMinutes(p, r) })}
+              {t('food.routeLine', {
+                distance: Math.round(distanceMeters(p, r)),
+                count: walkMinutes(p, r),
+              })}
             </Txt>
           </View>
         ))

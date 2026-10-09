@@ -4,7 +4,7 @@ import { appleMapsUrl } from '@/data/geo';
 import { tariffFor } from '@/data/tariffs';
 import type { Parking } from '@/data/types';
 import i18n from '@/i18n';
-import { useApp } from '@/store/app';
+import { useApp, type ParkDestination } from '@/store/app';
 
 async function openMaps(p: Parking) {
   try {
@@ -15,7 +15,7 @@ async function openMaps(p: Parking) {
 }
 
 /** "Buraya park et": optionally start the local parking timer, then hand off to Apple Maps. */
-export function parkHere(p: Parking) {
+export function parkHere(p: Parking, destination?: ParkDestination) {
   const t = i18n.t.bind(i18n);
   Alert.alert(t('results.parkConfirmTitle'), t('results.parkConfirmBody'), [
     {
@@ -28,6 +28,7 @@ export function parkHere(p: Parking) {
           lng: p.lng,
           startedAt: new Date().toISOString(),
           hourly: tariffFor(p.id)?.hourly ?? null,
+          ...(destination ? { destination } : {}),
         });
         void openMaps(p);
       },
