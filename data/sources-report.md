@@ -49,7 +49,10 @@
 - Release: 2026-09-23.1 (2026-10-09)
 - Izmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
-- Kept (confidence >= 0.6): 15874
-- Removed as OSM duplicates: 1102
-- Per kind: bar 969, cafe 3897, fast_food 749, food_court 4, restaurant 9153
-- data/food-overture-izmir.json: 2.25 MB
+- Kept (confidence >= 0.6): 15743
+- Removed as OSM duplicates: 1099
+- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6053
+- Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 162
+- Per kind: bar 957, cafe 3874, fast_food 747, food_court 4, restaurant 9062
+- data/food-overture-izmir.json: 2.27 MB
