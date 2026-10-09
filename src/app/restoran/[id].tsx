@@ -12,6 +12,7 @@ import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { useRanked } from '@/data/useParkings';
+import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { useApp, useIsFavoriteRestaurant } from '@/store/app';
@@ -152,7 +153,7 @@ export default function RestaurantDetail() {
             <ParkingCard
               parking={p}
               featured={i === 0}
-              nearest={i === 0}
+              nearest={i === 0 && openState(p) !== 'closed'}
               onParkHere={() =>
                 parkHere(p, { kind: 'restaurant', id: r.id, name: r.name, lat: r.lat, lng: r.lng })
               }

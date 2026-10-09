@@ -81,7 +81,9 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
     const occupied = wholeOrNull(r.occupancy.total.occupied);
     const dFree = wholeOrNull(r.occupancy.disabled?.free);
     const dOccupied = wholeOrNull(r.occupancy.disabled?.occupied);
-    const dCapacity = dFree != null && dOccupied != null ? dFree + dOccupied : null;
+    const dTotal = dFree != null && dOccupied != null ? dFree + dOccupied : null;
+    // 0 + 0 means the source has no disabled bays to count.
+    const dCapacity = dTotal != null && dTotal > 0 ? dTotal : null;
     // Nonstop car parks send "–" for every day; keep only real values.
     const hourEntries = Object.entries(r.openingHours ?? {}).filter(
       ([d, v]) => DAYS.includes(d) && !PLACEHOLDER_HOURS.test(v),

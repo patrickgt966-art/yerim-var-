@@ -49,16 +49,23 @@ function fromText(text: string, day: number, minutes: number): OpenState {
   return inRange(range, minutes) ? 'open' : 'closed';
 }
 
+const TURKEY_OFFSET_MS = 3 * 3600_000;
+
+/** Weekday (0 = Sunday) and minutes since midnight in Turkey (fixed UTC+3, no DST). */
+export function istanbulClock(now: Date): { day: number; minutes: number } {
+  const d = new Date(now.getTime() + TURKEY_OFFSET_MS);
+  return { day: d.getUTCDay(), minutes: d.getUTCHours() * 60 + d.getUTCMinutes() };
+}
+
 /**
- * Whether a car park is open at `now` (device local time). Order: live
+ * Whether a car park is open at `now` (Turkey time, UTC+3). Order: live
  * `isOpen`, `nonstop`, the per-day table, then static "HH:MM–HH:MM" text.
  * Anything it cannot read is 'unknown', never guessed.
  */
 export function openState(p: OpenInput, now: Date = new Date()): OpenState {
   if (p.isOpen != null) return p.isOpen ? 'open' : 'closed';
   if (p.nonstop) return 'open';
-  const day = now.getDay();
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const { day, minutes } = istanbulClock(now);
 
   const today = p.openingHours?.[DAY_KEYS[day]!];
   if (today) {

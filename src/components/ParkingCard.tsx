@@ -151,7 +151,7 @@ export function ParkingCard({
   const staticCard = isStatic(p);
   // When isOpen is false the meta line already says "Şu an kapalı".
   const maybeClosed = p.isOpen !== false && openState(p) === 'closed';
-  const disabled = staticCard ? null : disabledInfo(p);
+  const disabled = disabledInfo(p);
   const word = staticCard ? null : levelWord(occupancyLevel(free, p.capacity), t);
   const a11y = staticCard
     ? t('card.a11yStatic', {
@@ -160,6 +160,7 @@ export function ParkingCard({
         facts: [
           sourceLabel(p, t),
           p.capacity != null ? `${p.capacity} ${t('card.capacityUnit')}` : null,
+          disabled ? disabledText(disabled, t) : null,
         ]
           .filter(Boolean)
           .join(', '),

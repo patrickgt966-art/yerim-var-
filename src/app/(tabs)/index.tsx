@@ -255,6 +255,7 @@ export default function SearchScreen() {
         : t('a11y.suggestionNone')
       : null,
     700,
+    query.trim(),
   );
 
   const submit = async () => {

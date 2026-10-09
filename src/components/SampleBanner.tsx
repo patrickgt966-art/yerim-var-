@@ -29,7 +29,8 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
       age: ageSince(result.fetchedAt, new Date(nowMs)),
     });
   // iOS does not read a banner that appears by itself.
-  useAnnounce(text);
+  // Keyed by kind: the offline text's age changes every minute.
+  useAnnounce(text, 0, text ? `${result?.source}|${result?.offline ?? false}` : undefined);
   if (!text) return null;
   return (
     <View

@@ -2,6 +2,7 @@ import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react';
 
 import { isClosedNow } from '@/lib/openNow';
+import { useNow } from '@/lib/useNow';
 import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
 import { visibleFree } from './freshness';
@@ -182,21 +183,25 @@ export function useRanked(target: LatLng | null, radiusMeters?: number) {
   const q = useParkings();
   // Apple Maps car parks around the target, where the native module exists.
   const apple = useAppleParkings(target);
+  // Re-rank every minute so open/closed state follows the clock.
+  const minute = Math.floor(useNow(60_000) / 60_000);
   const { ranked, widenedKm } = useMemo(() => {
     if (!q.data || !target) return { ranked: [] as RankedParking[], widenedKm: null };
     // Never mix real Apple results into sample data.
     const list =
       q.data.source === 'mock' ? q.data.parkings : withApple(q.data.parkings, apple.data ?? []);
+    const now = new Date(minute * 60_000);
     let found = rankByDistance(list, target, radiusMeters);
     let km: number | null = null;
     // Province towns (Özdere, Dalyan…) have no car park within the default radius.
-    for (const r of WIDEN_RADII_METERS) {
-      if (found.length > 0 || r <= (radiusMeters ?? 1500)) continue;
+    // Only the default radius widens; callers that pass a radius (restaurant page) keep it.
+    for (const r of radiusMeters === undefined ? WIDEN_RADII_METERS : []) {
+      if (found.length > 0) continue;
       found = rankByDistance(list, target, r);
       km = r / 1000;
     }
-    return { ranked: preferLive(found), widenedKm: found.length > 0 ? km : null };
-  }, [q.data, apple.data, target, radiusMeters]);
+    return { ranked: preferLive(found, now), widenedKm: found.length > 0 ? km : null };
+  }, [q.data, apple.data, target, radiusMeters, minute]);
   /** `widenedKm`: 5 or 10 when the list only appeared after widening the search, else null. */
   return { ...q, ranked, widenedKm };
 }

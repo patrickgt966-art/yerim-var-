@@ -2,10 +2,19 @@ import { openState } from '../openNow';
 
 // Formats taken from data/parkings-static.json.
 const text = (openingHoursText: string) => ({ openingHoursText });
-// 2026-10-07 is a Wednesday, 2026-10-11 a Sunday (local time).
-const at = (day: number, h: number, m = 0) => new Date(2026, 9, day, h, m);
+// 2026-10-07 is a Wednesday, 2026-10-11 a Sunday; h:m is Turkey time (UTC+3).
+const at = (day: number, h: number, m = 0) => new Date(Date.UTC(2026, 9, day, h - 3, m));
 
 describe('openState', () => {
+  it('uses Turkey time whatever the device zone is', () => {
+    // 22:30 UTC Saturday is 01:30 Sunday in Turkey.
+    const t = text('07:00–20:00, Pazar Günleri Kapalı');
+    expect(openState(t, new Date('2026-10-10T22:30:00Z'))).toBe('closed');
+    // 05:00 UTC is 08:00 in Turkey: open.
+    expect(openState(text('07:00–21:00'), new Date('2026-10-07T05:00:00Z'))).toBe('open');
+    expect(openState(text('07:00–21:00'), new Date('2026-10-07T03:59:00Z'))).toBe('closed');
+  });
+
   it('live isOpen wins over everything', () => {
     expect(openState({ isOpen: false, nonstop: true }, at(7, 12))).toBe('closed');
     expect(openState({ isOpen: true, openingHoursText: '07:00–08:00' }, at(7, 12))).toBe('open');

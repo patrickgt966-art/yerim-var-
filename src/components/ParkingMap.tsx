@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
-import { visibleFree } from '@/data/freshness';
+import { occupancyLevel, visibleFree } from '@/data/freshness';
 import { isStatic } from '@/lib/staticInfo';
 import type { LatLng } from '@/data/geo';
 import { kindLabel, type Restaurant } from '@/data/restaurants';
@@ -90,7 +90,8 @@ export const ParkingMap = forwardRef<MapView, Props>(function ParkingMap(
         const free = visibleFree(p);
         return (
           <Marker
-            key={p.id}
+            // tracksViewChanges is off: level and selection in the key redraw the pin.
+            key={`${p.id}|${quietParkings || isStatic(p) ? 'q' : occupancyLevel(free, p.capacity)}|${p.id === selectedId ? 's' : ''}`}
             identifier={p.id}
             coordinate={{ latitude: p.lat, longitude: p.lng }}
             tracksViewChanges={false}

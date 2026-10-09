@@ -166,3 +166,20 @@ describe('disabled bays', () => {
     ).toBeNull();
   });
 });
+
+describe('disabled bays, zero capacity', () => {
+  it('ignores a disabled block of 0 free and 0 occupied', () => {
+    const [p] = normalizeIzmir(
+      [
+        {
+          ...sample,
+          occupancy: { total: { free: 1, occupied: 2 }, disabled: { free: 0, occupied: 0 } },
+        },
+      ],
+      at,
+    );
+    expect(p?.disabledFree).toBeUndefined();
+    expect(p?.disabledCapacity).toBeUndefined();
+    expect(p?.hasDisabledSpots).toBeUndefined();
+  });
+});

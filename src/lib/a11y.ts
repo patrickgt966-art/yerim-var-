@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 /** True while VoiceOver / TalkBack is on. */
@@ -19,13 +19,23 @@ export function useScreenReader(): boolean {
 /**
  * Speaks `message` when it changes to a new non-empty text (iOS does not read
  * text that appears on its own). `delayMs` debounces fast changes such as typing.
+ * The same `key` (default: the message) is never spoken twice in a row.
  */
-export function useAnnounce(message: string | null | undefined, delayMs = 0): void {
+export function useAnnounce(
+  message: string | null | undefined,
+  delayMs = 0,
+  key: string | undefined = message ?? undefined,
+): void {
+  // The last spoken key: a refetch that flips a flag off and on must not repeat it.
+  const last = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!message) return;
-    const id = setTimeout(() => AccessibilityInfo.announceForAccessibility(message), delayMs);
+    if (!message || key === last.current) return;
+    const id = setTimeout(() => {
+      last.current = key;
+      AccessibilityInfo.announceForAccessibility(message);
+    }, delayMs);
     return () => clearTimeout(id);
-  }, [message, delayMs]);
+  }, [message, delayMs, key]);
 }
 
 /** Colour-blind friendly word for an occupancy level; null when unknown. */

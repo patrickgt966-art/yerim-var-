@@ -2,7 +2,7 @@ import { isInIzmirArea } from '../places';
 import type { Parking } from '../types';
 import { preferLive, promoteFree } from '../useParkings';
 
-const NOW = new Date(2026, 9, 7, 12, 0);
+const NOW = new Date(Date.UTC(2026, 9, 7, 9, 0));
 
 describe('isInIzmirArea', () => {
   it.each([
