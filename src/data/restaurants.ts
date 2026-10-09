@@ -654,8 +654,14 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
 
 /** Turkish case/occupation suffixes, longest first, for single-word stemming. */
 const QUERY_SUFFIXES = [
+  'ndaki',
+  'ndeki',
   'larda',
   'lerde',
+  'daki',
+  'deki',
+  'taki',
+  'teki',
   'lari',
   'leri',
   'lar',
@@ -682,9 +688,14 @@ function exactCategory(f: string): FoodCategory | null {
   return FOOD_CATEGORIES.find((cat) => CATEGORY_WORDS[cat].includes(f)) ?? null;
 }
 
-/** The word minus one trailing suffix (stem of at least 3 chars), or null. */
+/** The word minus one trailing suffix (stem of at least 3 chars, or 2 if it is a category word), or null. */
 function stripSuffix(w: string): string | null {
-  const suf = QUERY_SUFFIXES.find((s) => w.endsWith(s) && w.length - s.length >= 3);
+  const suf = QUERY_SUFFIXES.find(
+    (s) =>
+      w.endsWith(s) &&
+      (w.length - s.length >= 3 ||
+        (w.length - s.length === 2 && exactCategory(w.slice(0, 2)) !== null)),
+  );
   return suf ? w.slice(0, w.length - suf.length) : null;
 }
 

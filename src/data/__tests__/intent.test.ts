@@ -104,6 +104,34 @@ describe('parseQuery', () => {
   });
 });
 
+describe('locative -daki and district typos', () => {
+  it('reads "bornovadaki en iyi çorbacı"', () => {
+    const r = search('bornovadaki en iyi çorbacı');
+    expect(r.cat).toBe('soup');
+    expect(r.district?.name).toBe('Bornova');
+    expect(r.quality).toBe(true);
+  });
+
+  it('tolerates a typo in the district', () => {
+    const r = search('bornavadaki en iyi etçi');
+    expect(r.cat).toBe('meat');
+    expect(r.district?.name).toBe('Bornova');
+    expect(r.quality).toBe(true);
+    expect(search('bornava').district?.name).toBe('Bornova');
+  });
+
+  it('reads "karşıyakadaki balıkçı"', () => {
+    const r = search('karşıyakadaki balıkçı');
+    expect(r.cat).toBe('fish');
+    expect(r.district?.name).toBe('Karşıyaka');
+  });
+
+  it('keeps exact districts and unknown names', () => {
+    expect(search('konak').district?.name).toBe('Konak');
+    expect(search('megapol').district).toBeNull();
+  });
+});
+
 describe('IZMIR_DISTRICTS', () => {
   it('lists the 30 districts', () => {
     expect(IZMIR_DISTRICTS).toHaveLength(30);
@@ -123,6 +151,7 @@ describe('categoryForQuery stems', () => {
     ['kahvaltici', 'breakfast'],
     ['pideci', 'fast'],
     ['et', 'meat'],
+    ['etci', 'meat'],
   ])('%s -> %s', (q, cat) => {
     expect(categoryForQuery(q)).toBe(cat);
   });
@@ -149,4 +178,13 @@ describe('localPart', () => {
   it('gives the district for a car-park text', () => {
     expect(localPart('konakta otopark')).toBe('Konak');
   });
+
+  it('flags near-me and parking mentions', () => {
+    expect(search('yakınımda balıkçı').nearMe).toBe(true);
+    expect(search('Bornova balıkçı').nearMe).toBe(false);
+    expect(parseQuery('burada yemek')).toMatchObject({ nearMe: false });
+    const r = search('otoparklı olsun');
+    expect(r).toMatchObject({ cat: null, placeQuery: '', mentionsParking: true });
+  });
 });
+

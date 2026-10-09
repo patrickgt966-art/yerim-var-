@@ -27,6 +27,10 @@ export type QueryIntent =
       uncertain: boolean;
       /** The user wants food: a category, or a generic food word like "yemek". */
       food: boolean;
+      /** The user means "around me" (yakınımda, burada, ...). */
+      nearMe: boolean;
+      /** The text contains a car-park word. */
+      mentionsParking: boolean;
     };
 
 /** The 30 districts of İzmir. */
@@ -73,7 +77,7 @@ const ABUSE = words(
   'aq amk amq aqq sikim sikerim siktir sik orospu pic yarrak amina anani ananin anan got gotveren salak aptal gerizekali mal oc lan',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde',
 );
 // Words that mean "food in general"; they stay filler for place purposes.
 const FOOD_WORDS = words(
@@ -83,12 +87,21 @@ const FOOD_WORDS = words(
 const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan nden');
 const QUALITY = words('saglam guzel lezzetli meshur unlu kaliteli harika efsane en iyi');
 const PARKING = words('park parki parkli parkyeri');
+const NEAR_ME = words(
+  'yakinimda yakinda yakindaki yakin etrafimda cevremde',
+);
 const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok');
 
 /** Place-name suffixes, longest first. */
 const PLACE_SUFFIXES = [
+  'ndaki',
+  'ndeki',
   'larda',
   'lerde',
+  'daki',
+  'deki',
+  'taki',
+  'teki',
   'lari',
   'leri',
   'lar',
@@ -147,6 +160,43 @@ function placeStem(token: string): string {
   return firstPrefix ?? token;
 }
 
+/** True when a and b differ by at most one insertion, deletion, substitution or adjacent swap. */
+function withinOneEdit(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) {
+    if (a.slice(i + 1) === b.slice(i + 1)) return true;
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2);
+  }
+  const [long, short] = a.length > b.length ? [a, b] : [b, a];
+  return long.slice(i + 1) === short.slice(i);
+}
+
+/** Folded district name within one typo of the word, or null. */
+function nearDistrict(word: string): string | null {
+  for (const d of IZMIR_DISTRICTS) {
+    const name = fold(d.name);
+    if (withinOneEdit(word, name)) return name;
+  }
+  return null;
+}
+
+/** "bornavadaki" -> "bornova": typo-tolerant district match on the token or its stems. */
+function fixDistrictTypo(original: string, token: string): string {
+  if (token.length < 5) return token;
+  if (IZMIR_DISTRICTS.some((d) => fold(d.name) === token) || namesToken(token)) return token;
+  const direct = nearDistrict(token);
+  if (direct) return direct;
+  for (const suf of PLACE_SUFFIXES_SHORT_FIRST) {
+    if (!original.endsWith(suf) || original.length - suf.length < 5) continue;
+    const near = nearDistrict(original.slice(0, original.length - suf.length));
+    if (near) return near;
+  }
+  return token;
+}
+
 /** Place tokens: kept as typed when one hit's name words cover them all, else stemmed. */
 function placeTokens(tokens: string[]): string[] {
   if (tokens.length === 0) return tokens;
@@ -155,7 +205,7 @@ function placeTokens(tokens: string[]): string[] {
     const nw = nameWords(hit.name);
     if (tokens.every((t) => nw.some((w) => w.startsWith(t)))) return tokens;
   }
-  return tokens.map(placeStem);
+  return tokens.map((t) => fixDistrictTypo(t, placeStem(t)));
 }
 
 /** Split a free-text query into chit-chat, or place / dish / filters. */
@@ -176,6 +226,7 @@ export function parseQuery(raw: string): QueryIntent {
   }
 
   // 'iyi' is a greeting word, so it is checked on the full token list.
+  const nearMe = all.some((t) => NEAR_ME.has(t));
   const quality = all.some((t) => QUALITY.has(t));
   rest = rest.filter((t) => !QUALITY.has(t));
 
@@ -232,6 +283,8 @@ export function parseQuery(raw: string): QueryIntent {
     quality,
     uncertain,
     food,
+    nearMe,
+    mentionsParking: hasPark,
   };
 }
 
