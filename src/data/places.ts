@@ -13,17 +13,32 @@ export function isNearPier(p: LatLng, maxMeters = 400): boolean {
 }
 
 /**
- * Rough İzmir province box, also within 120 km of the centre (keeps out open
- * sea); a location outside is not a useful search centre.
+ * Westmost longitude of İzmir land per latitude band: keeps out the open
+ * Aegean (and Chios / Lesbos) while Çeşme, Alaçatı, Karaburun, Foça, Dikili
+ * stay in. Bands are ordered from the highest lower bound down.
+ */
+const WEST_LIMITS: [minLat: number, minLng: number][] = [
+  [38.75, 26.7], // Foça, Dikili, Bergama
+  [38.5, 26.33], // Karaburun
+  [38.36, 26.45], // sea between Karaburun and Çeşme
+  [38.2, 26.2], // Çeşme peninsula
+  [0, 26.6], // Seferihisar, Özdere and south
+];
+
+/**
+ * Rough İzmir province outline: a box, within 120 km of the centre, and east
+ * of the west coast; a location outside is not a useful search centre.
  */
 export function isInIzmirArea(p: LatLng): boolean {
-  return (
+  if (!(
     p.lat >= 37.8 &&
     p.lat <= 39.4 &&
-    p.lng >= 26.2 &&
     p.lng <= 28.5 &&
     distanceMeters(p, IZMIR_CENTER) < 120_000
-  );
+  ))
+    return false;
+  const band = WEST_LIMITS.find(([minLat]) => p.lat >= minLat);
+  return !!band && p.lng >= band[1];
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   type Freshness,
 } from '@/data/freshness';
 import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
+import { levelWord, useAnnounce } from '@/lib/a11y';
 import { currentLocation } from '@/lib/location';
 import { isStatic } from '@/lib/staticInfo';
 import { asym, fonts, useColors } from '@/theme';
@@ -32,12 +33,13 @@ function Card({ p, best, large }: { p: RankedParking; best: boolean; large: bool
   const free = visibleFree(p);
   const level = occupancyLevel(free, p.capacity);
   const levelColor = level === 'plenty' ? c.plenty : level === 'few' ? c.few : c.full;
+  const word = levelWord(level, t);
 
   let status: string;
   let detail: string;
   if (free != null) {
     detail = t('nearby.freeWalk', { walk: p.walk });
-    status = `${t('nearby.a11yFree', { count: free })}, ${detail}`;
+    status = `${t('nearby.a11yFree', { count: free })}${word ? `, ${word}` : ''}, ${detail}`;
   } else {
     const noCount = isStatic(p);
     detail =
@@ -80,6 +82,11 @@ function Card({ p, best, large }: { p: RankedParking; best: boolean; large: bool
             style={{ fontFamily: fonts.display, fontSize: 34, lineHeight: 36 }}
           >
             {free}
+            {word && (
+              <Txt variant="label" color={levelColor}>
+                {` ${word}`}
+              </Txt>
+            )}
           </Txt>
         ) : isStatic(p) ? (
           <Tag text={t('freshness.noDataShort')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
@@ -204,6 +211,16 @@ export function NearbyNow() {
     return allLive ? oldest : { kind: 'updated', at: oldest.at };
   }, [result, nearest]);
 
+  const liveIncoming =
+    !!here &&
+    nearest.length > 0 &&
+    q.isFetching &&
+    !!result &&
+    result.source !== 'mock' &&
+    lacksFreshCounts(nearest);
+  useAnnounce(liveIncoming ? t('nearby.liveIncoming') : null);
+  useAnnounce(!here && needsPermission && !dismissed ? t('nearby.locationTitle') : null);
+
   if (!here && needsPermission && !dismissed) {
     return (
       <LocationCard
@@ -214,8 +231,6 @@ export function NearbyNow() {
     );
   }
   if (!here || nearest.length === 0) return null;
-  const liveIncoming =
-    q.isFetching && !!result && result.source !== 'mock' && lacksFreshCounts(nearest);
 
   return (
     <View style={{ gap: 12 }}>

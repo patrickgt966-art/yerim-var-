@@ -227,7 +227,7 @@ export function CategoryGrid() {
             }}
           >
             {pending === cat ? (
-              <ActivityIndicator color={brand.navy} />
+              <ActivityIndicator color={brand.navy} accessibilityLabel={t('a11y.loading')} />
             ) : (
               <Icon name={CATEGORY_ICON[cat]} size={24} color={brand.navy} />
             )}

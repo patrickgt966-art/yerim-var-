@@ -38,6 +38,14 @@ export type Parking = {
   genericName?: boolean;
   /** 'customers': open to visitors of a shop/mall; 'subscribers': monthly pass holders. */
   access?: 'customers' | 'subscribers' | null;
+  /** Disabled-bay count from the live source; null/undefined when the source has none. */
+  disabledFree?: number | null;
+  /** Disabled-bay capacity: live (free + occupied) or the OSM `capacity:disabled` tag. */
+  disabledCapacity?: number | null;
+  /** True when the source says the car park has disabled bays (even without a count). */
+  hasDisabledSpots?: boolean | null;
+  /** OSM `wheelchair` tag ("yes" | "limited" | "no"). */
+  wheelchair?: 'yes' | 'limited' | 'no' | null;
   source: DataSource;
   /** Measurement time reported by the source (ISO). The İzmir API has none. */
   updatedAt: string | null;

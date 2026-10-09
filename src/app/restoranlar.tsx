@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, ScrollView, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
@@ -58,6 +58,7 @@ export default function RestaurantsScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
     lat?: string | string[];
     lng?: string | string[];
@@ -102,10 +103,24 @@ export default function RestaurantsScreen() {
   const place = firstParam(params.label) || t('common.izmir');
   const topEasy = sort === 'parkEase' && rows[0] ? isBest(rows[0].parking) : false;
 
-  return (
-    <View
-      style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8, paddingHorizontal: 20 }}
-    >
+  // The whole header scrolls with the list, so large text never squeezes the rows.
+  const wrapChips = fontScale > 1.2;
+  const categoryChips = (
+    <>
+      <Chip label={t('food.all')} selected={active === 'all'} onPress={() => setFilter('all')} />
+      {FOOD_CATEGORIES.map((cat) => (
+        <Chip
+          key={cat}
+          label={t(`food.cats.${cat}`)}
+          icon={CATEGORY_ICON[cat]}
+          selected={active === cat}
+          onPress={() => setFilter(cat)}
+        />
+      ))}
+    </>
+  );
+  const header = (
+    <View>
       <ScreenHeader title={t('food.title')} back />
       <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
         {t(sort === 'parkEase' ? 'food.subtitle' : 'food.subtitleNearest', {
@@ -139,7 +154,12 @@ export default function RestaurantsScreen() {
       )}
       <View
         accessibilityLabel={t('food.sortLabel')}
-        style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}
+        style={{
+          flexDirection: 'row',
+          flexWrap: wrapChips ? 'wrap' : 'nowrap',
+          gap: 8,
+          marginBottom: 10,
+        }}
       >
         <Chip
           label={t('food.sortPark')}
@@ -154,32 +174,29 @@ export default function RestaurantsScreen() {
       </View>
       {all.length > 0 && (
         <View style={{ marginBottom: 12 }}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            <Chip
-              label={t('food.all')}
-              selected={active === 'all'}
-              onPress={() => setFilter('all')}
-            />
-            {FOOD_CATEGORIES.map((cat) => (
-              <Chip
-                key={cat}
-                label={t(`food.cats.${cat}`)}
-                icon={CATEGORY_ICON[cat]}
-                selected={active === cat}
-                onPress={() => setFilter(cat)}
-              />
-            ))}
-          </ScrollView>
+          {wrapChips ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{categoryChips}</View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {categoryChips}
+            </ScrollView>
+          )}
         </View>
       )}
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
       <FlatList
         data={rows}
         keyExtractor={(x) => x.r.id}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        ListHeaderComponent={header}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         ItemSeparatorComponent={RowSeparator}
         ListEmptyComponent={
           <Txt secondary>

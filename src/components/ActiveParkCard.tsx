@@ -37,6 +37,7 @@ export function StillParkedPrompt() {
         <Button
           kind="secondary"
           label={t('search.stillParkedYes')}
+          accessibilityLabel={t('a11y.stillParkedYes')}
           onPress={confirmPark}
           style={{ flex: 1 }}
         />

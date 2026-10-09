@@ -3,7 +3,10 @@ import { Pressable, View } from 'react-native';
 
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import type { RankedParking } from '@/data/useParkings';
+import { levelWord } from '@/lib/a11y';
+import { disabledInfo, type DisabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
+import { openState } from '@/lib/openNow';
 import { isStatic, sourceLabel, staticHeadline } from '@/lib/staticInfo';
 import { useApp } from '@/store/app';
 import { asym, fonts, useColors } from '@/theme';
@@ -19,6 +22,7 @@ type Props = {
   parking: RankedParking;
   featured?: boolean;
   nearest?: boolean;
+  freeTag?: boolean;
   onParkHere: () => void;
   onDetail: () => void;
 };
@@ -35,6 +39,7 @@ function BigCount({
   const c = useColors();
   const { t } = useTranslation();
   const level = occupancyLevel(free, capacity);
+  const word = levelWord(level, t);
   const color =
     level === 'plenty'
       ? c.plenty
@@ -60,7 +65,30 @@ function BigCount({
       <Txt variant="label" secondary>
         {t('common.free')}
       </Txt>
+      {/* A word as well as a colour, for colour-blind users. */}
+      {word && (
+        <Txt variant="label" color={color} style={{ fontFamily: fonts.bodyBold }}>
+          {word}
+        </Txt>
+      )}
     </View>
+  );
+}
+
+function disabledText(d: DisabledInfo, t: (k: string, o?: Record<string, unknown>) => string) {
+  return d.kind === 'count'
+    ? t('a11y.disabledCount', { free: d.free, capacity: d.capacity })
+    : t('a11y.disabledExists');
+}
+
+/** Small "Engelli yeri" line; only for car parks that report disabled bays. */
+function DisabledLine({ info }: { info: DisabledInfo | null }) {
+  const { t } = useTranslation();
+  if (!info) return null;
+  return (
+    <Txt variant="label" secondary style={{ marginTop: 2 }}>
+      {disabledText(info, t)}
+    </Txt>
   );
 }
 
@@ -104,7 +132,14 @@ function StaticFacts({ parking: p }: { parking: RankedParking }) {
   );
 }
 
-export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetail }: Props) {
+export function ParkingCard({
+  parking: p,
+  featured,
+  nearest,
+  freeTag,
+  onParkHere,
+  onDetail,
+}: Props) {
   const c = useColors();
   const { t } = useTranslation();
   const freshness = getFreshness(p);
@@ -114,6 +149,10 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
   const spokenMeta = metaLine(p, t, mode, true);
 
   const staticCard = isStatic(p);
+  // When isOpen is false the meta line already says "Şu an kapalı".
+  const maybeClosed = p.isOpen !== false && openState(p) === 'closed';
+  const disabled = staticCard ? null : disabledInfo(p);
+  const word = staticCard ? null : levelWord(occupancyLevel(free, p.capacity), t);
   const a11y = staticCard
     ? t('card.a11yStatic', {
         name: p.name,
@@ -125,7 +164,7 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
           .filter(Boolean)
           .join(', '),
       })
-    : `${p.name}. ${spokenMeta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}. ${freshnessText(freshness, t)}`;
+    : `${p.name}. ${spokenMeta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}${word ? `, ${word}` : ''}. ${freshnessText(freshness, t)}${disabled ? `. ${disabledText(disabled, t)}` : ''}${maybeClosed ? `. ${t('results.maybeClosed')}` : ''}`;
 
   if (!featured) {
     return (
@@ -160,6 +199,12 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
           <Txt variant="caption" secondary style={{ marginTop: 2 }}>
             {staticCard ? meta : [meta, freshnessText(freshness, t)].filter(Boolean).join(' · ')}
           </Txt>
+          {maybeClosed && (
+            <Txt variant="label" secondary style={{ marginTop: 2 }}>
+              {t('results.maybeClosed')}
+            </Txt>
+          )}
+          <DisabledLine info={disabled} />
           <View style={{ marginTop: 9 }}>
             {staticCard ? (
               <StaticFacts parking={p} />
@@ -195,12 +240,21 @@ export function ParkingCard({ parking: p, featured, nearest, onParkHere, onDetai
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <PBadge />
             {nearest && <Tag text={t('results.nearest')} bg={c.badgeNearBg} fg={c.badgeNearText} />}
+            {freeTag && !nearest && (
+              <Tag text={t('results.freeSpace')} bg={c.badgeNearBg} fg={c.badgeNearText} />
+            )}
             {!staticCard && <FreshnessBadge freshness={freshness} />}
           </View>
           <Txt style={{ fontFamily: fonts.display, fontSize: 18, marginTop: 7 }}>{p.name}</Txt>
           <Txt variant="caption" secondary style={{ marginTop: 2 }}>
             {meta}
           </Txt>
+          {maybeClosed && (
+            <Txt variant="label" secondary style={{ marginTop: 2 }}>
+              {t('results.maybeClosed')}
+            </Txt>
+          )}
+          <DisabledLine info={disabled} />
           <View style={{ marginTop: 9 }}>
             {staticCard ? (
               <StaticFacts parking={p} />

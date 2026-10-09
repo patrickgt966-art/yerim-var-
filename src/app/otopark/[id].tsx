@@ -12,12 +12,15 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
 import { Txt } from '@/components/Txt';
-import { getFreshness, visibleFree } from '@/data/freshness';
+import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { findAppleParking } from '@/data/appleParkings';
 import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
+import { levelWord } from '@/lib/a11y';
+import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
+import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { reportWrongData } from '@/lib/report';
@@ -71,6 +74,10 @@ export default function ParkingDetail() {
 
   const freshness = getFreshness(p);
   const free = visibleFree(p);
+  const disabled = disabledInfo(p);
+  // When isOpen is false the meta line already says "Şu an kapalı".
+  const maybeClosed =
+    p.isOpen !== false && openState(p) === 'closed' ? t('results.maybeClosed') : null;
   const tariff = tariffFor(p.id);
   const official = tariff?.priceKind === 'official';
 
@@ -108,11 +115,11 @@ export default function ParkingDetail() {
       />
       <Txt
         secondary
-        accessibilityLabel={[metaLine(p, t, mode, true), p.operator, p.address]
+        accessibilityLabel={[metaLine(p, t, mode, true), maybeClosed, p.operator, p.address]
           .filter(Boolean)
           .join(' · ')}
       >
-        {[metaLine(p, t, mode), p.operator, p.address].filter(Boolean).join(' · ')}
+        {[metaLine(p, t, mode), maybeClosed, p.operator, p.address].filter(Boolean).join(' · ')}
       </Txt>
       <SampleBanner result={data} />
 
@@ -177,6 +184,12 @@ export default function ParkingDetail() {
             <Txt variant="label" secondary>
               {t('common.free')}
             </Txt>
+            {/* A word as well as a colour, for colour-blind users. */}
+            {levelWord(occupancyLevel(free, p.capacity), t) && (
+              <Txt variant="label" style={{ fontFamily: fonts.bodyBold }}>
+                {levelWord(occupancyLevel(free, p.capacity), t)}
+              </Txt>
+            )}
           </View>
         </View>
       )}
@@ -231,6 +244,13 @@ export default function ParkingDetail() {
             ? t('detail.capacityValue', { count: p.capacity })
             : t('common.unknown')}
         </Txt>
+        {disabled && (
+          <Txt variant="bodyBold">
+            {disabled.kind === 'count'
+              ? t('a11y.disabledCount', { free: disabled.free, capacity: disabled.capacity })
+              : t('a11y.disabledExists')}
+          </Txt>
+        )}
       </Section>
 
       <Section title={t('detail.source')}>

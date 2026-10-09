@@ -26,6 +26,10 @@ type StaticRecord = {
   source: StaticSource;
   /** Nearest named place within 400 m, for unnamed car parks. */
   near?: string | null;
+  /** OSM capacity:disabled, when tagged. */
+  disabledCapacity?: number;
+  /** OSM wheelchair tag, when tagged. */
+  wheelchair?: 'yes' | 'limited' | 'no';
 };
 
 type StaticFile = { generatedAt: string; parkings: StaticRecord[] };
@@ -69,6 +73,8 @@ export function toParking(r: StaticRecord, generatedAt: string): Parking {
     updatedAt: null,
     fetchedAt: generatedAt,
     occupancyKind: 'estimated',
+    ...(typeof r.disabledCapacity === 'number' ? { disabledCapacity: r.disabledCapacity } : {}),
+    ...(r.wheelchair ? { wheelchair: r.wheelchair } : {}),
   };
 }
 

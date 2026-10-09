@@ -42,6 +42,7 @@ import {
 } from '@/data/appleSearch';
 import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
 import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
+import { useAnnounce } from '@/lib/a11y';
 import { currentLocation, geocode, reverseStreet } from '@/lib/location';
 import { currentLocationLabel } from '@/lib/park';
 import { useApp, type SavedPlace } from '@/store/app';
@@ -170,7 +171,7 @@ function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean 
     >
       {!place && <DashedFrame color={c.dashed} radius={16} tight={5} />}
       {saving ? (
-        <ActivityIndicator color={c.text} />
+        <ActivityIndicator color={c.text} accessibilityLabel={t('a11y.loading')} />
       ) : (
         <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
       )}
@@ -243,6 +244,17 @@ export default function SearchScreen() {
   const foodMatches = useMemo(
     () => (food ? matchRestaurants(deferredQuery) : []),
     [food, deferredQuery],
+  );
+
+  // VoiceOver does not read a list that appears while typing: say how many, once typing pauses.
+  const suggestionCount = hits.length + foodMatches.length;
+  useAnnounce(
+    query.trim().length >= 2 && settled
+      ? suggestionCount > 0
+        ? t('a11y.suggestionCount', { count: suggestionCount })
+        : t('a11y.suggestionNone')
+      : null,
+    700,
   );
 
   const submit = async () => {
@@ -392,7 +404,11 @@ export default function SearchScreen() {
               }}
             />
             {busy || locating ? (
-              <ActivityIndicator color={c.text} style={{ width: HIT }} />
+              <ActivityIndicator
+                color={c.text}
+                style={{ width: HIT }}
+                accessibilityLabel={t('a11y.loading')}
+              />
             ) : (
               <Pressable
                 accessibilityRole="button"

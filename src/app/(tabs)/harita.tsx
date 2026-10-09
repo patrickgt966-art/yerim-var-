@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { PBadge } from '@/components/PBadge';
@@ -20,6 +20,7 @@ import {
   type Restaurant,
 } from '@/data/restaurants';
 import { rankByDistance, useParkings } from '@/data/useParkings';
+import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { currentLocation } from '@/lib/location';
 import { parseLatLng } from '@/lib/params';
 import { asym, fonts, HIT, useColors } from '@/theme';
@@ -27,13 +28,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Mode = 'parkings' | 'food';
 
-const SWITCH_GAP = 8;
-
 export default function MapTab() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { data } = useParkings();
+  const { fontScale } = useWindowDimensions();
+  const screenReader = useScreenReader();
   const params = useLocalSearchParams<{
     mode?: string;
     lat?: string | string[];
@@ -99,10 +100,11 @@ export default function MapTab() {
     [mode, mapCenter],
   );
 
+  useAnnounce(outside && !paramCenter ? t('map.outsideIzmir') : null);
+
   if (!mapCenter) return <View style={{ flex: 1 }} />;
 
-  const switchTop = insets.top + 8;
-  const bannerTop = switchTop + HIT + SWITCH_GAP;
+  const bigText = fontScale > 1.2;
   const showBanner =
     data?.source === 'mock' ||
     (data?.source === 'static-only' && !!data.fallbackReason) ||
@@ -117,83 +119,106 @@ export default function MapTab() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ParkingMap
-        key={`${mapCenter.lat},${mapCenter.lng},${params.ts ?? ''}`}
-        parkings={nearby}
-        center={mapCenter}
-        delta={0.06}
-        onSelect={(p) => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
-        restaurants={restaurants}
-        selectedRestaurantId={selected?.id}
-        onSelectRestaurant={setSelected}
-        quietParkings={mode === 'food'}
-      />
+      {/* Screen reader on: the map is skipped and "Listeyi göster" opens the list instead. */}
       <View
-        accessibilityRole="tablist"
-        accessibilityLabel={t('map.modeLabel')}
-        style={[
-          asym(16, 5),
-          {
-            position: 'absolute',
-            top: switchTop,
-            left: 16,
-            right: 16,
-            flexDirection: 'row',
-            padding: 3,
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.line,
-          },
-        ]}
+        style={{ flex: 1 }}
+        accessibilityElementsHidden={screenReader}
+        importantForAccessibility={screenReader ? 'no-hide-descendants' : 'auto'}
       >
-        {(['parkings', 'food'] as const).map((m) => {
-          const on = mode === m;
-          return (
-            <Pressable
-              key={m}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => pick(m)}
-              style={{
-                flex: 1,
-                minHeight: HIT - 6,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: on ? c.primary : 'transparent',
-              }}
-            >
-              <Txt
-                style={{ fontFamily: on ? fonts.display : fonts.bodyBold, fontSize: 15 }}
-                color={on ? c.onPrimary : c.text}
-                numberOfLines={1}
-              >
-                {t(m === 'parkings' ? 'map.modeParkings' : 'map.modeFood')}
-              </Txt>
-            </Pressable>
-          );
-        })}
+        <ParkingMap
+          key={`${mapCenter.lat},${mapCenter.lng},${params.ts ?? ''}`}
+          parkings={nearby}
+          center={mapCenter}
+          delta={0.06}
+          onSelect={(p) => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
+          restaurants={restaurants}
+          selectedRestaurantId={selected?.id}
+          onSelectRestaurant={setSelected}
+          quietParkings={mode === 'food'}
+        />
       </View>
-      {((outside && !paramCenter) || showBanner) && (
-        <View style={{ position: 'absolute', top: bannerTop, left: 16, right: 16, gap: 8 }}>
-          {outside && !paramCenter && (
-            <View
-              style={[
-                asym(14, 4),
-                {
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.line,
-                },
-              ]}
-            >
-              <Txt variant="caption">{t('map.outsideIzmir')}</Txt>
-            </View>
-          )}
-          {showBanner && <SampleBanner result={data} />}
+      <View style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, gap: 8 }}>
+        <View
+          accessibilityRole="tablist"
+          accessibilityLabel={t('map.modeLabel')}
+          style={[
+            asym(16, 5),
+            {
+              flexDirection: bigText ? 'column' : 'row',
+              padding: 3,
+              backgroundColor: c.card,
+              borderWidth: 1,
+              borderColor: c.line,
+            },
+          ]}
+        >
+          {(['parkings', 'food'] as const).map((m) => {
+            const on = mode === m;
+            return (
+              <Pressable
+                key={m}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                onPress={() => pick(m)}
+                style={{
+                  flex: 1,
+                  minHeight: HIT - 6,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: on ? c.primary : 'transparent',
+                }}
+              >
+                <Txt
+                  style={{ fontFamily: on ? fonts.display : fonts.bodyBold, fontSize: 15 }}
+                  color={on ? c.onPrimary : c.text}
+                >
+                  {t(m === 'parkings' ? 'map.modeParkings' : 'map.modeFood')}
+                </Txt>
+              </Pressable>
+            );
+          })}
         </View>
+        {((outside && !paramCenter) || showBanner) && (
+          <View style={{ gap: 8 }}>
+            {outside && !paramCenter && (
+              <View
+                style={[
+                  asym(14, 4),
+                  {
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    backgroundColor: c.card,
+                    borderWidth: 1,
+                    borderColor: c.line,
+                  },
+                ]}
+              >
+                <Txt variant="caption">{t('map.outsideIzmir')}</Txt>
+              </View>
+            )}
+            {showBanner && <SampleBanner result={data} />}
+          </View>
+        )}
+      </View>
+      {screenReader && (
+        <Button
+          label={t('a11y.showList')}
+          onPress={() =>
+            router.push(
+              mode === 'food'
+                ? {
+                    pathname: '/restoranlar',
+                    params: { lat: String(mapCenter.lat), lng: String(mapCenter.lng) },
+                  }
+                : {
+                    pathname: '/sonuc',
+                    params: { lat: String(mapCenter.lat), lng: String(mapCenter.lng) },
+                  },
+            )
+          }
+          style={{ position: 'absolute', left: 16, right: 16, bottom: 12 }}
+        />
       )}
       {mode === 'food' && selected && (
         <RestaurantCard

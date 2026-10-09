@@ -27,7 +27,13 @@ const RecordSchema = z.object({
   openingHours: z.record(z.string(), z.string()).nullish(),
   occupancy: z.object({
     total: z.object({ free: count.nullish(), occupied: count.nullish() }),
+    // Present on some records only; a malformed block must not drop the record.
+    disabled: z
+      .object({ free: count.nullish(), occupied: count.nullish() })
+      .nullish()
+      .catch(undefined),
   }),
+  accessibility: z.object({ disabled: z.boolean().nullish() }).partial().nullish().catch(undefined),
   accessories: z.object({ covered: z.boolean().nullish() }).partial().nullish(),
 });
 
@@ -73,6 +79,9 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
     seen.add(r.ufid);
     const free = wholeOrNull(r.occupancy.total.free);
     const occupied = wholeOrNull(r.occupancy.total.occupied);
+    const dFree = wholeOrNull(r.occupancy.disabled?.free);
+    const dOccupied = wholeOrNull(r.occupancy.disabled?.occupied);
+    const dCapacity = dFree != null && dOccupied != null ? dFree + dOccupied : null;
     // Nonstop car parks send "–" for every day; keep only real values.
     const hourEntries = Object.entries(r.openingHours ?? {}).filter(
       ([d, v]) => DAYS.includes(d) && !PLACEHOLDER_HOURS.test(v),
@@ -94,6 +103,12 @@ export function normalizeIzmir(raw: unknown, fetchedAt: string): Parking[] {
       nonstop: r.nonstop ?? null,
       openingHours: hours,
       address: r.address ? r.address : null,
+      ...(dFree != null && dCapacity != null
+        ? { disabledFree: dFree, disabledCapacity: dCapacity }
+        : {}),
+      ...(dCapacity != null || r.accessibility?.disabled === true
+        ? { hasDisabledSpots: true }
+        : {}),
       source: 'izmir-open-data',
       // The source has no measurement timestamp; never invent one.
       updatedAt: null,

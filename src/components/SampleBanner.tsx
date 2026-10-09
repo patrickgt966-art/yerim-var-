@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { ageSince, formatClock } from '@/data/freshness';
 import type { ParkingResult } from '@/data/types';
+import { useAnnounce } from '@/lib/a11y';
 import { useNow } from '@/lib/useNow';
 import { asym, useColors } from '@/theme';
 
@@ -16,9 +17,9 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
   const c = useColors();
   const nowMs = useNow(30_000);
   const { t } = useTranslation();
-  if (!result) return null;
   let text: string | null = null;
-  if (result.source === 'mock') text = t('freshness.sampleBanner');
+  if (!result) text = null;
+  else if (result.source === 'mock') text = t('freshness.sampleBanner');
   // No fallbackReason: the first download is still running, nothing has failed yet.
   else if (result.source === 'static-only' && result.fallbackReason)
     text = t('freshness.staticOnlyBanner');
@@ -27,6 +28,8 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
       time: formatClock(new Date(result.fetchedAt)),
       age: ageSince(result.fetchedAt, new Date(nowMs)),
     });
+  // iOS does not read a banner that appears by itself.
+  useAnnounce(text);
   if (!text) return null;
   return (
     <View
