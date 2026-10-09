@@ -375,6 +375,9 @@ const tr = {
       biergarten: 'Bira bahçesi',
       food_court: 'Yemek katı',
       ice_cream: 'Dondurmacı',
+      bakery: 'Fırın',
+      pastry: 'Pastane',
+      confectionery: 'Şekerci',
     },
     cuisines: {
       coffee_shop: 'Kahve',

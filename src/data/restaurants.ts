@@ -31,7 +31,17 @@ type FoodRecord = {
 type FoodFile = { generatedAt: string; items: FoodRecord[] };
 
 export type RestaurantKind =
-  'restaurant' | 'cafe' | 'fast_food' | 'bar' | 'pub' | 'biergarten' | 'food_court' | 'ice_cream';
+  | 'restaurant'
+  | 'cafe'
+  | 'fast_food'
+  | 'bar'
+  | 'pub'
+  | 'biergarten'
+  | 'food_court'
+  | 'ice_cream'
+  | 'bakery'
+  | 'pastry'
+  | 'confectionery';
 
 export type Restaurant = {
   id: string;
@@ -121,6 +131,9 @@ const KIND_KEYS: Record<string, string> = {
   biergarten: 'biergarten',
   food_court: 'food_court',
   ice_cream: 'ice_cream',
+  bakery: 'bakery',
+  pastry: 'pastry',
+  confectionery: 'confectionery',
 };
 
 /** OSM cuisine code to the i18n key under `food.cuisines`; others are left out. */
@@ -268,6 +281,7 @@ function hasWordStart(name: string, kw: string): boolean {
 // never shown as a fact about the place.
 const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   breakfast: {
+    kinds: ['bakery'],
     cuisines: ['breakfast'],
     names: [
       'kahvalt',
@@ -314,7 +328,7 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
     names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun', 'cig kofte', 'cigkofte'],
   },
   dessert: {
-    kinds: ['ice_cream'],
+    kinds: ['ice_cream', 'pastry', 'confectionery'],
     cuisines: ['dessert', 'ice_cream', 'cake', 'pastry'],
     names: ['tatli', 'pastane', 'dondurma', 'baklava', 'kunefe'],
   },
