@@ -178,4 +178,12 @@ describe('localPart', () => {
   it('gives the district for a car-park text', () => {
     expect(localPart('konakta otopark')).toBe('Konak');
   });
+
+  it('flags near-me and parking mentions', () => {
+    expect(search('yakınımda balıkçı').nearMe).toBe(true);
+    expect(search('Bornova balıkçı').nearMe).toBe(false);
+    const r = search('otoparklı olsun');
+    expect(r).toMatchObject({ cat: null, placeQuery: '', mentionsParking: true });
+  });
 });
+

@@ -27,6 +27,10 @@ export type QueryIntent =
       uncertain: boolean;
       /** The user wants food: a category, or a generic food word like "yemek". */
       food: boolean;
+      /** The user means "around me" (yakınımda, burada, ...). */
+      nearMe: boolean;
+      /** The text contains a car-park word. */
+      mentionsParking: boolean;
     };
 
 /** The 30 districts of İzmir. */
@@ -73,7 +77,7 @@ const ABUSE = words(
   'aq amk amq aqq sikim sikerim siktir sik orospu pic yarrak amina anani ananin anan got gotveren salak aptal gerizekali mal oc lan',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde',
 );
 // Words that mean "food in general"; they stay filler for place purposes.
 const FOOD_WORDS = words(
@@ -83,6 +87,9 @@ const FOOD_WORDS = words(
 const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan nden');
 const QUALITY = words('saglam guzel lezzetli meshur unlu kaliteli harika efsane en iyi');
 const PARKING = words('park parki parkli parkyeri');
+const NEAR_ME = words(
+  'yakinimda yakinda yakindaki yakin burada buraya burda etrafimda cevremde',
+);
 const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok');
 
 /** Place-name suffixes, longest first. */
@@ -219,6 +226,7 @@ export function parseQuery(raw: string): QueryIntent {
   }
 
   // 'iyi' is a greeting word, so it is checked on the full token list.
+  const nearMe = all.some((t) => NEAR_ME.has(t));
   const quality = all.some((t) => QUALITY.has(t));
   rest = rest.filter((t) => !QUALITY.has(t));
 
@@ -275,6 +283,8 @@ export function parseQuery(raw: string): QueryIntent {
     quality,
     uncertain,
     food,
+    nearMe,
+    mentionsParking: hasPark,
   };
 }
 
