@@ -124,4 +124,81 @@ describe('assistant', () => {
     const r = await answer('selam dostum nasılsın', emptyContext('park'), deps);
     expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
   });
+
+  describe('with the AI layer', () => {
+    type Ai = NonNullable<AssistantDeps['ai']>;
+    const aiDeps = (ai: Partial<Ai>): AssistantDeps => ({
+      ...deps,
+      ai: {
+        understand: async () => ({ ok: false, reason: 'error' }),
+        narrate: async () => ({ ok: false, reason: 'error' }),
+        quotaNotice: () => false,
+        ...ai,
+      },
+    });
+
+    it('narrates a grounded reply with real names', async () => {
+      const plainRes = await answer('bornovadaki balıkçılar', emptyContext('food'), deps);
+      const first = plainRes.reply.cards[0]!;
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({ narrate: async () => ({ ok: true, value: 'Tabi hocam! {1} burada.', remaining: 4 }) }),
+      );
+      expect(r.reply.sparkle).toBe(true);
+      expect(r.reply.text).toContain(first.name);
+      expect(r.reply.text).not.toContain('{1}');
+    });
+
+    it('keeps the template when the narration is not grounded', async () => {
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({ narrate: async () => ({ ok: true, value: 'Puanı 4.8!', remaining: 4 }) }),
+      );
+      expect(r.reply.text).toContain('chat.foodFound_');
+      expect(r.reply.sparkle).toBeFalsy();
+    });
+
+    it('answers off-topic text with the AI reply', async () => {
+      const r = await answer(
+        'galatasaray nasıl kazandı',
+        emptyContext('park'),
+        aiDeps({
+          understand: async () => ({
+            ok: true,
+            value: { kind: 'offtopic', reply: 'Maçı izleyemedim 😄' },
+            remaining: 4,
+          }),
+        }),
+      );
+      expect(r.reply.text).toBe('Maçı izleyemedim 😄');
+      expect(r.reply.sparkle).toBe(true);
+    });
+
+    it('shows the quota notice only once', async () => {
+      const notices = [true, false];
+      const d = aiDeps({
+        understand: async () => ({ ok: false, reason: 'quota' }),
+        quotaNotice: () => notices.shift() ?? false,
+      });
+      const first = await answer('galatasaray nasıl kazandı', emptyContext('park'), d);
+      expect(first.reply.text.startsWith('chat.offTopic_')).toBe(true);
+      expect(first.reply.notice).toBe('chat.sparkleOut');
+      const second = await answer('galatasaray nasıl kazandı', emptyContext('park'), d);
+      expect(second.reply.notice).toBeUndefined();
+    });
+
+    it('never calls the AI for a greeting', async () => {
+      const boom = async () => {
+        throw new Error('ai must not be called');
+      };
+      const r = await answer(
+        'selam',
+        emptyContext('food'),
+        aiDeps({ understand: boom, narrate: boom }),
+      );
+      expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+    });
+  });
 });

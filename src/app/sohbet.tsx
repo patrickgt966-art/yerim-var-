@@ -28,13 +28,24 @@ import {
 import { isInIzmirArea } from '@/data/places';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
+import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
+import { HISTORY_LIMIT, type ChatTurn } from '@/lib/ai/protocol';
 import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
 import { resolvePlace } from '@/lib/usePlaceSearch';
+import { useAi } from '@/store/ai';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 /** Same quick location wait as the food home. */
 const LOCATION_TIMEOUT_MS = 5000;
+
+/** The server is authoritative for the daily quota: mirror it into the store. */
+function trackAi<T>(r: AiResult<T>): AiResult<T> {
+  const store = useAi.getState();
+  if (r.ok) store.setRemaining(r.remaining);
+  else if (r.reason === 'quota') store.markOut();
+  return r;
+}
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -53,6 +64,19 @@ export default function ChatScreen() {
     [data],
   );
 
+  // The AI layer is off (undefined) until a server URL is configured.
+  const aiClient = useMemo(() => {
+    const url = aiBaseUrl();
+    return url ? createAiClient(url) : null;
+  }, []);
+  // What the AI calls of the current user message are bound to.
+  const aiMsgRef = useRef<{ messageId: string; text: string; history: ChatTurn[] }>({
+    messageId: '',
+    text: '',
+    history: [],
+  });
+  const messagesRef = useRef<ChatMessage[]>([]);
+
   const deps = useMemo<AssistantDeps>(
     () => ({
       here: async () => {
@@ -65,8 +89,32 @@ export default function ChatScreen() {
       },
       parkings,
       t: (key, opts) => t(key, opts),
+      ai: aiClient
+        ? {
+            understand: async () => {
+              const bound = aiMsgRef.current;
+              const req = {
+                ...bound,
+                deviceId: useAi.getState().deviceId,
+                section: ctxRef.current.section,
+              };
+              return trackAi(await aiClient.understand(req));
+            },
+            narrate: async (rest) => {
+              const bound = aiMsgRef.current;
+              const req = {
+                ...rest,
+                deviceId: useAi.getState().deviceId,
+                messageId: bound.messageId,
+                text: bound.text,
+              };
+              return trackAi(await aiClient.narrate(req));
+            },
+            quotaNotice: () => useAi.getState().noticeOnce(),
+          }
+        : undefined,
     }),
-    [parkings, t],
+    [parkings, t, aiClient],
   );
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -79,13 +127,35 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const started = useRef(false);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const nextId = () => `m${idRef.current++}`;
+  /** One new id per user message, shared by its understand and narrate calls. */
+  const bindAi = (text: string) => {
+    aiMsgRef.current = {
+      messageId: `u${Date.now().toString(36)}${idRef.current}`,
+      text,
+      history: messagesRef.current
+        .slice(-HISTORY_LIMIT)
+        .map((m) => ({ role: m.role, text: m.text })),
+    };
+  };
   const addUser = (text: string) =>
     setMessages((m) => [...m, { id: nextId(), role: 'user', text }]);
   const addBot = (reply: BotMessage) => {
     setMessages((m) => [
       ...m,
-      { id: nextId(), role: 'bot', text: reply.text, cards: reply.cards, actions: reply.actions },
+      {
+        id: nextId(),
+        role: 'bot',
+        text: reply.text,
+        cards: reply.cards,
+        actions: reply.actions,
+        sparkle: reply.sparkle,
+        notice: reply.notice,
+      },
     ]);
     AccessibilityInfo.announceForAccessibility(reply.text);
   };
@@ -111,6 +181,7 @@ export default function ChatScreen() {
   const send = async (raw: string) => {
     const text = raw.trim();
     if (!text || typingRef.current) return;
+    bindAi(text);
     addUser(text);
     await reply(() => answer(text, ctxRef.current, deps));
   };
@@ -121,6 +192,7 @@ export default function ChatScreen() {
       return router.push({ pathname: a.pathname, params: a.params } as never);
     }
     if (typingRef.current) return;
+    bindAi(a.label);
     addUser(a.label);
     void reply(() => refine(ctxRef.current, a.patch, deps));
   };

@@ -41,6 +41,9 @@
         ]
       }
     },
+    "extra": {
+      "aiUrl": ""
+    },
     "plugins": [
       "expo-router",
       "expo-localization",

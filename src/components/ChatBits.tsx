@@ -13,6 +13,8 @@ export type ChatMessage = {
   text: string;
   cards?: ChatCard[];
   actions?: ChatAction[];
+  sparkle?: boolean;
+  notice?: string;
 };
 
 export function UserBubble({ text }: { text: string }) {
@@ -136,9 +138,26 @@ export function BotBubble({
         <Txt accessible={false} importantForAccessibility="no">
           🅿️
         </Txt>
-        <Txt style={{ flexShrink: 1 }} accessibilityLabel={t('chat.a11yBot', { text: message.text })}>
-          {message.text}
-        </Txt>
+        <View style={{ flexShrink: 1, gap: 2 }}>
+          {message.sparkle && (
+            <Txt variant="caption" secondary accessible={false} importantForAccessibility="no">
+              {t('chat.sparkle')}
+            </Txt>
+          )}
+          <Txt
+            accessibilityLabel={
+              (message.sparkle ? t('chat.sparkle') + '. ' : '') +
+              t('chat.a11yBot', { text: message.text })
+            }
+          >
+            {message.text}
+          </Txt>
+          {message.notice && (
+            <Txt variant="caption" secondary>
+              {message.notice}
+            </Txt>
+          )}
+        </View>
       </View>
       {message.cards && message.cards.length > 0 && (
         <View style={{ gap: 8 }}>

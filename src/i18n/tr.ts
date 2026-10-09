@@ -468,6 +468,8 @@ const tr = {
       '{{where}} için {{count}} {{what}} var. {{withPark}} tanesinin 300 m yakınında otopark var:',
     foodFoundPark: '{{where}} civarında yanında otopark olan {{count}} {{what}} buldum:',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
+    sparkleOut: 'Bugünkü ✨ hakların bitti, yarın yenilenir. Ben yine buradayım, aramaya devam edebiliriz!',
+    sparkle: '✨ Akıllı yardım',
     foodNoParking:
       '{{where}} civarında {{what}} var ama yanında otopark olanı bulamadım. Ne yapalım?',
     foodNone: '{{where}} civarında {{what}} bulamadım. Daha geniş bakayım mı?',
