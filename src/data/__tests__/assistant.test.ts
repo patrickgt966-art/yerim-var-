@@ -112,4 +112,16 @@ describe('assistant', () => {
     expect(r.reply.text.startsWith('chat.foundName')).toBe(true);
     expect(r.reply.cards[0]?.name.startsWith('Bülent Börek')).toBe(true);
   });
+
+  it('answers off-topic text with place examples', async () => {
+    const r = await answer('galatasaray nasıl kazandı la öyle bugün', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.offTopic_')).toBe(true);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.actions[0]?.label).toBe('chat.exStadium');
+  });
+
+  it('greets through address words', async () => {
+    const r = await answer('selam dostum nasılsın', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+  });
 });

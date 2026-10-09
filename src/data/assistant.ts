@@ -125,8 +125,18 @@ export async function answer(
   const { t } = deps;
   const it = parseQuery(text);
 
+  if (it.kind === 'offtopic') {
+    return plain(
+      {
+        text: variant(t, 'chat.offTopic', 2, text),
+        cards: [],
+        actions: [say(t, 'chat.exStadium'), say(t, 'chat.exNear'), say(t, 'chat.exKofte')],
+      },
+      ctx,
+    );
+  }
   if (it.kind === 'greeting') {
-    const msg = variant(t, 'chat.hello', 2, text);
+    const msg = variant(t, 'chat.hello', 5, text);
     return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'abuse') {

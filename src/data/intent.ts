@@ -9,6 +9,7 @@ export type QueryIntent =
   | { kind: 'empty' }
   | { kind: 'greeting' }
   | { kind: 'abuse' }
+  | { kind: 'offtopic' }
   | {
       kind: 'search';
       /** Cleaned text (folded) for a name search. */
@@ -70,14 +71,18 @@ export const IZMIR_DISTRICTS: District[] = [
 const words = (s: string) => new Set(s.split(' '));
 
 const GREETING = words(
-  'selam selamlar merhaba mrb slm hey gunaydin naber nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah iyi aksamlar gunler geceler',
+  'selam selamlar merhaba mrb slm hey gunaydin naber nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah aksamlar gunler geceler',
 );
 // Whole tokens only: never matched as a substring.
 const ABUSE = words(
   'aq amk amq aqq sikim sikerim siktir sik orospu pic yarrak amina anani ananin anan got gotveren salak aptal gerizekali mal oc lan',
 );
+// Words used to address the bot; always filler.
+const ADDRESS = words(
+  'dostum dost kardesim kardes kanka kanki abi abla hocam hoca reis birader moruk canim guzelim usta kral kralice baba aga',
+);
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin hocam abi abla kanka lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde',
 );
 // Words that mean "food in general"; they stay filler for place purposes.
 const FOOD_WORDS = words(
@@ -91,6 +96,17 @@ const NEAR_ME = words(
   'yakinimda yakinda yakindaki yakin etrafimda cevremde',
 );
 const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok');
+// Subjects that are not about parking or food, e.g. football or weather.
+const TOPIC = words(
+  'mac maci gol skor derbi galatasaray gs fenerbahce fb besiktas bjk trabzonspor altay takim hava yagmur haber secim dolar borsa',
+);
+const QUESTION = words('nasil neden niye kim kimin hangi kac');
+// Past / progressive verb endings (folded).
+const VERB_SUFFIXES = ['di', 'du', 'ti', 'tu', 'mis', 'mus', 'yor', 'iyor', 'uyor'];
+const hasVerbSuffix = (t: string) => VERB_SUFFIXES.some((s) => t.endsWith(s));
+// 'iyi' is a greeting only before these ("iyi akşamlar"); otherwise it is a quality word.
+const IYI_GREETING_NEXT = words('aksamlar gunler geceler');
+const STADIUM = words('stad stada stadi stadyum stadyuma stadyumu stadyumun');
 
 /** Place-name suffixes, longest first. */
 const PLACE_SUFFIXES = [
@@ -208,26 +224,66 @@ function placeTokens(tokens: string[]): string[] {
   return tokens.map((t) => fixDistrictTypo(t, placeStem(t)));
 }
 
+/** Short text that can be a place name: no question, no verb, at most 4 words. */
+export function looksLikePlace(text: string): boolean {
+  const tokens = fold(text).split(' ').filter(Boolean);
+  if (tokens.length > 4) return false;
+  return !tokens.some((t) => QUESTION.has(t) || (hasVerbSuffix(t) && !isPlaceToken(t)));
+}
+
+/** The token is an İzmir district (also with a typo or case suffix) or starts a place name. */
+function isPlaceToken(tok: string): boolean {
+  if (namesToken(tok)) return true;
+  const fixed = fixDistrictTypo(tok, placeStem(tok));
+  return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
+}
+
 /** Split a free-text query into chit-chat, or place / dish / filters. */
 export function parseQuery(raw: string): QueryIntent {
   const all = fold(raw).split(' ').filter(Boolean);
   if (all.length === 0) return { kind: 'empty' };
 
   // Greeting / abuse: nothing left once the chit-chat words are dropped.
+  const greetIyi = (i: number) => all[i] === 'iyi' && IYI_GREETING_NEXT.has(all[i + 1] ?? '');
+  const hasGreeting = all.some((t, i) => GREETING.has(t) || greetIyi(i));
   let rest = all.filter(
-    (t) => !GREETING.has(t) && !ABUSE.has(t) && !FILLER.has(t) && !SUFFIX_TOKENS.has(t),
+    (t, i) =>
+      !GREETING.has(t) &&
+      !greetIyi(i) &&
+      !ABUSE.has(t) &&
+      !FILLER.has(t) &&
+      !ADDRESS.has(t) &&
+      !SUFFIX_TOKENS.has(t),
   );
   // Generic food words ("yemek", "acım") count even though they are filler.
   const foodWord = all.some((t) => FOOD_WORDS.has(t));
   if (rest.length === 0) {
     if (all.some((t) => ABUSE.has(t))) return { kind: 'abuse' };
-    if (all.some((t) => GREETING.has(t))) return { kind: 'greeting' };
-    if (!foodWord) return { kind: 'empty' };
+    if (hasGreeting) return { kind: 'greeting' };
+    if (!foodWord) {
+      return all.some((t) => TOPIC.has(t)) ? { kind: 'offtopic' } : { kind: 'empty' };
+    }
   }
 
-  // 'iyi' is a greeting word, so it is checked on the full token list.
+  // A greeting with up to two leftover words that mean nothing searchable is still a greeting.
+  if (
+    rest.length > 0 &&
+    rest.length <= 2 &&
+    !foodWord &&
+    hasGreeting &&
+    !all.some((t) => ABUSE.has(t)) &&
+    !categoryForQuery(rest.join(' ')) &&
+    !rest.some(
+      (t) =>
+        categoryForQuery(t) !== null || FOOD_WORDS.has(t) || isParking(t) || isPlaceToken(t),
+    )
+  ) {
+    return { kind: 'greeting' };
+  }
+
+  // 'iyi' counts as quality unless it opens a greeting like "iyi akşamlar".
   const nearMe = all.some((t) => NEAR_ME.has(t));
-  const quality = all.some((t) => QUALITY.has(t));
+  const quality = all.some((t, i) => QUALITY.has(t) && !greetIyi(i));
   rest = rest.filter((t) => !QUALITY.has(t));
 
   // Category: a two-word phrase first, then a single word.
@@ -250,6 +306,25 @@ export function parseQuery(raw: string): QueryIntent {
   const requireParking = hasPark && cat !== null;
 
   const food = cat !== null || foodWord;
+
+  rest = rest.map((t) => (STADIUM.has(t) ? 'stadyum' : t));
+
+  // Off-topic: nothing about food, parking or a place, but a topic or a question about the past.
+  if (
+    !cat &&
+    !food &&
+    !hasPark &&
+    !all.some((t) => IZMIR_DISTRICTS.some((d) => fold(d.name) === t)) &&
+    !rest.some(
+      (t) =>
+        t.length >= 3 && !TOPIC.has(t) && !QUESTION.has(t) && !hasVerbSuffix(t) && isPlaceToken(t),
+    ) &&
+    (all.some((t) => TOPIC.has(t)) ||
+      (all.some((t) => QUESTION.has(t)) && all.some(hasVerbSuffix)))
+  ) {
+    return { kind: 'offtopic' };
+  }
+
   const placeQuery = placeTokens(rest).join(' ');
   if (placeQuery === '' && !cat && !hasPark && !food) return { kind: 'empty' };
 
