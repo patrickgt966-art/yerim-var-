@@ -1,6 +1,6 @@
 # Yol haritası
 
-Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
+Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
 
 ## 1. Sıradaki işler
 
@@ -8,7 +8,7 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
   - Bu iş, apartmanları ve iş hanlarını listeye gömme fikrinin yerini alır. Gömülü liste küçük kalır (ilçe, semt, AVM, iskele, istasyon, belediye otoparkları); uzun kuyruk anlık gelir.
 - [ ] **Yürüme süresinin kontrolü.** Şu an kuş uçuşu mesafeden hesaplanıyor, bu yüzden olduğundan kısa çıkabilir. Gerçek yürüme süreleriyle karşılaştırılıp bir düzeltme katsayısı eklenecek. Uygulamanın kendi derlemesinde gerçek süre Apple'dan alınacak (`MKDirections`, yürüyüş).
 - [ ] **Belediyenin Şubat 2026 tarifelerini bağlamak.** Veri `data/raw/` içindeki "Otopark Ücretleri" XLSX'inde. Otopark adıyla eşleştirilip `data/tariffs.json`'a kaynak ve tarihle eklenecek. Böylece fiyat ve "2 saat park" tahmini gerçek veriyle çalışır.
-- [ ] **Fazla genel otopark adlarını ayıklamak.** "Çocuk parkı yakını", "Halk Park yakını" ve apartman adları gibi.
+- [x] **Fazla genel otopark adlarını ayıklamak.** "Çocuk parkı", "Halk Park", "Merkez", "Pazaryeri", "Atatürk Büstü" gibi her yerde olan adlar ve apartman/site adları artık "X yakını" için kullanılmıyor (`GENERIC_LANDMARK`, `scripts/fetch-sources.mjs`). 37 otoparkın adı değişti; 22'si yakınında uygun yer olmadığı için "Adsız otopark" oldu.
 - [ ] **Kontrol edilmemiş son değişiklikler:** veri görevinde `git pull --rebase` ve ana dalla birleştirme.
 
 ## 2. Önerilen yeni özellikler
@@ -72,6 +72,8 @@ Sıra:
 - [ ] **2. aşama, iş birliği:** Mevcut rezervasyon platformlarına bağlanmak (masa müsaitliği uygulamada görünür, rezervasyonu platform yapar). Hangi platformların bunu dışarıya açtığı araştırılmalı.
 - [ ] **3. aşama, kendi sistemimiz:** Sunucu, hesap (SMS doğrulama), restoran paneli, KVKK. Ancak 1. ve 2. aşama talep gösterirse. Fark yaratabilecek fikirler: rezervasyonla birlikte otopark yeri, otopark ücretini restoranın karşılaması.
 - Dikkat: Park ana iş olarak kalsın. Hesap ve kişisel veri gelince gizlilik metni ve App Store bilgileri değişir. App Store adı "Otopark Bul" yerine daha genel olabilir.
+
+**Karar (2026-10-08): Google yok, Apple Haritalar + açık kaynak.** Google Places ücretli olduğu için kullanılmayacak. Konum, arama, adres, telefon ve web sitesi Apple Haritalar'dan (uygulamanın kendi derlemesinde, ücretsiz); restoran ve otopark listeleri OpenStreetMap ve belediye açık verisinden gelir. Fiyat, fotoğraf, menü ve ortam bilgisini biz ya da restoranlar girer; puan ve yorum hesaplar gelince kullanıcılardan gelir.
 
 **Bekleyen kararlar**
 
