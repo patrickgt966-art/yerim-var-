@@ -62,6 +62,17 @@ const tr = {
     a11yStart: 'Başla, uygulamaya geç',
     a11yStep: 'Adım {{n}}, toplam 3 adım',
   },
+  city: {
+    a11yButton: 'Şehir: {{name}}, değiştir',
+    title: 'Şehir seç',
+    live: 'Doluluk verisi var',
+    soon: 'Yakında',
+    note: 'Diğer şehirler için açık veri kaynaklarını hazırlıyoruz.',
+    close: 'Kapat',
+    a11ySelected: '{{name}}, seçili, doluluk verisi var',
+    a11yRow: '{{name}}, doluluk verisi var',
+    a11ySoon: '{{name}}, yakında',
+  },
   search: {
     title1: 'Nereye ',
     title2: 'park',

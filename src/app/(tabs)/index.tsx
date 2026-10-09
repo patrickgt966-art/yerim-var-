@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActiveParkCard } from '@/components/ActiveParkCard';
 import { CarMark } from '@/components/CarMark';
+import { CityButton } from '@/components/CityPicker';
 import { DashedFrame } from '@/components/DashedFrame';
 import {
   CategoryGrid,
@@ -359,6 +360,9 @@ export default function SearchScreen() {
               </Txt>
             </View>
             {!bigText && <ModeSwitch mode={section} onChange={setSection} />}
+          </View>
+          <View style={{ marginTop: 8 }}>
+            <CityButton />
           </View>
           {bigText && (
             <View style={{ marginTop: 12, alignSelf: 'flex-start' }}>
