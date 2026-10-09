@@ -2,6 +2,8 @@ import '@/i18n';
 
 import { answer, emptyContext, refine, type AssistantDeps } from '../assistant';
 import { visibleFree } from '../freshness';
+import { allRestaurants } from '../restaurants';
+import { fold } from '../search';
 import { staticParkings } from '../staticParkings';
 
 const parkings = staticParkings();
@@ -47,6 +49,31 @@ describe('assistant', () => {
   it('puts the no-ratings note before the found text', async () => {
     const r = await answer('bornovadaki en iyi etçi', emptyContext('food'), deps);
     expect(r.reply.text.startsWith('chat.noRatings\n')).toBe(true);
+  });
+
+  it('treats an unknown dish as a dish, not a place', async () => {
+    const hasSushi = allRestaurants().some(
+      (r) =>
+        fold(r.name).includes('sushi') ||
+        r.cuisines.some((c) => fold(c.replace(/_/g, ' ')).includes('sushi')),
+    );
+    const r = await answer('yakınımda sushi', emptyContext('food'), deps);
+    expect(r.reply.text.startsWith(hasSushi ? 'chat.dishNamed' : 'chat.dishNotFound')).toBe(true);
+    expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
+  });
+
+  it('shows the dish as typed in the not-found reply', async () => {
+    const r = await answer('bana en yakın hünkar beğendi bul', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
+    if (r.reply.text.startsWith('chat.dishNotFound')) {
+      expect(r.reply.text).toContain('Hünkar beğendi');
+    }
+  });
+
+  it('still says place-not-found for gibberish', async () => {
+    const r = await answer('xqzv', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(true);
+    expect(r.reply.text).toContain('"q":"xqzv"');
   });
 
   it('keeps the place when the user says "burada"', async () => {

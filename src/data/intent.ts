@@ -370,6 +370,24 @@ export function parseQuery(raw: string): QueryIntent {
   };
 }
 
+/**
+ * The words of `raw` that make up the folded `placeQuery`, as typed (Turkish letters, lower case).
+ * Falls back to the trimmed raw text when the raw words do not line up with the folded ones.
+ */
+export function typedPlaceText(raw: string, placeQuery: string): string {
+  const fallback = raw.trim();
+  const all = fold(raw).split(' ').filter(Boolean);
+  const rawWords = raw
+    .toLocaleLowerCase('tr')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    .filter(Boolean);
+  const wanted = placeQuery.split(' ').filter(Boolean);
+  if (wanted.length === 0 || rawWords.length !== all.length) return fallback;
+  const kept = rawWords.filter((_, i) => wanted.includes(all[i]!));
+  return kept.length === wanted.length ? kept.join(' ') : fallback;
+}
+
 /** Text the local place search should use for a query. */
 export function localPart(q: string): string {
   const it = parseQuery(q);
