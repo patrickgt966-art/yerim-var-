@@ -149,7 +149,11 @@ function namesToken(token: string): boolean {
   return searchPlaces(token, 1).some((h) =>
     fold(h.name)
       .split(' ')
-      .some((w) => w.startsWith(token)),
+      .some(
+        (w) =>
+          w === token ||
+          (w.startsWith(token) && token.length >= 5 && token.length >= 0.7 * w.length),
+      ),
   );
 }
 
@@ -300,6 +304,9 @@ export function parseQuery(raw: string): QueryIntent {
     }
   }
 
+  // A food word (or the dish phrase) is never a place.
+  rest = rest.filter((t) => categoryForQuery(t) === null);
+
   // A car-park word only narrows a food search; alone it is the app default.
   const hasPark = rest.some(isParking);
   rest = rest.filter((t) => !isParking(t) && !NEGATION.has(t));
@@ -361,6 +368,24 @@ export function parseQuery(raw: string): QueryIntent {
     nearMe,
     mentionsParking: hasPark,
   };
+}
+
+/**
+ * The words of `raw` that make up the folded `placeQuery`, as typed (Turkish letters, lower case).
+ * Falls back to the trimmed raw text when the raw words do not line up with the folded ones.
+ */
+export function typedPlaceText(raw: string, placeQuery: string): string {
+  const fallback = raw.trim();
+  const all = fold(raw).split(' ').filter(Boolean);
+  const rawWords = raw
+    .toLocaleLowerCase('tr')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    .filter(Boolean);
+  const wanted = placeQuery.split(' ').filter(Boolean);
+  if (wanted.length === 0 || rawWords.length !== all.length) return fallback;
+  const kept = rawWords.filter((_, i) => wanted.includes(all[i]!));
+  return kept.length === wanted.length ? kept.join(' ') : fallback;
 }
 
 /** Text the local place search should use for a query. */

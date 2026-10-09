@@ -1,9 +1,15 @@
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import { IZMIR_DISTRICTS, parseQuery, type QueryIntent } from '@/data/intent';
+import {
+  IZMIR_DISTRICTS,
+  parseQuery,
+  typedPlaceText,
+  type QueryIntent,
+} from '@/data/intent';
 import {
   allRestaurants,
+  dishStem,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
@@ -320,10 +326,85 @@ export async function answer(
     } else {
       const p = await deps.geocode(it.placeQuery);
       if (!p) {
+        const typedRaw = typedPlaceText(text, it.placeQuery);
+        const typed = typedRaw.charAt(0).toLocaleUpperCase('tr') + typedRaw.slice(1);
+
+        // 1. A dish or cuisine the user named: show restaurants matching it.
+        const qWords = it.placeQuery.split(' ').filter(Boolean);
+        const hasAll = (hay: string) => qWords.every((w) => hay.includes(w));
+        const named = allRestaurants().filter(
+          (r) =>
+            hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
+        );
+        if (named.length > 0) {
+          const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+          const nearest = named
+            .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
+            .sort((a, b) => a.distanceM - b.distanceM)
+            .slice(0, MAX_CARDS);
+          const rows = buildRestaurantRows(
+            nearest,
+            deps.parkings,
+            target,
+            deps.now ?? new Date(),
+          );
+          const cards: ChatCard[] = rows.map((row) => ({
+            kind: 'restaurant',
+            id: row.r.id,
+            name: row.r.name,
+            distanceM: row.r.distanceM,
+            parkingM: row.parking?.distanceM ?? null,
+            open: 'unknown',
+          }));
+          return withNotice(
+            plain(
+              {
+                text: t('chat.dishNamed', { dish: typed, count: named.length }),
+                cards,
+                actions: [
+                  {
+                    kind: 'refine',
+                    label: t('chat.actOnlyParking'),
+                    patch: { requireParking: true },
+                  },
+                  {
+                    kind: 'refine',
+                    label: t('chat.actLokanta'),
+                    patch: { section: 'food', cat: 'lokanta', dish: null },
+                  },
+                ],
+              },
+              { ...ctx, section: 'food', dish: typed },
+            ),
+          );
+        }
+
+        // 2. Looks like food: say no place makes it, offer nearby restaurants.
+        if (it.food || it.nearMe || ctx.section === 'food') {
+          return withNotice(
+            plain(
+              {
+                text: t('chat.dishNotFound', { dish: typed }),
+                cards: [],
+                actions: [
+                  {
+                    kind: 'refine',
+                    label: t('chat.actLokanta'),
+                    patch: { section: 'food', cat: 'lokanta', dish: null },
+                  },
+                  pickOnMap(text, t),
+                ],
+              },
+              { ...ctx, section: 'food' },
+            ),
+          );
+        }
+
+        // 3. Not food: keep the place-not-found reply, with the typed text.
         return withNotice(
           plain(
             {
-              text: t('chat.placeNotFound', { q: it.placeQuery }),
+              text: t('chat.placeNotFound', { q: typedRaw }),
               cards: [],
               actions: [pickOnMap(text, t), ...examples(next.section, t)],
             },
@@ -426,6 +507,27 @@ async function narrate(
   reply.sparkle = true;
 }
 
+const GENERIC_DISH_STEMS = new Set([
+  'et',
+  'balik',
+  'kahvalti',
+  'corba',
+  'lokanta',
+  'kafe',
+  'meyhane',
+  'tatli',
+  'restoran',
+  'cafe',
+  'kahve',
+  'coffee',
+  'balikci',
+  'fast food',
+  'hizli yemek',
+  'ev yemegi',
+  'esnaf lokantasi',
+  'kahvalti salonu',
+]);
+
 function runFood(
   ctx: ChatContext,
   deps: AssistantDeps,
@@ -445,8 +547,30 @@ function runFood(
     'parkEase',
     ctx.cat ?? undefined,
   );
-  const withPark = withParkingWithin(rows, ctx.parkM);
-  const shown = ctx.requireParking ? withPark : rows;
+  // Dish-first: rows named after the dish go on top.
+  let ordered = rows;
+  let dishPrefix = '';
+  const stem = ctx.dish ? dishStem(ctx.dish) : '';
+  if (ctx.dish && stem && !GENERIC_DISH_STEMS.has(stem)) {
+    const stemWords = stem.split(' ');
+    const kebab = (x: string) => x.replace(/kebap/g, 'kebab');
+    const stemKebab = kebab(stem);
+    const named = rows.filter((r) => {
+      const n = fold(r.r.name);
+      return (
+        stemWords.every((w) => n.includes(w)) ||
+        r.r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))
+      );
+    });
+    if (named.length > 0) {
+      ordered = [...named, ...rows.filter((r) => !named.includes(r))];
+      dishPrefix = t('chat.dishNamed', { dish: ctx.dish, count: named.length }) + ' ';
+    } else {
+      dishPrefix = t('chat.dishUnknown', { dish: ctx.dish }) + ' ';
+    }
+  }
+  const withPark = withParkingWithin(ordered, ctx.parkM);
+  const shown = ctx.requireParking ? withPark : ordered;
   const what = ctx.cat ? t(`chat.noun.${ctx.cat}`) : t('chat.noun.all');
 
   if (shown.length > 0) {
@@ -458,6 +582,7 @@ function runFood(
           what,
           withPark: withPark.length,
         });
+    text = dishPrefix + text;
     if (quality) text = t('chat.noRatings') + '\n' + text;
     Object.assign(facts, {
       where,

@@ -132,6 +132,28 @@ describe('locative -daki and district typos', () => {
   });
 });
 
+describe('food words are not places', () => {
+  it('keeps tavuk pilavcı out of placeQuery', () => {
+    const r = search('bana en yakın tavuk pilavcı bul');
+    expect(r.cat).toBe('lokanta');
+    expect(r.dish).toContain('pilav');
+    expect(r.placeQuery).toBe('');
+    expect(r.nearMe).toBe(true);
+    expect(search('tavuk pilav').placeQuery).toBe('');
+  });
+
+  it('still reads real places', () => {
+    expect(search('tavukçukuru').placeQuery).toBe('tavukcukuru');
+    expect(search('karşıyaka').district?.name).toBe('Karşıyaka');
+    expect(search('alsancak kahvaltı').placeQuery).toBe('alsancak');
+    expect(search('kordonda balık').placeQuery).toBe('kordon');
+  });
+
+  it('stems a suffixed last word of a two-word phrase', () => {
+    expect(categoryForQuery('tavuk pilavci')).toBe('lokanta');
+  });
+});
+
 describe('IZMIR_DISTRICTS', () => {
   it('lists the 30 districts', () => {
     expect(IZMIR_DISTRICTS).toHaveLength(30);
