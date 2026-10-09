@@ -61,7 +61,7 @@ Karar taslağı: doğrudan rezervasyon yerine **ara → listele → restoranın 
 
 Sıra:
 
-- [ ] **Akış (hemen, sunucusuz), 4 parça:** (1) restoran verisini bağlamak, restoran listesi ve detayı; (2) ana sayfada Restoran/Otopark modu ve kategoriler; (3) haritada restoran pinleri; (4) favorilerde iki sekme ve rota özeti. Her parça kendi başına çalışır ve ayrı kaydedilir.
+- [ ] **Akış (hemen, sunucusuz), 4 parça:** 1. parça tamam (2026-10-09): `/restoranlar` listesi ve `/restoran/[id]` detayı, "Nereye park edersin?", sonuç ekranında "Yakındaki restoranlar" düğmesi. (1) restoran verisini bağlamak, restoran listesi ve detayı; (2) ana sayfada Restoran/Otopark modu ve kategoriler; (3) haritada restoran pinleri; (4) favorilerde iki sekme ve rota özeti. Her parça kendi başına çalışır ve ayrı kaydedilir.
 - [ ] **Akışın kapsamı:** Ana sayfada Restoran/Otopark modu, kategoriler, restoran listesi ve detayı ("Nereye park edersin?"), haritada restoran pinleri, favorilerde iki sekme, rota özeti. Veri: OpenStreetMap + Apple Haritalar araması.
 - [ ] **Veri toplama:** Semt seçimi ve fiyat/ortam etiketleri; restoran kayıt formu.
 - [ ] **Hesap gelince:** Kullanıcı puanları, yorumlar, profil.
