@@ -39,10 +39,7 @@ async function foodCenter(
   ask: boolean,
   myLabel: string,
 ): Promise<{ target: LatLng; label: string }> {
-  const here = await Promise.race([
-    currentLocation(ask),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATION_TIMEOUT_MS)),
-  ]);
+  const here = await currentLocation(ask, LOCATION_TIMEOUT_MS);
   if (here && isInIzmirArea(here)) return { target: here, label: myLabel };
   return { target: FALLBACK, label: FALLBACK.name };
 }

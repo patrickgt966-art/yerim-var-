@@ -155,7 +155,12 @@ export default function SearchScreen() {
     if (!q) return;
     if (food) {
       const cat = categoryForQuery(q);
-      if (cat) return openFoodNearMe(t('results.myLocation'), cat);
+      if (cat) {
+        if (locating) return;
+        setLocating(true);
+        await openFoodNearMe(t('results.myLocation'), cat).finally(() => setLocating(false));
+        return;
+      }
     }
     if (hits[0]) return pick(hits[0]);
     if (food && foodMatches[0])

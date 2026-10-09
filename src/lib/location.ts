@@ -2,17 +2,32 @@ import * as Location from 'expo-location';
 
 import type { LatLng } from '@/data/geo';
 
-/** Foreground location only. Returns null if permission is denied or lookup fails. */
-export async function currentLocation(ask = true): Promise<LatLng | null> {
+/**
+ * Foreground location only. Returns null if permission is denied or lookup
+ * fails. `timeoutMs` limits the position fix only, never the permission prompt.
+ */
+export async function currentLocation(ask = true, timeoutMs?: number): Promise<LatLng | null> {
   try {
     let perm = await Location.getForegroundPermissionsAsync();
     if (!perm.granted && ask && perm.canAskAgain)
       perm = await Location.requestForegroundPermissionsAsync();
     if (!perm.granted) return null;
-    const last = await Location.getLastKnownPositionAsync({ maxAge: 60_000 });
-    const pos =
-      last ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    const fix = (async () => {
+      const last = await Location.getLastKnownPositionAsync({ maxAge: 60_000 });
+      return (
+        last ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
+      );
+    })();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pos = timeoutMs
+      ? await Promise.race([
+          fix,
+          new Promise<null>((resolve) => {
+            timer = setTimeout(() => resolve(null), timeoutMs);
+          }),
+        ]).finally(() => clearTimeout(timer))
+      : await fix;
+    return pos ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
   } catch {
     return null;
   }

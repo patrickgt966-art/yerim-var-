@@ -41,8 +41,9 @@ function isClose(p: RestaurantRow['parking']): boolean {
   return !!p && p.distanceM <= EASY_PARK_M && p.free !== 0;
 }
 
+/** "Parkı en kolay" only when fresh data shows free spaces; distance alone gets "Otopark yakın". */
 function isBest(p: RestaurantRow['parking']): boolean {
-  return !!p && ((p.free != null && p.free > 0) || isClose(p));
+  return !!p && p.free != null && p.free > 0;
 }
 
 export default function RestaurantsScreen() {
