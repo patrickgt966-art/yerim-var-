@@ -169,6 +169,19 @@ export default function ResultsScreen() {
   const chips = (
     <>
       <Chip label={t('results.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
+      {/* Restaurants sit right after "Tümü" so they are not lost at the end. */}
+      {target && (
+        <Chip
+          label={t('food.nearby')}
+          selected={false}
+          onPress={() =>
+            router.push({
+              pathname: '/restoranlar',
+              params: { lat: String(target.lat), lng: String(target.lng), label },
+            })
+          }
+        />
+      )}
       {anyIndoorKnown && (
         <Chip
           label={t('results.indoor')}
@@ -188,18 +201,6 @@ export default function ResultsScreen() {
           label={t('a11y.disabledFilter')}
           selected={filter === 'disabled'}
           onPress={() => setFilter('disabled')}
-        />
-      )}
-      {target && (
-        <Chip
-          label={t('food.nearby')}
-          selected={false}
-          onPress={() =>
-            router.push({
-              pathname: '/restoranlar',
-              params: { lat: String(target.lat), lng: String(target.lng), label },
-            })
-          }
         />
       )}
       {/* "Şarj" is hidden until the data source reports charging points. */}
