@@ -74,7 +74,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
   const card = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ₺${cost}` : ''}`}
+      accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ${t('common.a11yLira', { price: cost })}` : ''}`}
       onPress={() => router.push('/favoriler')}
       style={[
         asym(22, 6),
@@ -139,7 +139,14 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
     <View style={{ gap: 8 }}>
       {card}
       <View style={{ gap: 8, paddingHorizontal: 4 }}>
-        <Txt variant="caption" accessibilityLabel={summary}>
+        <Txt
+          variant="caption"
+          accessibilityLabel={t('food.a11yRouteSummary', {
+            park: active.name,
+            count: minutes,
+            name: dest.name,
+          })}
+        >
           {summary}
         </Txt>
         <View style={{ flexDirection: 'row' }}>

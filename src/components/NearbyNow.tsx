@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, useWindowDimensions, View } from 'react-native';
 
 import type { LatLng } from '@/data/geo';
 import {
@@ -26,7 +26,7 @@ import { Txt } from './Txt';
 const RADIUS_METERS = 2000;
 const COUNT = 3;
 
-function Card({ p, best }: { p: RankedParking; best: boolean }) {
+function Card({ p, best, large }: { p: RankedParking; best: boolean; large: boolean }) {
   const c = useColors();
   const { t } = useTranslation();
   const free = visibleFree(p);
@@ -55,8 +55,9 @@ function Card({ p, best }: { p: RankedParking; best: boolean }) {
       style={[
         asym(20, 6),
         {
-          flex: 1,
-          minHeight: 112,
+          flex: large ? undefined : 1,
+          minHeight: large ? 0 : 112,
+          gap: large ? 8 : 0,
           padding: 12,
           justifyContent: 'space-between',
           backgroundColor: c.card,
@@ -65,7 +66,11 @@ function Card({ p, best }: { p: RankedParking; best: boolean }) {
       ]}
     >
       {best && <DashedFrame color={c.text} radius={20} tight={6} strokeWidth={2} />}
-      <Txt variant="bodyBold" numberOfLines={2} style={{ fontSize: 13, lineHeight: 17 }}>
+      <Txt
+        variant="bodyBold"
+        numberOfLines={large ? 3 : 2}
+        style={large ? { fontSize: 15, lineHeight: 20 } : { fontSize: 13, lineHeight: 17 }}
+      >
         {p.name}
       </Txt>
       <View style={{ gap: 4, alignItems: 'flex-start' }}>
@@ -129,6 +134,8 @@ function LocationCard({
 export function NearbyNow() {
   const c = useColors();
   const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const large = fontScale > 1.2;
   const q = useParkings();
   const [here, setHere] = useState<LatLng | null>(null);
   const [needsPermission, setNeedsPermission] = useState(false);
@@ -234,9 +241,9 @@ export function NearbyNow() {
           </Txt>
         </View>
       )}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <View style={{ flexDirection: large ? 'column' : 'row', gap: 10 }}>
         {nearest.map((p, i) => (
-          <Card key={p.id} p={p} best={i === 0} />
+          <Card key={p.id} p={p} best={i === 0} large={large} />
         ))}
       </View>
     </View>

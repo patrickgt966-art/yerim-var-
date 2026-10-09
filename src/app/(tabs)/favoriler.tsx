@@ -197,7 +197,7 @@ function RestaurantFavorites() {
               onPress={() => confirmRemove(t, r.name, () => toggle(r.id))}
               style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Icon name="starFilled" color={c.accent} />
+              <Icon name="starFilled" color={c.accentStrong} />
             </Pressable>
           </View>
         );
@@ -288,7 +288,7 @@ export default function FavoritesScreen() {
                 onPress={() => confirmRemove(t, f.name, () => toggleFavorite(f))}
                 style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Icon name="starFilled" color={c.accent} />
+                <Icon name="starFilled" color={c.accentStrong} />
               </Pressable>
             </View>
           );

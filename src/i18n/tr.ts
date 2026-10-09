@@ -1,5 +1,5 @@
 const tr = {
-  brand: { name: 'Yerim Var', wordmarkA: 'yerim', wordmarkB: 'var!' },
+  brand: { name: 'Yerim Var', wordmarkA: 'yerim', wordmarkB: 'var!', a11yTitle: 'Yerim var!' },
   common: {
     back: 'Geri',
     close: 'Kapat',
@@ -17,6 +17,12 @@ const tr = {
     indoor: 'Kapalı',
     outdoor: 'Açık',
     nonstop: '7/24',
+    a11yMinutes: 'yaklaşık {{count}} dakika yürüme',
+    a11yPerHour: 'saatlik {{price}} lira',
+    a11yTwoHourCost: 'iki saat için yaklaşık {{price}} lira',
+    a11yNonstop: '7 gün 24 saat açık',
+    a11yLira: '{{price}} lira',
+    izmir: 'İzmir',
     closed: 'Şu an kapalı',
     customers: 'Müşterilere açık',
     subscribers: 'Yalnızca abonelere',
@@ -25,13 +31,14 @@ const tr = {
     live: 'Canlı',
     updated: 'Güncellendi: {{time}}',
     unknown: 'Bilinmiyor',
-    sample: 'Örnek veri',
-    noData: 'Canlı sayım yok',
-    noDataShort: 'Sayım yok',
-    sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
-    offline: 'Çevrimdışı',
+    sample: 'Deneme bilgisi',
+    noData: 'Boş yer bilgisi yok',
+    noDataShort: 'Bilgi yok',
+    sampleBanner:
+      'Deneme bilgisi gösteriliyor, gerçek değil. Belediye verisine şu an ulaşılamıyor.',
+    offline: 'İnternet yok',
     offlineBanner:
-      'Çevrimdışı · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
+      'İnternet yok · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
   },
   onboarding: {
     tagline: 'Gideceğin yerin yanında boş park yeri bul.',
@@ -46,6 +53,7 @@ const tr = {
     allow: 'Konuma izin ver',
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
+    a11yStep: 'Adım {{n}}, toplam 3 adım',
   },
   search: {
     title1: 'Nereye ',
@@ -62,7 +70,7 @@ const tr = {
     popular: "İzmir'de popüler yerler",
     active: 'Aktif park',
     notFound:
-      'Bu yeri bulamadık. Semt ya da sokak adıyla dene (örn. "Balçova" ya da "Mithatpaşa Cd.").',
+      'Bu yeri bulamadık. Semt ya da sokak adıyla dene (örn. "Kordon", "Konak" ya da "Alsancak").',
     suggestions: 'Öneriler',
     kind: {
       popular: 'Popüler yer',
@@ -132,6 +140,7 @@ const tr = {
     liveIncoming: 'Güncel veri geliyor…',
     error: 'Veri alınamadı.',
     myLocation: 'Konumun',
+    a11yList: 'Otopark listesi',
     a11yStrip: '{{capacity}} yerden {{free}} boş',
     a11yStripUnknown: 'Boş yer sayısı bilinmiyor',
     a11yPin: '{{name}}, {{free}}',
@@ -153,7 +162,7 @@ const tr = {
     capacityValue: '{{count}} araç',
     source: 'Kaynak',
     sourceIzmir: 'İzmir Büyükşehir Belediyesi Açık Veri',
-    sourceMock: 'Örnek veri (gerçek değil)',
+    sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
       'İzmir Büyükşehir Belediyesi Açık Veri, İzelman otopark envanteri (2022). Bu otopark için anlık doluluk verisi yok.',
     sourceApple: 'Apple Haritalar. Bu otopark için anlık doluluk verisi yok.',
@@ -175,11 +184,11 @@ const tr = {
     notFound: 'Otopark bulunamadı.',
     staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
     staticBodyMunicipal:
-      'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
+      'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.',
     staticBodyApple:
-      "Apple Haritalar'da kayıtlı bir otopark. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.",
+      "Apple Haritalar'da kayıtlı bir otopark. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.",
     staticBodyMapped:
-      'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki canlı sayımlı otoparklara da göz atabilirsin.',
+      'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.',
   },
   favorites: {
     title: 'Favoriler',
@@ -202,7 +211,7 @@ const tr = {
     removeConfirmTitle: '{{name}} favorilerden çıkarılsın mı?',
     removeConfirmYes: 'Çıkar',
     freeAt: '{{count}} boş yer · {{time}}',
-    noCount: 'Sayım yok',
+    noCount: 'Bilgi yok',
     a11yFav: '{{name}}. {{status}}',
   },
   profile: {
@@ -227,7 +236,7 @@ const tr = {
     apple: 'Apple Haritalar',
     capacityUnit: 'araç kapasitesi',
     walkUnit: 'dk yürüme',
-    a11yStatic: '{{name}}. {{meta}}. Canlı sayım yok. {{facts}}',
+    a11yStatic: '{{name}}. {{meta}}. Boş yer bilgisi yok. {{facts}}',
   },
   parking: {
     unnamed: 'Otopark',
@@ -262,12 +271,13 @@ const tr = {
       fish: 'Balık',
       cafe: 'Kafe',
       meyhane: 'Meyhane & Bar',
-      fast: 'Fast food',
+      fast: 'Hızlı yemek',
       dessert: 'Tatlı & Dondurma',
     },
     all: 'Tümü',
     showOnMap: 'Haritada gör',
     walk: '~{{count}} dk yürüme',
+    a11yWalk: 'yaklaşık {{count}} dakika yürüme',
     distanceFromPoint: '{{distance}} uzaklıkta',
     freeSpotsAt: '{{count}} boş yer (saat {{time}})',
     noParking: 'Yakında otopark bilgisi yok',
@@ -290,6 +300,8 @@ const tr = {
     favoriteAdd: 'Favori restoranlara ekle',
     favoriteRemove: 'Favori restoranlardan çıkar',
     routeLine: 'Otopark → ~{{distance}} m · ~{{count}} dk yürüme → Restoran',
+    a11yRouteLine: 'Otoparktan restorana yaklaşık {{distance}} metre, {{count}} dakika yürüme',
+    a11yRouteSummary: 'Otopark {{park}}, yaklaşık {{count}} dakika yürüme, varış noktası {{name}}',
     routeSummary: '{{park}} → ~{{count}} dk yürüme → {{name}}',
     walkingRoute: 'Yürüyüş tarifi',
     parkNone: 'Yakında otopark bulamadık. Biraz uzağa park edip yürümen gerekebilir.',
@@ -298,7 +310,7 @@ const tr = {
     kinds: {
       restaurant: 'Restoran',
       cafe: 'Kafe',
-      fast_food: 'Fast food',
+      fast_food: 'Hızlı yemek',
       bar: 'Bar',
       pub: 'Pub',
       biergarten: 'Bira bahçesi',

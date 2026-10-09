@@ -3,7 +3,14 @@ import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Linking, Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,6 +38,7 @@ export default function ResultsScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const params = useLocalSearchParams<{
     lat?: string;
     lng?: string;
@@ -66,7 +74,7 @@ export default function ResultsScreen() {
       if (cancelled) return;
       const inside = !!loc && isInIzmirArea(loc);
       setTarget(inside ? loc : IZMIR_CENTER);
-      setLabel(inside ? t('results.myLocation') : 'İzmir');
+      setLabel(inside ? t('results.myLocation') : t('common.izmir'));
       setNotice(inside ? null : loc ? 'outside' : denied ? 'denied' : 'failed');
     })();
     return () => {
@@ -109,6 +117,39 @@ export default function ResultsScreen() {
   const anyNearPier = ranked.some((p) => p.nearPier);
 
   const snapPoints = useMemo(() => ['30%', '58%', '92%'], []);
+
+  const chips = (
+    <>
+      <Chip label={t('results.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
+      {anyIndoorKnown && (
+        <Chip
+          label={t('results.indoor')}
+          selected={filter === 'indoor'}
+          onPress={() => setFilter('indoor')}
+        />
+      )}
+      {anyNearPier && (
+        <Chip
+          label={t('results.nearPier')}
+          selected={filter === 'nearPier'}
+          onPress={() => setFilter('nearPier')}
+        />
+      )}
+      {target && (
+        <Chip
+          label={t('food.nearby')}
+          selected={false}
+          onPress={() =>
+            router.push({
+              pathname: '/restoranlar',
+              params: { lat: String(target.lat), lng: String(target.lng), label },
+            })
+          }
+        />
+      )}
+      {/* "Şarj" is hidden until the data source reports charging points. */}
+    </>
+  );
 
   const header = (
     <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
@@ -155,44 +196,13 @@ export default function ResultsScreen() {
         </View>
       )}
       <SampleBanner result={data} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        <Chip
-          label={t('results.all')}
-          selected={filter === 'all'}
-          onPress={() => setFilter('all')}
-        />
-        {anyIndoorKnown && (
-          <Chip
-            label={t('results.indoor')}
-            selected={filter === 'indoor'}
-            onPress={() => setFilter('indoor')}
-          />
-        )}
-        {anyNearPier && (
-          <Chip
-            label={t('results.nearPier')}
-            selected={filter === 'nearPier'}
-            onPress={() => setFilter('nearPier')}
-          />
-        )}
-        {target && (
-          <Chip
-            label={t('food.nearby')}
-            selected={false}
-            onPress={() =>
-              router.push({
-                pathname: '/restoranlar',
-                params: { lat: String(target.lat), lng: String(target.lng), label },
-              })
-            }
-          />
-        )}
-        {/* "Şarj" is hidden until the data source reports charging points. */}
-      </ScrollView>
+      {fontScale > 1.2 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{chips}</View>
+      ) : (
+        <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+          {chips}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -246,7 +256,7 @@ export default function ResultsScreen() {
           <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
         </Pressable>
         <Txt style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }} numberOfLines={1}>
-          {label || 'İzmir'}
+          {label || t('common.izmir')}
         </Txt>
       </View>
 
@@ -259,7 +269,7 @@ export default function ResultsScreen() {
           borderTopRightRadius: 32,
         }}
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
-        accessibilityLabel="Otopark listesi"
+        accessibilityLabel={t('results.a11yList')}
       >
         <BottomSheetFlatList
           data={filtered}

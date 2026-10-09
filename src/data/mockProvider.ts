@@ -4,7 +4,7 @@ type Seed = Omit<Parking, 'source' | 'updatedAt' | 'fetchedAt' | 'occupancyKind'
 
 /**
  * Sample data for development and offline fallback. Names and numbers are
- * illustrative, not real. The UI labels them "Örnek veri".
+ * illustrative, not real. The UI labels them "Deneme bilgisi".
  */
 export const MOCK_SEEDS: Seed[] = [
   {

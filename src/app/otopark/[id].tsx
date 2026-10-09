@@ -97,13 +97,18 @@ export default function ParkingDetail() {
               <Icon
                 name={isFav ? 'starFilled' : 'star'}
                 size={26}
-                color={isFav ? c.accent : c.text}
+                color={isFav ? c.accentStrong : c.text}
               />
             </Pressable>
           )
         }
       />
-      <Txt secondary>
+      <Txt
+        secondary
+        accessibilityLabel={[metaLine(p, t, mode, true), p.operator, p.address]
+          .filter(Boolean)
+          .join(' · ')}
+      >
         {[metaLine(p, t, mode), p.operator, p.address].filter(Boolean).join(' · ')}
       </Txt>
       <SampleBanner result={data} />
@@ -203,7 +208,9 @@ export default function ParkingDetail() {
 
       <Section title={t('detail.hours')}>
         {p.nonstop ? (
-          <Txt variant="bodyBold">{t('common.nonstop')}</Txt>
+          <Txt variant="bodyBold" accessibilityLabel={t('common.a11yNonstop')}>
+            {t('common.nonstop')}
+          </Txt>
         ) : p.openingHours && Object.keys(p.openingHours).length > 0 ? (
           DAY_ORDER.filter((d) => p.openingHours?.[d]).map((d) => (
             <Row key={d} label={t(`detail.days.${d}`)} value={p.openingHours?.[d] ?? ''} />

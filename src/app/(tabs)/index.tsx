@@ -3,7 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import type { TFunction } from 'i18next';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActiveParkCard } from '@/components/ActiveParkCard';
@@ -76,7 +84,7 @@ function IconTile({ name }: { name: IconName }) {
   );
 }
 
-function SavedCard({ kind }: { kind: 'home' | 'work' }) {
+function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean }) {
   const c = useColors();
   const { t } = useTranslation();
   const place = useApp((s) => s[kind]);
@@ -146,7 +154,7 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
       style={[
         asym(16, 5),
         {
-          flex: 1,
+          flex: stacked ? undefined : 1,
           minHeight: 52,
           paddingHorizontal: 12,
           flexDirection: 'row',
@@ -163,7 +171,7 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
       ) : (
         <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
       )}
-      <Txt variant="bodyBold" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>
+      <Txt variant="bodyBold" numberOfLines={2} style={{ flex: 1, fontSize: 14 }}>
         {place ? `${label} · ${place.label}` : label}
         {!place && (
           <Txt variant="bodyBold" secondary style={{ fontSize: 14 }}>
@@ -188,6 +196,9 @@ export default function SearchScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  // Large text: the mode switch gets its own line and Ev/İş stack.
+  const bigText = fontScale > 1.3;
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -291,8 +302,13 @@ export default function SearchScreen() {
                 </Txt>
               </Txt>
             </View>
-            <ModeSwitch mode={section} onChange={setSection} />
+            {!bigText && <ModeSwitch mode={section} onChange={setSection} />}
           </View>
+          {bigText && (
+            <View style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+              <ModeSwitch mode={section} onChange={setSection} />
+            </View>
+          )}
           <Txt
             variant="display"
             color={brand.white}
@@ -417,10 +433,10 @@ export default function SearchScreen() {
                   backgroundColor: pressed ? c.surface : c.card,
                 })}
               >
-                <Txt variant="bodyBold" numberOfLines={1}>
+                <Txt variant="bodyBold" numberOfLines={2}>
                   {h.name}
                 </Txt>
-                <Txt variant="caption" secondary numberOfLines={1}>
+                <Txt variant="caption" secondary numberOfLines={2}>
                   {hitSubtitle(h, t)}
                 </Txt>
               </Pressable>
@@ -450,9 +466,9 @@ export default function SearchScreen() {
           ) : (
             <>
               <NearbyNow />
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <SavedCard kind="home" />
-                <SavedCard kind="work" />
+              <View style={{ flexDirection: bigText ? 'column' : 'row', gap: 10 }}>
+                <SavedCard kind="home" stacked={bigText} />
+                <SavedCard kind="work" stacked={bigText} />
               </View>
             </>
           )}
@@ -489,7 +505,7 @@ export default function SearchScreen() {
               >
                 <IconTile name={p.icon as IconName} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Txt style={{ fontFamily: fonts.display, fontSize: 15 }} numberOfLines={1}>
+                  <Txt style={{ fontFamily: fonts.display, fontSize: 15 }} numberOfLines={2}>
                     {p.name}
                   </Txt>
                   <Txt variant="label" secondary numberOfLines={1}>

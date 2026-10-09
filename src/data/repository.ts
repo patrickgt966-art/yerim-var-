@@ -33,7 +33,7 @@ function wait(ms: number, signal?: AbortSignal) {
  * Loads parkings in this order:
  * 1. the primary provider, retried with RETRY_DELAYS_MS;
  * 2. the last good result saved on the device, flagged `offline`;
- * 3. sample data, flagged by `source: 'mock'` ("Örnek veri gösteriliyor").
+ * 3. sample data, flagged by `source: 'mock'` ("Deneme bilgisi gösteriliyor").
  */
 export async function loadParkings(
   primary: ParkingProvider = new IzmirOpenDataProvider(),

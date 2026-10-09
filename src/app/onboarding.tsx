@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
@@ -67,11 +67,12 @@ function Rings() {
 }
 
 function Dots({ page }: { page: number }) {
+  const { t } = useTranslation();
   return (
     <View
       style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}
       accessible
-      accessibilityLabel={`Adım ${page + 1} / 3`}
+      accessibilityLabel={t('onboarding.a11yStep', { n: page + 1 })}
     >
       {[0, 1, 2].map((i) => (
         <View
@@ -190,7 +191,7 @@ export default function Onboarding() {
               style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
               accessible
               accessibilityRole="header"
-              accessibilityLabel="Yerim var!"
+              accessibilityLabel={t('brand.a11yTitle')}
             >
               <Txt
                 allowFontScaling={false}
@@ -230,30 +231,34 @@ export default function Onboarding() {
         )}
 
         {page === 1 && (
-          <Animated.View
-            entering={FadeInDown.duration(500)}
-            style={{ flex: 1, justifyContent: 'center', gap: 16 }}
-          >
-            <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
-              {t('onboarding.howTitle')}
-            </Txt>
-            <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
-              {t('onboarding.howBody')}
-            </Txt>
+          <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
+            >
+              <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
+                {t('onboarding.howTitle')}
+              </Txt>
+              <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
+                {t('onboarding.howBody')}
+              </Txt>
+            </ScrollView>
           </Animated.View>
         )}
 
         {page === 2 && (
-          <Animated.View
-            entering={FadeInDown.duration(500)}
-            style={{ flex: 1, justifyContent: 'center', gap: 16 }}
-          >
-            <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
-              {t('onboarding.locTitle')}
-            </Txt>
-            <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
-              {t('onboarding.locBody')}
-            </Txt>
+          <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
+            >
+              <Txt variant="display" color="#FFFFFF" accessibilityRole="header">
+                {t('onboarding.locTitle')}
+              </Txt>
+              <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
+                {t('onboarding.locBody')}
+              </Txt>
+            </ScrollView>
           </Animated.View>
         )}
 
