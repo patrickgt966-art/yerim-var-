@@ -1,6 +1,6 @@
 # Yol haritası
 
-Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
+Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
 
 ## 1. Sıradaki işler
 
@@ -8,8 +8,8 @@ Son güncelleme: 2026-10-07. Öncelik sırası yukarıdan aşağıya. Her deği�
   - Bu iş, apartmanları ve iş hanlarını listeye gömme fikrinin yerini alır. Gömülü liste küçük kalır (ilçe, semt, AVM, iskele, istasyon, belediye otoparkları); uzun kuyruk anlık gelir.
 - [ ] **Yürüme süresinin kontrolü.** Şu an kuş uçuşu mesafeden hesaplanıyor, bu yüzden olduğundan kısa çıkabilir. Gerçek yürüme süreleriyle karşılaştırılıp bir düzeltme katsayısı eklenecek. Uygulamanın kendi derlemesinde gerçek süre Apple'dan alınacak (`MKDirections`, yürüyüş).
 - [ ] **Belediyenin Şubat 2026 tarifelerini bağlamak.** Veri `data/raw/` içindeki "Otopark Ücretleri" XLSX'inde. Otopark adıyla eşleştirilip `data/tariffs.json`'a kaynak ve tarihle eklenecek. Böylece fiyat ve "2 saat park" tahmini gerçek veriyle çalışır.
-- [ ] **Fazla genel otopark adlarını ayıklamak.** "Çocuk parkı yakını", "Halk Park yakını" ve apartman adları gibi.
-- [ ] **Kontrol edilmemiş son değişiklikler:** veri görevinde `git pull --rebase` ve ana dalla birleştirme.
+- [x] **Fazla genel otopark adlarını ayıklamak.** "Çocuk parkı", "Halk Park", "Merkez", "Pazaryeri", "Atatürk Büstü" gibi her yerde olan adlar ve apartman/site adları artık "X yakını" için kullanılmıyor (`GENERIC_LANDMARK`, `scripts/fetch-sources.mjs`). 37 otoparkın adı değişti; 22'si yakınında uygun yer olmadığı için "Adsız otopark" oldu.
+- [x] **Kontrol edilmemiş son değişiklikler:** veri görevinde `git pull --rebase`, ana dalla birleştirme ve restoranlarda 50 m birleştirme. Sonnet kontrol etti (2026-10-09), sorun yok. Not: aynı anda iki veri güncellemesi gelirse görev çakışıp durur; bir sonraki çalışma düzeltir.
 
 ## 2. Önerilen yeni özellikler
 
@@ -73,6 +73,8 @@ Sıra:
 - [ ] **3. aşama, kendi sistemimiz:** Sunucu, hesap (SMS doğrulama), restoran paneli, KVKK. Ancak 1. ve 2. aşama talep gösterirse. Fark yaratabilecek fikirler: rezervasyonla birlikte otopark yeri, otopark ücretini restoranın karşılaması.
 - Dikkat: Park ana iş olarak kalsın. Hesap ve kişisel veri gelince gizlilik metni ve App Store bilgileri değişir. App Store adı "Otopark Bul" yerine daha genel olabilir.
 
+**Karar (2026-10-08): Google yok, Apple Haritalar + açık kaynak.** Google Places ücretli olduğu için kullanılmayacak. Konum, arama, adres, telefon ve web sitesi Apple Haritalar'dan (uygulamanın kendi derlemesinde, ücretsiz); restoran ve otopark listeleri OpenStreetMap ve belediye açık verisinden gelir. Fiyat, fotoğraf, menü ve ortam bilgisini biz ya da restoranlar girer; puan ve yorum hesaplar gelince kullanıcılardan gelir.
+
 **Bekleyen kararlar**
 
 - [ ] Fiyat ve ortam etiketlemesine hangi 2–3 semtle başlanacak?
@@ -89,10 +91,20 @@ Sıra:
 - Ekran taslağı (tuval): https://claude.ai/artifact/Qar9Jakc6hHYL4YcVTt18n
 - Dokunarak gezilen prototip: https://claude.ai/artifact/EH2NWRTH6tWMfocm13mUA9
 
+## Yapay zeka (8 Ekim'de seçildi: 1 ve 4)
+
+- [ ] **Konuşur gibi arama:** "Kordon'da çocukla gidebileceğim, parkı kolay bir balıkçı, kişi başı 500 TL altı" gibi bir cümle filtrelere (konum, mutfak, bütçe, ortam, park kolaylığı) çevrilir. Önce telefonun içindeki Apple yapay zekasıyla (ücretsiz, veri cihazdan çıkmaz, yalnızca destekleyen iPhone'larda); desteklemeyen telefonlarda normal arama devam eder. Uygulamanın kendi derlemesi gerekir.
+- [ ] **Arka planda veri tamamlama:** Restoranlarda eksik mutfak türü (ve mümkünse ortam) ad ve web sitesinden tahmin edilir. Bu iş bizim veri sürecimizde yapılır, kullanıcıya gösterilmez; sonuçlar "tahmini" diye işaretlenir ve elle kontrol edilir.
+- Sonraya: "Senin için" önerileri, tabela fotoğrafından fiyat okuma, bulut yapay zeka (sunucu ve hesaplarla birlikte; maliyet ve gizlilik o zaman planlanır).
+
 ## Bekleyenler ve çalışma kuralı
 
 - [ ] [PR #3](https://github.com/patrickgt966-art/yerim-var-/pull/3)'ü birleştirmek (son çalışmaların hepsi orada).
-- Çalışma kuralı: her değişiklik bir alt ajana (Sonnet) ayrıca kontrol ettirilir; bulguları düzeltilip öyle kaydedilir.
+- Çalışma kuralı: lider Opus planlar ve karar verir; işler `.claude/agents/` altındaki üç Sonnet ajanına dağıtılır:
+  - `sonnet-researcher`: kodda ve web'de araştırma (dosya değiştirmez).
+  - `sonnet-worker`: kodu yazar, kontrolleri çalıştırır (commit etmez).
+  - `sonnet-reviewer`: değişikliği inceler (dosya değiştirmez).
+  Her değişiklik `sonnet-reviewer`'a kontrol ettirilir; bulgular düzeltilip öyle kaydedilir. Limit sıkışıkken küçük işleri lider kendisi yapar, büyük parçalar yazıcı + kontrolcüye bölünür.
 
 ## 3. App Store öncesi
 
