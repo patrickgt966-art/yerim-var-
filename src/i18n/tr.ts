@@ -49,7 +49,7 @@ const tr = {
   search: {
     title1: 'Nereye ',
     title2: 'park',
-    title3: ' edeceksin?',
+    title3: '\nedeceksin?',
     placeholder: 'Gideceğin yeri yaz',
     a11yInput: 'Gideceğin yer',
     a11yLocate: 'Konumumun yakınında ara',
@@ -80,6 +80,13 @@ const tr = {
     savePrompt: '{{label}} adresini yaz',
     saveFailed: 'Adres bulunamadı.',
     longPressHint: 'Değiştirmek için basılı tut',
+  },
+  nearby: {
+    title: 'Yakınında şu an',
+    freeWalk: 'boş · {{walk}} dk yürüme',
+    capacityWalk: '{{capacity}} araç · {{walk}} dk',
+    walkOnly: '{{walk}} dk yürüme',
+    a11yFree: '{{count}} boş yer',
   },
   tabs: {
     search: 'Ara',

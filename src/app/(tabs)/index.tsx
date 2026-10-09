@@ -19,6 +19,8 @@ import {
   type HomeMode,
 } from '@/components/FoodHome';
 import { Icon, type IconName } from '@/components/Icon';
+import { NearbyNow } from '@/components/NearbyNow';
+import { PMark } from '@/components/PMark';
 import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
 import type { LatLng } from '@/data/geo';
@@ -47,19 +49,22 @@ function openResults(target: LatLng, label: string) {
   });
 }
 
-function IconBubble({ name, size = 44 }: { name: IconName; size?: number }) {
+function IconTile({ name }: { name: IconName }) {
+  const c = useColors();
   return (
     <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: brand.cream,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={[
+        asym(12, 3),
+        {
+          width: 40,
+          height: 40,
+          backgroundColor: c.badgeNearBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      ]}
     >
-      <Icon name={name} size={size * 0.55} color={brand.navy} />
+      <Icon name={name} size={22} color={c.text} />
     </View>
   );
 }
@@ -93,27 +98,29 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
       onPress={() => (place ? openResults(place, place.label) : edit())}
       onLongPress={edit}
       style={[
-        asym(22, 6),
+        asym(16, 5),
         {
           flex: 1,
-          minHeight: 76,
-          padding: 14,
+          minHeight: 52,
+          paddingHorizontal: 12,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 12,
+          gap: 10,
           backgroundColor: place ? c.card : 'transparent',
         },
         place && { borderWidth: 1, borderColor: c.line },
       ]}
     >
-      {!place && <DashedFrame color={c.dashed} />}
-      <IconBubble name={kind === 'home' ? 'home' : 'briefcase'} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontFamily: fonts.display, fontSize: 18 }}>{label}</Txt>
-        <Txt variant="caption" secondary numberOfLines={1}>
-          {place ? place.label : t('search.add')}
-        </Txt>
-      </View>
+      {!place && <DashedFrame color={c.dashed} radius={16} tight={5} />}
+      <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
+      <Txt variant="bodyBold" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>
+        {place ? `${label} · ${place.label}` : label}
+        {!place && (
+          <Txt variant="bodyBold" secondary style={{ fontSize: 14 }}>
+            {` · ${t('search.add')}`}
+          </Txt>
+        )}
+      </Txt>
     </Pressable>
   );
 }
@@ -187,7 +194,7 @@ export default function SearchScreen() {
       <View
         style={{
           backgroundColor: c.hero,
-          paddingTop: insets.top + 16,
+          paddingTop: insets.top + 12,
           paddingHorizontal: 20,
           paddingBottom: 56,
           borderBottomLeftRadius: 8,
@@ -198,47 +205,56 @@ export default function SearchScreen() {
         <View style={{ position: 'absolute', right: 0, bottom: 0 }}>
           <Skyline />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              backgroundColor: '#FFFFFF',
-              overflow: 'hidden',
-            }}
-          >
-            <CarMark size={34} bay={brand.navy} glass="#FFFFFF" wheels={false} lights={false} />
-          </View>
-          <Txt
-            style={{ fontFamily: fonts.display, fontSize: 22 }}
-            color="#FFFFFF"
-            accessibilityRole="header"
-          >
-            yerim{' '}
-            <Txt style={{ fontFamily: fonts.display, fontSize: 22 }} color={brand.orange}>
-              var
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
+            <PMark size={30} />
+            <Txt
+              style={{ fontFamily: fonts.display, fontSize: 21 }}
+              color={brand.white}
+              numberOfLines={1}
+              accessibilityRole="header"
+            >
+              yerim{' '}
+              <Txt style={{ fontFamily: fonts.display, fontSize: 21 }} color={brand.orange}>
+                var
+              </Txt>
             </Txt>
-          </Txt>
+          </View>
+          <ModeSwitch mode={section} onChange={setSection} />
         </View>
-        <Txt variant="display" color="#FFFFFF" style={{ marginTop: 16 }} accessibilityRole="header">
+        <Txt
+          variant="display"
+          color={brand.white}
+          style={{ marginTop: 18, fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
+          accessibilityRole="header"
+        >
           {food ? (
             t('food.headline')
           ) : (
             <>
               {t('search.title1')}
-              <Txt variant="display" color={brand.orangeLight}>
+              <Txt
+                variant="display"
+                color={brand.orangeLight}
+                style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
+              >
                 {t('search.title2')}
               </Txt>
               {t('search.title3')}
             </>
           )}
         </Txt>
-        <ModeSwitch mode={section} onChange={setSection} />
       </View>
 
       {/* Search box overlapping the hero */}
-      <View style={{ marginTop: -36, marginHorizontal: 16 }}>
+      <View style={{ marginTop: -30, marginHorizontal: 16 }}>
         <View
           style={[
             asym(26, 8),
@@ -287,13 +303,13 @@ export default function SearchScreen() {
                 {
                   width: 48,
                   height: 48,
-                  backgroundColor: brand.navy,
+                  backgroundColor: food ? brand.navy : c.accent,
                   alignItems: 'center',
                   justifyContent: 'center',
                 },
               ]}
             >
-              <Icon name="locate" size={20} color="#FFFFFF" />
+              <Icon name="locate" size={20} color={food ? brand.white : brand.navy} />
             </Pressable>
           )}
         </View>
@@ -342,7 +358,33 @@ export default function SearchScreen() {
         </View>
       )}
 
+      {!food && (
+        <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>
+          <Chip
+            label={t('search.now')}
+            icon="clock"
+            selected={mode === 'now'}
+            onPress={() => setMode('now')}
+          />
+          <Chip
+            label={t('search.twoHours')}
+            icon="hourglass"
+            selected={mode === 'twoHours'}
+            onPress={() => setMode('twoHours')}
+          />
+        </View>
+      )}
+
       <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
+        {!food && active && (
+          <>
+            <Txt variant="title" accessibilityRole="header">
+              {t('search.active')}
+            </Txt>
+            <ActiveParkCard active={active} />
+          </>
+        )}
+
         {food ? (
           <>
             <Txt variant="title" accessibilityRole="header">
@@ -352,34 +394,21 @@ export default function SearchScreen() {
           </>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-              <Chip
-                label={t('search.now')}
-                icon="clock"
-                selected={mode === 'now'}
-                onPress={() => setMode('now')}
-                height={52}
-              />
-              <Chip
-                label={t('search.twoHours')}
-                icon="hourglass"
-                selected={mode === 'twoHours'}
-                onPress={() => setMode('twoHours')}
-                height={52}
-              />
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            <NearbyNow />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
               <SavedCard kind="home" />
               <SavedCard kind="work" />
             </View>
           </>
         )}
 
-        <Txt variant="title" accessibilityRole="header" style={{ marginTop: 8 }}>
+        <Txt
+          accessibilityRole="header"
+          style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 24, marginTop: 4 }}
+        >
           {t(food ? 'food.popularFood' : 'search.popular')}
         </Txt>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {POPULAR_PLACES.map((p) => (
             <Pressable
               key={p.id}
@@ -387,40 +416,34 @@ export default function SearchScreen() {
               accessibilityLabel={`${p.name}, ${p.district}`}
               onPress={() => go(p, p.name)}
               style={[
-                asym(22, 6),
+                asym(18, 5),
                 {
                   flexBasis: '47%',
                   flexGrow: 1,
-                  minHeight: 84,
-                  padding: 14,
+                  minHeight: 64,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 12,
+                  gap: 10,
                   backgroundColor: c.card,
                   borderWidth: 1,
                   borderColor: c.line,
                 },
               ]}
             >
-              <IconBubble name={p.icon as IconName} size={48} />
+              <IconTile name={p.icon as IconName} />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{p.name}</Txt>
-                <Txt variant="caption" secondary>
+                <Txt style={{ fontFamily: fonts.display, fontSize: 15 }} numberOfLines={1}>
+                  {p.name}
+                </Txt>
+                <Txt variant="label" secondary numberOfLines={1}>
                   {p.district}
                 </Txt>
               </View>
             </Pressable>
           ))}
         </View>
-
-        {!food && active && (
-          <>
-            <Txt variant="title" accessibilityRole="header" style={{ marginTop: 8 }}>
-              {t('search.active')}
-            </Txt>
-            <ActiveParkCard active={active} />
-          </>
-        )}
       </View>
     </ScrollView>
   );

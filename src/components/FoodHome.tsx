@@ -67,7 +67,10 @@ export function ModeSwitch({
     <View
       accessibilityRole="tablist"
       accessibilityLabel={t('food.modeLabel')}
-      style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}
+      style={[
+        asym(14, 4),
+        { flexDirection: 'row', padding: 3, backgroundColor: 'rgba(255,255,255,0.10)' },
+      ]}
     >
       {options.map((o) => {
         const selected = mode === o.id;
@@ -79,21 +82,20 @@ export function ModeSwitch({
             accessibilityLabel={o.label}
             onPress={() => onChange(o.id)}
             style={[
-              asym(HIT / 2, 6),
+              asym(11, 3),
               {
                 minHeight: HIT,
-                minWidth: 112,
-                paddingHorizontal: 18,
+                paddingHorizontal: 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: selected ? '#FFFFFF' : 'rgba(255,255,255,0.14)',
+                backgroundColor: selected ? brand.white : 'transparent',
               },
             ]}
           >
             <Txt
               variant="bodyBold"
-              color={selected ? brand.navy : '#FFFFFF'}
-              style={{ fontSize: 15 }}
+              color={selected ? brand.navy : brand.line}
+              style={{ fontSize: 14 }}
             >
               {o.label}
             </Txt>
