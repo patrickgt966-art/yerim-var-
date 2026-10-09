@@ -27,6 +27,7 @@ type FoodRecord = {
   out?: boolean;
   wc?: boolean;
   res?: boolean;
+  v?: number;
 };
 
 type FoodFile = { generatedAt: string; items: FoodRecord[] };
@@ -60,11 +61,16 @@ export type Restaurant = {
   outdoorSeating: boolean | null;
   wheelchair: boolean | null;
   reservation: boolean | null;
+  /** Where the record comes from, by id prefix ('ov-' is Overture Maps). */
+  source: 'osm' | 'overture';
+  /** OSM is always verified; Overture only when corroborated (v 1). */
+  verified: boolean;
 };
 
 export type NearbyRestaurant = Restaurant & { distanceM: number };
 
 export function toRestaurant(r: FoodRecord): Restaurant {
+  const source = r.id.startsWith('ov-') ? 'overture' : 'osm';
   return {
     id: r.id,
     name: r.n,
@@ -80,6 +86,8 @@ export function toRestaurant(r: FoodRecord): Restaurant {
     outdoorSeating: r.out ?? null,
     wheelchair: r.wc ?? null,
     reservation: r.res ?? null,
+    source,
+    verified: source === 'osm' || r.v === 1,
   };
 }
 
@@ -505,6 +513,8 @@ const NO_PARK_DISTANCE_M = NEAREST_PARKING_RADIUS_M;
 const RESTAURANT_DISTANCE_WEIGHT = 0.5;
 /** Street stands (midye, kokoreç) sink below sit-down places in fish and meat. */
 const STAND_PENALTY_M = 600;
+/** An unverified Overture row sorts after verified rows at the same score (m-equivalent). */
+const UNVERIFIED_PENALTY_M = 250;
 
 /** A fast_food place, or a midye/kokoreç stand that is not also a fish restaurant. */
 function isStand(r: Restaurant): boolean {
@@ -532,6 +542,7 @@ function parkEaseScore(row: RestaurantRow, cat?: FoodCategory): number {
     (parking ? parking.distanceM : NO_PARK_DISTANCE_M) +
     RESTAURANT_DISTANCE_WEIGHT * r.distanceM;
   if ((cat === 'fish' || cat === 'meat') && isStand(r)) score += STAND_PENALTY_M;
+  if (!r.verified) score += UNVERIFIED_PENALTY_M;
   return score;
 }
 
@@ -541,7 +552,10 @@ export function rankRestaurants(
   cat?: FoodCategory,
 ): RestaurantRow[] {
   const out = [...rows];
-  if (sort === 'distance') return out.sort((a, b) => a.r.distanceM - b.r.distanceM);
+  if (sort === 'distance') {
+    const eff = (row: RestaurantRow) => row.r.distanceM + (row.r.verified ? 0 : UNVERIFIED_PENALTY_M);
+    return out.sort((a, b) => eff(a) - eff(b));
+  }
   const score = new Map(out.map((row) => [row, parkEaseScore(row, cat)]));
   return out.sort((a, b) => {
     // 100 m buckets so info richness decides between similar scores.

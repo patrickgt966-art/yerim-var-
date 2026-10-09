@@ -408,6 +408,15 @@ function Row({
         <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={24} color={brand.navy} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        {!r.verified && (
+          <View
+            accessible
+            accessibilityLabel={t('food.a11yUnverified')}
+            style={{ flexDirection: 'row' }}
+          >
+            <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+          </View>
+        )}
         {(best || easy) && (
           <View style={{ flexDirection: 'row' }}>
             <Tag

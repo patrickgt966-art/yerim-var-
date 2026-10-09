@@ -366,6 +366,10 @@ const tr = {
     parkNone: 'Yakında otopark bulamadık. Biraz uzağa park edip yürümen gerekebilir.',
     parkLoading: 'Otoparklar yükleniyor…',
     footer: 'Veri: © OpenStreetMap katkıcıları. Bilgiler eksik ya da eski olabilir.',
+    footerOverture:
+      'Veri: Overture Maps (CDLA-Permissive-2.0). Doğrulanmamış kayıtlar kapanmış ya da taşınmış olabilir.',
+    unverified: 'Doğrulanmamış',
+    a11yUnverified: 'Doğrulanmamış kayıt; bilgiler eski olabilir',
     kinds: {
       restaurant: 'Restoran',
       cafe: 'Kafe',

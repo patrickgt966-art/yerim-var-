@@ -65,6 +65,7 @@ export type ChatCard =
       distanceM: number;
       parkingM: number | null;
       open: 'open' | 'closed' | 'unknown';
+      unverified?: boolean;
     }
   | {
       kind: 'parking';
@@ -268,6 +269,7 @@ export async function answer(
         distanceM: row.r.distanceM,
         parkingM: row.parking?.distanceM ?? null,
         open: 'unknown',
+        unverified: !row.r.verified,
       }));
       const actions: ChatAction[] = ctx.place
         ? [
@@ -355,6 +357,7 @@ export async function answer(
             distanceM: row.r.distanceM,
             parkingM: row.parking?.distanceM ?? null,
             open: 'unknown',
+            unverified: !row.r.verified,
           }));
           return withNotice(
             plain(
@@ -597,6 +600,7 @@ function runFood(
       distanceM: row.r.distanceM,
       parkingM: row.parking?.distanceM ?? null,
       open: 'unknown',
+      unverified: !row.r.verified,
     }));
     const actions: ChatAction[] = [];
     if (!ctx.requireParking) {
