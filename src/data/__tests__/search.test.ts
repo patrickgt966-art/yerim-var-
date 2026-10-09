@@ -1,6 +1,7 @@
 import '@/i18n';
 
 import { distanceMeters } from '../geo';
+import { CURATED_PLACES } from '../places';
 import { fold, searchPlaces, splitPlaceAndCategory } from '../search';
 
 describe('fold', () => {
@@ -184,12 +185,18 @@ describe('curated places are listed once', () => {
   it.each(['efes', 'ephesus', 'liman', 'alsancak limanı', 'port', 'fuar', 'akm', 'kültürpark'])(
     '%s has no two hits within 150 m (car parks aside)',
     (q) => {
+      // Only curated entries are checked: OSM itself holds near-twins (e.g. the
+      // Alsancak metro and Alsancak Gar stations), which the data refresh may add.
+      const curated = new Set(CURATED_PLACES.map((p) => p.name));
       const hits = searchPlaces(q, 10);
       for (const [i, a] of hits.entries())
         for (const b of hits.slice(i + 1))
-          expect(distanceMeters(a, b) <= 150 && a.kind === b.kind && a.kind !== 'parking').toBe(
-            false,
-          );
+          expect(
+            (curated.has(a.name) || curated.has(b.name)) &&
+              distanceMeters(a, b) <= 150 &&
+              a.kind === b.kind &&
+              a.kind !== 'parking',
+          ).toBe(false);
     },
   );
 });
