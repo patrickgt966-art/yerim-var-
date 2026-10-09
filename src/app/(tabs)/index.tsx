@@ -1,10 +1,11 @@
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { TFunction } from 'i18next';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  ActionSheetIOS,
   Alert,
   Pressable,
   ScrollView,
@@ -34,22 +35,18 @@ import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
 import type { LatLng } from '@/data/geo';
 import { POPULAR_PLACES } from '@/data/places';
-import {
-  APPLE_MIN_CHARS,
-  mergeHits,
-  searchApplePlaces,
-  useAppleSuggestions,
-} from '@/data/appleSearch';
 import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
-import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
+import { splitPlaceAndCategory, type SearchHit } from '@/data/search';
 import { useAnnounce } from '@/lib/a11y';
-import { currentLocation, geocode, reverseStreet } from '@/lib/location';
+import { currentLocation, reverseStreet } from '@/lib/location';
 import { currentLocationLabel } from '@/lib/park';
+import { pickerParams } from '@/lib/pickPlace';
+import { resolvePlace, usePlaceSearch } from '@/lib/usePlaceSearch';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
-/** A stuck address lookup must not leave the busy/saving flags set. */
-const GEOCODE_TIMEOUT_MS = 8000;
+/** In food mode only the place part of "Bornova balık" is searched locally. */
+const placePart = (q: string) => splitPlaceAndCategory(q)?.placeQuery ?? q;
 
 function hitSubtitle(h: SearchHit, t: TFunction): string {
   return [
@@ -97,26 +94,6 @@ function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean 
 
   const [saving, setSaving] = useState(false);
 
-  const typeAddress = () =>
-    Alert.prompt(
-      t('search.savePrompt', { label }),
-      undefined,
-      async (text) => {
-        if (saving) return;
-        setSaving(true);
-        try {
-          const hit = await geocode(text, GEOCODE_TIMEOUT_MS);
-          if (!hit) return Alert.alert(t('search.saveFailed'));
-          const saved: SavedPlace = { label: text.trim(), ...hit };
-          setPlace(saved);
-        } finally {
-          setSaving(false);
-        }
-      },
-      'plain-text',
-      place?.label ?? '',
-    );
-
   const saveCurrent = async () => {
     if (saving) return;
     setSaving(true);
@@ -136,54 +113,94 @@ function SavedCard({ kind, stacked }: { kind: 'home' | 'work'; stacked: boolean 
     }
   };
 
-  // Long press always edits; an empty tile offers the current location too.
-  const edit = typeAddress;
-  const choose = () =>
-    !saving &&
-    Alert.alert(t('search.saveChoiceTitle', { label }), undefined, [
-      { text: t('search.saveCurrent'), onPress: () => void saveCurrent() },
-      { text: t('search.saveTyped'), onPress: typeAddress },
+  const searchAddress = () => router.push({ pathname: '/yer-ara', params: { purpose: kind } });
+  const pickOnMap = () =>
+    router.push({ pathname: '/konum-sec', params: pickerParams({ purpose: kind }) });
+  const remove = () =>
+    Alert.alert(t('search.removeConfirm', { label }), undefined, [
+      { text: t('search.remove'), style: 'destructive', onPress: () => setPlace(null) },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
 
+  // Tap on an empty tile and long press / pencil on a saved one open the same sheet.
+  const openSheet = () => {
+    if (saving) return;
+    const actions: { text: string; run: () => void }[] = [
+      { text: t('search.searchAddress'), run: searchAddress },
+      { text: t('search.saveCurrent'), run: () => void saveCurrent() },
+      { text: t('search.pickOnMap'), run: pickOnMap },
+      ...(place ? [{ text: t('search.remove'), run: remove }] : []),
+    ];
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: t('search.saveChoiceTitle', { label }),
+        options: [...actions.map((a) => a.text), t('common.cancel')],
+        cancelButtonIndex: actions.length,
+        destructiveButtonIndex: place ? actions.length - 1 : undefined,
+      },
+      (i) => actions[i]?.run(),
+    );
+  };
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={place ? `${label}: ${place.label}` : `${label} ${t('search.add')}`}
-      accessibilityHint={place ? t('search.longPressHint') : undefined}
-      disabled={saving}
-      accessibilityState={{ busy: saving }}
-      onPress={() => (place ? openResults(place, place.label) : choose())}
-      onLongPress={edit}
+    <View
       style={[
         asym(16, 5),
         {
           flex: stacked ? undefined : 1,
           minHeight: 52,
-          paddingHorizontal: 12,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
           backgroundColor: place ? c.card : 'transparent',
         },
         place && { borderWidth: 1, borderColor: c.line },
       ]}
     >
       {!place && <DashedFrame color={c.dashed} radius={16} tight={5} />}
-      {saving ? (
-        <ActivityIndicator color={c.text} accessibilityLabel={t('a11y.loading')} />
-      ) : (
-        <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
-      )}
-      <Txt variant="bodyBold" numberOfLines={2} style={{ flex: 1, fontSize: 14 }}>
-        {place ? `${label} · ${place.label}` : label}
-        {!place && (
-          <Txt variant="bodyBold" secondary style={{ fontSize: 14 }}>
-            {` · ${t('search.add')}`}
-          </Txt>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={place ? `${label}: ${place.label}` : `${label} ${t('search.add')}`}
+        accessibilityHint={place ? t('search.longPressHint') : undefined}
+        disabled={saving}
+        accessibilityState={{ busy: saving }}
+        onPress={() => (place ? openResults(place, place.label) : openSheet())}
+        onLongPress={openSheet}
+        style={{
+          flex: 1,
+          minHeight: 52,
+          paddingLeft: 12,
+          paddingRight: place ? 0 : 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        {saving ? (
+          <ActivityIndicator color={c.text} accessibilityLabel={t('a11y.loading')} />
+        ) : (
+          <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
         )}
-      </Txt>
-    </Pressable>
+        <Txt variant="bodyBold" numberOfLines={2} style={{ flex: 1, fontSize: 14 }}>
+          {place ? `${label} · ${place.label}` : label}
+          {!place && (
+            <Txt variant="bodyBold" secondary style={{ fontSize: 14 }}>
+              {` · ${t('search.add')}`}
+            </Txt>
+          )}
+        </Txt>
+      </Pressable>
+      {place && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('search.a11yEdit', { label })}
+          disabled={saving}
+          onPress={openSheet}
+          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="edit" size={18} color={c.textSecondary} />
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -215,26 +232,10 @@ export default function SearchScreen() {
 
   // Bundled İzmir places first: Apple's geocoder only knows addresses.
   // "Bornova balık" searches the place part only; the category word is applied on submit.
-  // Typing stays responsive: the local search lags one render behind the text box.
-  const deferredQuery = useDeferredValue(query);
-  const settled = deferredQuery === query;
+  const { hits, settled, deferredQuery } = usePlaceSearch(query, food ? placePart : undefined);
   const split = useMemo(
     () => (food ? splitPlaceAndCategory(deferredQuery) : null),
     [food, deferredQuery],
-  );
-  const local = useMemo(
-    () => searchPlaces(split ? split.placeQuery : deferredQuery),
-    [split, deferredQuery],
-  );
-  // Places our list does not know come from Apple Maps (native builds only).
-  const apple = useAppleSuggestions(query);
-  // Use Apple results only for exactly the text in the box: the request is
-  // debounced, so they may belong to an earlier, shorter query.
-  const appleCurrent =
-    apple.forQuery === fold(query.trim()) && query.trim().length >= APPLE_MIN_CHARS;
-  const hits = useMemo(
-    () => mergeHits(local, appleCurrent ? (apple.data ?? []) : []),
-    [local, appleCurrent, apple.data],
   );
 
   const go = (target: LatLng, label: string, cat?: FoodCategory) =>
@@ -278,17 +279,39 @@ export default function SearchScreen() {
     if (settled && food && foodMatches[0])
       return router.push({ pathname: '/restoran/[id]', params: { id: foodMatches[0].id } });
     setBusy(true);
-    let hit: LatLng | null = null;
+    let point: LatLng | null = null;
     try {
-      const [fromApple] = await searchApplePlaces(q);
-      if (fromApple) return pickNow(fromApple);
-      hit = await geocode(q, GEOCODE_TIMEOUT_MS);
+      const found = await resolvePlace(q);
+      if (found.hit) return pickNow(found.hit);
+      point = found.point;
     } finally {
       setBusy(false);
     }
-    if (!hit) return Alert.alert(t('search.notFound'));
-    go(hit, q);
+    if (!point) {
+      // Never a dead end: offer to mark the place on the map.
+      return Alert.alert(t('search.notFoundTitle'), t('search.notFoundBody'), [
+        { text: t('search.pickOnMap'), onPress: () => openPicker(q) },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+    }
+    go(point, q);
   };
+  const openPicker = (q: string) =>
+    router.push({
+      pathname: '/konum-sec',
+      params: pickerParams({
+        purpose: 'search',
+        q,
+        food,
+        cat: food ? splitPlaceAndCategory(q)?.cat : undefined,
+      }),
+    });
+  const showMapRow =
+    query.trim().length >= 3 &&
+    settled &&
+    hits.length === 0 &&
+    foodMatches.length === 0 &&
+    !(food && categoryForQuery(query.trim()));
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -437,6 +460,32 @@ export default function SearchScreen() {
             )}
           </View>
         </View>
+
+        {showMapRow && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('search.pickOnMap')}
+            onPress={() => openPicker(query.trim())}
+            style={({ pressed }) => [
+              asym(18, 5),
+              {
+                marginHorizontal: 16,
+                marginTop: 12,
+                minHeight: HIT + 4,
+                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                backgroundColor: pressed ? c.surface : c.card,
+                borderWidth: 1,
+                borderColor: c.line,
+              },
+            ]}
+          >
+            <Icon name="map" size={20} color={c.text} />
+            <Txt variant="bodyBold">{t('search.pickOnMap')}</Txt>
+          </Pressable>
+        )}
 
         {(hits.length > 0 || foodMatches.length > 0) && (
           <View

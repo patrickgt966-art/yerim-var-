@@ -28,7 +28,9 @@ export type IconName =
   | 'burger'
   | 'icecream'
   | 'bowl'
-  | 'cutlery';
+  | 'cutlery'
+  | 'edit'
+  | 'pin';
 
 type Props = { name: IconName; size?: number; color: string; strokeWidth?: number };
 
@@ -66,6 +68,15 @@ export function Icon({ name, size = 24, color, strokeWidth = 2 }: Props) {
         </>
       )}
       {name === 'back' && <Path d="M15 5l-7 7 7 7" {...common} />}
+      {name === 'edit' && (
+        <Path d="M4 20l1-4L16.5 4.5a2 2 0 013 3L8 19l-4 1zM14.5 6.5l3 3" {...common} />
+      )}
+      {name === 'pin' && (
+        <>
+          <Path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z" {...common} />
+          <Circle cx={12} cy={10} r={2.3} {...common} />
+        </>
+      )}
       {name === 'filter' && <Path d="M4 7h16M7 12h10M10 17h4" {...common} />}
       {name === 'locate' && (
         <>
