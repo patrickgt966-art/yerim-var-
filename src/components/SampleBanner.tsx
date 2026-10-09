@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { formatClock } from '@/data/freshness';
+import { ageSince, formatClock } from '@/data/freshness';
 import type { ParkingResult } from '@/data/types';
+import { useNow } from '@/lib/useNow';
 import { asym, useColors } from '@/theme';
 
 import { Txt } from './Txt';
@@ -13,12 +14,16 @@ import { Txt } from './Txt';
  */
 export function SampleBanner({ result }: { result: ParkingResult | undefined }) {
   const c = useColors();
+  const nowMs = useNow(30_000);
   const { t } = useTranslation();
   if (!result) return null;
   let text: string | null = null;
   if (result.source === 'mock') text = t('freshness.sampleBanner');
   else if (result.offline)
-    text = t('freshness.offlineBanner', { time: formatClock(new Date(result.fetchedAt)) });
+    text = t('freshness.offlineBanner', {
+      time: formatClock(new Date(result.fetchedAt)),
+      age: ageSince(result.fetchedAt, new Date(nowMs)),
+    });
   if (!text) return null;
   return (
     <View

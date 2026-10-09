@@ -1,17 +1,20 @@
 import { router } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useNow } from '@/components/ActiveParkCard';
+import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
-import { formatClock } from '@/data/freshness';
+import { useNow } from '@/lib/useNow';
+import { FreshnessBadge } from '@/components/FreshnessBadge';
+import { formatClock, getFreshness, visibleFree } from '@/data/freshness';
 import {
   cuisineLabels,
   getRestaurant,
@@ -22,8 +25,16 @@ import {
 import { estimateCost } from '@/data/tariffs';
 import { useParkings } from '@/data/useParkings';
 import { durationText } from '@/lib/format';
+import { needsStillParkedPrompt } from '@/lib/park';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
+
+function confirmRemove(t: TFunction, name: string, remove: () => void) {
+  Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('favorites.removeConfirmYes'), style: 'destructive', onPress: remove },
+  ]);
+}
 
 function ActiveSection() {
   const { t } = useTranslation();
@@ -44,16 +55,15 @@ function ActiveSection() {
       <Txt style={{ fontFamily: fonts.display, fontSize: 20 }}>{active.name}</Txt>
       <Row label={t('favorites.elapsed')} value={durationText(elapsed, t)} />
       <Row label={t('favorites.estCost')} value={cost != null ? `₺${cost}` : t('common.unknown')} />
-      <Button
-        kind="danger"
-        label={t('favorites.end')}
-        onPress={() =>
-          Alert.alert(t('favorites.end'), undefined, [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('favorites.end'), style: 'destructive', onPress: endPark },
-          ])
-        }
-      />
+      {needsStillParkedPrompt(active, now) ? (
+        <StillParkedPrompt />
+      ) : (
+        <Button
+          kind="danger"
+          label={t('favorites.end')}
+          onPress={() => confirmEndPark(t, endPark)}
+        />
+      )}
     </Section>
   );
 }
@@ -184,7 +194,7 @@ function RestaurantFavorites() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('favorites.a11yRemoveRestaurant', { name: r.name })}
-              onPress={() => toggle(r.id)}
+              onPress={() => confirmRemove(t, r.name, () => toggle(r.id))}
               style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
             >
               <Icon name="starFilled" color={c.accent} />
@@ -202,6 +212,8 @@ export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
   const favorites = useApp((s) => s.favorites);
   const toggleFavorite = useApp((s) => s.toggleFavorite);
+  const { data } = useParkings();
+  const now = new Date(useNow(30_000));
   const [tab, setTab] = useState<FavTab>('parkings');
 
   return (
@@ -222,47 +234,65 @@ export default function FavoritesScreen() {
       ) : favorites.length === 0 ? (
         <Txt secondary>{t('favorites.empty')}</Txt>
       ) : (
-        favorites.map((f) => (
-          <View
-            key={f.id}
-            style={[
-              asym(22, 6),
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                padding: 12,
-                backgroundColor: c.card,
-                borderWidth: 1,
-                borderColor: c.line,
-              },
-            ]}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={f.name}
-              onPress={() => router.push({ pathname: '/otopark/[id]', params: { id: f.id } })}
-              style={{
-                flex: 1,
-                minHeight: HIT,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-              }}
+        favorites.map((f) => {
+          const p = data?.parkings.find((x) => x.id === f.id);
+          const fresh = p ? getFreshness(p, now) : null;
+          const free = p ? visibleFree(p, now) : null;
+          // Only fresh counts are shown; anything else reads as no count / unknown.
+          const status =
+            free != null && fresh && (fresh.kind === 'live' || fresh.kind === 'updated')
+              ? t('favorites.freeAt', { count: free, time: formatClock(fresh.at) })
+              : fresh?.kind === 'noData'
+                ? t('favorites.noCount')
+                : t('common.unknown');
+          return (
+            <View
+              key={f.id}
+              style={[
+                asym(22, 6),
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.line,
+                },
+              ]}
             >
-              <PBadge size={32} />
-              <Txt style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('favorites.a11yRemove', { name: f.name })}
-              onPress={() => toggleFavorite(f)}
-              style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Icon name="starFilled" color={c.accent} />
-            </Pressable>
-          </View>
-        ))
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
+                onPress={() => router.push({ pathname: '/otopark/[id]', params: { id: f.id } })}
+                style={{
+                  flex: 1,
+                  minHeight: HIT,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <PBadge size={32} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Txt variant="caption">{status}</Txt>
+                    {fresh && free != null && <FreshnessBadge freshness={fresh} />}
+                  </View>
+                </View>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('favorites.a11yRemove', { name: f.name })}
+                onPress={() => confirmRemove(t, f.name, () => toggleFavorite(f))}
+                style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon name="starFilled" color={c.accent} />
+              </Pressable>
+            </View>
+          );
+        })
       )}
     </ScrollView>
   );

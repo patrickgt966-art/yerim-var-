@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { LatLng } from '@/data/geo';
 
-import { migrateAppState } from './migrate';
+import { migrateAppState, sanitizeAppState } from './migrate';
 
 export type SavedPlace = { label: string } & LatLng;
 export type FavoriteParking = { id: string; name: string } & LatLng;
@@ -15,6 +15,8 @@ export type ActivePark = {
   startedAt: string;
   hourly: number | null;
   note?: string;
+  /** Set when the user answered "still parked?" after a long park; restarts the 12 h clock. */
+  confirmedAt?: string;
   /** Where the user is walking to after parking (set from a restaurant page). */
   destination?: ParkDestination;
 } & LatLng;
@@ -35,6 +37,7 @@ type State = {
   toggleFavoriteRestaurant: (id: string) => void;
   startPark: (p: ActivePark) => void;
   endPark: () => void;
+  confirmPark: () => void;
   setMode: (m: ParkMode) => void;
 };
 
@@ -65,12 +68,21 @@ export const useApp = create<State>()(
         })),
       startPark: (active) => set({ active }),
       endPark: () => set({ active: null }),
+      confirmPark: () =>
+        set((s) =>
+          s.active ? { active: { ...s.active, confirmedAt: new Date().toISOString() } } : {},
+        ),
       setMode: (mode) => set({ mode }),
     }),
     {
       name: 'yerim-var/app',
-      version: 2,
+      version: 3,
       migrate: migrateAppState as never,
+      // Same-version corrupt data never goes through migrate, so sanitise on every rehydrate.
+      merge: (persisted, current) => ({
+        ...current,
+        ...((sanitizeAppState(persisted) as object | null | undefined) ?? {}),
+      }),
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({ onboarded, home, work, favorites, favoriteRestaurants, active, mode }) => ({
         onboarded,

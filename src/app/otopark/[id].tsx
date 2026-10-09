@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -39,7 +39,7 @@ export default function ParkingDetail() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data } = useParkings();
+  const { data, isLoading } = useParkings();
   const queryClient = useQueryClient();
   const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
@@ -57,7 +57,11 @@ export default function ParkingDetail() {
         }}
       >
         <ScreenHeader title="" back />
-        <Txt secondary>{t('detail.notFound')}</Txt>
+        {isLoading || !data ? (
+          <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
+        ) : (
+          <Txt secondary>{t('detail.notFound')}</Txt>
+        )}
       </View>
     );
   }

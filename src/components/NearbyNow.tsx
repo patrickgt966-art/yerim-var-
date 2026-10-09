@@ -1,16 +1,24 @@
+import * as Location from 'expo-location';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, View } from 'react-native';
 
 import type { LatLng } from '@/data/geo';
-import { getFreshness, occupancyLevel, visibleFree, type Freshness } from '@/data/freshness';
-import { rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
+import {
+  getFreshness,
+  lacksFreshCounts,
+  occupancyLevel,
+  visibleFree,
+  type Freshness,
+} from '@/data/freshness';
+import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
 import { isStatic } from '@/lib/staticInfo';
 import { asym, fonts, useColors } from '@/theme';
 
 import { DashedFrame } from './DashedFrame';
+import { Button } from './Button';
 import { FreshnessBadge, Tag } from './FreshnessBadge';
 import { SampleBanner } from './SampleBanner';
 import { Txt } from './Txt';
@@ -81,31 +89,93 @@ function Card({ p, best }: { p: RankedParking; best: boolean }) {
   );
 }
 
+/** Shown instead of the list while location permission is missing. */
+function LocationCard({
+  canAsk,
+  onAllow,
+  onDismiss,
+}: {
+  canAsk: boolean;
+  onAllow: () => void;
+  onDismiss: () => void;
+}) {
+  const c = useColors();
+  const { t } = useTranslation();
+  return (
+    <View
+      style={[
+        asym(20, 6),
+        { gap: 10, padding: 14, backgroundColor: c.card, borderWidth: 1, borderColor: c.line },
+      ]}
+    >
+      <Txt variant="bodyBold">{t('nearby.locationTitle')}</Txt>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        <Button
+          kind="secondary"
+          label={t(canAsk ? 'nearby.locationAllow' : 'nearby.locationSettings')}
+          onPress={onAllow}
+        />
+        <Button kind="secondary" label={t('nearby.locationDismiss')} onPress={onDismiss} />
+      </View>
+    </View>
+  );
+}
+
 /**
- * The 3 car parks nearest the user. Only shown when location permission is
- * already granted (never prompts) and parking data exists.
+ * The 3 car parks nearest the user. Never prompts by itself: without location
+ * permission it shows a card that asks on tap (or opens Settings if the
+ * system will not ask again).
  */
 export function NearbyNow() {
+  const c = useColors();
   const { t } = useTranslation();
   const q = useParkings();
   const [here, setHere] = useState<LatLng | null>(null);
+  const [needsPermission, setNeedsPermission] = useState(false);
+  const [canAsk, setCanAsk] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
+
+  const checkPermission = useCallback(async () => {
+    try {
+      const perm = await Location.getForegroundPermissionsAsync();
+      setNeedsPermission(!perm.granted);
+      setCanAsk(perm.canAskAgain);
+    } catch {
+      setNeedsPermission(false);
+    }
+  }, []);
+
+  const onAllow = async () => {
+    if (!canAsk) {
+      void Linking.openSettings();
+      return;
+    }
+    const loc = await currentLocation(true, 5000);
+    if (loc) setHere(loc);
+    await checkPermission();
+  };
 
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       currentLocation(false, 5000).then((loc) => {
-        if (alive) setHere(loc);
+        if (!alive) return;
+        setHere(loc);
+        if (!loc) void checkPermission();
+        else setNeedsPermission(false);
       });
       return () => {
         alive = false;
       };
-    }, []),
+    }, [checkPermission]),
   );
 
   const result = q.data;
   const nearest = useMemo(
     () =>
-      result && here ? rankByDistance(result.parkings, here, RADIUS_METERS).slice(0, COUNT) : [],
+      result && here
+        ? preferLive(rankByDistance(result.parkings, here, RADIUS_METERS)).slice(0, COUNT)
+        : [],
     [result, here],
   );
 
@@ -127,7 +197,18 @@ export function NearbyNow() {
     return allLive ? oldest : { kind: 'updated', at: oldest.at };
   }, [result, nearest]);
 
+  if (!here && needsPermission && !dismissed) {
+    return (
+      <LocationCard
+        canAsk={canAsk}
+        onAllow={() => void onAllow()}
+        onDismiss={() => setDismissed(true)}
+      />
+    );
+  }
   if (!here || nearest.length === 0) return null;
+  const liveIncoming =
+    q.isFetching && !!result && result.source !== 'mock' && lacksFreshCounts(nearest);
 
   return (
     <View style={{ gap: 12 }}>
@@ -141,6 +222,18 @@ export function NearbyNow() {
         {badge && <FreshnessBadge freshness={badge} />}
       </View>
       <SampleBanner result={result} />
+      {liveIncoming && (
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('nearby.liveIncoming')}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
+          <ActivityIndicator size="small" color={c.text} />
+          <Txt variant="caption" secondary>
+            {t('nearby.liveIncoming')}
+          </Txt>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         {nearest.map((p, i) => (
           <Card key={p.id} p={p} best={i === 0} />

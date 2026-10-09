@@ -27,3 +27,15 @@ export function estimateCost(hourly: number | null, minutes: number): number | n
   if (hourly == null) return null;
   return Math.max(1, Math.ceil(minutes / 60)) * hourly;
 }
+
+/**
+ * True when at least one real (non-sample) car park has a tariff. Without
+ * this the "2 saat" estimate cannot say anything, so the chips are hidden.
+ */
+export function hasRealTariffs(
+  parkings: readonly { id: string; source: string }[],
+  tariffs: readonly { parkingId: string }[] = TARIFFS,
+): boolean {
+  const ids = new Set(tariffs.map((t) => t.parkingId));
+  return parkings.some((p) => p.source !== 'mock' && ids.has(p.id));
+}

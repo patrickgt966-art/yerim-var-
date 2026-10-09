@@ -14,7 +14,7 @@ import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
-import { visibleFree } from '@/data/freshness';
+import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
 import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { useRanked, type RankedParking } from '@/data/useParkings';
@@ -103,6 +103,8 @@ export default function ResultsScreen() {
     const f = visibleFree(p);
     return f == null || sum == null ? sum : sum + f;
   }, 0);
+  // Cached counts are too old and the download is still running.
+  const liveIncoming = isFetching && !!data && data.source !== 'mock' && lacksFreshCounts(ranked);
   const anyIndoorKnown = ranked.some((p) => p.isIndoor != null);
   const anyNearPier = ranked.some((p) => p.nearPier);
 
@@ -120,8 +122,22 @@ export default function ResultsScreen() {
           <Txt variant="caption" secondary>
             {t('results.subtitle', { place: label })}
             {/* Saved data stays on screen while the slow API answers. */}
-            {isFetching && !!data && !pulling ? ` · ${t('results.refreshing')}` : ''}
+            {isFetching && !!data && !pulling && !liveIncoming
+              ? ` · ${t('results.refreshing')}`
+              : ''}
           </Txt>
+        )}
+        {liveIncoming && (
+          <View
+            accessibilityRole="progressbar"
+            accessibilityLabel={t('results.liveIncoming')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}
+          >
+            <ActivityIndicator size="small" color={c.text} />
+            <Txt variant="caption" secondary>
+              {t('results.liveIncoming')}
+            </Txt>
+          </View>
         )}
       </View>
       {notice && (

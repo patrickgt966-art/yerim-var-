@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActiveParkCard } from '@/components/ActiveParkCard';
 import { CarMark } from '@/components/CarMark';
-import { Chip } from '@/components/Chip';
 import { DashedFrame } from '@/components/DashedFrame';
 import {
   CategoryGrid,
@@ -20,6 +19,7 @@ import {
   type HomeMode,
 } from '@/components/FoodHome';
 import { Icon, type IconName } from '@/components/Icon';
+import { ModeChips } from '@/components/ModeChips';
 import { NearbyNow } from '@/components/NearbyNow';
 import { PMark } from '@/components/PMark';
 import { Skyline } from '@/components/Skyline';
@@ -34,7 +34,8 @@ import {
 } from '@/data/appleSearch';
 import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
 import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
-import { geocode } from '@/lib/location';
+import { currentLocation, geocode, reverseStreet } from '@/lib/location';
+import { currentLocationLabel } from '@/lib/park';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
@@ -82,26 +83,65 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
   const setPlace = useApp((s) => (kind === 'home' ? s.setHome : s.setWork));
   const label = t(kind === 'home' ? 'search.home' : 'search.work');
 
-  const edit = () =>
+  const [saving, setSaving] = useState(false);
+
+  const typeAddress = () =>
     Alert.prompt(
       t('search.savePrompt', { label }),
       undefined,
       async (text) => {
-        const hit = await geocode(text);
-        if (!hit) return Alert.alert(t('search.saveFailed'));
-        const saved: SavedPlace = { label: text.trim(), ...hit };
-        setPlace(saved);
+        if (saving) return;
+        setSaving(true);
+        try {
+          const hit = await geocode(text);
+          if (!hit) return Alert.alert(t('search.saveFailed'));
+          const saved: SavedPlace = { label: text.trim(), ...hit };
+          setPlace(saved);
+        } finally {
+          setSaving(false);
+        }
       },
       'plain-text',
       place?.label ?? '',
     );
+
+  const saveCurrent = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const loc = await currentLocation(true, 8000);
+      if (!loc) return Alert.alert(t('search.locationFailed'));
+      const address = await reverseStreet(loc);
+      const saved: SavedPlace = {
+        label: currentLocationLabel(address, new Date(), (time) =>
+          t('search.myLocationLabel', { time }),
+        ),
+        ...loc,
+      };
+      setPlace(saved);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Long press always edits; an empty tile offers the current location too.
+  const edit = typeAddress;
+  const choose = () =>
+    !saving &&
+    Alert.alert(t('search.saveChoiceTitle', { label }), undefined, [
+      { text: t('search.saveCurrent'), onPress: () => void saveCurrent() },
+      { text: t('search.saveTyped'), onPress: typeAddress },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={place ? `${label}: ${place.label}` : `${label} ${t('search.add')}`}
       accessibilityHint={place ? t('search.longPressHint') : undefined}
-      onPress={() => (place ? openResults(place, place.label) : edit())}
+      disabled={saving}
+      accessibilityState={{ busy: saving }}
+      onPress={() => (place ? openResults(place, place.label) : choose())}
       onLongPress={edit}
       style={[
         asym(16, 5),
@@ -118,7 +158,11 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
       ]}
     >
       {!place && <DashedFrame color={c.dashed} radius={16} tight={5} />}
-      <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
+      {saving ? (
+        <ActivityIndicator color={c.text} />
+      ) : (
+        <Icon name={kind === 'home' ? 'home' : 'briefcase'} size={20} color={c.text} />
+      )}
       <Txt variant="bodyBold" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>
         {place ? `${label} · ${place.label}` : label}
         {!place && (
@@ -384,22 +428,7 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {!food && (
-          <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>
-            <Chip
-              label={t('search.now')}
-              icon="clock"
-              selected={mode === 'now'}
-              onPress={() => setMode('now')}
-            />
-            <Chip
-              label={t('search.twoHours')}
-              icon="hourglass"
-              selected={mode === 'twoHours'}
-              onPress={() => setMode('twoHours')}
-            />
-          </View>
-        )}
+        {!food && <ModeChips mode={mode} onChange={setMode} />}
 
         <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
           {!food && active && (
