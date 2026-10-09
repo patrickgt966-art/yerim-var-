@@ -9,6 +9,15 @@ import { ActiveParkCard } from '@/components/ActiveParkCard';
 import { CarMark } from '@/components/CarMark';
 import { Chip } from '@/components/Chip';
 import { DashedFrame } from '@/components/DashedFrame';
+import {
+  CategoryGrid,
+  matchRestaurants,
+  ModeSwitch,
+  openFood,
+  openFoodNearMe,
+  RestaurantSuggestions,
+  type HomeMode,
+} from '@/components/FoodHome';
 import { Icon, type IconName } from '@/components/Icon';
 import { Skyline } from '@/components/Skyline';
 import { Txt } from '@/components/Txt';
@@ -20,6 +29,7 @@ import {
   searchApplePlaces,
   useAppleSuggestions,
 } from '@/data/appleSearch';
+import { categoryForQuery } from '@/data/restaurants';
 import { fold, searchPlaces, type SearchHit } from '@/data/search';
 import { geocode } from '@/lib/location';
 import { useApp, type SavedPlace } from '@/store/app';
@@ -114,6 +124,10 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+  // Chosen section lives in component state only.
+  const [section, setSection] = useState<HomeMode>('park');
+  const food = section === 'food';
   const mode = useApp((s) => s.mode);
   const setMode = useApp((s) => s.setMode);
   const active = useApp((s) => s.active);
@@ -131,12 +145,21 @@ export default function SearchScreen() {
     [local, appleCurrent, apple.data],
   );
 
-  const pick = (h: SearchHit) => openResults(h, h.name);
+  const go = (target: LatLng, label: string) =>
+    food ? openFood(target, label) : openResults(target, label);
+  const pick = (h: SearchHit) => go(h, h.name);
+  const foodMatches = useMemo(() => (food ? matchRestaurants(query) : []), [food, query]);
 
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
+    if (food) {
+      const cat = categoryForQuery(q);
+      if (cat) return openFoodNearMe(t('results.myLocation'), cat);
+    }
     if (hits[0]) return pick(hits[0]);
+    if (food && foodMatches[0])
+      return router.push({ pathname: '/restoran/[id]', params: { id: foodMatches[0].id } });
     setBusy(true);
     const [fromApple] = await searchApplePlaces(q);
     if (fromApple) {
@@ -146,7 +169,7 @@ export default function SearchScreen() {
     const hit = await geocode(q);
     setBusy(false);
     if (!hit) return Alert.alert(t('search.notFound'));
-    openResults(hit, q);
+    go(hit, q);
   };
 
   return (
@@ -194,12 +217,19 @@ export default function SearchScreen() {
           </Txt>
         </View>
         <Txt variant="display" color="#FFFFFF" style={{ marginTop: 16 }} accessibilityRole="header">
-          {t('search.title1')}
-          <Txt variant="display" color={brand.orangeLight}>
-            {t('search.title2')}
-          </Txt>
-          {t('search.title3')}
+          {food ? (
+            t('food.headline')
+          ) : (
+            <>
+              {t('search.title1')}
+              <Txt variant="display" color={brand.orangeLight}>
+                {t('search.title2')}
+              </Txt>
+              {t('search.title3')}
+            </>
+          )}
         </Txt>
+        <ModeSwitch mode={section} onChange={setSection} />
       </View>
 
       {/* Search box overlapping the hero */}
@@ -227,20 +257,26 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={submit}
-            placeholder={t('search.placeholder')}
+            placeholder={t(food ? 'food.placeholder' : 'search.placeholder')}
             placeholderTextColor={c.textSecondary}
-            accessibilityLabel={t('search.a11yInput')}
+            accessibilityLabel={t(food ? 'food.a11yInput' : 'search.a11yInput')}
             returnKeyType="search"
             autoCorrect={false}
             style={{ flex: 1, minHeight: HIT, fontFamily: fonts.body, fontSize: 16, color: c.text }}
           />
-          {busy ? (
+          {busy || locating ? (
             <ActivityIndicator color={c.text} style={{ width: HIT }} />
           ) : (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('search.a11yLocate')}
-              onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
+              onPress={async () => {
+                if (!food) return router.push({ pathname: '/sonuc', params: { near: '1' } });
+                if (locating) return;
+                setLocating(true);
+                await openFoodNearMe(t('results.myLocation'), undefined, true);
+                setLocating(false);
+              }}
               style={[
                 asym(15, 5),
                 {
@@ -258,7 +294,7 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {hits.length > 0 && (
+      {(hits.length > 0 || foodMatches.length > 0) && (
         <View
           accessibilityLabel={t('search.suggestions')}
           style={[
@@ -273,6 +309,7 @@ export default function SearchScreen() {
             },
           ]}
         >
+          {food && <RestaurantSuggestions matches={foodMatches} />}
           {hits.map((h, i) => (
             <Pressable
               key={`${i}-${h.name}-${h.lat}-${h.lng}`}
@@ -284,7 +321,7 @@ export default function SearchScreen() {
                 paddingHorizontal: 16,
                 paddingVertical: 8,
                 justifyContent: 'center',
-                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopWidth: i === 0 && foodMatches.length === 0 ? 0 : 1,
                 borderTopColor: c.line,
                 backgroundColor: pressed ? c.surface : c.card,
               })}
@@ -301,30 +338,41 @@ export default function SearchScreen() {
       )}
 
       <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-          <Chip
-            label={t('search.now')}
-            icon="clock"
-            selected={mode === 'now'}
-            onPress={() => setMode('now')}
-            height={52}
-          />
-          <Chip
-            label={t('search.twoHours')}
-            icon="hourglass"
-            selected={mode === 'twoHours'}
-            onPress={() => setMode('twoHours')}
-            height={52}
-          />
-        </View>
+        {food ? (
+          <>
+            <Txt variant="title" accessibilityRole="header">
+              {t('food.categoriesTitle')}
+            </Txt>
+            <CategoryGrid />
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+              <Chip
+                label={t('search.now')}
+                icon="clock"
+                selected={mode === 'now'}
+                onPress={() => setMode('now')}
+                height={52}
+              />
+              <Chip
+                label={t('search.twoHours')}
+                icon="hourglass"
+                selected={mode === 'twoHours'}
+                onPress={() => setMode('twoHours')}
+                height={52}
+              />
+            </View>
 
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <SavedCard kind="home" />
-          <SavedCard kind="work" />
-        </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <SavedCard kind="home" />
+              <SavedCard kind="work" />
+            </View>
+          </>
+        )}
 
         <Txt variant="title" accessibilityRole="header" style={{ marginTop: 8 }}>
-          {t('search.popular')}
+          {t(food ? 'food.popularFood' : 'search.popular')}
         </Txt>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           {POPULAR_PLACES.map((p) => (
@@ -332,7 +380,7 @@ export default function SearchScreen() {
               key={p.id}
               accessibilityRole="button"
               accessibilityLabel={`${p.name}, ${p.district}`}
-              onPress={() => openResults(p, p.name)}
+              onPress={() => go(p, p.name)}
               style={[
                 asym(22, 6),
                 {
@@ -360,7 +408,7 @@ export default function SearchScreen() {
           ))}
         </View>
 
-        {active && (
+        {!food && active && (
           <>
             <Txt variant="title" accessibilityRole="header" style={{ marginTop: 8 }}>
               {t('search.active')}

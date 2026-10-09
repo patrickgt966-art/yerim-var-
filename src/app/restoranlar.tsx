@@ -5,34 +5,60 @@ import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { DashedFrame } from '@/components/DashedFrame';
+import { Tag } from '@/components/FreshnessBadge';
+import { Icon } from '@/components/Icon';
+import { CATEGORY_ICON } from '@/components/foodCategory';
 import { PBadge } from '@/components/PBadge';
+import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
-import { SampleBanner } from '@/components/SampleBanner';
 import { formatClock } from '@/data/freshness';
 import { walkMinutes, type LatLng } from '@/data/geo';
 import {
+  categoryOf,
   cuisineLabels,
-  kindGroup,
+  FOOD_CATEGORIES,
   kindLabel,
-  parkingSummary,
+  matchesCategory,
+  parkingInfo,
+  rankRestaurants,
   restaurantsNear,
-  type KindGroup,
-  type NearbyRestaurant,
+  type FoodCategory,
+  type RestaurantRow,
+  type RestaurantSort,
 } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
-import { asym, fonts, useColors } from '@/theme';
+import { asym, brand, fonts, useColors } from '@/theme';
 
-type Filter = 'all' | KindGroup;
-const GROUPS: KindGroup[] = ['restaurant', 'cafe', 'fast_food', 'bar'];
+type Filter = 'all' | FoodCategory;
+
+const SHOW_LIMIT = 60;
+const EASY_PARK_M = 200;
+
+/** Close car park that is not known to be full. */
+function isClose(p: RestaurantRow['parking']): boolean {
+  return !!p && p.distanceM <= EASY_PARK_M && p.free !== 0;
+}
+
+function isBest(p: RestaurantRow['parking']): boolean {
+  return !!p && ((p.free != null && p.free > 0) || isClose(p));
+}
 
 export default function RestaurantsScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ lat?: string; lng?: string; label?: string }>();
+  const params = useLocalSearchParams<{
+    lat?: string;
+    lng?: string;
+    label?: string;
+    cat?: string;
+  }>();
   const { data } = useParkings();
-  const [filter, setFilter] = useState<Filter>('all');
+  const initial = FOOD_CATEGORIES.find((x) => x === params.cat) ?? 'all';
+  const [filter, setFilter] = useState<Filter>(initial);
+  const [sort, setSort] = useState<RestaurantSort>('parkEase');
 
   const lat = Number(params.lat);
   const lng = Number(params.lng);
@@ -44,24 +70,29 @@ export default function RestaurantsScreen() {
     [params.lat, params.lng, lat, lng],
   );
 
-  const all = useMemo(() => (target ? restaurantsNear(target) : []), [target]);
-  const groupsPresent = useMemo(
-    () => GROUPS.filter((g) => all.some((r) => kindGroup(r.kind) === g)),
+  // Wider pool than we show, so category chips reflect everything in range.
+  const all = useMemo(() => (target ? restaurantsNear(target, 1000, 600) : []), [target]);
+  const catsPresent = useMemo(
+    () => FOOD_CATEGORIES.filter((cat) => all.some((r) => matchesCategory(r, cat))),
     [all],
   );
+  // A preselected category with nothing in range falls back to all.
+  const active: Filter = filter === 'all' || catsPresent.includes(filter) ? filter : 'all';
   const shown = useMemo(
-    () => (filter === 'all' ? all : all.filter((r) => kindGroup(r.kind) === filter)),
-    [all, filter],
+    () => (active === 'all' ? all : all.filter((r) => matchesCategory(r, active))),
+    [all, active],
   );
 
   // Nearest car park per row, with its free count only when it is fresh.
-  const rows = useMemo(() => {
+  const built = useMemo<RestaurantRow[]>(() => {
     const parkings = data?.parkings ?? [];
     const now = new Date();
-    return shown.map((r) => ({ r, parking: parkingSummary(r, parkings, now) }));
+    return shown.map((r) => ({ r, ...parkingInfo(r, parkings, now) }));
   }, [shown, data]);
+  const rows = useMemo(() => rankRestaurants(built, sort).slice(0, SHOW_LIMIT), [built, sort]);
 
   const place = params.label || 'İzmir';
+  const topEasy = sort === 'parkEase' && rows[0] ? isBest(rows[0].parking) : false;
 
   return (
     <View
@@ -69,12 +100,30 @@ export default function RestaurantsScreen() {
     >
       <ScreenHeader title={t('food.title')} back />
       <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
-        {t('food.subtitle', { place, count: all.length })}
+        {t(sort === 'parkEase' ? 'food.subtitle' : 'food.subtitleNearest', {
+          place,
+          count: rows.length,
+        })}
       </Txt>
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
       </View>
-      {groupsPresent.length > 0 && (
+      <View
+        accessibilityLabel={t('food.sortLabel')}
+        style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}
+      >
+        <Chip
+          label={t('food.sortPark')}
+          selected={sort === 'parkEase'}
+          onPress={() => setSort('parkEase')}
+        />
+        <Chip
+          label={t('food.sortNearest')}
+          selected={sort === 'distance'}
+          onPress={() => setSort('distance')}
+        />
+      </View>
+      {all.length > 0 && (
         <View style={{ marginBottom: 12 }}>
           <ScrollView
             horizontal
@@ -83,15 +132,16 @@ export default function RestaurantsScreen() {
           >
             <Chip
               label={t('food.all')}
-              selected={filter === 'all'}
+              selected={active === 'all'}
               onPress={() => setFilter('all')}
             />
-            {groupsPresent.map((g) => (
+            {catsPresent.map((cat) => (
               <Chip
-                key={g}
-                label={t(`food.groups.${g}`)}
-                selected={filter === g}
-                onPress={() => setFilter(g)}
+                key={cat}
+                label={t(`food.cats.${cat}`)}
+                icon={CATEGORY_ICON[cat]}
+                selected={active === cat}
+                onPress={() => setFilter(cat)}
               />
             ))}
           </ScrollView>
@@ -103,23 +153,19 @@ export default function RestaurantsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={<Txt secondary>{t('food.empty')}</Txt>}
-        renderItem={({ item }) => <Row r={item.r} target={target} parking={item.parking} />}
+        renderItem={({ item, index }) => (
+          <Row row={item} target={target} best={index === 0 && topEasy} />
+        )}
       />
     </View>
   );
 }
 
-function Row({
-  r,
-  target,
-  parking,
-}: {
-  r: NearbyRestaurant;
-  target: LatLng | null;
-  parking: { distanceM: number; free: number | null; at: Date | null } | null;
-}) {
+function Row({ row, target, best }: { row: RestaurantRow; target: LatLng | null; best: boolean }) {
   const c = useColors();
   const { t } = useTranslation();
+  const { r, parking, nearbyCount } = row;
+  const cat = categoryOf(r);
   const meta = [
     kindLabel(r.kind, t),
     ...cuisineLabels(r.cuisines, t).slice(0, 2),
@@ -127,16 +173,15 @@ function Row({
   ]
     .filter(Boolean)
     .join(' · ');
-  const parkText = parking
-    ? [
-        t('food.nearestParking', { distance: parking.distanceM }),
-        parking.free != null && parking.at
-          ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')
+  const near = parking
+    ? t('food.nearbyParkings', { count: Math.max(nearbyCount, 1), distance: parking.distanceM })
     : t('food.noParking');
+  const free =
+    parking && parking.free != null && parking.at
+      ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
+      : null;
+  const parkText = [near, free].filter(Boolean).join(' · ');
+  const easy = !best && isClose(parking);
 
   return (
     <Pressable
@@ -148,24 +193,49 @@ function Row({
         {
           minHeight: 44,
           padding: 14,
-          backgroundColor: c.card,
-          borderWidth: 1,
-          borderColor: c.line,
-          gap: 3,
+          flexDirection: 'row',
+          gap: 12,
+          alignItems: 'flex-start',
+          backgroundColor: best ? c.surface : c.card,
         },
+        !best && { borderWidth: 1, borderColor: c.line },
       ]}
     >
-      <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
-        {r.name}
-      </Txt>
-      <Txt variant="caption" secondary numberOfLines={2}>
-        {meta}
-      </Txt>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
-        <PBadge size={18} />
-        <Txt variant="caption" style={{ flex: 1 }} numberOfLines={2}>
-          {parkText}
+      {best && <DashedFrame color={c.text} radius={22} tight={6} strokeWidth={2} dash={[8, 6]} />}
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: brand.cream,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={24} color={brand.navy} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        {(best || easy) && (
+          <View style={{ flexDirection: 'row' }}>
+            <Tag
+              text={t(best ? 'food.bestPark' : 'food.easyPark')}
+              bg={c.badgeNearBg}
+              fg={c.badgeNearText}
+            />
+          </View>
+        )}
+        <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
+          {r.name}
         </Txt>
+        <Txt variant="caption" secondary numberOfLines={2}>
+          {meta}
+        </Txt>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
+          <PBadge size={18} />
+          <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
+            {parkText}
+          </Txt>
+        </View>
       </View>
     </Pressable>
   );

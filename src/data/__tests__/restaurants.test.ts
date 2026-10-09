@@ -3,7 +3,15 @@ import '@/i18n';
 import { t } from 'i18next';
 
 import {
+  categoryForQuery,
+  categoryOf,
+  parkingInfo,
   cuisineLabels,
+  infoScore,
+  matchesCategory,
+  nearbyParkingCount,
+  rankRestaurants,
+  type RestaurantRow,
   getRestaurant,
   kindLabel,
   nearestParking,
@@ -136,5 +144,152 @@ describe('telUrl', () => {
   });
   it('rejects too short values', () => {
     expect(telUrl('112')).toBeNull();
+  });
+});
+
+describe('categories', () => {
+  const mk = (n: string, k: string, c?: string[]) => toRestaurant({ id: n, n, a: 1, o: 2, k, c });
+
+  it('matches on kind, cuisine and folded name', () => {
+    expect(matchesCategory(mk('Köşe', 'restaurant', ['breakfast']), 'breakfast')).toBe(true);
+    expect(matchesCategory(mk('Serpme Kahvaltı Evi', 'restaurant'), 'breakfast')).toBe(true);
+    expect(matchesCategory(mk('Ocakbaşı Usta', 'restaurant'), 'meat')).toBe(true);
+    expect(matchesCategory(mk('X', 'restaurant', ['steak_house']), 'meat')).toBe(true);
+    expect(matchesCategory(mk('Balıkçı Ahmet', 'restaurant'), 'fish')).toBe(true);
+    expect(matchesCategory(mk('X', 'cafe'), 'cafe')).toBe(true);
+    expect(matchesCategory(mk('X', 'restaurant', ['coffee_shop']), 'cafe')).toBe(true);
+    expect(matchesCategory(mk('X', 'pub'), 'meyhane')).toBe(true);
+    expect(matchesCategory(mk('Yeni Meyhane', 'restaurant'), 'meyhane')).toBe(true);
+    expect(matchesCategory(mk('X', 'fast_food'), 'fast')).toBe(true);
+    expect(matchesCategory(mk('X', 'restaurant', ['pizza']), 'fast')).toBe(true);
+    expect(matchesCategory(mk('X', 'ice_cream'), 'dessert')).toBe(true);
+    expect(matchesCategory(mk('Tatlıcı Baba', 'restaurant'), 'dessert')).toBe(true);
+    expect(matchesCategory(mk('Plain', 'restaurant'), 'fish')).toBe(false);
+  });
+
+  it('categoryOf returns the first match or null', () => {
+    expect(categoryOf(mk('Balık Evi', 'restaurant'))).toBe('fish');
+    expect(categoryOf(mk('Plain', 'restaurant'))).toBeNull();
+  });
+});
+
+describe('infoScore', () => {
+  it('counts present fields', () => {
+    expect(infoScore(rest('a', 0))).toBe(0);
+    expect(
+      infoScore(
+        toRestaurant({
+          id: 'b',
+          n: 'b',
+          a: 1,
+          o: 2,
+          k: 'cafe',
+          c: ['tea'],
+          p: '1',
+          h: 'x',
+          w: 'y',
+          ad: 'z',
+          ig: 'i',
+        }),
+      ),
+    ).toBe(6);
+    expect(infoScore(toRestaurant({ id: 'c', n: 'c', a: 1, o: 2, k: 'cafe', c: [] }))).toBe(0);
+  });
+});
+
+describe('rankRestaurants', () => {
+  const row = (
+    id: string,
+    distanceM: number,
+    parking: RestaurantRow['parking'],
+    info = 0,
+  ): RestaurantRow => ({
+    r: {
+      ...toRestaurant({ id, n: id, a: 1, o: 2, k: 'cafe', ...(info ? { p: '123' } : {}) }),
+      distanceM,
+    },
+    parking,
+    nearbyCount: parking ? 1 : 0,
+  });
+  const p = (distanceM: number, free: number | null) => ({
+    distanceM,
+    free,
+    at: free != null ? new Date() : null,
+  });
+
+  it('orders by distance', () => {
+    const rows = [row('b', 300, null), row('a', 100, null)];
+    expect(rankRestaurants(rows, 'distance').map((x) => x.r.id)).toEqual(['a', 'b']);
+  });
+
+  it('ranks fresh free, unknown, zero, then none', () => {
+    const rows = [
+      row('none', 10, null),
+      row('zero', 10, p(50, 0)),
+      row('unknown', 10, p(50, null)),
+      row('free', 10, p(450, 5)),
+    ];
+    expect(rankRestaurants(rows, 'parkEase').map((x) => x.r.id)).toEqual([
+      'free',
+      'unknown',
+      'zero',
+      'none',
+    ]);
+  });
+
+  it('uses info richness within a 100 m bucket, then parking distance', () => {
+    const rows = [
+      row('bare-close', 10, p(120, null)),
+      row('rich', 10, p(180, null), 1),
+      row('rich-far', 10, p(320, null), 1),
+    ];
+    expect(rankRestaurants(rows, 'parkEase').map((x) => x.r.id)).toEqual([
+      'rich',
+      'bare-close',
+      'rich-far',
+    ]);
+  });
+});
+
+describe('nearbyParkingCount', () => {
+  it('counts car parks within the radius', () => {
+    expect(nearbyParkingCount(origin, [park('a', 100), park('b', 400), park('c', 700)])).toBe(2);
+    expect(nearbyParkingCount(origin, [park('a', 100), park('c', 700)], 800)).toBe(2);
+  });
+});
+
+describe('name keyword edge cases', () => {
+  const mk = (n: string) => toRestaurant({ id: n, n, a: 1, o: 2, k: 'restaurant' });
+  it('matches keywords only at word start', () => {
+    expect(matchesCategory(mk('Nimet Lokantası'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Et Lokantası Usta'), 'meat')).toBe(true);
+    expect(matchesCategory(mk('Kalabalık Cafe'), 'fish')).toBe(false);
+    expect(matchesCategory(mk('Alabalık Evi'), 'fish')).toBe(true);
+  });
+  it('keeps çiğ köfte out of meat', () => {
+    expect(matchesCategory(mk('Çiğ Köfteci Ali'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Çiğköfte Dünyası'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Köfteci Yusuf'), 'meat')).toBe(true);
+  });
+});
+
+describe('categoryForQuery', () => {
+  it('maps whole category words only', () => {
+    expect(categoryForQuery('Kahvaltı')).toBe('breakfast');
+    expect(categoryForQuery(' BALIK ')).toBe('fish');
+    expect(categoryForQuery('deniz ürünleri')).toBe('fish');
+    expect(categoryForQuery('döner')).toBe('fast');
+    expect(categoryForQuery('Alsancak')).toBeNull();
+    expect(categoryForQuery('')).toBeNull();
+  });
+});
+
+describe('parkingInfo', () => {
+  it('finds nearest and count in one pass', () => {
+    const res = parkingInfo(origin, [park('b', 300), park('a', 120), park('far', 900)]);
+    expect(res.nearbyCount).toBe(2);
+    expect(res.parking?.distanceM).toBeGreaterThan(110);
+    expect(res.parking?.distanceM).toBeLessThan(130);
+    expect(parkingInfo(origin, [park('far', 900)])).toEqual({ parking: null, nearbyCount: 0 });
   });
 });
