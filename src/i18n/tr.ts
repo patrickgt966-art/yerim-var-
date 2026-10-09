@@ -220,6 +220,7 @@ const tr = {
       dessert: 'Tatlı & Dondurma',
     },
     all: 'Tümü',
+    showOnMap: 'Haritada gör',
     walk: '~{{count}} dk yürüme',
     freeSpotsAt: '{{count}} boş yer (saat {{time}})',
     noParking: 'Yakında otopark bilgisi yok',
@@ -286,7 +287,16 @@ const tr = {
       mediterranean: 'Akdeniz',
     },
   },
-  map: { title: 'Harita' },
+  map: {
+    title: 'Harita',
+    modeLabel: 'Harita türü',
+    modeParkings: 'Otoparklar',
+    modeFood: 'Restoranlar',
+    closeA11y: 'Restoran kartını kapat',
+    detail: 'Detay',
+    goParking: 'Otoparka git',
+    nearestParking: 'En yakın otopark {{distance}} m',
+  },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },
 };
 

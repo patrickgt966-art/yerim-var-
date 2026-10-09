@@ -100,6 +100,17 @@ export function restaurantsNear(
   return out.sort((a, b) => a.distanceM - b.distanceM).slice(0, limit);
 }
 
+export const MAP_RESTAURANT_RADIUS_M = 1500;
+export const MAP_RESTAURANT_LIMIT = 150;
+
+/** Restaurants to draw on the map: bounded so the marker count stays small. */
+export function restaurantsForMap(
+  center: LatLng,
+  list: Restaurant[] = allRestaurants(),
+): NearbyRestaurant[] {
+  return restaurantsNear(center, MAP_RESTAURANT_RADIUS_M, MAP_RESTAURANT_LIMIT, list);
+}
+
 /** OSM amenity value to the i18n key under `food.kinds`. */
 const KIND_KEYS: Record<string, string> = {
   restaurant: 'restaurant',

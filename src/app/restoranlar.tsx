@@ -109,6 +109,26 @@ export default function RestaurantsScreen() {
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
       </View>
+      {target && (
+        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+          <Chip
+            label={t('food.showOnMap')}
+            icon="map"
+            selected={false}
+            onPress={() =>
+              router.navigate({
+                pathname: '/(tabs)/harita',
+                params: {
+                  mode: 'food',
+                  lat: String(target.lat),
+                  lng: String(target.lng),
+                  ts: String(Date.now()),
+                },
+              })
+            }
+          />
+        </View>
+      )}
       <View
         accessibilityLabel={t('food.sortLabel')}
         style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}

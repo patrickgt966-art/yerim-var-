@@ -6,10 +6,12 @@ import MapView, { Marker } from 'react-native-maps';
 import { visibleFree } from '@/data/freshness';
 import { isStatic } from '@/lib/staticInfo';
 import type { LatLng } from '@/data/geo';
+import { kindLabel, type Restaurant } from '@/data/restaurants';
 import type { Parking } from '@/data/types';
 import { asym, fonts } from '@/theme';
 
 import { PPin } from './PPin';
+import { RestaurantPin } from './RestaurantPin';
 import { Txt } from './Txt';
 
 type Props = {
@@ -20,11 +22,29 @@ type Props = {
   onSelect: (p: Parking) => void;
   bottomInset?: number;
   delta?: number;
+  /** Restaurant pins drawn above the car parks. */
+  restaurants?: Restaurant[];
+  selectedRestaurantId?: string | null;
+  onSelectRestaurant?: (r: Restaurant) => void;
+  /** Draw every car park as the small quiet bay so restaurants stand out. */
+  quietParkings?: boolean;
 };
 
 /** Apple Maps (iOS) with parking-bay pins. No routing happens in-app. */
 export const ParkingMap = forwardRef<MapView, Props>(function ParkingMap(
-  { parkings, center, targetLabel, selectedId, onSelect, bottomInset = 0, delta = 0.012 },
+  {
+    parkings,
+    center,
+    targetLabel,
+    selectedId,
+    onSelect,
+    bottomInset = 0,
+    delta = 0.012,
+    restaurants,
+    selectedRestaurantId,
+    onSelectRestaurant,
+    quietParkings,
+  },
   ref,
 ) {
   const { t } = useTranslation();
@@ -88,8 +108,23 @@ export const ParkingMap = forwardRef<MapView, Props>(function ParkingMap(
               free={free}
               capacity={p.capacity}
               selected={p.id === selectedId}
-              quiet={isStatic(p)}
+              quiet={quietParkings || isStatic(p)}
             />
+          </Marker>
+        );
+      })}
+      {restaurants?.map((r) => {
+        const kind = kindLabel(r.kind, t);
+        return (
+          <Marker
+            // tracksViewChanges is off, so remount the selected pin to redraw it.
+            key={`r-${r.id}${r.id === selectedRestaurantId ? '-sel' : ''}`}
+            coordinate={{ latitude: r.lat, longitude: r.lng }}
+            tracksViewChanges={false}
+            onPress={() => onSelectRestaurant?.(r)}
+            accessibilityLabel={kind ? `${r.name}, ${kind}` : r.name}
+          >
+            <RestaurantPin restaurant={r} selected={r.id === selectedRestaurantId} />
           </Marker>
         );
       })}

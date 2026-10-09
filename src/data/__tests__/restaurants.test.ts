@@ -18,6 +18,7 @@ import {
   parkingSummary,
   telUrl,
   restaurantsNear,
+  restaurantsForMap,
   toRestaurant,
   type Restaurant,
 } from '../restaurants';
@@ -78,6 +79,20 @@ describe('restaurantsNear', () => {
 
   it('applies the limit after sorting', () => {
     expect(restaurantsNear(origin, 1000, 2, list).map((r) => r.id)).toEqual(['near', 'mid']);
+  });
+});
+
+describe('restaurantsForMap', () => {
+  it('keeps within 1500 m and caps at 150 markers, nearest first', () => {
+    const many = Array.from({ length: 200 }, (_, i) => rest(`r${i}`, 10 + i * 5));
+    many.push(rest('out', 2000));
+    const res = restaurantsForMap(origin, many);
+    expect(res).toHaveLength(150);
+    expect(res[0]!.id).toBe('r0');
+    expect(res.some((r) => r.id === 'out')).toBe(false);
+    expect(restaurantsForMap(origin, [rest('a', 1400), rest('b', 1600)]).map((r) => r.id)).toEqual([
+      'a',
+    ]);
   });
 });
 
