@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { DEFAULT_CITY, isAvailableCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 
 import { migrateAppState, persistedData } from './migrate';
@@ -30,6 +31,8 @@ type State = {
   favoriteRestaurants: string[];
   active: ActivePark | null;
   mode: ParkMode;
+  city: string;
+  setCity: (id: string) => void;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
   setWork: (p: SavedPlace | null) => void;
@@ -51,6 +54,9 @@ export const useApp = create<State>()(
       favoriteRestaurants: [],
       active: null,
       mode: 'now',
+      city: DEFAULT_CITY,
+      // Unavailable or unknown cities are ignored.
+      setCity: (id) => set((s) => (isAvailableCity(id) ? { city: id } : s)),
       setOnboarded: (onboarded) => set({ onboarded }),
       setHome: (home) => set({ home }),
       setWork: (work) => set({ work }),
@@ -81,7 +87,7 @@ export const useApp = create<State>()(
       // Same-version corrupt data never goes through migrate, so sanitise on every rehydrate.
       merge: (persisted, current) => ({ ...current, ...persistedData(persisted) }),
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: ({ onboarded, home, work, favorites, favoriteRestaurants, active, mode }) => ({
+      partialize: ({
         onboarded,
         home,
         work,
@@ -89,6 +95,16 @@ export const useApp = create<State>()(
         favoriteRestaurants,
         active,
         mode,
+        city,
+      }) => ({
+        onboarded,
+        home,
+        work,
+        favorites,
+        favoriteRestaurants,
+        active,
+        mode,
+        city,
       }),
     },
   ),

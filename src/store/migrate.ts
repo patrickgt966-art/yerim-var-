@@ -1,3 +1,5 @@
+import { DEFAULT_CITY, isAvailableCity } from '@/data/cities';
+
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 function validPlace(p: unknown): boolean {
@@ -86,6 +88,7 @@ export function sanitizeAppState(persisted: unknown): unknown {
     if (key in s && s[key] != null && !validPlace(s[key])) s[key] = null;
   }
   if ('mode' in s && s.mode !== 'now' && s.mode !== 'twoHours') s.mode = 'now';
+  if ('city' in s && !isAvailableCity(s.city)) s.city = DEFAULT_CITY;
   return s;
 }
 
@@ -97,6 +100,7 @@ const DATA_KEYS = [
   'favoriteRestaurants',
   'active',
   'mode',
+  'city',
 ] as const;
 
 /** Only the persisted data keys, sanitised: a stray key can never overwrite an action. */

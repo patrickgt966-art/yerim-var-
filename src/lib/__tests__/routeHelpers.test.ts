@@ -191,3 +191,20 @@ describe('active park sanitising', () => {
     expect((sanitizeAppState({ onboarded: true }) as { onboarded: boolean }).onboarded).toBe(true);
   });
 });
+
+describe('city', () => {
+  const city = (v: unknown) => (sanitizeAppState({ city: v }) as { city: string }).city;
+  it('keeps an available city', () => {
+    expect(city('izmir')).toBe('izmir');
+  });
+  it('falls back to izmir for unknown, unavailable or non-string cities', () => {
+    expect(city('atlantis')).toBe('izmir');
+    expect(city('istanbul')).toBe('izmir');
+    expect(city(5)).toBe('izmir');
+    expect(city(null)).toBe('izmir');
+  });
+  it('is a persisted data key and absent when not stored', () => {
+    expect(persistedData({ city: 'ankara' })).toEqual({ city: 'izmir' });
+    expect(persistedData({ onboarded: true })).toEqual({ onboarded: true });
+  });
+});
