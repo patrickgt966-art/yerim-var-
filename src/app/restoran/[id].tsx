@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
+import { Tag } from '@/components/FreshnessBadge';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
@@ -106,7 +107,16 @@ export default function RestaurantDetail() {
           gap: 14,
         }}
       >
-        {!!meta && <Txt secondary>{meta}</Txt>}
+        {(!!meta || !r.verified) && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+            {!!meta && <Txt secondary>{meta}</Txt>}
+            {!r.verified && (
+              <View accessible accessibilityLabel={t('food.a11yUnverified')}>
+                <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+              </View>
+            )}
+          </View>
+        )}
 
         {!!r.openingHours && (
           <View style={{ gap: 2 }}>
@@ -187,7 +197,7 @@ export default function RestaurantDetail() {
         )}
 
         <Txt variant="caption" secondary style={{ marginTop: 10 }}>
-          {t('food.footer')}
+          {t(r.source === 'overture' ? 'food.footerOverture' : 'food.footer')}
         </Txt>
       </ScrollView>
     </View>

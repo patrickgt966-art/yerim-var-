@@ -81,7 +81,8 @@ function CardView({ card }: { card: ChatCard }) {
         ? t('chat.parkingAt', { m: Math.round(card.parkingM) })
         : t('chat.noParkNear')) +
       ' · ' +
-      distance;
+      distance +
+      (card.unverified ? ' · ' + t('food.unverified') : '');
   } else {
     const count =
       card.free != null
