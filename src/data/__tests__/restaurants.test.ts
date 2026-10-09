@@ -10,6 +10,8 @@ import {
   infoScore,
   matchesCategory,
   restaurantsInCategory,
+  WIDE_RADII_M,
+  withParkingWithin,
   nearbyParkingCount,
   rankRestaurants,
   type FoodCategory,
@@ -516,5 +518,25 @@ describe('new food words', () => {
       const r = toRestaurant({ id: n, n, a: 38.4, o: 27.1, k: 'restaurant' });
       expect(matchesCategory(r, 'breakfast')).toBe(true);
     }
+  });
+});
+
+describe('withParkingWithin', () => {
+  it('keeps rows with a car park within the limit, drops null and farther ones', () => {
+    const rows = [
+      { id: 'near', parking: { distanceM: 120 } },
+      { id: 'edge', parking: { distanceM: 300 } },
+      { id: 'far', parking: { distanceM: 301 } },
+      { id: 'none', parking: null },
+    ];
+    expect(withParkingWithin(rows, 300).map((x) => x.id)).toEqual(['near', 'edge']);
+  });
+});
+
+describe('restaurantsInCategory with wide radii', () => {
+  it('searches only the wide rings', () => {
+    const { radiusM } = restaurantsInCategory(origin, 'cafe', [rest('c1', 100)], WIDE_RADII_M);
+    expect(WIDE_RADII_M).toContain(radiusM);
+    expect([6000, 15000]).toContain(radiusM);
   });
 });

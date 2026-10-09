@@ -22,11 +22,21 @@ import { Txt } from './Txt';
 
 export type HomeMode = 'park' | 'food';
 
+export type FoodOpts = { park?: boolean; dish?: string; quality?: boolean };
+
 /** Opens the restaurant list around a point. */
-export function openFood(target: LatLng, label: string, cat?: FoodCategory) {
+export function openFood(target: LatLng, label: string, cat?: FoodCategory, opts?: FoodOpts) {
   router.push({
     pathname: '/restoranlar',
-    params: { lat: String(target.lat), lng: String(target.lng), label, ...(cat ? { cat } : {}) },
+    params: {
+      lat: String(target.lat),
+      lng: String(target.lng),
+      label,
+      ...(cat ? { cat } : {}),
+      ...(opts?.park ? { park: '1' } : {}),
+      ...(opts?.dish ? { dish: opts.dish } : {}),
+      ...(opts?.quality ? { quality: '1' } : {}),
+    },
   });
 }
 
@@ -45,9 +55,14 @@ async function foodCenter(
 }
 
 /** Around the user when location is already granted (or `ask`), else Kordon. */
-export async function openFoodNearMe(label: string, cat?: FoodCategory, ask = false) {
+export async function openFoodNearMe(
+  label: string,
+  cat?: FoodCategory,
+  ask = false,
+  opts?: FoodOpts,
+) {
   const { target, label: shown } = await foodCenter(ask, label);
-  openFood(target, shown, cat);
+  openFood(target, shown, cat, opts);
 }
 
 /** Otopark / Restoran switch shown on the hero. */

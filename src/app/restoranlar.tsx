@@ -24,6 +24,8 @@ import {
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
+  WIDE_RADII_M,
+  withParkingWithin,
   type FoodCategory,
   type RestaurantRow,
   type RestaurantSort,
@@ -54,6 +56,39 @@ function RowSeparator() {
   return <View style={{ height: 10 }} />;
 }
 
+/** Chip for an understood filter; pressing it removes the filter. */
+function RemovableChip({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useColors();
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('food.a11yRemoveChip', { label })}
+      onPress={onPress}
+      style={[
+        asym(22, 6),
+        {
+          minHeight: 44,
+          paddingHorizontal: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          backgroundColor: c.card,
+          borderWidth: 1,
+          borderColor: c.line,
+        },
+      ]}
+    >
+      <Txt variant="bodyBold" style={{ fontSize: 14 }}>
+        {label}
+      </Txt>
+      <Txt variant="bodyBold" style={{ fontSize: 14 }}>
+        ✕
+      </Txt>
+    </Pressable>
+  );
+}
+
 export default function RestaurantsScreen() {
   const c = useColors();
   const { t } = useTranslation();
@@ -64,7 +99,18 @@ export default function RestaurantsScreen() {
     lng?: string | string[];
     label?: string | string[];
     cat?: string | string[];
+    park?: string | string[];
+    parkm?: string | string[];
+    wide?: string | string[];
+    dish?: string | string[];
+    quality?: string | string[];
   }>();
+  const requireParking = firstParam(params.park) === '1';
+  const parkM = firstParam(params.parkm) === '500' ? 500 : 300;
+  const wide = firstParam(params.wide) === '1';
+  const dishRaw = firstParam(params.dish)?.trim();
+  const dish = dishRaw ? dishRaw.slice(0, 40) : null;
+  const quality = firstParam(params.quality) === '1';
   const { data, isPlaceholderData } = useParkings();
   const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilter] = useState<Filter>(initial);
@@ -75,12 +121,18 @@ export default function RestaurantsScreen() {
     [params.lat, params.lng],
   );
 
-  const all = useMemo(() => (target ? restaurantsNear(target, 1000, 600) : []), [target]);
+  const all = useMemo(
+    () => (target ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
+    [target, wide],
+  );
   // A category never falls back to unrelated places: it searches wider instead.
   const active: Filter = filter;
   const inCat = useMemo(
-    () => (target && active !== 'all' ? restaurantsInCategory(target, active) : null),
-    [target, active],
+    () =>
+      target && active !== 'all'
+        ? restaurantsInCategory(target, active, undefined, wide ? WIDE_RADII_M : undefined)
+        : null,
+    [target, active, wide],
   );
   const shown = inCat ? inCat.items : all;
   const widenedKm = inCat && inCat.radiusM > 1000 ? inCat.radiusM / 1000 : null;
@@ -100,8 +152,10 @@ export default function RestaurantsScreen() {
     [built, sort, active, isPlaceholderData],
   );
 
+  const visible = requireParking ? withParkingWithin(rows, parkM) : rows;
+
   const place = firstParam(params.label) || t('common.izmir');
-  const topEasy = sort === 'parkEase' && rows[0] ? isBest(rows[0].parking) : false;
+  const topEasy = sort === 'parkEase' && visible[0] ? isBest(visible[0].parking) : false;
 
   // The whole header scrolls with the list, so large text never squeezes the rows.
   const wrapChips = fontScale > 1.2;
@@ -124,9 +178,9 @@ export default function RestaurantsScreen() {
       <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
         {t(sort === 'parkEase' ? 'food.subtitle' : 'food.subtitleNearest', {
           place,
-          count: rows.length,
+          count: visible.length,
         })}
-        {widenedKm && rows.length > 0 ? `\n${t('food.widened', { km: widenedKm })}` : ''}
+        {widenedKm && visible.length > 0 ? `\n${t('food.widened', { km: widenedKm })}` : ''}
       </Txt>
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
@@ -186,6 +240,32 @@ export default function RestaurantsScreen() {
           )}
         </View>
       )}
+      {(requireParking || dish || quality) && (
+        <View style={{ marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+            <Txt variant="caption" secondary>
+              {t('food.understood')}
+            </Txt>
+            {active !== 'all' && (
+              <RemovableChip
+                label={t(`food.cats.${active}`) + (dish ? ` · ${dish}` : '')}
+                onPress={() => setFilter('all')}
+              />
+            )}
+            {requireParking && (
+              <RemovableChip
+                label={'🅿️ ' + t('food.parkRequired') + (parkM === 500 ? ' · 500 m' : '')}
+                onPress={() => router.setParams({ park: '0' })}
+              />
+            )}
+          </View>
+          {quality && (
+            <Txt variant="caption" secondary style={{ marginTop: 8 }}>
+              {t('food.noRatings')}
+            </Txt>
+          )}
+        </View>
+      )}
     </View>
   );
 
@@ -196,17 +276,44 @@ export default function RestaurantsScreen() {
         <ScreenHeader title={t('food.title')} back />
       </View>
       <FlatList
-        data={rows}
+        data={visible}
         keyExtractor={(x) => x.r.id}
         ListHeaderComponent={header}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 24 }}
         ItemSeparatorComponent={RowSeparator}
         ListEmptyComponent={
-          <Txt secondary>
-            {active === 'all'
-              ? t('food.empty')
-              : t('food.emptyCat', { cat: t(`food.cats.${active}`) })}
-          </Txt>
+          requireParking ? (
+            <View style={{ gap: 10 }}>
+              <Txt secondary>{t('food.emptyParking')}</Txt>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {parkM !== 500 && (
+                  <Chip
+                    label={t('food.parkWiden500')}
+                    selected={false}
+                    onPress={() => router.setParams({ parkm: '500' })}
+                  />
+                )}
+                {!wide && (
+                  <Chip
+                    label={t('food.searchWider')}
+                    selected={false}
+                    onPress={() => router.setParams({ wide: '1' })}
+                  />
+                )}
+                <Chip
+                  label={t('food.dropParking')}
+                  selected={false}
+                  onPress={() => router.setParams({ park: '0' })}
+                />
+              </View>
+            </View>
+          ) : (
+            <Txt secondary>
+              {active === 'all'
+                ? t('food.empty')
+                : t('food.emptyCat', { cat: t(`food.cats.${active}`) })}
+            </Txt>
+          )
         }
         renderItem={({ item, index }) => (
           <Row
