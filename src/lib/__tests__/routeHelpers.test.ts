@@ -5,12 +5,12 @@ describe('appleWalkingUrl', () => {
   it('builds walking directions from park to destination', () => {
     const url = appleWalkingUrl({ lat: 38.4, lng: 27.1 }, { lat: 38.41, lng: 27.12 }, 'Çiğ Köfte');
     expect(url).toBe(
-      'http://maps.apple.com/?saddr=38.4,27.1&daddr=38.41,27.12&dirflg=w&q=%C3%87i%C4%9F%20K%C3%B6fte',
+      'https://maps.apple.com/?saddr=38.4,27.1&daddr=38.41,27.12&dirflg=w&q=%C3%87i%C4%9F%20K%C3%B6fte',
     );
   });
   it('omits the query without a name', () => {
     expect(appleWalkingUrl({ lat: 1, lng: 2 }, { lat: 3, lng: 4 })).toBe(
-      'http://maps.apple.com/?saddr=1,2&daddr=3,4&dirflg=w',
+      'https://maps.apple.com/?saddr=1,2&daddr=3,4&dirflg=w',
     );
   });
 });

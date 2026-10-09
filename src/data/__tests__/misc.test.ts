@@ -17,7 +17,7 @@ describe('geo', () => {
 
   it('builds an Apple Maps hand-off URL', () => {
     expect(appleMapsUrl({ lat: 38.1, lng: 27.2 }, 'A B')).toBe(
-      'http://maps.apple.com/?daddr=38.1,27.2&dirflg=d&q=A%20B',
+      'https://maps.apple.com/?daddr=38.1,27.2&dirflg=d&q=A%20B',
     );
   });
 });

@@ -132,7 +132,9 @@ function RestaurantFavorites() {
               count: Math.max(nearbyCount, 1),
               distance: parking.distanceM,
             })
-          : t('food.noParking');
+          : data
+            ? t('food.noParking')
+            : '';
         const free =
           parking && parking.free != null && parking.at
             ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
