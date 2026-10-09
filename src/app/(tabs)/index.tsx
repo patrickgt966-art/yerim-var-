@@ -32,15 +32,20 @@ import {
   searchApplePlaces,
   useAppleSuggestions,
 } from '@/data/appleSearch';
-import { categoryForQuery } from '@/data/restaurants';
-import { fold, searchPlaces, type SearchHit } from '@/data/search';
+import { categoryForQuery, type FoodCategory } from '@/data/restaurants';
+import { fold, searchPlaces, splitPlaceAndCategory, type SearchHit } from '@/data/search';
 import { geocode } from '@/lib/location';
 import { useApp, type SavedPlace } from '@/store/app';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 function hitSubtitle(h: SearchHit, t: TFunction): string {
-  const kind = t(`search.kind.${h.kind}`);
-  return h.subtitle ? `${kind} · ${h.subtitle}` : kind;
+  return [
+    t(`search.kind.${h.kind}`),
+    h.subtitle ?? h.district,
+    h.far ? t('search.outside') : undefined,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function openResults(target: LatLng, label: string) {
@@ -150,7 +155,9 @@ export default function SearchScreen() {
   const active = useApp((s) => s.active);
 
   // Bundled İzmir places first: Apple's geocoder only knows addresses.
-  const local = useMemo(() => searchPlaces(query), [query]);
+  // "Bornova balık" searches the place part only; the category word is applied on submit.
+  const split = useMemo(() => (food ? splitPlaceAndCategory(query) : null), [food, query]);
+  const local = useMemo(() => searchPlaces(split ? split.placeQuery : query), [split, query]);
   // Places our list does not know come from Apple Maps (native builds only).
   const apple = useAppleSuggestions(query);
   // Use Apple results only for exactly the text in the box: the request is
@@ -162,16 +169,17 @@ export default function SearchScreen() {
     [local, appleCurrent, apple.data],
   );
 
-  const go = (target: LatLng, label: string) =>
-    food ? openFood(target, label) : openResults(target, label);
-  const pick = (h: SearchHit) => go(h, h.name);
+  const go = (target: LatLng, label: string, cat?: FoodCategory) =>
+    food ? openFood(target, label, cat) : openResults(target, label);
+  // Place + category ("Bornova balık") opens the restaurant list there with the category.
+  const pick = (h: SearchHit) => go(h, h.name, split?.cat);
   const foodMatches = useMemo(() => (food ? matchRestaurants(query) : []), [food, query]);
 
   const submit = async () => {
     const q = query.trim();
     if (!q) return;
     if (food) {
-      const cat = categoryForQuery(q);
+      const cat = split ? null : categoryForQuery(q);
       if (cat) {
         if (locating) return;
         setLocating(true);

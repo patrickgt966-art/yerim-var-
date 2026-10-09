@@ -1,8 +1,9 @@
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, View } from 'react-native';
 import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,13 +16,16 @@ import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
-import { IZMIR_CENTER } from '@/data/places';
+import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { useRanked, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
 import { parkHere } from '@/lib/parkHere';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
 type Filter = 'all' | 'indoor' | 'nearPier';
+type Notice = 'outside' | 'failed' | 'denied';
+
+const LOCATION_TIMEOUT_MS = 6000;
 
 export default function ResultsScreen() {
   const c = useColors();
@@ -43,16 +47,28 @@ export default function ResultsScreen() {
   const [label, setLabel] = useState(params.label ?? '');
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   // "Hemen bul" / locate: resolve the user's position, falling back to the city centre.
   useEffect(() => {
     if (target) return;
     let cancelled = false;
-    void currentLocation().then((loc) => {
+    void (async () => {
+      const loc = await currentLocation(true, LOCATION_TIMEOUT_MS);
+      let denied = false;
+      if (!loc) {
+        try {
+          denied = !(await Location.getForegroundPermissionsAsync()).granted;
+        } catch {
+          denied = false;
+        }
+      }
       if (cancelled) return;
-      setTarget(loc ?? IZMIR_CENTER);
-      setLabel(loc ? t('results.myLocation') : 'İzmir');
-    });
+      const inside = !!loc && isInIzmirArea(loc);
+      setTarget(inside ? loc : IZMIR_CENTER);
+      setLabel(inside ? t('results.myLocation') : 'İzmir');
+      setNotice(inside ? null : loc ? 'outside' : denied ? 'denied' : 'failed');
+    })();
     return () => {
       cancelled = true;
     };
@@ -108,6 +124,20 @@ export default function ResultsScreen() {
           </Txt>
         )}
       </View>
+      {notice && (
+        <View style={{ gap: 8 }}>
+          <Txt variant="caption" secondary>
+            {t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed')}
+          </Txt>
+          {notice === 'denied' && (
+            <Button
+              kind="secondary"
+              label={t('results.locationPermission')}
+              onPress={() => void Linking.openSettings()}
+            />
+          )}
+        </View>
+      )}
       <SampleBanner result={data} />
       <ScrollView
         horizontal

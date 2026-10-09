@@ -12,7 +12,16 @@ export function isNearPier(p: LatLng, maxMeters = 400): boolean {
   return PIERS.some((pier) => distanceMeters(p, pier) <= maxMeters);
 }
 
-/** Rough İzmir province box; a location outside it is not a useful restaurant search centre. */
+/**
+ * Rough İzmir province box, also within 120 km of the centre (keeps out open
+ * sea); a location outside is not a useful search centre.
+ */
 export function isInIzmirArea(p: LatLng): boolean {
-  return p.lat >= 37.8 && p.lat <= 39.4 && p.lng >= 26.2 && p.lng <= 28.5;
+  return (
+    p.lat >= 37.8 &&
+    p.lat <= 39.4 &&
+    p.lng >= 26.2 &&
+    p.lng <= 28.5 &&
+    distanceMeters(p, IZMIR_CENTER) < 120_000
+  );
 }

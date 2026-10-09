@@ -232,12 +232,13 @@ export function telUrl(phone: string): string | null {
 }
 
 export type FoodCategory =
-  'breakfast' | 'soup' | 'meat' | 'fish' | 'cafe' | 'meyhane' | 'fast' | 'dessert';
+  'breakfast' | 'soup' | 'meat' | 'lokanta' | 'fish' | 'cafe' | 'meyhane' | 'fast' | 'dessert';
 
 export const FOOD_CATEGORIES: FoodCategory[] = [
   'breakfast',
   'soup',
   'meat',
+  'lokanta',
   'fish',
   'cafe',
   'meyhane',
@@ -289,6 +290,11 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
     ],
     notNames: ['cig kofte', 'cigkofte'],
   },
+  // Lokanta has no cuisine tag of its own: it is the plain restaurant that fits
+  // no other category (see matchesCategory) plus the names below.
+  lokanta: {
+    names: ['lokanta', 'ev yemek', 'pilav', 'esnaf', 'sofrasi', 'mutfagi'],
+  },
   fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik', 'midye'] },
   cafe: { kinds: ['cafe'], cuisines: ['coffee_shop'] },
   meyhane: { kinds: ['bar', 'pub', 'biergarten'], cuisines: ['meyhane'], names: ['meyhane'] },
@@ -314,27 +320,94 @@ function nameCategories(r: Restaurant): FoodCategory[] {
   });
 }
 
-/**
- * OSM cuisine tags win; then what the name says ("X Köfte" → meat); the broad
- * OSM kind (fast_food, cafe…) counts only when the name points nowhere else,
- * so a börek shop tagged fast_food is breakfast, not burgers.
- */
-export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
+/** Folded name parts of places that are not a meal stop (shown only under "Tümü" or Meyhane). */
+const NOT_FOOD_NAMES = [
+  'nargile',
+  'hookah',
+  'club',
+  'market',
+  'sarkuteri',
+  'otel',
+  'hotel',
+  'pansiyon',
+  'bakkal',
+  'tekel',
+];
+
+function isExcluded(r: Restaurant): boolean {
+  const name = fold(r.name);
+  return NOT_FOOD_NAMES.some((k) => hasWordStart(name, k));
+}
+
+/** Whole-word "bar"/"pub" ("Barbaros" is not a bar), prefixes for the longer words. */
+const PUB_WORDS = ['gastropub', 'cocktail', 'kokteyl', 'meyhane', 'birahane'];
+
+/** The name says pub/bar/cocktail: such a place is Meyhane & Bar only, whatever its cuisine tag. */
+function isPubName(r: Restaurant): boolean {
+  const tokens = fold(r.name)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return tokens.some(
+    (w) =>
+      w === 'pub' ||
+      // "Espresso Bar" is a café, so a bare "bar" only counts for non-café kinds.
+      (w === 'bar' && r.kind !== 'cafe') ||
+      PUB_WORDS.some((p) => w.startsWith(p)),
+  );
+}
+
+const COFFEE_NAMES = ['coffee', 'kahve', 'cafe', 'kafe'];
+const SWEET_NAMES = ['tatli', 'dondurma', 'pastane'];
+
+function matchesRule(r: Restaurant, cat: Exclude<FoodCategory, 'lokanta'>): boolean {
   const rule = CATEGORY_RULES[cat];
+  const name = fold(r.name);
+  // A coffee shop / café is not a dessert place, unless it says tatlı/dondurma/pastane.
+  if (
+    cat === 'dessert' &&
+    r.kind === 'cafe' &&
+    COFFEE_NAMES.some((k) => name.includes(k)) &&
+    !SWEET_NAMES.some((k) => name.includes(k))
+  )
+    return false;
   if (rule.cuisines && r.cuisines.some((c) => rule.cuisines!.includes(c))) return true;
   const byName = nameCategories(r);
   if (byName.includes(cat)) return true;
   return byName.length === 0 && !!rule.kinds?.includes(r.kind);
 }
 
+/**
+ * OSM cuisine tags win; then what the name says ("X Köfte" → meat); the broad
+ * OSM kind (fast_food, cafe…) counts only when the name points nowhere else,
+ * so a börek shop tagged fast_food is breakfast, not burgers.
+ * Pubs/bars (by name) belong to Meyhane only; hotels, markets, hookah and
+ * club places belong to no family category.
+ */
+const LOKANTA_CUISINES = ['turkish', 'regional', 'homestyle', 'local'];
+
+export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
+  if (cat === 'meyhane') return isPubName(r) || matchesRule(r, 'meyhane');
+  if (isPubName(r) || isExcluded(r)) return false;
+  if (cat !== 'lokanta') return matchesRule(r, cat);
+  // Lokanta: named like one, or a plain sit-down place that fits nothing else.
+  if (nameCategories(r).includes('lokanta')) return true;
+  if (r.kind !== 'restaurant' && r.kind !== 'food_court') return false;
+  // Only untagged or Turkish home-style places: an Italian or sushi tag is not a lokanta.
+  if (r.cuisines.some((c) => !LOKANTA_CUISINES.includes(c))) return false;
+  return !FOOD_CATEGORIES.some((k) => k !== 'lokanta' && matchesCategory(r, k));
+}
+
 /** Best category for the card icon: cuisine tag, then name, then kind. */
 export function categoryOf(r: Restaurant): FoodCategory | null {
+  if (isPubName(r)) return 'meyhane';
+  if (isExcluded(r)) return null;
   // The place's own first cuisine tag decides ("Ada balık": fish before breakfast).
   for (const c of r.cuisines) {
     const cat = FOOD_CATEGORIES.find((k) => CATEGORY_RULES[k].cuisines?.includes(c));
-    if (cat) return cat;
+    if (cat && matchesCategory(r, cat)) return cat;
   }
-  return nameCategories(r)[0] ?? FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
+  const byName = nameCategories(r).find((k) => matchesCategory(r, k));
+  return byName ?? FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
 }
 
 /** Search rings for a category: widen until enough places turn up. */
@@ -390,6 +463,24 @@ export type RestaurantRow = {
   nearbyCount: number;
 };
 
+/**
+ * Score penalty per park class (m-equivalent): fresh free spots, then unknown,
+ * then fresh zero, then no car park within 500 m (counted as 500 m away).
+ */
+const PARK_CLASS_PENALTY = [0, 500, 1000, 1000];
+const NO_PARK_DISTANCE_M = NEAREST_PARKING_RADIUS_M;
+/** The walk to the restaurant counts half as much as the walk from the car park. */
+const RESTAURANT_DISTANCE_WEIGHT = 0.5;
+/** Street stands (midye, kokoreç) sink below sit-down places in fish and meat. */
+const STAND_PENALTY_M = 600;
+
+/** A fast_food place, or a midye/kokoreç stand that is not also a fish restaurant. */
+function isStand(r: Restaurant): boolean {
+  if (r.kind === 'fast_food') return true;
+  const name = fold(r.name);
+  return (name.includes('midye') || name.includes('kokorec')) && !name.includes('balik');
+}
+
 /** 0 best: fresh free spots; then unknown; then fresh zero; then no car park near. */
 function parkClass(p: RestaurantRow['parking']): number {
   if (!p) return 3;
@@ -397,16 +488,33 @@ function parkClass(p: RestaurantRow['parking']): number {
   return 1;
 }
 
-export function rankRestaurants(rows: RestaurantRow[], sort: RestaurantSort): RestaurantRow[] {
+/**
+ * Lower is better. Park class, car park distance and restaurant distance all
+ * count, so a far restaurant only wins with a clearly better park class
+ * (fresh free beats unknown) and never just because its car park is close.
+ */
+function parkEaseScore(row: RestaurantRow, cat?: FoodCategory): number {
+  const { r, parking } = row;
+  let score =
+    PARK_CLASS_PENALTY[parkClass(parking)]! +
+    (parking ? parking.distanceM : NO_PARK_DISTANCE_M) +
+    RESTAURANT_DISTANCE_WEIGHT * r.distanceM;
+  if ((cat === 'fish' || cat === 'meat') && isStand(r)) score += STAND_PENALTY_M;
+  return score;
+}
+
+export function rankRestaurants(
+  rows: RestaurantRow[],
+  sort: RestaurantSort,
+  cat?: FoodCategory,
+): RestaurantRow[] {
   const out = [...rows];
   if (sort === 'distance') return out.sort((a, b) => a.r.distanceM - b.r.distanceM);
+  const score = new Map(out.map((row) => [row, parkEaseScore(row, cat)]));
   return out.sort((a, b) => {
-    const ca = parkClass(a.parking);
-    const cb = parkClass(b.parking);
-    if (ca !== cb) return ca - cb;
-    // 100 m buckets so info richness decides between similar car park distances.
-    const ba = a.parking ? Math.floor(a.parking.distanceM / 100) : 0;
-    const bb = b.parking ? Math.floor(b.parking.distanceM / 100) : 0;
+    // 100 m buckets so info richness decides between similar scores.
+    const ba = Math.floor(score.get(a)! / 100);
+    const bb = Math.floor(score.get(b)! / 100);
     if (ba !== bb) return ba - bb;
     const ia = infoScore(a.r);
     const ib = infoScore(b.r);
@@ -419,6 +527,7 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
   breakfast: ['kahvalti', 'borek', 'pogaca', 'simit', 'gozleme'],
   soup: ['corba', 'iskembe', 'kelle paca', 'paca'],
   meat: ['kebap', 'kebab', 'et', 'izgara', 'kofte', 'mangal', 'steak', 'ocakbasi'],
+  lokanta: ['lokanta', 'ev yemegi', 'ev yemekleri', 'esnaf lokantasi'],
   fish: ['balik', 'balikci', 'deniz urunleri'],
   cafe: ['kafe', 'kahve', 'cafe'],
   meyhane: ['meyhane', 'bar', 'pub'],
@@ -454,4 +563,10 @@ export function parkingInfo(
   }
   if (!best) return { parking: null, nearbyCount: 0 };
   return { parking: parkingSummary(restaurant, [best], now), nearbyCount: count };
+}
+
+/** "1,8 km" from 1 km up, otherwise "650 m". */
+export function formatDistance(m: number): string {
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
