@@ -40,20 +40,39 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 9. Yönlendirme kartı (selam, küfür, anlamsız metin)
 10. Senaryo cümleleri otomatik test
 
-### Faz B: Haiku (Anthropic API hesabından sonra)
-- Cloudflare aracı sunucu, anahtar koda girmez
-- Sadece "belirsiz" cümleler gider; selam, küfür, konum asla
-- Haiku sadece çevirir, sonucu bizim veri ve Apple bulur
-- Önbellek, onay ekranı, gizlilik sayfası
-- İşlem sırası: bizim veri → Apple (temiz metin) → Haiku (tek çağrı, Apple için arama metni de döner) → bizim veri + Apple → Haritada işaretle
+### Faz B: Yerim ✨ (Haiku) — son plan
 
-**Haklar (karar verildi):**
-- Sohbet ve kurallı arama herkese sınırsız
-- ✨ Akıllı yardım (Haiku): ücretsiz günde 5, abone sınırsız (adil kullanım ~200/gün)
-- Haiku'nun kullanıldığı cevapta "✨ Akıllı yardım" etiketi
-- Hak bitince: bizim veri + Apple araması aynen çalışır; Yerim bir kez "Bugünkü akıllı yardım hakkın bitti, yarın yenilenir. Yerim+ ile sınırsız." der
-- Sayaç sunucuda, rastgele cihaz numarasıyla; kişisel veri yok, kayıt ertesi gün silinir
-- Abonelik doğrulaması Apple üzerinden (abonelik altyapısıyla birlikte)
+**İki mod**
+- Yerim: kurallarla çalışır, herkese sınırsız, bedava.
+- Yerim ✨: Haiku konuşur. Ücretsiz günde 5 mesaj, abone sınırsız (adil kullanım ~200/gün).
+
+**Mesaj akışı (sırayı kod yönetir, Haiku değil)**
+1. Telefonda ön kontrol: selam/teşekkür → hazır samimi cevap, hak düşmez. Küfür → sakin cevap, hak düşmez.
+2. Telefon cümleyi kurallarla anlamaya çalışır. Anlarsa 3. adım atlanır.
+3. ✨ Anlama çağrısı: Haiku cümleyi çevirir (ilçe, yemek, otopark şartı, Apple için arama metni) veya "konu dışı" der.
+4. Arama telefonda: bizim veri → bulamazsa Apple (yer adına benziyorsa) → bulamazsa (Faz 3) internet araması, "doğrulanmadı" etiketiyle.
+5. ✨ Anlatım çağrısı: Haiku sadece bulunan sonuç listesini görür ve kendi diliyle anlatır.
+6. Hiçbir şey yoksa: "Bulamadım hocam, haritada gösterir misin?" + Haritada işaretle.
+
+**Güvenlik kuralları**
+- Haiku'nun cevabındaki her yer adı sonuç listesinde olmalı; değilse cevap atılır, hazır şablon gösterilir.
+- Puan, fiyat, güncel olay (maç, haber, hava) uydurmaz; boş yer sayısını sadece veri güncelse söyler.
+- Konum gönderilmez; mesafeler telefonda hesaplanır. Mesaj ≤ 200 karakter, geçmişten son 6 mesaj.
+- İnternet yok / hata / hak bitti → sessizce kurallı Yerim'e düşer.
+
+**Hak kuralları**
+- Hak = Haiku'nun cevap verdiği mesaj. Selam, teşekkür, küfür ve hata hak düşürmez.
+- Hak bitince bir kez: "Bugünkü ✨ hakların bitti, yarın yenilenir. Ben yine buradayım!"
+- Sayaç sunucuda, rastgele cihaz numarasıyla; kişisel veri yok, ertesi gün silinir.
+
+**Maliyet:** mesaj başına ~0,0006 $; ücretsiz kullanıcı en fazla ~9 cent/ay.
+
+**Aşamalar**
+- Aşama 0 (şimdi): hitap kelimeleri, Apple'a gitme kuralı, konu dışı kalıpları, stadyum otoparkları, restoran açık/kapalı bilgisi
+- Aşama 1: Apple Developer hesabı → dev build → Apple araması
+- Aşama 2: Anthropic hesabı → Cloudflare aracı → Yerim ✨ + onay ekranı + gizlilik sayfası
+- Aşama 3: internet araması (Apple'ın ne sıklıkla bulamadığı görüldükten sonra karar)
+- Aşama 4: abonelik (Yerim+)
 
 ### Faz C: Apple iş yeri araması (Apple Developer hesabından sonra)
 - Veritabanında olmayan dükkânlar + yanındaki otoparklar
