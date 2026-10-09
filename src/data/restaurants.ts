@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 
 import raw from '../../data/food-izmir.json';
+import overtureRaw from '../../data/food-overture-izmir.json';
 import { getFreshness } from './freshness';
 import { distanceMeters, type LatLng } from './geo';
 import { fold } from './search';
@@ -86,7 +87,11 @@ let cache: Restaurant[] | null = null;
 let byId: Map<string, Restaurant> | null = null;
 
 export function allRestaurants(): Restaurant[] {
-  if (!cache) cache = (raw as FoodFile).items.map(toRestaurant);
+  if (!cache)
+    cache = [
+      ...(raw as FoodFile).items.map(toRestaurant),
+      ...(overtureRaw as { items: FoodRecord[] }).items.map(toRestaurant),
+    ];
   return cache;
 }
 

@@ -270,7 +270,7 @@ const tr = {
     noAccount: 'Hesap gerekmez. Favorilerin ve aktif parkın yalnızca bu cihazda saklanır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL); bu otoparklarda anlık doluluk bilgisi yoktur. Yerim Var resmî bir belediye uygulaması değildir.',
+      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL); bu otoparklarda anlık doluluk bilgisi yoktur. Restoran listesi OpenStreetMap ve Overture Maps (CDLA-Permissive-2.0) verilerinden oluşur. Yerim Var resmî bir belediye uygulaması değildir.',
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:

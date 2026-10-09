@@ -39,3 +39,13 @@
 - "kafe": İzelman Kitap Kafe Konum Verisi
 - "turizm": Bademsu Fabrikası Üretim Verileri · Günübirlik Gezi Tekneleri Bilgileri · Halk Ekmek Büfeleri Satış Noktaları · Halk Ekmek Fabrikası Üretim Verileri · Halkın Bakkalı Siparişi Alınan Paket Tür ve Miktarları · İlçelerde Yaşayan T.C. Vatandaşı ve Yabancı Uyruklu Nüfus  Bilgileri · İzmir İli Müze ve Ören Yerleri Ziyaret Saatleri · İzmir Su Fabrikası Üretim Verileri · Kamu Kurum ve Kuruluşları · Kruvaziyer Gemi Bilgileri · Müze Ziyaretçi İstatistikleri · Ören Yerleri İstatikleri · Turizm Amaçlı Sportif Faaliyetler · Turizm Bilgilendirme Ofisleri Konum Verisi · Turizm Tesisleri · Turuncu Çember Sertifikası Alan İşletmeler Listesi · Yiyecek, İçecek Büfeleri
 - "işletme": 1.Sınıf Gayri Müessese Kapsamındaki İşletme Sayısı İle Akaryakıt Ve/Veya Otogaz Satış İstasyonu Sayısı · Günübirlik Gezi Tekneleri Bilgileri · Tesisler ve Atıksu Miktarları · Turizm Amaçlı Sportif Faaliyetler · Turizm Tesisleri
+
+## Overture Maps (CDLA-Permissive-2.0)
+
+- Release: 2026-09-23.1 (2026-10-09)
+- Izmir province polygon: found
+- Raw candidates (food kinds inside the polygon): 20431
+- Kept (confidence >= 0.6): 15874
+- Removed as OSM duplicates: 1008
+- Per kind: bar 969, cafe 3907, fast_food 749, food_court 4, restaurant 9237
+- data/food-overture-izmir.json: 2.27 MB
