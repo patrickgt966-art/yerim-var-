@@ -50,6 +50,6 @@
 - Izmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
 - Kept (confidence >= 0.6): 15874
-- Removed as OSM duplicates: 1008
-- Per kind: bar 969, cafe 3907, fast_food 749, food_court 4, restaurant 9237
-- data/food-overture-izmir.json: 2.27 MB
+- Removed as OSM duplicates: 1102
+- Per kind: bar 969, cafe 3897, fast_food 749, food_court 4, restaurant 9153
+- data/food-overture-izmir.json: 2.25 MB
