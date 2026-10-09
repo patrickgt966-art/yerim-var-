@@ -49,7 +49,7 @@ export type Palette = {
 };
 
 export const lightPalette: Palette = {
-  bg: brand.surface,
+  bg: brand.white,
   surface: brand.surface,
   card: brand.white,
   text: brand.navy,

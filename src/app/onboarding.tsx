@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -140,6 +141,7 @@ export default function Onboarding() {
 
   return (
     <View style={{ flex: 1, backgroundColor: brand.navy }}>
+      <StatusBar style="light" />
       <OnboardingBackdrop />
       <View
         style={{

@@ -27,6 +27,7 @@ const tr = {
     unknown: 'Bilinmiyor',
     sample: 'Örnek veri',
     noData: 'Canlı sayım yok',
+    noDataShort: 'Sayım yok',
     sampleBanner: 'Örnek veri gösteriliyor. Belediye verisine şu an ulaşılamıyor.',
     offline: 'Çevrimdışı',
     offlineBanner:

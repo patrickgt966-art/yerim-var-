@@ -69,7 +69,7 @@ function Card({ p, best }: { p: RankedParking; best: boolean }) {
             {free}
           </Txt>
         ) : isStatic(p) ? (
-          <Tag text={t('freshness.noData')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+          <Tag text={t('freshness.noDataShort')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
         ) : (
           <Tag text={t('freshness.unknown')} bg={c.badgeUnknownBg} fg={c.badgeUnknownText} />
         )}

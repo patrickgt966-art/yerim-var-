@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import type { TFunction } from 'i18next';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -126,6 +127,15 @@ function SavedCard({ kind }: { kind: 'home' | 'work' }) {
 }
 
 export default function SearchScreen() {
+  // White status-bar text over the navy hero, only while this tab is shown.
+  // A fixed navy strip keeps it readable when the hero scrolls away.
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -185,266 +195,286 @@ export default function SearchScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={{ paddingBottom: 32 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Hero */}
-      <View
-        style={{
-          backgroundColor: c.hero,
-          paddingTop: insets.top + 12,
-          paddingHorizontal: 20,
-          paddingBottom: 56,
-          borderBottomLeftRadius: 8,
-          borderBottomRightRadius: 40,
-          overflow: 'hidden',
-        }}
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      {focused && <StatusBar style="light" />}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.bg }}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={{ position: 'absolute', right: 0, bottom: 0 }}>
-          <Skyline />
-        </View>
+        {/* Hero */}
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
+            backgroundColor: c.hero,
+            paddingTop: insets.top + 12,
+            paddingHorizontal: 20,
+            paddingBottom: 56,
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 40,
+            overflow: 'hidden',
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
-            <PMark size={30} />
-            <Txt
-              style={{ fontFamily: fonts.display, fontSize: 21 }}
-              color={brand.white}
-              numberOfLines={1}
-              accessibilityRole="header"
-            >
-              yerim{' '}
-              <Txt style={{ fontFamily: fonts.display, fontSize: 21 }} color={brand.orange}>
-                var
-              </Txt>
-            </Txt>
+          <View style={{ position: 'absolute', right: 0, bottom: 0 }}>
+            <Skyline />
           </View>
-          <ModeSwitch mode={section} onChange={setSection} />
-        </View>
-        <Txt
-          variant="display"
-          color={brand.white}
-          style={{ marginTop: 18, fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
-          accessibilityRole="header"
-        >
-          {food ? (
-            t('food.headline')
-          ) : (
-            <>
-              {t('search.title1')}
-              <Txt
-                variant="display"
-                color={brand.orangeLight}
-                style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
-              >
-                {t('search.title2')}
-              </Txt>
-              {t('search.title3')}
-            </>
-          )}
-        </Txt>
-      </View>
-
-      {/* Search box overlapping the hero */}
-      <View style={{ marginTop: -30, marginHorizontal: 16 }}>
-        <View
-          style={[
-            asym(26, 8),
-            {
-              minHeight: 64,
-              paddingLeft: 16,
-              paddingRight: 8,
+          <View
+            style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 12,
-              backgroundColor: c.card,
-              shadowColor: '#0B3C49',
-              shadowOpacity: 0.14,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 6 },
-            },
-          ]}
-        >
-          <CarMark size={26} bay={c.text} glass={brand.navy} wheels={false} lights={false} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={submit}
-            placeholder={t(food ? 'food.placeholder' : 'search.placeholder')}
-            placeholderTextColor={c.textSecondary}
-            accessibilityLabel={t(food ? 'food.a11yInput' : 'search.a11yInput')}
-            returnKeyType="search"
-            autoCorrect={false}
-            style={{ flex: 1, minHeight: HIT, fontFamily: fonts.body, fontSize: 16, color: c.text }}
-          />
-          {busy || locating ? (
-            <ActivityIndicator color={c.text} style={{ width: HIT }} />
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('search.a11yLocate')}
-              onPress={async () => {
-                if (!food) return router.push({ pathname: '/sonuc', params: { near: '1' } });
-                if (locating) return;
-                setLocating(true);
-                await openFoodNearMe(t('results.myLocation'), undefined, true);
-                setLocating(false);
-              }}
-              style={[
-                asym(15, 5),
-                {
-                  width: 48,
-                  height: 48,
-                  backgroundColor: food ? brand.navy : c.accent,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                },
-              ]}
-            >
-              <Icon name="locate" size={20} color={food ? brand.white : brand.navy} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      {(hits.length > 0 || foodMatches.length > 0) && (
-        <View
-          accessibilityLabel={t('search.suggestions')}
-          style={[
-            asym(18, 5),
-            {
-              marginHorizontal: 16,
-              marginTop: 12,
-              backgroundColor: c.card,
-              borderWidth: 1,
-              borderColor: c.line,
-              overflow: 'hidden',
-            },
-          ]}
-        >
-          {food && <RestaurantSuggestions matches={foodMatches} />}
-          {hits.map((h, i) => (
-            <Pressable
-              key={`${i}-${h.name}-${h.lat}-${h.lng}`}
-              accessibilityRole="button"
-              accessibilityLabel={`${h.name}, ${hitSubtitle(h, t)}`}
-              onPress={() => pick(h)}
-              style={({ pressed }) => ({
-                minHeight: HIT + 4,
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                justifyContent: 'center',
-                borderTopWidth: i === 0 && foodMatches.length === 0 ? 0 : 1,
-                borderTopColor: c.line,
-                backgroundColor: pressed ? c.surface : c.card,
-              })}
-            >
-              <Txt variant="bodyBold" numberOfLines={1}>
-                {h.name}
+              justifyContent: 'space-between',
+              gap: 8,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
+              <PMark size={30} />
+              <Txt
+                style={{ fontFamily: fonts.display, fontSize: 21 }}
+                color={brand.white}
+                numberOfLines={1}
+                accessibilityRole="header"
+              >
+                yerim{' '}
+                <Txt style={{ fontFamily: fonts.display, fontSize: 21 }} color={brand.orange}>
+                  var
+                </Txt>
               </Txt>
-              <Txt variant="caption" secondary numberOfLines={1}>
-                {hitSubtitle(h, t)}
-              </Txt>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      {!food && (
-        <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>
-          <Chip
-            label={t('search.now')}
-            icon="clock"
-            selected={mode === 'now'}
-            onPress={() => setMode('now')}
-          />
-          <Chip
-            label={t('search.twoHours')}
-            icon="hourglass"
-            selected={mode === 'twoHours'}
-            onPress={() => setMode('twoHours')}
-          />
-        </View>
-      )}
-
-      <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
-        {!food && active && (
-          <>
-            <Txt variant="title" accessibilityRole="header">
-              {t('search.active')}
-            </Txt>
-            <ActiveParkCard active={active} />
-          </>
-        )}
-
-        {food ? (
-          <>
-            <Txt variant="title" accessibilityRole="header">
-              {t('food.categoriesTitle')}
-            </Txt>
-            <CategoryGrid />
-          </>
-        ) : (
-          <>
-            <NearbyNow />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <SavedCard kind="home" />
-              <SavedCard kind="work" />
             </View>
-          </>
+            <ModeSwitch mode={section} onChange={setSection} />
+          </View>
+          <Txt
+            variant="display"
+            color={brand.white}
+            style={{ marginTop: 18, fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
+            accessibilityRole="header"
+          >
+            {food ? (
+              t('food.headline')
+            ) : (
+              <>
+                {t('search.title1')}
+                <Txt
+                  variant="display"
+                  color={brand.orangeLight}
+                  style={{ fontSize: 32, lineHeight: 36, letterSpacing: -0.5 }}
+                >
+                  {t('search.title2')}
+                </Txt>
+                {t('search.title3')}
+              </>
+            )}
+          </Txt>
+        </View>
+
+        {/* Search box overlapping the hero */}
+        <View style={{ marginTop: -30, marginHorizontal: 16 }}>
+          <View
+            style={[
+              asym(26, 8),
+              {
+                minHeight: 64,
+                paddingLeft: 16,
+                paddingRight: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                backgroundColor: c.card,
+                shadowColor: '#0B3C49',
+                shadowOpacity: 0.14,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 6 },
+              },
+            ]}
+          >
+            <CarMark size={26} bay={c.text} glass={brand.navy} wheels={false} lights={false} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={submit}
+              placeholder={t(food ? 'food.placeholder' : 'search.placeholder')}
+              placeholderTextColor={c.textSecondary}
+              accessibilityLabel={t(food ? 'food.a11yInput' : 'search.a11yInput')}
+              returnKeyType="search"
+              autoCorrect={false}
+              style={{
+                flex: 1,
+                minHeight: HIT,
+                fontFamily: fonts.body,
+                fontSize: 16,
+                color: c.text,
+              }}
+            />
+            {busy || locating ? (
+              <ActivityIndicator color={c.text} style={{ width: HIT }} />
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('search.a11yLocate')}
+                onPress={async () => {
+                  if (!food) return router.push({ pathname: '/sonuc', params: { near: '1' } });
+                  if (locating) return;
+                  setLocating(true);
+                  await openFoodNearMe(t('results.myLocation'), undefined, true);
+                  setLocating(false);
+                }}
+                style={[
+                  asym(15, 5),
+                  {
+                    width: 48,
+                    height: 48,
+                    backgroundColor: food ? brand.navy : c.accent,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  },
+                ]}
+              >
+                <Icon name="locate" size={20} color={food ? brand.white : brand.navy} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        {(hits.length > 0 || foodMatches.length > 0) && (
+          <View
+            accessibilityLabel={t('search.suggestions')}
+            style={[
+              asym(18, 5),
+              {
+                marginHorizontal: 16,
+                marginTop: 12,
+                backgroundColor: c.card,
+                borderWidth: 1,
+                borderColor: c.line,
+                overflow: 'hidden',
+              },
+            ]}
+          >
+            {food && <RestaurantSuggestions matches={foodMatches} />}
+            {hits.map((h, i) => (
+              <Pressable
+                key={`${i}-${h.name}-${h.lat}-${h.lng}`}
+                accessibilityRole="button"
+                accessibilityLabel={`${h.name}, ${hitSubtitle(h, t)}`}
+                onPress={() => pick(h)}
+                style={({ pressed }) => ({
+                  minHeight: HIT + 4,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  justifyContent: 'center',
+                  borderTopWidth: i === 0 && foodMatches.length === 0 ? 0 : 1,
+                  borderTopColor: c.line,
+                  backgroundColor: pressed ? c.surface : c.card,
+                })}
+              >
+                <Txt variant="bodyBold" numberOfLines={1}>
+                  {h.name}
+                </Txt>
+                <Txt variant="caption" secondary numberOfLines={1}>
+                  {hitSubtitle(h, t)}
+                </Txt>
+              </Pressable>
+            ))}
+          </View>
         )}
 
-        <Txt
-          accessibilityRole="header"
-          style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 24, marginTop: 4 }}
-        >
-          {t(food ? 'food.popularFood' : 'search.popular')}
-        </Txt>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {POPULAR_PLACES.map((p) => (
-            <Pressable
-              key={p.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${p.name}, ${p.district}`}
-              onPress={() => go(p, p.name)}
-              style={[
-                asym(18, 5),
-                {
-                  flexBasis: '47%',
-                  flexGrow: 1,
-                  minHeight: 64,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.line,
-                },
-              ]}
-            >
-              <IconTile name={p.icon as IconName} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Txt style={{ fontFamily: fonts.display, fontSize: 15 }} numberOfLines={1}>
-                  {p.name}
-                </Txt>
-                <Txt variant="label" secondary numberOfLines={1}>
-                  {p.district}
-                </Txt>
+        {!food && (
+          <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 16, marginTop: 12 }}>
+            <Chip
+              label={t('search.now')}
+              icon="clock"
+              selected={mode === 'now'}
+              onPress={() => setMode('now')}
+            />
+            <Chip
+              label={t('search.twoHours')}
+              icon="hourglass"
+              selected={mode === 'twoHours'}
+              onPress={() => setMode('twoHours')}
+            />
+          </View>
+        )}
+
+        <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
+          {!food && active && (
+            <>
+              <Txt variant="title" accessibilityRole="header">
+                {t('search.active')}
+              </Txt>
+              <ActiveParkCard active={active} />
+            </>
+          )}
+
+          {food ? (
+            <>
+              <Txt variant="title" accessibilityRole="header">
+                {t('food.categoriesTitle')}
+              </Txt>
+              <CategoryGrid />
+            </>
+          ) : (
+            <>
+              <NearbyNow />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <SavedCard kind="home" />
+                <SavedCard kind="work" />
               </View>
-            </Pressable>
-          ))}
+            </>
+          )}
+
+          <Txt
+            accessibilityRole="header"
+            style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 24, marginTop: 4 }}
+          >
+            {t(food ? 'food.popularFood' : 'search.popular')}
+          </Txt>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {POPULAR_PLACES.map((p) => (
+              <Pressable
+                key={p.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${p.name}, ${p.district}`}
+                onPress={() => go(p, p.name)}
+                style={[
+                  asym(18, 5),
+                  {
+                    flexBasis: '47%',
+                    flexGrow: 1,
+                    minHeight: 64,
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    backgroundColor: c.card,
+                    borderWidth: 1,
+                    borderColor: c.line,
+                  },
+                ]}
+              >
+                <IconTile name={p.icon as IconName} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Txt style={{ fontFamily: fonts.display, fontSize: 15 }} numberOfLines={1}>
+                    {p.name}
+                  </Txt>
+                  <Txt variant="label" secondary numberOfLines={1}>
+                    {p.district}
+                  </Txt>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top,
+          backgroundColor: c.hero,
+        }}
+      />
+    </View>
   );
 }
