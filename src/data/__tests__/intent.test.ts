@@ -1,6 +1,6 @@
 import '@/i18n';
 
-import { IZMIR_DISTRICTS, localPart, parseQuery } from '../intent';
+import { IZMIR_DISTRICTS, localPart, looksLikePlace, parseQuery } from '../intent';
 import { categoryForQuery } from '../restaurants';
 
 function search(q: string) {
@@ -186,5 +186,37 @@ describe('localPart', () => {
     const r = search('otoparklı olsun');
     expect(r).toMatchObject({ cat: null, placeQuery: '', mentionsParking: true });
   });
+
+  it('treats address words as filler', () => {
+    expect(parseQuery('selam dostum nasılsın').kind).toBe('greeting');
+  });
+
+  it('keeps a greeting with a real search as a search', () => {
+    expect(search('selam bornova köfte')).toMatchObject({ cat: 'meat', district: { name: 'Bornova' } });
+  });
+
+  it('detects off-topic text but not places', () => {
+    expect(parseQuery('galatasaray nasıl kazandı la öyle bugün').kind).toBe('offtopic');
+    expect(parseQuery('hava nasıl').kind).toBe('offtopic');
+    expect(parseQuery('göztepe otopark').kind).toBe('search');
+    expect(parseQuery('karşıyaka balık').kind).toBe('search');
+    expect(search('göztepe maç').placeQuery).toBe('goztepe');
+  });
+
+  it('uses iyi as a greeting only before akşamlar, günler, geceler', () => {
+    expect(parseQuery('iyi akşamlar').kind).toBe('greeting');
+    expect(search('en iyi köfteci')).toMatchObject({ cat: 'meat', quality: true });
+  });
+
+  it('maps stadium words to stadyum', () => {
+    expect(search('stada yakın').placeQuery).toBe('stadyum');
+  });
 });
 
+describe('looksLikePlace', () => {
+  it('accepts short place names and rejects questions', () => {
+    expect(looksLikePlace('karşıyaka çarşı')).toBe(true);
+    expect(looksLikePlace('galatasaray nasıl kazandı')).toBe(false);
+    expect(looksLikePlace('Kemeraltı')).toBe(true);
+  });
+});

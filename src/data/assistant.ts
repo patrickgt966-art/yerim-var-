@@ -1,7 +1,7 @@
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import { parseQuery } from '@/data/intent';
+import { IZMIR_DISTRICTS, parseQuery, type QueryIntent } from '@/data/intent';
 import {
   allRestaurants,
   rankRestaurants,
@@ -14,6 +14,13 @@ import {
 import { fold, searchPlaces } from '@/data/search';
 import type { Parking } from '@/data/types';
 import { openState } from '@/lib/openNow';
+import type { AiResult } from '@/lib/ai/client';
+import {
+  fillPlaceholders,
+  isGroundedReply,
+  type NarrateRequest,
+  type Understanding,
+} from '@/lib/ai/protocol';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 
 export type ChatPlace = { label: string; lat: number; lng: number };
@@ -63,7 +70,15 @@ export type ChatCard =
       open: 'open' | 'closed' | 'unknown';
     };
 
-export type BotMessage = { text: string; cards: ChatCard[]; actions: ChatAction[] };
+export type BotMessage = {
+  text: string;
+  cards: ChatCard[];
+  actions: ChatAction[];
+  /** The text was written by the AI layer. */
+  sparkle?: boolean;
+  /** Small note under the text (e.g. the daily AI quota is used up). */
+  notice?: string;
+};
 
 export type AssistantDeps = {
   here: () => Promise<LatLng | null>;
@@ -71,6 +86,15 @@ export type AssistantDeps = {
   parkings: Parking[];
   t: (key: string, opts?: Record<string, unknown>) => string;
   now?: Date;
+  /** Optional AI layer; the screen binds deviceId / messageId / text / history. */
+  ai?: {
+    understand(text: string): Promise<AiResult<Understanding>>;
+    narrate(
+      req: Omit<NarrateRequest, 'deviceId' | 'messageId' | 'text'>,
+    ): Promise<AiResult<string>>;
+    /** True the first time per day, so the "out of quota" notice shows once. */
+    quotaNotice(): boolean;
+  };
 };
 
 type Result = { reply: BotMessage; ctx: ChatContext };
@@ -117,16 +141,83 @@ function pickOnMap(text: string, t: AssistantDeps['t']): ChatAction {
 
 const plain = (reply: BotMessage, ctx: ChatContext): Result => ({ reply, ctx });
 
+/** Facts about a found result list, handed to the AI narration. */
+type Facts = { where: string; what: string; total: number; withParking: number };
+
+/** A search intent from the AI's understanding of the text. */
+function intentFromUnderstanding(
+  u: Extract<Understanding, { kind: 'search' }>,
+  text: string,
+): Extract<QueryIntent, { kind: 'search' }> {
+  const district = u.district
+    ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)
+    : null;
+  return {
+    kind: 'search',
+    text: fold(text),
+    cat: u.cat,
+    dish: u.dish,
+    district,
+    placeQuery: u.place ? fold(u.place) : '',
+    requireParking: u.requireParking,
+    quality: false,
+    uncertain: false,
+    food: u.food || u.cat !== null,
+    nearMe: false,
+    mentionsParking: u.requireParking || (!u.food && u.cat === null),
+  };
+}
+
 export async function answer(
   text: string,
   ctx: ChatContext,
   deps: AssistantDeps,
 ): Promise<Result> {
   const { t } = deps;
-  const it = parseQuery(text);
+  let it = parseQuery(text);
+  let notice: string | undefined;
+  const withNotice = (r: Result): Result =>
+    notice && !r.reply.notice ? { ...r, reply: { ...r.reply, notice } } : r;
+  const offTopicActions = () => [
+    say(t, 'chat.exStadium'),
+    say(t, 'chat.exNear'),
+    say(t, 'chat.exKofte'),
+  ];
 
+  if (
+    deps.ai &&
+    (it.kind === 'offtopic' ||
+      it.kind === 'empty' ||
+      (it.kind === 'search' && it.uncertain && !it.cat && !it.food))
+  ) {
+    const res = await deps.ai.understand(text);
+    if (res.ok) {
+      if (res.value.kind === 'offtopic') {
+        return plain(
+          { text: res.value.reply, cards: [], actions: offTopicActions(), sparkle: true },
+          ctx,
+        );
+      }
+      if (res.value.kind === 'search') it = intentFromUnderstanding(res.value, text);
+    } else if (res.reason === 'quota' && deps.ai.quotaNotice()) {
+      notice = t('chat.sparkleOut');
+    }
+  }
+
+  if (it.kind === 'offtopic') {
+    return withNotice(
+      plain(
+        {
+          text: variant(t, 'chat.offTopic', 2, text),
+          cards: [],
+          actions: offTopicActions(),
+        },
+        ctx,
+      ),
+    );
+  }
   if (it.kind === 'greeting') {
-    const msg = variant(t, 'chat.hello', 2, text);
+    const msg = variant(t, 'chat.hello', 5, text);
     return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'abuse') {
@@ -136,13 +227,15 @@ export async function answer(
     );
   }
   if (it.kind === 'empty') {
-    return plain(
-      {
-        text: variant(t, 'chat.unknown', 2, text),
-        cards: [],
-        actions: [pickOnMap(text, t), ...examples(ctx.section, t)],
-      },
-      ctx,
+    return withNotice(
+      plain(
+        {
+          text: variant(t, 'chat.unknown', 2, text),
+          cards: [],
+          actions: [pickOnMap(text, t), ...examples(ctx.section, t)],
+        },
+        ctx,
+      ),
     );
   }
 
@@ -179,10 +272,22 @@ export async function answer(
             },
           ]
         : [];
-      return plain(
-        { text: t('chat.foundName', { name: first.name, count: matches.length }), cards, actions },
-        ctx,
-      );
+      const found: BotMessage = {
+        text: t('chat.foundName', { name: first.name, count: matches.length }),
+        cards,
+        actions,
+      };
+      if (deps.ai && cards.length > 0) {
+        const facts: Facts = {
+          where: ctx.place?.label ?? t('chat.nearYou'),
+          what: t('chat.noun.all'),
+          total: matches.length,
+          withParking: cards.filter((c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300)
+            .length,
+        };
+        await narrate(found, facts, false, deps, deps.ai);
+      }
+      return withNotice(plain(found, ctx));
     }
   }
 
@@ -215,13 +320,15 @@ export async function answer(
     } else {
       const p = await deps.geocode(it.placeQuery);
       if (!p) {
-        return plain(
-          {
-            text: t('chat.placeNotFound', { q: it.placeQuery }),
-            cards: [],
-            actions: [pickOnMap(text, t), ...examples(next.section, t)],
-          },
-          ctx,
+        return withNotice(
+          plain(
+            {
+              text: t('chat.placeNotFound', { q: it.placeQuery }),
+              cards: [],
+              actions: [pickOnMap(text, t), ...examples(next.section, t)],
+            },
+            ctx,
+          ),
         );
       }
       next.place = { label: text.trim(), lat: p.lat, lng: p.lng };
@@ -238,7 +345,7 @@ export async function answer(
     next.wide = false;
   }
 
-  return run(next, deps, text, it.quality);
+  return withNotice(await run(next, deps, text, it.quality));
 }
 
 export async function refine(
@@ -274,10 +381,49 @@ async function run(
     }
   }
 
+  const facts: Partial<Facts> = {};
   const reply = ctx.section === 'food'
-    ? runFood(ctx, deps, seed, quality, target, where, now)
-    : runPark(ctx, deps, seed, target, where, now);
+    ? runFood(ctx, deps, seed, quality, target, where, now, facts)
+    : runPark(ctx, deps, seed, target, where, now, facts);
+  if (deps.ai && reply.cards.length > 0 && facts.where !== undefined) {
+    await narrate(reply, facts as Facts, quality, deps, deps.ai);
+  }
   return { reply, ctx };
+}
+
+/** Replaces the template text with the AI's sentence when it passes the grounding check. */
+async function narrate(
+  reply: BotMessage,
+  facts: Facts,
+  quality: boolean,
+  deps: AssistantDeps,
+  ai: NonNullable<AssistantDeps['ai']>,
+): Promise<void> {
+  const results = reply.cards.map((c, i) => ({
+    n: i + 1,
+    kind: c.kind,
+    distanceM: Math.round(c.distanceM),
+    parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
+  }));
+  const res = await ai.narrate({ ...facts, results });
+  if (!res.ok) {
+    if (res.reason === 'quota' && ai.quotaNotice()) reply.notice = deps.t('chat.sparkleOut');
+    return;
+  }
+  const allowed = [
+    facts.total,
+    facts.withParking,
+    300,
+    500,
+    ...results.flatMap((r) => (r.parkingM != null ? [r.distanceM, r.parkingM] : [r.distanceM])),
+  ];
+  if (!isGroundedReply(res.value, allowed, reply.cards.length)) return;
+  reply.text =
+    fillPlaceholders(
+      res.value,
+      reply.cards.map((c) => c.name),
+    ) + (quality ? '\n' + deps.t('chat.noRatings') : '');
+  reply.sparkle = true;
 }
 
 function runFood(
@@ -288,6 +434,7 @@ function runFood(
   target: LatLng,
   where: string,
   now: Date,
+  facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
   const items = ctx.cat
@@ -312,6 +459,12 @@ function runFood(
           withPark: withPark.length,
         });
     if (quality) text = t('chat.noRatings') + '\n' + text;
+    Object.assign(facts, {
+      where,
+      what,
+      total: ctx.requireParking ? shown.length : rows.length,
+      withParking: withPark.length,
+    });
     const cards: ChatCard[] = shown.slice(0, MAX_CARDS).map((row) => ({
       kind: 'restaurant',
       id: row.r.id,
@@ -387,6 +540,7 @@ function runPark(
   target: LatLng,
   where: string,
   now: Date,
+  facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
   const radius = ctx.wide ? 5000 : 1500;
@@ -399,6 +553,7 @@ function runPark(
     let text = variant(t, 'chat.parkFound', 2, seed, { where, count: list.length });
     const fresh = list.filter((x) => visibleFree(x.p, now) !== null).length;
     if (fresh > 0) text += ' ' + t('chat.parkFresh', { count: fresh });
+    Object.assign(facts, { where, what: 'otopark', total: list.length, withParking: 0 });
     const cards: ChatCard[] = list.slice(0, MAX_CARDS).map(({ p, d }) => ({
       kind: 'parking',
       id: p.id,
