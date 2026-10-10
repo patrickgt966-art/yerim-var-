@@ -39,7 +39,9 @@ describe('parseQuery', () => {
   });
 
   it('reads a long chatty sentence', () => {
-    const r = search('nasılsın ben mendereste sağlam bir pirzola yemek istiyorum ne diyorsun hocam');
+    const r = search(
+      'nasılsın ben mendereste sağlam bir pirzola yemek istiyorum ne diyorsun hocam',
+    );
     expect(r.cat).toBe('meat');
     expect(r.dish).toBe('pirzola');
     expect(r.district?.name).toBe('Menderes');
@@ -214,7 +216,10 @@ describe('localPart', () => {
   });
 
   it('keeps a greeting with a real search as a search', () => {
-    expect(search('selam bornova köfte')).toMatchObject({ cat: 'meat', district: { name: 'Bornova' } });
+    expect(search('selam bornova köfte')).toMatchObject({
+      cat: 'meat',
+      district: { name: 'Bornova' },
+    });
   });
 
   it('detects off-topic text but not places', () => {
@@ -240,5 +245,119 @@ describe('looksLikePlace', () => {
     expect(looksLikePlace('karşıyaka çarşı')).toBe(true);
     expect(looksLikePlace('galatasaray nasıl kazandı')).toBe(false);
     expect(looksLikePlace('Kemeraltı')).toBe(true);
+  });
+});
+
+describe('district from any place token', () => {
+  it('takes the district out of a longer place part', () => {
+    const r = search('çeşmede balık restoranı');
+    expect(r).toMatchObject({
+      cat: 'fish',
+      district: { name: 'Çeşme' },
+      placeQuery: '',
+      uncertain: false,
+    });
+  });
+
+  it('keeps unknown leftovers and stays uncertain only for them', () => {
+    const r = search('karşıyakada zzqxv köfte');
+    expect(r.district?.name).toBe('Karşıyaka');
+    expect(r.placeQuery).toBe('zzqxv');
+    expect(r.uncertain).toBe(true);
+    expect(search('bornovada köfte').uncertain).toBe(false);
+  });
+
+  it('does not split a full place name', () => {
+    expect(search('Adnan Menderes Havalimanı').district).toBeNull();
+  });
+});
+
+describe('more filler and near-me words', () => {
+  it('drops verbs and generic words around a category', () => {
+    expect(search('karşıyakada balık yiyecem')).toMatchObject({ cat: 'fish', placeQuery: '' });
+    expect(search('urlada kahvaltıcı otoparkı olsun şart')).toMatchObject({
+      cat: 'breakfast',
+      requireParking: true,
+      placeQuery: '',
+    });
+    expect(search('bucada bir şeyler yiyelim').placeQuery).toBe('');
+  });
+
+  it('keeps restoran-like words when nothing says it is about food', () => {
+    expect(search('lokal').placeQuery).toBe('lokal');
+  });
+
+  it.each([
+    'yakınımdaki kahvaltıcı',
+    'buralarda kahvaltıcı',
+    'etrafta kahvaltıcı',
+    'civarda kahvaltıcı',
+    'çevrede kahvaltıcı',
+    'bulunduğum yerde kahvaltıcı',
+  ])('near me: %s', (q) => {
+    expect(search(q)).toMatchObject({ nearMe: true, cat: 'breakfast', placeQuery: '' });
+  });
+
+  it('drops "açık" without a filter', () => {
+    expect(search('açık çorbacı')).toMatchObject({ cat: 'soup', placeQuery: '' });
+  });
+
+  it('matches lahmacun with one typo', () => {
+    expect(search('gaziemirde lahmcun')).toMatchObject({
+      cat: 'fast',
+      district: { name: 'Gaziemir' },
+    });
+  });
+});
+
+describe('negation', () => {
+  it('"X olmasın" is not the category', () => {
+    const r = search('bornovada balık olmasın bi şeyler yiyelim');
+    expect(r).toMatchObject({
+      cat: null,
+      notCat: 'fish',
+      food: true,
+      district: { name: 'Bornova' },
+    });
+  });
+
+  it('"X istemiyorum Y olsun" picks Y', () => {
+    expect(search('karşıyakada kahvaltı istemiyorum çorba olsun')).toMatchObject({
+      cat: 'soup',
+      notCat: 'breakfast',
+    });
+  });
+
+  it('"X değil de Y" picks Y', () => {
+    expect(search('köfte değil de balık yiyelim konakta')).toMatchObject({
+      cat: 'fish',
+      notCat: 'meat',
+      district: { name: 'Konak' },
+    });
+  });
+
+  it('"X istemem" excludes X and still means food', () => {
+    expect(search('tatlı istemem bucada bir şeyler')).toMatchObject({
+      cat: null,
+      notCat: 'dessert',
+      food: true,
+    });
+  });
+
+  it('a subtype ruled out inside the same category excludes nothing', () => {
+    expect(search('alsancakta et yemek istiyorum ama kebap olmasın')).toMatchObject({
+      cat: 'meat',
+      notCat: null,
+    });
+  });
+
+  it('is null without a negation', () => {
+    expect(search('bornovada köfteci').notCat).toBeNull();
+  });
+});
+
+describe('off-topic requests', () => {
+  it('treats a joke request as off-topic', () => {
+    expect(parseQuery('bana bir fıkra anlat').kind).toBe('offtopic');
   });
 });

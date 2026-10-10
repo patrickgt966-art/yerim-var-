@@ -62,6 +62,14 @@ export type NarrateRequest = {
     kind: 'restaurant' | 'parking';
     distanceM: number;
     parkingM: number | null;
+    /** Turkish category label as shown to the user; omitted for car parks. */
+    cat?: string;
+    /** 'unknown' when there are no readable hours. */
+    open?: 'open' | 'closed' | 'unknown';
+    /** Nearest car park is paid (null = unknown). */
+    parkingPaid?: boolean | null;
+    /** Fresh free spaces of the nearest car park; null when not fresh / unknown. */
+    parkingFree?: number | null;
   }[];
 };
 
@@ -78,8 +86,12 @@ export const NARRATE_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulama
 
 Kurallar:
 - Yerlerden SADECE {1}..{5} yer tutucularıyla söz et; isim uydurma.
-- Sadece girdideki sayıları kullan (total, withParking, distanceM, parkingM).
-- Puan, yıldız, lezzet, fiyat, açılış-kapanış saati, boş yer sayısı ya da girdide olmayan hiçbir şeyden söz etme.`;
+- Sadece girdideki sayıları kullan (total, withParking, distanceM, parkingM, parkingFree).
+- Puan, yıldız, lezzet, fiyat, açılış-kapanış saati ya da girdide olmayan hiçbir şeyden söz etme.
+- open, parkingPaid ve parkingFree alanlarını SADECE verildiği gibi kullan. open "unknown" ise açık ya da kapalı deme. parkingFree null ise boş yer sayısından söz etme; parkingPaid null ise ücretli ya da ücretsiz deme.
+- Fiyat, puan ve saat uydurma.
+- Her yer için en fazla bir ya da iki bilgi ver (örneğin kategori, açık mı, otopark ücretli mi, boş yer sayısı).
+- Cevap 1-2 cümle olsun.`;
 
 export function fillPlaceholders(reply: string, names: string[]): string {
   return reply.replace(/\{(\d+)\}/g, (m, n: string) => names[Number(n) - 1] ?? m);
@@ -97,11 +109,18 @@ export const BLOCK = [
   'lezzet',
   'skor',
   'gol',
-  'bos yer',
-  'dolu',
-  'acik',
-  'kapali',
   'saat',
+];
+
+/** Facts that unlock otherwise blocked words (see GATED). */
+export type ReplyFacts = { anyOpen: boolean; anyClosed: boolean; anyFree: boolean };
+
+/** Blocked unless the matching fact is present in the narrate payload. */
+const GATED: { word: string; fact: keyof ReplyFacts }[] = [
+  { word: 'acik', fact: 'anyOpen' },
+  { word: 'kapali', fact: 'anyClosed' },
+  { word: 'bos yer', fact: 'anyFree' },
+  { word: 'dolu', fact: 'anyFree' },
 ];
 
 function fold(s: string): string {
@@ -124,6 +143,7 @@ export function isGroundedReply(
   reply: string,
   allowedNumbers: number[],
   resultCount: number,
+  facts?: ReplyFacts,
 ): boolean {
   if (reply.length > 400) return false;
   for (const m of reply.matchAll(/\{(-?\d+)\}/g)) {
@@ -137,7 +157,8 @@ export function isGroundedReply(
     return false;
   }
   const padded = ` ${fold(reply)}`;
-  return !BLOCK.some((w) => padded.includes(` ${w}`));
+  if (BLOCK.some((w) => padded.includes(` ${w}`))) return false;
+  return !GATED.some((g) => padded.includes(` ${g.word}`) && !facts?.[g.fact]);
 }
 
 /** Today's date (YYYY-MM-DD) in Istanbul (UTC+3, no DST). */

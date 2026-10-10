@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BotBubble, TypingBubble, UserBubble, type ChatMessage } from '@/components/ChatBits';
 import { Icon } from '@/components/Icon';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { Txt } from '@/components/Txt';
 import {
   answer,
   emptyContext,
@@ -76,6 +77,11 @@ export default function ChatScreen() {
     history: [],
   });
   const messagesRef = useRef<ChatMessage[]>([]);
+  const consent = useAi((s) => s.consent);
+  const setConsent = useAi((s) => s.setConsent);
+  // Re-evaluated on every store change, so it follows `used` and `day`.
+  const left = useAi((s) => s.remaining());
+  const aiOn = aiClient !== null && consent === 'yes';
 
   const deps = useMemo<AssistantDeps>(
     () => ({
@@ -89,32 +95,33 @@ export default function ChatScreen() {
       },
       parkings,
       t: (key, opts) => t(key, opts),
-      ai: aiClient
-        ? {
-            understand: async () => {
-              const bound = aiMsgRef.current;
-              const req = {
-                ...bound,
-                deviceId: useAi.getState().deviceId,
-                section: ctxRef.current.section,
-              };
-              return trackAi(await aiClient.understand(req));
-            },
-            narrate: async (rest) => {
-              const bound = aiMsgRef.current;
-              const req = {
-                ...rest,
-                deviceId: useAi.getState().deviceId,
-                messageId: bound.messageId,
-                text: bound.text,
-              };
-              return trackAi(await aiClient.narrate(req));
-            },
-            quotaNotice: () => useAi.getState().noticeOnce(),
-          }
-        : undefined,
+      ai:
+        aiClient && aiOn
+          ? {
+              understand: async () => {
+                const bound = aiMsgRef.current;
+                const req = {
+                  ...bound,
+                  deviceId: useAi.getState().deviceId,
+                  section: ctxRef.current.section,
+                };
+                return trackAi(await aiClient.understand(req));
+              },
+              narrate: async (rest) => {
+                const bound = aiMsgRef.current;
+                const req = {
+                  ...rest,
+                  deviceId: useAi.getState().deviceId,
+                  messageId: bound.messageId,
+                  text: bound.text,
+                };
+                return trackAi(await aiClient.narrate(req));
+              },
+              quotaNotice: () => useAi.getState().noticeOnce(),
+            }
+          : undefined,
     }),
-    [parkings, t, aiClient],
+    [parkings, t, aiClient, aiOn],
   );
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -160,9 +167,7 @@ export default function ChatScreen() {
     AccessibilityInfo.announceForAccessibility(reply.text);
   };
 
-  const reply = async (
-    produce: () => Promise<{ reply: BotMessage; ctx: ChatContext }>,
-  ) => {
+  const reply = async (produce: () => Promise<{ reply: BotMessage; ctx: ChatContext }>) => {
     typingRef.current = true;
     setTyping(true);
     try {
@@ -218,7 +223,29 @@ export default function ChatScreen() {
       style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}
     >
       <View style={{ paddingHorizontal: 20 }}>
-        <ScreenHeader title={t('chat.title')} back />
+        <ScreenHeader
+          title={t('chat.title')}
+          back
+          right={
+            aiOn ? (
+              <View
+                accessible
+                accessibilityLabel={t('chat.a11yAiLeft', { count: left })}
+                style={{
+                  marginLeft: 'auto',
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                  borderRadius: 999,
+                  backgroundColor: c.badgeInfoBg,
+                }}
+              >
+                <Txt variant="caption" color={c.badgeInfoText} accessible={false}>
+                  {left > 0 ? t('chat.aiLeft', { count: left }) : t('chat.aiNone')}
+                </Txt>
+              </View>
+            ) : null
+          }
+        />
       </View>
       <FlatList
         ref={listRef}
@@ -226,6 +253,50 @@ export default function ChatScreen() {
         keyExtractor={(m) => m.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 16, gap: 10 }}
+        ListHeaderComponent={
+          aiClient && consent === 'unknown' ? (
+            <View
+              style={[
+                asym(20, 6),
+                {
+                  padding: 12,
+                  gap: 10,
+                  backgroundColor: c.card,
+                  borderWidth: 1,
+                  borderColor: c.line,
+                },
+              ]}
+            >
+              <Txt variant="bodyBold">{t('chat.aiConsentTitle')}</Txt>
+              <Txt>{t('chat.aiConsentBody')}</Txt>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {(['yes', 'no'] as const).map((v) => (
+                  <Pressable
+                    key={v}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(v === 'yes' ? 'chat.aiConsentYes' : 'chat.aiConsentNo')}
+                    onPress={() => setConsent(v)}
+                    style={({ pressed }) => [
+                      asym(14, 4),
+                      {
+                        minHeight: HIT,
+                        paddingHorizontal: 14,
+                        justifyContent: 'center',
+                        backgroundColor: pressed ? c.surface : c.card,
+                        borderWidth: 1.5,
+                        borderColor: brand.orange,
+                      },
+                    ]}
+                  >
+                    <Txt variant="bodyBold" style={{ fontSize: 14 }}>
+                      {t(v === 'yes' ? 'chat.aiConsentYes' : 'chat.aiConsentNo')}
+                    </Txt>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null
+        }
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: !reduce })}
         renderItem={({ item }) =>
           item.role === 'user' ? (

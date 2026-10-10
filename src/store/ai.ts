@@ -4,6 +4,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { FREE_DAILY, todayIstanbul } from '@/lib/ai/protocol';
 
+export type Consent = 'unknown' | 'yes' | 'no';
+
 type State = {
   /** Quota key only, not personal. */
   deviceId: string;
@@ -12,6 +14,9 @@ type State = {
   used: number;
   /** Last day the "out of quota" notice was shown. */
   noticeDay: string;
+  /** One-time consent to send chat messages to the AI service. */
+  consent: Consent;
+  setConsent: (v: Consent) => void;
   remaining: (now?: Date) => number;
   /** The server is authoritative: store what it says is left. */
   setRemaining: (n: number, now?: Date) => void;
@@ -33,6 +38,8 @@ export const useAi = create<State>()(
       day: '',
       used: 0,
       noticeDay: '',
+      consent: 'unknown',
+      setConsent: (v) => set({ consent: v }),
       remaining: (now) => (get().day === todayIstanbul(now) ? FREE_DAILY - get().used : FREE_DAILY),
       setRemaining: (n, now) =>
         set({
@@ -65,9 +72,16 @@ export const useAi = create<State>()(
           day: str(p.day, ''),
           used,
           noticeDay: str(p.noticeDay, ''),
+          consent: p.consent === 'yes' || p.consent === 'no' ? p.consent : 'unknown',
         };
       },
-      partialize: ({ deviceId, day, used, noticeDay }) => ({ deviceId, day, used, noticeDay }),
+      partialize: ({ deviceId, day, used, noticeDay, consent }) => ({
+        deviceId,
+        day,
+        used,
+        noticeDay,
+        consent,
+      }),
     },
   ),
 );

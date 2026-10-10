@@ -1,25 +1,25 @@
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import {
-  IZMIR_DISTRICTS,
-  parseQuery,
-  typedPlaceText,
-  type QueryIntent,
-} from '@/data/intent';
+import { IZMIR_DISTRICTS, parseQuery, typedPlaceText, type QueryIntent } from '@/data/intent';
 import {
   allRestaurants,
+  categoryOf,
+  cuisineLabels,
   dishStem,
+  matchesCategory,
+  nearestParking,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
   WIDE_RADII_M,
   withParkingWithin,
   type FoodCategory,
+  type RestaurantRow,
 } from '@/data/restaurants';
 import { fold, searchPlaces } from '@/data/search';
 import type { Parking } from '@/data/types';
-import { openState } from '@/lib/openNow';
+import { openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
 import {
   fillPlaceholders,
@@ -35,27 +35,44 @@ export type ChatContext = {
   /** null = near the user. */
   place: ChatPlace | null;
   cat: FoodCategory | null;
+  /** A category the user ruled out ("köfte değil balık"). */
+  notCat: FoodCategory | null;
   dish: string | null;
   section: 'park' | 'food';
   requireParking: boolean;
+  /** Only car parks known to be free ("otopark ücretsiz"). */
+  freeParking: boolean;
   parkM: 300 | 500;
   wide: boolean;
+  /** 'distance' after "daha yakın". */
+  sort: 'parkEase' | 'distance';
 };
 
 export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
   place: null,
   cat: null,
+  notCat: null,
   dish: null,
   section,
   requireParking: false,
+  freeParking: false,
   parkM: 300,
   wide: false,
+  sort: 'parkEase',
 });
 
 export type ChatAction =
   | { kind: 'say'; label: string; text: string }
   | { kind: 'refine'; label: string; patch: Partial<ChatContext> }
   | { kind: 'open'; label: string; pathname: string; params: Record<string, string> };
+
+/** True facts about a restaurant card that only the AI narration uses. */
+export type CardNarr = {
+  cat?: string;
+  open: OpenState;
+  parkingPaid: boolean | null;
+  parkingFree: number | null;
+};
 
 export type ChatCard =
   | {
@@ -66,6 +83,7 @@ export type ChatCard =
       parkingM: number | null;
       open: 'open' | 'closed' | 'unknown';
       unverified?: boolean;
+      narr?: CardNarr;
     }
   | {
       kind: 'parking';
@@ -175,11 +193,90 @@ function intentFromUnderstanding(
   };
 }
 
-export async function answer(
-  text: string,
-  ctx: ChatContext,
-  deps: AssistantDeps,
-): Promise<Result> {
+type SearchIntent = Extract<QueryIntent, { kind: 'search' }>;
+
+/** Rule intent + AI intent: AI fills what the rules left empty; rule-found values stay. */
+function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
+  const cat = rule.cat ?? ai.cat;
+  const food = rule.food || ai.food || cat !== null;
+  const requireParking = rule.requireParking || ai.requireParking;
+  return {
+    ...rule,
+    cat,
+    dish: rule.cat ? rule.dish : ai.dish,
+    district: rule.district ?? ai.district,
+    // The rules' leftover words are the ones they could not place; the AI decides what they meant.
+    placeQuery: ai.placeQuery,
+    requireParking,
+    uncertain: false,
+    food,
+    nearMe: rule.nearMe || ai.nearMe,
+    mentionsParking: rule.mentionsParking || requireParking || (!food && cat === null),
+  };
+}
+
+type FollowUp =
+  | { kind: 'nearer' }
+  | { kind: 'freePark' }
+  | { kind: 'wider' }
+  | { kind: 'elsewhere'; intent: SearchIntent };
+
+const WIDER_WORDS = new Set([
+  'baska',
+  'var',
+  'mi',
+  'mu',
+  'yok',
+  'yer',
+  'yeri',
+  'yerler',
+  'bir',
+  'peki',
+]);
+const LOCATIVE = ['de', 'da', 'te', 'ta'];
+
+/** A short follow-up that refers to the previous search ("daha yakın", "bir de Konak'ta bak"). */
+function detectFollowUp(folded: string, it: QueryIntent): FollowUp | null {
+  const tokens = folded.split(' ').filter(Boolean);
+  if (tokens.length === 0) return null;
+  // A named category or district is a new search, not a follow-up.
+  const sameTarget = it.kind !== 'search' || (!it.cat && !it.district);
+
+  if (sameTarget && /\botopark\w*\s+ucretsiz\b|\bucretsiz\s+(?:otopark|park)\w*/.test(folded)) {
+    return { kind: 'freePark' };
+  }
+  if (sameTarget && /\bdaha yakin\w*/.test(folded)) return { kind: 'nearer' };
+  if (sameTarget && tokens.includes('baska') && tokens.every((t) => WIDER_WORDS.has(t))) {
+    return { kind: 'wider' };
+  }
+
+  // "bir de Bornova'da bak" / "Bornova'da da": the same search somewhere else.
+  let x: string[] = [];
+  if (tokens[0] === 'bir' && tokens[1] === 'de') {
+    const end = tokens.findIndex((tok, i) => i > 2 && tok.startsWith('bak'));
+    if (end > 2) x = tokens.slice(2, end);
+  } else {
+    const last = tokens[tokens.length - 1]!;
+    const before = tokens[tokens.length - 2];
+    if (
+      tokens.length >= 2 &&
+      LOCATIVE.includes(last) &&
+      before !== undefined &&
+      (LOCATIVE.includes(before) || LOCATIVE.some((l) => before.endsWith(l)))
+    ) {
+      x = tokens.slice(0, -1);
+    }
+  }
+  if (x.length > 0) {
+    const xi = parseQuery(x.join(' '));
+    if (xi.kind === 'search' && !xi.cat && !xi.food && (xi.district || xi.placeQuery)) {
+      return { kind: 'elsewhere', intent: xi };
+    }
+  }
+  return null;
+}
+
+export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
   const { t } = deps;
   let it = parseQuery(text);
   let notice: string | undefined;
@@ -191,11 +288,35 @@ export async function answer(
     say(t, 'chat.exKofte'),
   ];
 
+  // Follow-ups only make sense after a previous search.
+  let followUp: FollowUp | null = null;
+  if (ctx.place || ctx.cat || ctx.dish) {
+    followUp = detectFollowUp(fold(text), it);
+    if (followUp?.kind === 'elsewhere') {
+      it = followUp.intent;
+    } else if (followUp) {
+      const f = followUp;
+      const patch: Partial<ChatContext> =
+        f.kind === 'nearer'
+          ? { sort: 'distance' }
+          : f.kind === 'freePark'
+            ? { requireParking: true, freeParking: true }
+            : { wide: true };
+      const res = await run({ ...ctx, ...patch }, deps, text);
+      // The free-parking reply already says what it did; the other two get a short lead-in.
+      const lead =
+        f.kind === 'nearer' ? 'chat.nearest' : ctx.wide ? 'chat.wideAlready' : 'chat.wideNow';
+      if (f.kind !== 'freePark' && res.reply.cards.length > 0) {
+        res.reply.text = `${t(lead)} ${res.reply.text}`;
+      }
+      return withNotice(res);
+    }
+  }
+
   if (
     deps.ai &&
-    (it.kind === 'offtopic' ||
-      it.kind === 'empty' ||
-      (it.kind === 'search' && it.uncertain && !it.cat && !it.food))
+    !followUp &&
+    (it.kind === 'offtopic' || it.kind === 'empty' || (it.kind === 'search' && it.uncertain))
   ) {
     const res = await deps.ai.understand(text);
     if (res.ok) {
@@ -208,7 +329,10 @@ export async function answer(
           ),
         );
       }
-      if (res.value.kind === 'search') it = intentFromUnderstanding(res.value, text);
+      if (res.value.kind === 'search') {
+        const fromAi = intentFromUnderstanding(res.value, text);
+        it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
+      }
     } else if (res.reason === 'quota' && deps.ai.quotaNotice()) {
       notice = t('chat.sparkleOut');
     }
@@ -231,10 +355,7 @@ export async function answer(
     return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'abuse') {
-    return plain(
-      { text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) },
-      ctx,
-    );
+    return plain({ text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'empty') {
     return withNotice(
@@ -259,12 +380,7 @@ export async function answer(
         .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
         .sort((a, b) => a.distanceM - b.distanceM)
         .slice(0, MAX_CARDS);
-      const rows = buildRestaurantRows(
-        nearest,
-        deps.parkings,
-        target,
-        deps.now ?? new Date(),
-      );
+      const rows = buildRestaurantRows(nearest, deps.parkings, target, deps.now ?? new Date());
       const cards: ChatCard[] = rows.map((row) => ({
         kind: 'restaurant',
         id: row.r.id,
@@ -273,6 +389,7 @@ export async function answer(
         parkingM: row.parking?.distanceM ?? null,
         open: 'unknown',
         unverified: !row.r.verified,
+        narr: cardNarr(row, deps, deps.now ?? new Date()),
       }));
       const actions: ChatAction[] = ctx.place
         ? [
@@ -293,8 +410,9 @@ export async function answer(
           where: ctx.place?.label ?? t('chat.nearYou'),
           what: t('chat.noun.all'),
           total: matches.length,
-          withParking: cards.filter((c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300)
-            .length,
+          withParking: cards.filter(
+            (c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300,
+          ).length,
         };
         await narrate(found, facts, false, deps, deps.ai);
       }
@@ -312,6 +430,8 @@ export async function answer(
     next.dish = null;
     next.section = 'food';
   }
+  if (it.notCat) next.notCat = it.notCat;
+  else if (it.cat) next.notCat = null;
   if (it.mentionsParking && (it.cat || it.food)) {
     next.requireParking = true;
   } else if (it.mentionsParking && (it.district || it.placeQuery)) {
@@ -338,8 +458,7 @@ export async function answer(
         const qWords = it.placeQuery.split(' ').filter(Boolean);
         const hasAll = (hay: string) => qWords.every((w) => hay.includes(w));
         const named = allRestaurants().filter(
-          (r) =>
-            hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
+          (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
         );
         if (named.length > 0) {
           const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
@@ -347,12 +466,7 @@ export async function answer(
             .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
             .sort((a, b) => a.distanceM - b.distanceM)
             .slice(0, MAX_CARDS);
-          const rows = buildRestaurantRows(
-            nearest,
-            deps.parkings,
-            target,
-            deps.now ?? new Date(),
-          );
+          const rows = buildRestaurantRows(nearest, deps.parkings, target, deps.now ?? new Date());
           const cards: ChatCard[] = rows.map((row) => ({
             kind: 'restaurant',
             id: row.r.id,
@@ -361,6 +475,7 @@ export async function answer(
             parkingM: row.parking?.distanceM ?? null,
             open: 'unknown',
             unverified: !row.r.verified,
+            narr: cardNarr(row, deps, deps.now ?? new Date()),
           }));
           return withNotice(
             plain(
@@ -430,6 +545,8 @@ export async function answer(
   if (placeChanged || ctx.cat !== next.cat) {
     next.parkM = 300;
     next.wide = false;
+    next.sort = 'parkEase';
+    next.freeParking = false;
   }
 
   return withNotice(await run(next, deps, text, it.quality));
@@ -469,13 +586,31 @@ async function run(
   }
 
   const facts: Partial<Facts> = {};
-  const reply = ctx.section === 'food'
-    ? runFood(ctx, deps, seed, quality, target, where, now, facts)
-    : runPark(ctx, deps, seed, target, where, now, facts);
+  const reply =
+    ctx.section === 'food'
+      ? runFood(ctx, deps, seed, quality, target, where, now, facts)
+      : runPark(ctx, deps, seed, target, where, now, facts);
   if (deps.ai && reply.cards.length > 0 && facts.where !== undefined) {
     await narrate(reply, facts as Facts, quality, deps, deps.ai);
   }
   return { reply, ctx };
+}
+
+/** Card facts for the narration: only what the app itself would show as true. */
+function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date): CardNarr {
+  const r = row.r;
+  const catKey = categoryOf(r);
+  // deps.t is the plain i18n function; cuisineLabels wants i18next's TFunction type.
+  const tf = deps.t as Parameters<typeof cuisineLabels>[1];
+  const label = cuisineLabels(r.cuisines, tf)[0] ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  const near = row.parking ? nearestParking(r, deps.parkings) : null;
+  return {
+    ...(label && label.length <= 20 ? { cat: label } : {}),
+    open: r.openingHours ? openState({ openingHoursText: r.openingHours }, now) : 'unknown',
+    parkingPaid: near?.parking.isPaid ?? null,
+    // row.parking.free is already null unless the reading is fresh (same rules as visibleFree).
+    parkingFree: row.parking?.free ?? null,
+  };
 }
 
 /** Replaces the template text with the AI's sentence when it passes the grounding check. */
@@ -486,12 +621,27 @@ async function narrate(
   deps: AssistantDeps,
   ai: NonNullable<AssistantDeps['ai']>,
 ): Promise<void> {
-  const results = reply.cards.map((c, i) => ({
-    n: i + 1,
-    kind: c.kind,
-    distanceM: Math.round(c.distanceM),
-    parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
-  }));
+  const results: NarrateRequest['results'] = reply.cards.map((c, i) => {
+    const item: NarrateRequest['results'][number] = {
+      n: i + 1,
+      kind: c.kind,
+      distanceM: Math.round(c.distanceM),
+      parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
+    };
+    if (c.kind === 'restaurant') {
+      if (c.narr) {
+        if (c.narr.cat) item.cat = c.narr.cat;
+        item.open = c.narr.open;
+        item.parkingPaid = c.narr.parkingPaid;
+        item.parkingFree = c.narr.parkingFree;
+      }
+    } else {
+      item.open = c.open;
+      item.parkingPaid = deps.parkings.find((p) => p.id === c.id)?.isPaid ?? null;
+      item.parkingFree = c.free;
+    }
+    return item;
+  });
   const res = await ai.narrate({ ...facts, results });
   if (!res.ok) {
     if (res.reason === 'quota' && ai.quotaNotice()) reply.notice = deps.t('chat.sparkleOut');
@@ -506,8 +656,14 @@ async function narrate(
     300,
     500,
     ...results.flatMap((r) => (r.parkingM != null ? [r.distanceM, r.parkingM] : [r.distanceM])),
+    ...results.flatMap((r) => (r.parkingFree != null ? [r.parkingFree] : [])),
   ];
-  if (!isGroundedReply(res.value, allowed, reply.cards.length)) return;
+  const replyFacts = {
+    anyOpen: results.some((r) => r.open === 'open'),
+    anyClosed: results.some((r) => r.open === 'closed'),
+    anyFree: results.some((r) => r.parkingFree != null),
+  };
+  if (!isGroundedReply(res.value, allowed, reply.cards.length, replyFacts)) return;
   reply.text =
     fillPlaceholders(
       res.value,
@@ -548,12 +704,14 @@ function runFood(
   facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
-  const items = ctx.cat
+  const found = ctx.cat
     ? restaurantsInCategory(target, ctx.cat, undefined, ctx.wide ? WIDE_RADII_M : undefined).items
     : restaurantsNear(target, ctx.wide ? 15000 : 1000, 600);
+  const notCat = ctx.notCat;
+  const items = notCat ? found.filter((r) => !matchesCategory(r, notCat)) : found;
   const rows = rankRestaurants(
     buildRestaurantRows(items, deps.parkings, target, now),
-    'parkEase',
+    ctx.sort,
     ctx.cat ?? undefined,
   );
   // Dish-first: rows named after the dish go on top.
@@ -579,12 +737,21 @@ function runFood(
     }
   }
   const withPark = withParkingWithin(ordered, ctx.parkM);
-  const shown = ctx.requireParking ? withPark : ordered;
-  const what = ctx.cat ? t(`chat.noun.${ctx.cat}`) : t('chat.noun.all');
+  const freeOnly = ctx.requireParking && ctx.freeParking;
+  const parked = freeOnly
+    ? withPark.filter((row) => nearestParking(row.r, deps.parkings)?.parking.isPaid === false)
+    : withPark;
+  const shown = ctx.requireParking ? parked : ordered;
+  const noun = ctx.cat ? t(`chat.noun.${ctx.cat}`) : t('chat.noun.all');
+  const what = notCat ? `${noun} (${t('chat.except', { cat: t(`food.cats.${notCat}`) })})` : noun;
 
   if (shown.length > 0) {
     let text = ctx.requireParking
-      ? t('chat.foodFoundPark', { where, count: shown.length, what })
+      ? t(freeOnly ? 'chat.foodFoundFree' : 'chat.foodFoundPark', {
+          where,
+          count: shown.length,
+          what,
+        })
       : variant(t, 'chat.foodFound', 2, seed, {
           where,
           count: rows.length,
@@ -607,6 +774,7 @@ function runFood(
       parkingM: row.parking?.distanceM ?? null,
       open: 'unknown',
       unverified: !row.r.verified,
+      narr: cardNarr(row, deps, now),
     }));
     const actions: ChatAction[] = [];
     if (!ctx.requireParking) {
@@ -642,6 +810,16 @@ function runFood(
       text: t(ctx.cat !== 'breakfast' ? 'chat.exBreakfast' : 'chat.exFish'),
     });
     return { text, cards, actions };
+  }
+
+  if (freeOnly && withPark.length > 0) {
+    const actions: ChatAction[] = [
+      { kind: 'refine', label: t('chat.actDropFree'), patch: { freeParking: false } },
+    ];
+    if (!ctx.wide) {
+      actions.push({ kind: 'refine', label: t('chat.actWider'), patch: { wide: true } });
+    }
+    return { text: t('chat.foodNoFreePark', { where, what }), cards: [], actions };
   }
 
   if (ctx.requireParking && rows.length > 0) {
@@ -681,7 +859,7 @@ function runPark(
   const radius = ctx.wide ? 5000 : 1500;
   const list = deps.parkings
     .map((p) => ({ p, d: distanceMeters(target, p) }))
-    .filter((x) => x.d <= radius)
+    .filter((x) => x.d <= radius && (!ctx.freeParking || x.p.isPaid === false))
     .sort((a, b) => a.d - b.d);
 
   if (list.length > 0) {
@@ -715,8 +893,15 @@ function runPark(
   }
 
   const actions: ChatAction[] = [];
+  if (ctx.freeParking) {
+    actions.push({ kind: 'refine', label: t('chat.actDropFree'), patch: { freeParking: false } });
+  }
   if (!ctx.wide) {
     actions.push({ kind: 'refine', label: t('chat.actWider'), patch: { wide: true } });
   }
-  return { text: t('chat.parkNone', { where }), cards: [], actions };
+  return {
+    text: t(ctx.freeParking ? 'chat.parkNoFree' : 'chat.parkNone', { where }),
+    cards: [],
+    actions,
+  };
 }
