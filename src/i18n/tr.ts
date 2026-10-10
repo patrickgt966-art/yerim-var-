@@ -477,6 +477,10 @@ const tr = {
     dishNamed: 'Adında "{{dish}}" geçen {{count}} yer buldum, onları üste koydum.',
     dishUnknown:
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
+    dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
+    dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
+    reasonNamed: 'Adında {{dish}} geçiyor',
+    reasonLikely: '{{label}}; {{dish}} büyük ihtimalle var',
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',

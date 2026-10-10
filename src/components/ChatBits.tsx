@@ -99,7 +99,7 @@ function CardView({ card }: { card: ChatCard }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${card.name}, ${caption}`}
+      accessibilityLabel={`${card.name}, ${caption}${card.kind === 'restaurant' && card.reason ? ', ' + card.reason : ''}`}
       onPress={open}
       style={({ pressed }) => [
         asym(14, 4),
@@ -120,6 +120,11 @@ function CardView({ card }: { card: ChatCard }) {
       <Txt variant="caption" secondary numberOfLines={2}>
         {caption}
       </Txt>
+      {card.kind === 'restaurant' && card.reason && (
+        <Txt variant="caption" secondary numberOfLines={2}>
+          {card.reason}
+        </Txt>
+      )}
     </Pressable>
   );
 }

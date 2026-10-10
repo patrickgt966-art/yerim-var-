@@ -84,7 +84,7 @@ const ADDRESS = words(
   'dostum dost kardesim kardes kanka kanki abi abla hocam hoca reis birader moruk canim guzelim usta kral kralice baba aga',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim cekti cekiyor gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum',
 );
 // Filler only when the text is about food or names a district; else it may be a place name.
 const COND_FILLER = words('restoran restorani restorant lokal sey seyler acik');
@@ -304,7 +304,11 @@ export function parseQuery(raw: string): QueryIntent {
 
   // 'iyi' counts as quality unless it opens a greeting like "iyi akşamlar".
   const nearMe = all.some((t) => NEAR_ME.has(t)) || all.join(' ').includes('bulundugum yerde');
-  const quality = all.some((t, i) => QUALITY.has(t) && !greetIyi(i));
+  // "en yakın" asks for the nearest, not the best: 'en' is quality only before other words.
+  const quality = all.some(
+    (t, i) =>
+      QUALITY.has(t) && !greetIyi(i) && !(t === 'en' && (all[i + 1] ?? '').startsWith('yakin')),
+  );
   rest = rest.filter((t) => !QUALITY.has(t));
 
   // "kebap olmasın", "köfte değil de balık": the category before the negation is ruled out.

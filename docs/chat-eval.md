@@ -3,8 +3,8 @@
 Date: 2026-10-10
 
 ```
-Chat eval (parseQuery): 42/50
-Rules-only score excluding aiExpected: 37/37
+Chat eval (parseQuery): 48/56
+Rules-only score excluding aiExpected: 43/43
 Per group:
   basic: 10/10
   slang_typo: 8/8
@@ -12,6 +12,7 @@ Per group:
   parking: 6/6
   near_me: 5/5
   vague: 0/6
+  dish: 6/6
   offtopic: 4/4
   greeting_abuse: 3/3
   followup: 1/3

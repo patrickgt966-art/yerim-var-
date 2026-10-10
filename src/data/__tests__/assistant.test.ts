@@ -156,7 +156,9 @@ describe('assistant', () => {
   it('flags an unknown or named dish', async () => {
     const r = await answer('mantıcı', emptyContext('food'), deps);
     expect(
-      r.reply.text.includes('chat.dishUnknown') || r.reply.text.includes('chat.dishNamed'),
+      ['chat.dishUnknown', 'chat.dishNamed', 'chat.dishLikely'].some((k) =>
+        r.reply.text.includes(k),
+      ),
     ).toBe(true);
   });
 
@@ -169,6 +171,97 @@ describe('assistant', () => {
     const r = await answer('bana en yakın tavuk pilavcı bul', emptyContext('park'), deps);
     expect(r.ctx.place).toBeNull();
     expect(r.reply.text).not.toContain('Tavukçukuru');
+  });
+
+  describe('dish search', () => {
+    const reasonOf = (c: { kind: string }) =>
+      c.kind === 'restaurant' ? (c as { reason?: string }).reason : undefined;
+
+    it('shows places that serve a lahmacun, not the whole fast-food category', async () => {
+      const r = await answer('lahmacun yemek istiyorum', emptyContext('food'), deps);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) {
+        expect(c.name).not.toMatch(/popeyes|burger king|mcdonald/i);
+        expect(reasonOf(c)).toBeTruthy();
+      }
+      // Named places come before the likely ones.
+      const reasons = r.reply.cards.map(reasonOf);
+      const firstLikely = reasons.findIndex((x) => x?.startsWith('chat.reasonLikely'));
+      if (firstLikely >= 0) {
+        expect(reasons.slice(firstLikely).some((x) => x?.startsWith('chat.reasonNamed'))).toBe(
+          false,
+        );
+      }
+    });
+
+    it('finds tavuk pilav places for "en yakın", nearest first, near me', async () => {
+      const r = await answer('bana en yakın tavuk pilavcı bul', emptyContext('food'), deps);
+      expect(r.reply.text.startsWith('chat.noRatings')).toBe(false);
+      expect(r.ctx.place).toBeNull();
+      expect(r.ctx.cat).toBe('lokanta');
+      expect(r.ctx.sort).toBe('distance');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      // Distance order; an unverified (Overture) row counts 250 m farther, like the ranking does.
+      const eff = r.reply.cards.map(
+        (c) => c.distanceM + (c.kind === 'restaurant' && c.unverified ? 250 : 0),
+      );
+      expect(eff).toEqual([...eff].sort((a, b) => a - b));
+    });
+
+    it('also finds kebab houses filed under meat for a lahmacun', async () => {
+      // Stand at a verified kebab house and ask nearest-first, so the 5 cards are not decided
+      // by the park-ease order or the unverified-row penalty.
+      const house = allRestaurants().find(
+        (r) =>
+          r.verified &&
+          matchesCategory(r, 'meat') &&
+          !matchesCategory(r, 'fast') &&
+          /(^| )(kebap|ocakbasi)/.test(fold(r.name)),
+      )!;
+      expect(house).toBeDefined();
+      const there: AssistantDeps = {
+        ...deps,
+        here: async () => ({ lat: house.lat, lng: house.lng }),
+      };
+      const r = await answer('en yakın lahmacun yemek istiyorum', emptyContext('food'), there);
+      const card = r.reply.cards.find((c) => c.id === house.id);
+      expect(card).toBeDefined();
+      expect(reasonOf(card!)).toContain('chat.reasonLikely');
+    });
+
+    it('finds döner places filed under fast for an iskender', async () => {
+      const r = await answer('canım iskender çekti', emptyContext('food'), deps);
+      expect(r.ctx.cat).toBe('meat');
+      expect(r.reply.text).not.toContain('chat.dishNotFound');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) expect(reasonOf(c)).toBeTruthy();
+      const fastOnly = r.reply.cards.filter((c) => {
+        const rest = allRestaurants().find((x) => x.id === c.id)!;
+        return matchesCategory(rest, 'fast') && !matchesCategory(rest, 'meat');
+      });
+      expect(fastOnly.length).toBeGreaterThan(0);
+    });
+
+    it('lists only named or likely places for mantı', async () => {
+      const r = await answer('mantı yemek istiyorum', emptyContext('food'), deps);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) expect(reasonOf(c)).toBeTruthy();
+    });
+
+    it('says honestly when no place fits the dish', async () => {
+      const r = await answer('patso yemek istiyorum', emptyContext('food'), deps);
+      expect(r.reply.text).toContain('chat.dishUnknown');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) expect(reasonOf(c)).toBeUndefined();
+    });
+
+    it('widens the search when few places are near', async () => {
+      const far: AssistantDeps = { ...deps, here: async () => ({ lat: 38.3, lng: 26.9 }) };
+      const r = await answer('mantı yemek istiyorum', emptyContext('food'), far);
+      expect(r.reply.text).toContain('chat.dishWider');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) expect(reasonOf(c)).toBeTruthy();
+    });
   });
 
   describe('notCat', () => {
