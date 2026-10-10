@@ -1,125 +1,75 @@
 # Yapılacaklar
 
-Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 → 8.
+Son güncelleme: 11 Ekim 2026.
 
-## Şimdi yapılabilir (Apple hesabı gerekmez)
+## Senden bekleyenler (önce bunlar)
 
-1. Restoran sıralaması:
-   - meyhaneler daha doğru sıralansın
-   - lokanta kalitesi
-   - kokoreç tezgâhları aşağıya inecek
-2. Restoran sayfası:
-   - rezervasyon bilgisi
-   - çalışma saatleri Türkçe
-   - kategori yoksa yedek etiket
-   - eşleşmeyen mutfak türleri
-3. Vejetaryen / diyet etiketleri
-4. Daha sade yazılar
-5. Bozuk isimlerin düzeltilmesi (Kemeraltı gibi)
-6. İzelman otoparklarının kimliği sabit kalsın (favoriler kaybolmasın)
-7. Engelli erişimi bilgisi otopark sayfasında görünsün
-8. Otopark ücret tarifeleri
-9. Daha fazla filtre (kapalı, ücretsiz, 7/24 vb.)
-10. Park et & devam et (İZBAN/metro yanı otoparklar)
-11. İngilizce arayüz
-12. Doğal dille arama ("Alsancak'ta akşam 2 saat")
-13. ROADMAP.md güncellemesi
+1. Bilgisayarda `git stash` + `git pull` (#37–#39 birleşti; yerel kopya güncel olsun).
+2. Sunucuyu güncelle: `server\yerim-ai` klasöründe `npx wrangler deploy` (Haiku'nun yemek bilgisini vermesi için şart; yapıldıysa geç).
+3. Telefonda test: "lahmacun yemek istiyorum", "kuşbaşı", "bana en yakın tavuk pilavcı bul", "çiğ börek", takip soruları ("daha yakını var mı", "otoparkı ücretsiz olsun", "bir de Buca'da bak"), 5. ✨ hakkında "son hakkındı" notu.
+4. (İsteğe bağlı) Haiku sınavı: GitHub → Settings → Secrets → `ANTHROPIC_API_KEY` ekle, sonra Actions → **AI eval** → Run workflow (~3 sent).
+5. Max 5x aboneliğin varsa: claude.ai faturalama ayarlarından Console hesabını bağla (aylık 100$ API kredisi).
+
+## Şimdi yapılabilir (hesap gerekmez)
+
+1. **Sohbet "Listede aç" düğmesi**: liste "hariç" ve "ücretsiz otopark" filtrelerini taşımıyor.
+2. **Dünya mutfağı kategorisi**: sushi, ramen, makarna, steak için ayrı kategori ve sözlük.
+3. **Yemek sözlüğünü büyütmek**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~180 yemek).
+4. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
+5. **İngilizce arayüz.**
+6. **ROADMAP.md güncellemesi.**
+7. Ufak: "pişi" Otopark bölümünde hâlâ gevşek eşleşiyor (Balık Pişiricisi).
+
+## Veri olmadan yapılamayanlar (kaynak lazım)
+
+- Vejetaryen / diyet etiketleri
+- Otopark ücret tarifeleri (sadece 3 tarife var)
+- Engelli erişimi (1.489 otoparkın 11'inde var)
+- Rezervasyon bilgisi (12 restoranda var)
 
 ## Fikirler (yapılacaklar listesiyle birlikte sunulur)
 
-### Tek ekran ana sayfa (taslak hazır)
-- Taslak: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU → "Ana sayfa · Tek sekme (taslak)"
-- "Otopark / Restoran" geçiş düğmesi kalkar; tek arama kutusu: "Yer, yemek ya da otopark yaz" (sohbeti açar)
-- Üstte iki hızlı düğme: "Yakınımda otopark" ve "Yakınımda yemek"
-- Aktif park kartı (sadece park edilmişse), "Canın ne çekiyor?" 8 yemek kategorisi, "Yerim'e sor" örnek cümleleri
-- "Yakınında": otoparklar ve restoranlar aynı listede (otoparkta boş yer, restoranda yanındaki otopark mesafesi)
-- Ev / İş, "İzmir'de popüler" (yer + yemek aramaları karışık), ortada "Yerim!" düğmesi
-- Durum: şimdilik geçiş düğmesi kalıyor (karar: C); kullanıcı onaylarsa ana sayfa bu taslağa göre kurulur
+### Tek ekran ana sayfa (taslak hazır, karar bekliyor)
+- Taslaklar yan yana: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU (A: iki sekme, şu anki · B: tek ekran)
+- B: tek arama kutusu, "Yakınımda otopark / yemek" düğmeleri, otopark ve restoranlar aynı listede.
 
-### Veri doğruluğu (sırada)
-- Foursquare açık verisi (Apache 2.0) ile çapraz kontrol: kapanmış yerleri çıkar, güncel olanları "doğrulanmış" say. Gerekli: Foursquare Places portalına ücretsiz kayıt + erişim anahtarı → GitHub Secrets'a `FSQ_TOKEN` (kullanıcı ekler).
-- Uygulamada "Burası kapanmış mı?" bildirimi (Cloudflare sunucusu üzerinden; birkaç bildirimde yer gizlenir)
-- Apple Haritalar kontrolü (Apple Developer hesabından sonra): Apple Maps Server API ile GitHub Actions'ta toplu kontrol (günde 25.000 sorgu ücretsiz).
-  - Önce denetimdeki 50 yerle dene: Apple kapanmış 13 yerin kaçını bulmuyor, açık 37 yerin kaçını buluyor?
-  - Sonuç iyiyse: Apple'da olan → "Apple Haritalar'da da kayıtlı"; Apple'da olmayan → gizle (açık yer kaybı kabul edilebilir düzeydeyse).
-- Denetim sayfası: https://claude.ai/artifact/JBSBiMWJuDVaMuhfuWrnxo (50 rastgele Overture yeri)
-  - Sonuç (10 Ekim 2026): 37 açık, 5 taşınmış, 8 kapanmış. "Doğrulanmış" sayılanlar da %75 doğru çıktı; bu yüzden tüm Overture yerlerine "Bilgi eski olabilir" etiketi kondu. 13 hatalı yer `data/overture-blocklist.json` ile kalıcı olarak çıkarıldı.
+### Veri doğruluğu
+- **Denetim sonucu (10 Ekim)**: 50 Overture yerinden 37 açık, 5 taşınmış, 8 kapanmış. 13 hatalı yer kara listede; tüm Overture yerlerinde "Bilgi eski olabilir".
+- **"Burası kapanmış mı?" düğmesi**: kullanıcı bildirimleriyle gizleme (Cloudflare sunucusu artık var).
+- **Foursquare çapraz kontrolü**: `FSQ_TOKEN` gerekir.
+- **Apple ile toplu kontrol** (Apple hesabından sonra): önce denetlenen 50 yerle dene.
 
-## Akıllı arama planı
+### Uygulama boyutu
+- Şu an ~15–20 MB indirme, gömülü veri 3,2 MB. Başka şehir eklenirse şehir verisini ilk açılışta indirme düşünülür.
 
-### Faz A: telefonda (şimdi)
-0. Veri kontrolü (uzak ilçelerde restoran/otopark sayısı)
-1. Metin temizleme: selamlaşma, küfür (tam kelime), dolgu, nitelik kelimeleri ("Puan bilgimiz yok")
-2. Türkçe ek çözme (köfteci → köfte, mendereste → Menderes)
-3. İlçe ve semt tanıma (30 ilçe + merkez noktaları)
-4. Kategori kelimelerini genişletme (pirzola, kuzu, antrikot…)
-5. Tek kutuda iki okuma: isim + kategori
-6. "Otopark şart" filtresi (kendi otoparkı veya ≤300 m), boş sonuçta 500 m / yakın ilçe seçenekleri
-7. Olumsuz cümle güvenliği; emin olunamayan cümle "belirsiz" işaretlenir
-8. "Şunu anladım" etiketleri (kaldırılabilir)
-9. Yönlendirme kartı (selam, küfür, anlamsız metin)
-10. Senaryo cümleleri otomatik test
+## Yerim ✨ (Haiku) durumu
 
-### Faz B: Yerim ✨ (Haiku) — son plan
-
-**İki mod**
-- Yerim: kurallarla çalışır, herkese sınırsız, bedava.
-- Yerim ✨: Haiku konuşur. Ücretsiz günde 5 mesaj, abone sınırsız (adil kullanım ~200/gün).
-
-**Mesaj akışı (sırayı kod yönetir, Haiku değil)**
-1. Telefonda ön kontrol: selam/teşekkür → hazır samimi cevap, hak düşmez. Küfür → sakin cevap, hak düşmez.
-2. Telefon cümleyi kurallarla anlamaya çalışır. Anlarsa 3. adım atlanır.
-3. ✨ Anlama çağrısı: Haiku cümleyi çevirir (ilçe, yemek, otopark şartı, Apple için arama metni) veya "konu dışı" der.
-4. Arama telefonda: bizim veri → bulamazsa Apple (yer adına benziyorsa) → bulamazsa (Faz 3) internet araması, "doğrulanmadı" etiketiyle.
-5. ✨ Anlatım çağrısı: Haiku sadece bulunan sonuç listesini görür ve kendi diliyle anlatır.
-6. Hiçbir şey yoksa: "Bulamadım hocam, haritada gösterir misin?" + Haritada işaretle.
-
-**Güvenlik kuralları**
-- Haiku'nun cevabındaki her yer adı sonuç listesinde olmalı; değilse cevap atılır, hazır şablon gösterilir.
-- Puan, fiyat, güncel olay (maç, haber, hava) uydurmaz; boş yer sayısını sadece veri güncelse söyler.
-- Konum gönderilmez; mesafeler telefonda hesaplanır. Mesaj ≤ 200 karakter, geçmişten son 6 mesaj.
-- İnternet yok / hata / hak bitti → sessizce kurallı Yerim'e düşer.
-
-**Hak kuralları**
-- Hak = Haiku'nun cevap verdiği mesaj. Selam, teşekkür, küfür ve hata hak düşürmez.
-- Hak bitince bir kez: "Bugünkü ✨ hakların bitti, yarın yenilenir. Ben yine buradayım!"
-- Sayaç sunucuda, rastgele cihaz numarasıyla; kişisel veri yok, ertesi gün silinir.
-
-**Maliyet:** mesaj başına ~0,0006 $; ücretsiz kullanıcı en fazla ~9 cent/ay.
-
-**Aşamalar**
-- Aşama 0 (şimdi): hitap kelimeleri, Apple'a gitme kuralı, konu dışı kalıpları, stadyum otoparkları, restoran açık/kapalı bilgisi
-- Aşama 1: Apple Developer hesabı → dev build → Apple araması
-- Aşama 2: Anthropic hesabı → Cloudflare aracı → Yerim ✨ + onay ekranı + gizlilik sayfası
-- Aşama 3: internet araması (Apple'ın ne sıklıkla bulamadığı görüldükten sonra karar)
-- Aşama 4: abonelik (Yerim+)
-
-### Faz C: Apple iş yeri araması (Apple Developer hesabından sonra)
-- Veritabanında olmayan dükkânlar + yanındaki otoparklar
+- Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 5 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
+- Haiku ne zaman çağrılır: kuralların anlamadığı kelime kalırsa. Selam, küfür, anlamsız mesaj hak harcamaz.
+- Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları.
+- Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
 
 ## Apple Developer hesabından sonra
 
-14. Dev build (Expo Go yerine)
-15. Apple Haritalar araması (veritabanında olmayan yerler)
-16. Yürüme süreleri
-17. Yapay zekâ özelliği
-18. Widget'lar
-19. App Store'a gönderim
+- Dev build (Expo Go yerine) — Apple araması kodda var, Expo Go'da kapalı
+- Apple Haritalar araması ve toplu doğrulama
+- Yürüme süreleri, widget'lar
+- App Store'a gönderim (onay kartı ve gizlilik metni hazır)
 
 ## Karar bekleyenler
 
-- Ana sayfa: A (iki sekme, şu anki) mı, B (tek ekran) mı? Üçü yan yana: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU (karar sonraya bırakıldı)
-
+- Ana sayfa: A mı B mi?
 - Apple Developer hesabı (yıllık 99$)
-- GitHub Pages'i açmak (gizlilik sayfası için gerekli)
-- Hangi ilçeler öncelikli?
-- Geri bildirim formu olsun mu?
-- Destek e-posta adresi
-- İstanbul verisi araştırılsın mı?
+- GitHub Pages (gizlilik sayfası için)
+- Destek e-posta adresi, geri bildirim formu
+- Başka şehir (İstanbul) araştırılsın mı?
 
-## Tamamlananlar (son)
+## Tamamlananlar (10–11 Ekim)
 
-- Şehir seçimi: şimdilik yalnızca İzmir açık, diğer şehirler "Yakında"
-- "Yakındaki restoranlar" filtresi "Tümü"nün yanına alındı
-- Alt panelin geri düğmesini kapatması düzeltildi
-- Ev/İş silme, adres arama, haritada işaretleme
+- Veri: Overture web sitesi kontrolü ve aylık fark raporu; 13 kapanmış yer kara listede; raylı sistem istasyonları (165); otomatik veri PR'ları için GitHub izni
+- Otopark: İzelman kimlikleri sabit (favoriler kaybolmuyor); Ücretsiz / 7/24 / Raylı sisteme yakın filtreleri
+- Restoran: harita + alt panel (otopark ekranı gibi); otopark ekranında "Yakındaki restoranlar" haritada; sıralama (tezgâhlar aşağı, gerçek meyhane/lokanta önde)
+- İsimler: ~1.000 bozuk ad düzeltildi (büyük/küçük harf, Türkçe harf, reklam metni)
+- Yazılar: ~30 uzun yazı kısaltıldı; gizlilik metni ✨ ile güncel
+- Sohbet: yemeğe göre arama (sözlük + "adında geçiyor / büyük ihtimalle var"), bilinmeyen yemeklerde Haiku ve "yemek mi yer mi?" sorusu, olumsuz cümleler, takip soruları, ana sayfada yazarken titreme düzeltildi
+- Yerim ✨: Cloudflare sunucusu yayında, Anthropic anahtarı sunucuda, daha dolu anlatım (açık/kapalı, ücretsiz otopark, boş yer), güvenlik filtresi
