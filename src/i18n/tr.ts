@@ -39,24 +39,21 @@ const tr = {
     sample: 'Deneme bilgisi',
     noData: 'Boş yer bilgisi yok',
     noDataShort: 'Bilgi yok',
-    sampleBanner:
-      'Deneme bilgisi gösteriliyor, gerçek değil. Belediye verisine şu an ulaşılamıyor.',
-    staticOnlyBanner:
-      'Belediye verisine şu an ulaşılamıyor. Otopark konumları gösteriliyor, boş yer bilgisi yok.',
+    sampleBanner: 'Bu bilgi deneme, gerçek değil. Belediye verisine ulaşılamıyor.',
+    staticOnlyBanner: 'Belediye verisine ulaşılamıyor. Otopark konumları var, boş yer bilgisi yok.',
     offline: 'İnternet yok',
-    offlineBanner:
-      'İnternet yok · Son veri: {{time}} ({{age}} önce). Belediye verisine şu an ulaşılamıyor; eski boş yer sayıları gizlenir.',
+    offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
   },
   onboarding: {
-    tagline: 'Ne yiyeceğini ya da nereye gideceğini söyle, yanındaki park yerini biz bulalım.',
+    tagline: 'Nereye gideceğini ya da ne yiyeceğini söyle. Park yerini biz bulalım.',
     start: 'Başla',
     next: 'Devam',
     howTitle: 'Dürüst veri',
     howBody:
-      'Boş yer sayılarını İzmir Büyükşehir Belediyesi açık verisinden alırız. Ne zaman güncellendiğini her kartta yazarız. Veri eskiyse sayıyı göstermeyiz.',
+      "Boş yer sayıları İzmir Büyükşehir Belediyesi'nden gelir. Her kartta güncelleme zamanı yazar. Veri eskiyse sayıyı göstermeyiz.",
     locTitle: 'Yakınındakileri göster',
     locBody:
-      'Konumunu yalnızca yakındaki restoranları ve otoparkları sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de arama ile kullanabilirsin.',
+      'Konumunu yalnızca yakındaki yerleri sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de aramayı kullanabilirsin.',
     allow: 'Konuma izin ver',
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
@@ -110,7 +107,7 @@ const tr = {
     searchAddress: 'Adres ara',
     pickOnMap: 'Haritada işaretle',
     notFoundTitle: 'Bu yeri bulamadık',
-    notFoundBody: 'Semt ya da sokak adıyla deneyebilir ya da yeri haritada işaretleyebilirsin.',
+    notFoundBody: 'Semt ya da sokak adıyla dene. Ya da yeri haritada işaretle.',
     a11yEdit: '{{label}} adresini düzenle',
     remove: 'Kaldır',
     removeConfirm: '{{label}} kaldırılsın mı?',
@@ -201,8 +198,7 @@ const tr = {
     a11yStripUnknown: 'Boş yer sayısı bilinmiyor',
     a11yPin: '{{name}}, {{free}}',
     parkConfirmTitle: 'Park kaydı başlasın mı?',
-    parkConfirmBody:
-      'Apple Haritalar açılacak. Süre ve tahmini ücret "Aktif park" kartında görünür.',
+    parkConfirmBody: 'Apple Haritalar açılır. "Aktif park" kartında süre ve tahmini ücret görünür.',
     parkConfirmYes: 'Başlat ve yol tarifi al',
     parkConfirmMapsOnly: 'Sadece yol tarifi',
     parkReplaceBody: 'Başlatırsan şu anki parkın ({{name}}) biter ve yenisi başlar.',
@@ -220,10 +216,10 @@ const tr = {
     sourceIzmir: 'İzmir Büyükşehir Belediyesi Açık Veri',
     sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
-      'İzmir Büyükşehir Belediyesi Açık Veri, İzelman otopark envanteri (2022). Bu otopark için anlık doluluk verisi yok.',
-    sourceApple: 'Apple Haritalar. Bu otopark için anlık doluluk verisi yok.',
+      'İzmir Büyükşehir Belediyesi Açık Veri (CC BY 4.0), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
+    sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
-      '© OpenStreetMap katkıcıları (ODbL). Bu otopark için anlık doluluk verisi yok; konum ve bilgiler gönüllülerce girilmiştir.',
+      '© OpenStreetMap katkıcıları (ODbL). Boş yer bilgisi yok. Bilgileri gönüllüler girdi.',
     tariffSource: 'Tarife kaynağı: {{source}}',
     report: 'Yanlış bilgi bildir',
     favoriteAdd: 'Favorilere ekle',
@@ -240,11 +236,10 @@ const tr = {
     notFound: 'Otopark bulunamadı.',
     staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
     staticBodyMunicipal:
-      'Belediye kayıtlarında yer alan resmi bir otopark. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.',
+      'Belediye kayıtlı otopark. Boş yer bilgisi yok. Gitmeden önce yakında bilgisi olan otoparklara da bak.',
     staticBodyApple:
-      "Apple Haritalar'da kayıtlı bir otopark. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.",
-    staticBodyMapped:
-      'Haritada kayıtlı bir otopark; bilgilerini gönüllüler ekledi. Gitmeden önce yakındaki boş yer bilgisi olan otoparklara da göz atabilirsin.',
+      "Apple Haritalar'da kayıtlı otopark. Boş yer bilgisi yok. Gitmeden önce yakında bilgisi olan otoparklara da bak.",
+    staticBodyMapped: 'Boş yer bilgisi yok. Gitmeden önce yakında bilgisi olan otoparklara da bak.',
   },
   favorites: {
     title: 'Favoriler',
@@ -272,17 +267,17 @@ const tr = {
   },
   profile: {
     title: 'Profil',
-    noAccount: 'Hesap gerekmez. Favorilerin ve aktif parkın yalnızca bu cihazda saklanır.',
+    noAccount: 'Hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Doluluk: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL); bu otoparklarda anlık doluluk bilgisi yoktur. Restoran listesi OpenStreetMap ve Overture Maps (CDLA-Permissive-2.0) verilerinden oluşur. Yerim Var resmî bir belediye uygulaması değildir.',
+      'Boş yer sayıları: İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0). Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL). Bu otoparklarda boş yer bilgisi yok. Restoranlar: OpenStreetMap (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Yerim Var resmî bir belediye uygulaması değildir.',
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın yalnızca bu cihazda kalır. Yer, restoran ve otopark aramaları Apple Haritalar üzerinden yapılır; Apple aradığın metni ya da konumunun yaklaşık bölgesini (~100 m) görür. Belediyeye giden tek istek doluluk verisidir.',
+      "Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Arama yaparken yazdığın metin ve yaklaşık bölgen (~100 m) Apple Haritalar'a gider. Belediyeye giden tek istek boş yer bilgisidir.",
     licenses: 'Açık kaynak lisansları',
     licensesBody:
-      'Kod MIT lisanslıdır. Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
+      'Kod: MIT. Yazı tipleri Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
   },
@@ -370,9 +365,9 @@ const tr = {
     walkingRoute: 'Yürüyüş tarifi',
     parkNone: 'Yakında otopark bulamadık. Biraz uzağa park edip yürümen gerekebilir.',
     parkLoading: 'Otoparklar yükleniyor…',
-    footer: 'Veri: © OpenStreetMap katkıcıları. Bilgiler eksik ya da eski olabilir.',
+    footer: 'Veri: © OpenStreetMap katkıcıları (ODbL). Bilgi eksik ya da eski olabilir.',
     footerOverture:
-      'Veri: Overture Maps (CDLA-Permissive-2.0). Bu bilgiler eski olabilir; yer kapanmış ya da taşınmış olabilir.',
+      'Veri: Overture Maps (CDLA-Permissive-2.0). Bilgi eski olabilir. Yer kapanmış ya da taşınmış olabilir.',
     unverified: 'Bilgi eski olabilir',
     a11yUnverified: 'Bu kaydın bilgileri eski olabilir; yer kapanmış ya da taşınmış olabilir',
     kinds: {
@@ -464,30 +459,31 @@ const tr = {
     a11yBot: 'Yerim: {{text}}',
     foundName: '"{{name}}" buldum. Bu isimde {{count}} yer var, en yakını üstte:',
     hello_0: 'Selam! Nereye gidiyorsun ya da ne yemek istersin?',
-    hello_1: 'Merhaba! Bir yer adı ya da "Bornova\'da köfteci" gibi bir cümle yazabilirsin.',
+    hello_1: 'Merhaba! Yer adı ya da "Bornova\'da köfteci" gibi yazabilirsin.',
     hello_2: 'İyiyim, sağ ol! Sen nasılsın, nereye gidiyoruz?',
     hello_3: 'Selam hocam! Park yeri mi, yemek mi?',
     hello_4: 'Hoş geldin! Bugün nereye yolun düşüyor?',
-    offTopic_0: 'Orası benim alanım değil 😄 Ama bir yere gidiyorsan park yeri ya da yemek bulabilirim.',
+    offTopic_0: 'Orası benim işim değil 😄 Ama park yeri ya da yemek bulabilirim.',
     offTopic_1: 'Onu bilemem ama nereye gideceksen yer bulmakta iyiyim. Ne arıyoruz?',
-    calm_0: 'Sana yardım etmek istiyorum. Aradığın yeri ya da yemeği yazman yeterli.',
+    calm_0: 'Sana yardım etmek isterim. Aradığın yeri ya da yemeği yaz.',
     unknown_0: 'Bunu tam anlayamadım. Bir yer adı ya da yemek yazar mısın?',
-    unknown_1: 'Bunu çıkaramadım. "Konak otopark" ya da "yakınımda balıkçı" gibi yazabilirsin.',
+    unknown_1: 'Anlayamadım. "Konak otopark" ya da "yakınımda balıkçı" gibi yazabilirsin.',
     placeNotFound: '"{{q}}" diye bir yer bulamadım. Haritada işaretlemek ister misin?',
     foodFound_0:
-      '{{where}} civarında {{count}} {{what}} buldum, {{withPark}} tanesinin yanında otopark var. Park etmesi en kolay olanları üste koydum:',
+      '{{where}} civarında {{count}} {{what}} var, {{withPark}} tanesinin yanında otopark var. Parkı kolay olanlar üstte:',
     foodFound_1:
-      '{{where}} için {{count}} {{what}} var. {{withPark}} tanesinin 300 m yakınında otopark var:',
+      '{{where}} için {{count}} {{what}} var. {{withPark}} tanesinin 300 m içinde otoparkı var:',
     foodFoundPark: '{{where}} civarında yanında otopark olan {{count}} {{what}} buldum:',
     dishNamed: 'Adında "{{dish}}" geçen {{count}} yer buldum, onları üste koydum.',
-    dishUnknown: '"{{dish}}" yaptığını kesin bildiğim bir yer yok; yakındaki benzer yerleri gösteriyorum.',
+    dishUnknown:
+      '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
-    sparkleOut: 'Bugünkü ✨ hakların bitti, yarın yenilenir. Ben yine buradayım, aramaya devam edebiliriz!',
+    sparkleOut:
+      'Bugünkü ✨ hakların bitti. Yarın yenilenir. Ben buradayım, aramaya devam edebiliriz!',
     sparkle: '✨ Akıllı yardım',
-    foodNoParking:
-      '{{where}} civarında {{what}} var ama yanında otopark olanı bulamadım. Ne yapalım?',
+    foodNoParking: '{{where}} civarında {{what}} var ama otoparkı yakın olan yok. Ne yapalım?',
     foodNone: '{{where}} civarında {{what}} bulamadım. Daha geniş bakayım mı?',
     parkFound_0: '{{where}} civarında {{count}} otopark var. En yakınları:',
     parkFound_1: '{{where}} için {{count}} otopark buldum:',
