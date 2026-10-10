@@ -2,7 +2,7 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 1729, herkese açık: 1576, çiftler ayıklanınca: 1454
+- Ham öğe: 1728, herkese açık: 1576, çiftler ayıklanınca: 1454
 - Adı olan: 52, kapasitesi olan: 41, ücretli işaretli: 72
 - Giriş noktasından türeyen: 22, bina olarak işaretli: 1
 
@@ -20,18 +20,22 @@
 
 - HTTP 200, 6 kayıt
 
+- Overpass alınamadı (yer adları; tüm sunucular ve denemeler).
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
 - Adsız otoparklardan yakın yer adı bulunan: 685.
 - data/parkings-static.json: 1489 otopark.
-- data/places-izmir.json: 3504 yer (arama için).
+- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Overpass alınamadı (yeme-içme; tüm sunucular ve denemeler).
-- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
+- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
+- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
+- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
+- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
+- data/food-izmir.json: 2435 yer.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
@@ -51,8 +55,8 @@
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1110
-- Web sitesi kontrolü: 4099 kontrol edildi, 2269 açık, 1685 açılmıyor, 145 belirsiz
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
+- Web sitesi kontrolü: 4099 kontrol edildi, 2241 açık, 1687 açılmıyor, 171 belirsiz
 - Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
 - data/food-overture-izmir.json: 2.21 MB
