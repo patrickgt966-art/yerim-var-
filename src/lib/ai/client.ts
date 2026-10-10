@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import {
   HISTORY_LIMIT,
   MAX_MESSAGE_CHARS,
-  UnderstandingSchema,
+  UnderstandingClientSchema,
   type NarrateRequest,
   type Understanding,
   type UnderstandRequest,
@@ -18,8 +18,7 @@ export function aiBaseUrl(): string | null {
 }
 
 export type AiResult<T> =
-  | { ok: true; value: T; remaining: number }
-  | { ok: false; reason: 'off' | 'quota' | 'error' };
+  { ok: true; value: T; remaining: number } | { ok: false; reason: 'off' | 'quota' | 'error' };
 
 const fail = (reason: 'quota' | 'error'): { ok: false; reason: 'quota' | 'error' } => ({
   ok: false,
@@ -59,7 +58,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       });
       if (data === 'quota' || data === 'error') return fail(data);
       const body = data as { understanding?: unknown; remaining?: unknown } | null;
-      const parsed = UnderstandingSchema.safeParse(body?.understanding);
+      const parsed = UnderstandingClientSchema.safeParse(body?.understanding);
       if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
       return { ok: true, value: parsed.data, remaining: body.remaining };
     },

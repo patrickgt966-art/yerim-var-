@@ -339,3 +339,41 @@ export function likelyServes(p: DishProfile, foldedName: string, cuisines: strin
   const want = p.cuisines.map(normCuisine);
   return cuisines.some((c) => want.includes(normCuisine(c)));
 }
+
+/** Folded words that name a kind of place, not a dish (never a dish stem or a `serves` word). */
+export const GENERIC_DISH_STEMS = new Set([
+  'et',
+  'balik',
+  'kahvalti',
+  'corba',
+  'lokanta',
+  'kafe',
+  'meyhane',
+  'tatli',
+  'restoran',
+  'cafe',
+  'kahve',
+  'coffee',
+  'balikci',
+  'fast food',
+  'hizli yemek',
+  'ev yemegi',
+  'esnaf lokantasi',
+  'kahvalti salonu',
+  'bar',
+  'pub',
+  'meat',
+  'grill',
+  'fish',
+  'soup',
+  'seafood',
+  'breakfast',
+  'brunch',
+  'dessert',
+  'pastane',
+  'kahvehane',
+  'cay bahcesi',
+  'deniz urunleri',
+  'yemek',
+  'mutfak',
+]);
