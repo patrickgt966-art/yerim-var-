@@ -19,11 +19,13 @@ import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
+import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
 import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
+import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/restaurants';
 import { promoteFree, useRanked, type RankedParking } from '@/data/useParkings';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { disabledInfo } from '@/lib/disabledSpots';
@@ -31,9 +33,10 @@ import { currentLocation } from '@/lib/location';
 import { isClosedNow } from '@/lib/openNow';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
+import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
-type Filter = 'all' | 'indoor' | 'nearPier' | 'disabled';
+type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled';
 type Notice = 'outside' | 'failed' | 'denied';
 
 const LOCATION_TIMEOUT_MS = 6000;
@@ -67,6 +70,7 @@ export default function ResultsScreen() {
   );
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(initial.outside ? 'outside' : null);
 
   // "Hemen bul" / locate: resolve the user's position, falling back to the city centre.
@@ -118,6 +122,23 @@ export default function ResultsScreen() {
     }
     return list;
   }, [ranked, filter, nearMode, selectedId]);
+  const foodRows = useMemo<RestaurantRow[]>(() => {
+    if (filter !== 'food' || !target) return [];
+    let list = rankRestaurants(
+      buildRestaurantRows(
+        restaurantsNear(target, 1000, 600),
+        data?.parkings ?? [],
+        target,
+        new Date(),
+      ),
+      isPlaceholderData ? 'distance' : 'parkEase',
+    ).slice(0, 60);
+    if (selectedRestaurantId) {
+      const i = list.findIndex((x) => x.r.id === selectedRestaurantId);
+      if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
+    }
+    return list;
+  }, [filter, target, data, isPlaceholderData, selectedRestaurantId]);
   // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
   const nearestId = useMemo(() => {
     let best: RankedParking | null = null;
@@ -173,13 +194,12 @@ export default function ResultsScreen() {
       {target && (
         <Chip
           label={t('food.nearby')}
-          selected={false}
-          onPress={() =>
-            router.push({
-              pathname: '/restoranlar',
-              params: { lat: String(target.lat), lng: String(target.lng), label },
-            })
-          }
+          selected={filter === 'food'}
+          onPress={() => {
+            setFilter(filter === 'food' ? 'all' : 'food');
+            setSelectedId(null);
+            setSelectedRestaurantId(null);
+          }}
         />
       )}
       {anyIndoorKnown && (
@@ -211,9 +231,11 @@ export default function ResultsScreen() {
     <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
       <View>
         <Txt variant="title" accessibilityRole="header">
-          {totalFree == null
-            ? t('results.summaryUnknown', { count: filtered.length })
-            : t('results.summary', { count: filtered.length, free: totalFree })}
+          {filter === 'food'
+            ? t('results.foodSummary', { count: foodRows.length })
+            : totalFree == null
+              ? t('results.summaryUnknown', { count: filtered.length })
+              : t('results.summary', { count: filtered.length, free: totalFree })}
         </Txt>
         {!!label && (
           <Txt variant="caption" secondary>
@@ -283,6 +305,10 @@ export default function ResultsScreen() {
             targetLabel={label}
             selectedId={selectedId}
             onSelect={(p) => setSelectedId(p.id)}
+            restaurants={filter === 'food' ? foodRows.map((x) => x.r) : undefined}
+            selectedRestaurantId={selectedRestaurantId}
+            onSelectRestaurant={(r) => setSelectedRestaurantId(r.id)}
+            quietParkings={filter === 'food'}
             bottomInset={260}
           />
         </View>
@@ -305,46 +331,92 @@ export default function ResultsScreen() {
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
         accessibilityLabel={t('results.a11yList')}
       >
-        <BottomSheetFlatList
-          data={filtered}
-          keyExtractor={(p: RankedParking) => p.id}
-          ListHeaderComponent={header}
-          refreshing={pulling}
-          onRefresh={onPullRefresh}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          renderItem={({ item, index }: { item: RankedParking; index: number }) => (
-            <View style={{ paddingHorizontal: 20 }}>
-              <ParkingCard
-                parking={item}
-                featured={index === 0}
-                nearest={item.id === nearestId && !selectedId}
-                freeTag={
-                  index === 0 &&
-                  !selectedId &&
-                  item.id !== nearestId &&
-                  (visibleFree(item) ?? 0) > 0
-                }
-                onParkHere={() => parkHere(item)}
-                onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: item.id } })}
-              />
-            </View>
-          )}
-          ListEmptyComponent={
-            <View style={{ padding: 20, gap: 12 }}>
-              {isLoading || isPlaceholderData || !target ? (
-                <Txt secondary>{t('results.loading')}</Txt>
-              ) : isError ? (
-                <>
-                  <Txt secondary>{t('results.error')}</Txt>
-                  <Button label={t('common.retry')} onPress={() => void refetch()} />
-                </>
-              ) : (
-                <Txt secondary>{t('results.empty')}</Txt>
-              )}
-            </View>
-          }
-        />
+        {filter === 'food' ? (
+          <BottomSheetFlatList
+            data={foodRows}
+            keyExtractor={(x: RestaurantRow) => x.r.id}
+            ListHeaderComponent={header}
+            refreshing={pulling}
+            onRefresh={onPullRefresh}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            renderItem={({ item, index }: { item: RestaurantRow; index: number }) => (
+              <View style={{ paddingHorizontal: 20 }}>
+                <RestaurantRowCard
+                  row={item}
+                  target={target}
+                  best={index === 0 && !selectedRestaurantId && isBest(item.parking)}
+                  widened={false}
+                  parkPending={isPlaceholderData}
+                />
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={{ padding: 20 }}>
+                <Txt secondary>{t('food.empty')}</Txt>
+              </View>
+            }
+            ListFooterComponent={
+              target && foodRows.length > 0 ? (
+                <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+                  <Button
+                    kind="secondary"
+                    label={t('results.foodFullList')}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/restoranlar',
+                        params: { lat: String(target.lat), lng: String(target.lng), label },
+                      })
+                    }
+                  />
+                </View>
+              ) : null
+            }
+          />
+        ) : (
+          <BottomSheetFlatList
+            data={filtered}
+            keyExtractor={(p: RankedParking) => p.id}
+            ListHeaderComponent={header}
+            refreshing={pulling}
+            onRefresh={onPullRefresh}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            renderItem={({ item, index }: { item: RankedParking; index: number }) => (
+              <View style={{ paddingHorizontal: 20 }}>
+                <ParkingCard
+                  parking={item}
+                  featured={index === 0}
+                  nearest={item.id === nearestId && !selectedId}
+                  freeTag={
+                    index === 0 &&
+                    !selectedId &&
+                    item.id !== nearestId &&
+                    (visibleFree(item) ?? 0) > 0
+                  }
+                  onParkHere={() => parkHere(item)}
+                  onDetail={() =>
+                    router.push({ pathname: '/otopark/[id]', params: { id: item.id } })
+                  }
+                />
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={{ padding: 20, gap: 12 }}>
+                {isLoading || isPlaceholderData || !target ? (
+                  <Txt secondary>{t('results.loading')}</Txt>
+                ) : isError ? (
+                  <>
+                    <Txt secondary>{t('results.error')}</Txt>
+                    <Button label={t('common.retry')} onPress={() => void refetch()} />
+                  </>
+                ) : (
+                  <Txt secondary>{t('results.empty')}</Txt>
+                )}
+              </View>
+            }
+          />
+        )}
       </BottomSheet>
 
       {/* Top bar: after the sheet so it always stays on top and reachable. */}
