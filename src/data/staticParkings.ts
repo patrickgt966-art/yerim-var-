@@ -2,6 +2,7 @@ import { t } from 'i18next';
 
 import raw from '../../data/parkings-static.json';
 import { gridIndex, near } from './geo';
+import { cleanName } from './names';
 import type { Parking, StaticSource } from './types';
 
 /**
@@ -39,7 +40,7 @@ export const DUPLICATE_RADIUS_M = 80;
 
 /** OSM sometimes stores the word itself as the name; that is no name. */
 function ownName(r: StaticRecord): string | null {
-  const n = r.name?.trim();
+  const n = r.name ? cleanName(r.name) : '';
   return n && n.toLocaleLowerCase('tr') !== 'otopark' ? n : null;
 }
 
@@ -47,7 +48,7 @@ function displayName(r: StaticRecord): string {
   const own = ownName(r);
   if (own) return own;
   if (r.operator) return t('parking.operatorParking', { operator: r.operator });
-  if (r.near) return t('parking.nearby', { place: r.near });
+  if (r.near) return t('parking.nearby', { place: cleanName(r.near) });
   return t('parking.unnamed');
 }
 

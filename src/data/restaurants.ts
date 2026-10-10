@@ -4,6 +4,7 @@ import raw from '../../data/food-izmir.json';
 import overtureRaw from '../../data/food-overture-izmir.json';
 import { getFreshness } from './freshness';
 import { distanceMeters, type LatLng } from './geo';
+import { cleanName } from './names';
 import { fold } from './search';
 import type { Parking } from './types';
 
@@ -73,7 +74,7 @@ export function toRestaurant(r: FoodRecord): Restaurant {
   const source = r.id.startsWith('ov-') ? 'overture' : 'osm';
   return {
     id: r.id,
-    name: r.n,
+    name: cleanName(r.n),
     lat: r.a,
     lng: r.o,
     kind: r.k,
