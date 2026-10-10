@@ -108,6 +108,8 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 
 ## Karar bekleyenler
 
+- Ana sayfa: A (iki sekme, şu anki) mı, B (tek ekran) mı? Üçü yan yana: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU (karar sonraya bırakıldı)
+
 - Apple Developer hesabı (yıllık 99$)
 - GitHub Pages'i açmak (gizlilik sayfası için gerekli)
 - Hangi ilçeler öncelikli?
