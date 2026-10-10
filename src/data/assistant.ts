@@ -199,10 +199,13 @@ export async function answer(
   ) {
     const res = await deps.ai.understand(text);
     if (res.ok) {
+      if (res.remaining === 0 && deps.ai.quotaNotice()) notice = t('chat.sparkleLast');
       if (res.value.kind === 'offtopic') {
-        return plain(
-          { text: res.value.reply, cards: [], actions: offTopicActions(), sparkle: true },
-          ctx,
+        return withNotice(
+          plain(
+            { text: res.value.reply, cards: [], actions: offTopicActions(), sparkle: true },
+            ctx,
+          ),
         );
       }
       if (res.value.kind === 'search') it = intentFromUnderstanding(res.value, text);
@@ -493,6 +496,9 @@ async function narrate(
   if (!res.ok) {
     if (res.reason === 'quota' && ai.quotaNotice()) reply.notice = deps.t('chat.sparkleOut');
     return;
+  }
+  if (res.remaining === 0 && !reply.notice && ai.quotaNotice()) {
+    reply.notice = deps.t('chat.sparkleLast');
   }
   const allowed = [
     facts.total,

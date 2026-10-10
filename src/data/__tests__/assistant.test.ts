@@ -234,6 +234,60 @@ describe('assistant', () => {
       expect(second.reply.notice).toBeUndefined();
     });
 
+    it('notes the last ✨ on the reply that used it', async () => {
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({
+          narrate: async () => ({ ok: true, value: 'Tabi hocam! {1} burada.', remaining: 0 }),
+          quotaNotice: () => true,
+        }),
+      );
+      expect(r.reply.notice).toBe('chat.sparkleLast');
+    });
+
+    it('notes the last ✨ even when the narration is not grounded', async () => {
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({
+          narrate: async () => ({ ok: true, value: 'Puanı 4.8!', remaining: 0 }),
+          quotaNotice: () => true,
+        }),
+      );
+      expect(r.reply.text).toContain('chat.foodFound_');
+      expect(r.reply.notice).toBe('chat.sparkleLast');
+    });
+
+    it('has no last-✨ note while quota remains', async () => {
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({
+          narrate: async () => ({ ok: true, value: 'Tabi hocam! {1} burada.', remaining: 1 }),
+          quotaNotice: () => true,
+        }),
+      );
+      expect(r.reply.notice).toBeUndefined();
+    });
+
+    it('notes the last ✨ on an off-topic AI reply', async () => {
+      const r = await answer(
+        'galatasaray nasıl kazandı',
+        emptyContext('park'),
+        aiDeps({
+          understand: async () => ({
+            ok: true,
+            value: { kind: 'offtopic', reply: 'Maçı izleyemedim 😄' },
+            remaining: 0,
+          }),
+          quotaNotice: () => true,
+        }),
+      );
+      expect(r.reply.text).toBe('Maçı izleyemedim 😄');
+      expect(r.reply.notice).toBe('chat.sparkleLast');
+    });
+
     it('never calls the AI for a greeting', async () => {
       const boom = async () => {
         throw new Error('ai must not be called');
