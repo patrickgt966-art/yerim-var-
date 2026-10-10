@@ -1,0 +1,34 @@
+name: AI eval
+
+# Manual only: calls the Anthropic API (costs tokens).
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The Worker's pinned Anthropic SDK (0.133.0) and zod; scripts/ai-eval.ts imports them from here.
+      - run: npm ci --prefix server/yerim-ai
+      - name: Run AI eval
+        run: npx --yes tsx@4.23.15 scripts/ai-eval.ts
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Publish summary
+        if: always()
+        run: '[ -f docs/chat-eval-ai.md ] && cat docs/chat-eval-ai.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chat-eval-ai
+          path: docs/chat-eval-ai.md
+          if-no-files-found: ignore

@@ -8,5 +8,5 @@
     "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["server"]
+  "exclude": ["server", "scripts/ai-eval.ts"]
 }

@@ -2,7 +2,7 @@ import '@/i18n';
 
 import { answer, emptyContext, refine, type AssistantDeps } from '../assistant';
 import { visibleFree } from '../freshness';
-import { allRestaurants } from '../restaurants';
+import { allRestaurants, matchesCategory } from '../restaurants';
 import { fold } from '../search';
 import { staticParkings } from '../staticParkings';
 import type { Parking } from '../types';
@@ -169,6 +169,146 @@ describe('assistant', () => {
     const r = await answer('bana en yakın tavuk pilavcı bul', emptyContext('park'), deps);
     expect(r.ctx.place).toBeNull();
     expect(r.reply.text).not.toContain('Tavukçukuru');
+  });
+
+  describe('notCat', () => {
+    it('drops places of the ruled-out category', async () => {
+      const r = await answer('köfte değil balık', emptyContext('food'), deps);
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.ctx.notCat).toBe('meat');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) {
+        const rest = allRestaurants().find((x) => x.id === c.id)!;
+        expect(matchesCategory(rest, 'meat')).toBe(false);
+      }
+      expect(r.reply.text).toContain('chat.except');
+    });
+
+    it('searches general food minus the category when no category is named', async () => {
+      const r = await answer('bornovada balık olmasın', emptyContext('food'), deps);
+      expect(r.ctx.cat).toBeNull();
+      expect(r.ctx.notCat).toBe('fish');
+      expect(r.ctx.section).toBe('food');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) {
+        const rest = allRestaurants().find((x) => x.id === c.id)!;
+        expect(matchesCategory(rest, 'fish')).toBe(false);
+      }
+    });
+
+    it('keeps notCat across a follow-up and drops it when a new category is named', async () => {
+      const c1 = await answer('bornovada balık olmasın', emptyContext('food'), deps);
+      const c2 = await answer('başka var mı', c1.ctx, deps);
+      expect(c2.ctx.notCat).toBe('fish');
+      const c3 = await answer('peki balık?', c2.ctx, deps);
+      expect(c3.ctx.cat).toBe('fish');
+      expect(c3.ctx.notCat).toBeNull();
+    });
+  });
+
+  describe('follow-ups with a previous search', () => {
+    const prior = () => answer('bornovadaki balıkçılar', emptyContext('food'), deps);
+
+    it('"daha yakın" sorts the same search by distance and says so', async () => {
+      const c1 = await prior();
+      const r = await answer('daha yakın olsun', c1.ctx, deps);
+      expect(r.ctx.sort).toBe('distance');
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.ctx.place?.label).toBe('Bornova');
+      expect(r.reply.text.startsWith('chat.nearest')).toBe(true);
+      const d = r.reply.cards.map((c) => c.distanceM);
+      expect(d.length).toBeGreaterThan(1);
+      expect(d).toEqual([...d].sort((a, b) => a - b));
+    });
+
+    it('does nothing special for "daha yakın" without a previous search', async () => {
+      const r = await answer('daha yakın', emptyContext('food'), deps);
+      expect(r.ctx.sort).toBe('parkEase');
+    });
+
+    it('"otopark ücretsiz" keeps only places whose nearest car park is free', async () => {
+      const c1 = await prior();
+      const first = allRestaurants().find((x) => x.id === c1.reply.cards[0]!.id)!;
+      const free: Parking = {
+        id: 'free-1',
+        name: 'Free',
+        lat: first.lat,
+        lng: first.lng,
+        capacity: 50,
+        free: null,
+        isIndoor: null,
+        isOpen: true,
+        isPaid: false,
+        nonstop: null,
+        openingHours: null,
+        address: null,
+        source: 'izmir-open-data',
+        updatedAt: null,
+        fetchedAt: new Date().toISOString(),
+        occupancyKind: 'estimated',
+      };
+      const withFree: AssistantDeps = { ...deps, parkings: [...parkings, free] };
+      const r = await answer('otoparkı ücretsiz olsun', c1.ctx, withFree);
+      expect(r.ctx.requireParking).toBe(true);
+      expect(r.ctx.freeParking).toBe(true);
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.reply.text.startsWith('chat.foodFoundFree')).toBe(true);
+      expect(r.reply.cards.map((c) => c.id)).toContain(first.id);
+      for (const c of r.reply.cards) {
+        const rest = allRestaurants().find((x) => x.id === c.id)!;
+        const near = withFree.parkings
+          .map((p) => ({ p, d: Math.hypot(p.lat - rest.lat, p.lng - rest.lng) }))
+          .sort((a, b) => a.d - b.d)[0]!;
+        expect(near.p.isPaid).toBe(false);
+      }
+    });
+
+    it('says so and offers to drop the condition when no free car park is near', async () => {
+      const c1 = await prior();
+      const allPaid: AssistantDeps = {
+        ...deps,
+        parkings: parkings.map((p) => ({ ...p, isPaid: true })),
+      };
+      const r = await answer('ücretsiz otopark', c1.ctx, allPaid);
+      expect(r.reply.cards).toEqual([]);
+      expect(r.reply.text.startsWith('chat.foodNoFreePark')).toBe(true);
+      expect(
+        r.reply.actions.some(
+          (a) =>
+            a.kind === 'refine' && (a.patch as { freeParking?: boolean }).freeParking === false,
+        ),
+      ).toBe(true);
+    });
+
+    it('"bir de X\'de bak" keeps the search and changes the place', async () => {
+      const c1 = await answer('bornovada balık otoparklı', emptyContext('food'), deps);
+      expect(c1.ctx.requireParking).toBe(true);
+      const r = await answer("bir de Karşıyaka'da bak", c1.ctx, deps);
+      expect(r.ctx.place?.label).toBe('Karşıyaka');
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.ctx.requireParking).toBe(true);
+      expect(r.ctx.section).toBe('food');
+    });
+
+    it('"X\'de de" keeps the search and changes the place', async () => {
+      const c1 = await prior();
+      const r = await answer("Konak'ta da", c1.ctx, deps);
+      expect(r.ctx.place?.label).toBe('Konak');
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.reply.cards.every((c) => c.kind === 'restaurant')).toBe(true);
+    });
+
+    it('"başka var mı" widens the same search', async () => {
+      const c1 = await prior();
+      expect(c1.ctx.wide).toBe(false);
+      const r = await answer('başka var mı', c1.ctx, deps);
+      expect(r.ctx.wide).toBe(true);
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.ctx.place?.label).toBe('Bornova');
+      expect(r.reply.text.startsWith('chat.wideNow')).toBe(true);
+      const again = await answer('başka', r.ctx, deps);
+      expect(again.reply.text.startsWith('chat.wideAlready')).toBe(true);
+    });
   });
 
   describe('with the AI layer', () => {
@@ -348,6 +488,88 @@ describe('assistant', () => {
       );
       expect(r.reply.text).toBe('Maçı izleyemedim 😄');
       expect(r.reply.notice).toBe('chat.sparkleLast');
+    });
+
+    it('asks the AI about leftover unknown words and merges its answer', async () => {
+      let calls = 0;
+      const r = await answer(
+        'akşam romantik bir yer',
+        emptyContext('park'),
+        aiDeps({
+          understand: async () => {
+            calls++;
+            return {
+              ok: true,
+              value: {
+                kind: 'search',
+                district: 'Alsancak',
+                cat: 'fish',
+                dish: null,
+                place: 'Alsancak',
+                food: true,
+                requireParking: false,
+                appleQuery: null,
+              },
+              remaining: 4,
+            };
+          },
+        }),
+      );
+      expect(calls).toBe(1);
+      expect(r.ctx.cat).toBe('fish');
+      expect(r.ctx.section).toBe('food');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    });
+
+    it('keeps the rule-found district and category when the AI disagrees', async () => {
+      const r = await answer(
+        'bornovada romantik köfteci',
+        emptyContext('food'),
+        aiDeps({
+          understand: async () => ({
+            ok: true,
+            value: {
+              kind: 'search',
+              district: 'Konak',
+              cat: 'fish',
+              dish: null,
+              place: null,
+              food: true,
+              requireParking: true,
+              appleQuery: null,
+            },
+            remaining: 4,
+          }),
+        }),
+      );
+      expect(r.ctx.place?.label).toBe('Bornova');
+      expect(r.ctx.cat).toBe('meat');
+      expect(r.ctx.requireParking).toBe(true);
+    });
+
+    it('does not call the AI when the rules understood everything', async () => {
+      const boom = async () => {
+        throw new Error('ai must not be called');
+      };
+      const r = await answer(
+        'bornovada köfteci',
+        emptyContext('food'),
+        aiDeps({ understand: boom }),
+      );
+      expect(r.ctx.cat).toBe('meat');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    });
+
+    it('does not call the AI for a follow-up a rule handled', async () => {
+      const boom = async () => {
+        throw new Error('ai must not be called');
+      };
+      const c1 = await answer('bornovadaki balıkçılar', emptyContext('food'), deps);
+      const d = aiDeps({ understand: boom });
+      const r = await answer('daha yakın', c1.ctx, d);
+      expect(r.ctx.sort).toBe('distance');
+      const r2 = await answer('başka var mı', c1.ctx, d);
+      expect(r2.ctx.wide).toBe(true);
     });
 
     it('never calls the AI for a greeting', async () => {
