@@ -174,6 +174,8 @@ const tr = {
     locationFailed: 'Konumun alınamadı; İzmir merkezini gösteriyoruz.',
     locationPermission: 'Konum izni',
     summary: '{{count}} otopark · {{free}} boş yer',
+    foodSummary: '{{count}} restoran · parkı en kolay olan üstte',
+    foodFullList: 'Kategorilere göre ara',
     summaryUnknown: '{{count}} otopark',
     subtitle: '{{place}} yürüme mesafesine göre',
     all: 'Tümü',
