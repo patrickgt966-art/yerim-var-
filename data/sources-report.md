@@ -20,14 +20,14 @@
 
 - HTTP 200, 6 kayıt
 
-- Overpass alınamadı (yer adları; tüm sunucular ve denemeler).
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
 - Adsız otoparklardan yakın yer adı bulunan: 685.
 - data/parkings-static.json: 1489 otopark.
-- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.
+- data/places-izmir.json: 3504 yer (arama için).
+- data/rail-izmir.json: 165 istasyon.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
@@ -56,7 +56,7 @@
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
 - Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
-- Web sitesi kontrolü: 4099 kontrol edildi, 2241 açık, 1687 açılmıyor, 171 belirsiz
+- Web sitesi kontrolü: 4099 kontrol edildi, 2245 açık, 1689 açılmıyor, 165 belirsiz
 - Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
 - data/food-overture-izmir.json: 2.21 MB
