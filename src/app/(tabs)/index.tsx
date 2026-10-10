@@ -232,7 +232,7 @@ export default function SearchScreen() {
   // "Bornova balık" searches the place part only; the category word is applied on submit.
   const { hits, settled, deferredQuery } = usePlaceSearch(query, localPart);
   const intent = useMemo(() => parseQuery(deferredQuery), [deferredQuery]);
-  const guide = query.trim().length >= 2 && settled && intent.kind !== 'search' ? intent.kind : null;
+  const guide = deferredQuery.trim().length >= 2 && intent.kind !== 'search' ? intent.kind : null;
   const split = useMemo(
     () => (food ? splitPlaceAndCategory(deferredQuery) : null),
     [food, deferredQuery],
@@ -285,8 +285,7 @@ export default function SearchScreen() {
         })
       : null;
   const showMapRow =
-    query.trim().length >= 3 &&
-    settled &&
+    deferredQuery.trim().length >= 3 &&
     hits.length === 0 &&
     foodMatches.length === 0 &&
     !(intent.kind === 'search' && intent.cat) &&
