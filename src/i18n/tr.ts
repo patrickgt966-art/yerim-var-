@@ -482,6 +482,7 @@ const tr = {
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
     sparkleOut:
       'Bugünkü ✨ hakların bitti. Yarın yenilenir. Ben buradayım, aramaya devam edebiliriz!',
+    sparkleLast: 'Bu, bugünkü son ✨ hakkındı. Yarın yenilenir; ben yine buradayım.',
     sparkle: '✨ Akıllı yardım',
     foodNoParking: '{{where}} civarında {{what}} var ama otoparkı yakın olan yok. Ne yapalım?',
     foodNone: '{{where}} civarında {{what}} bulamadım. Daha geniş bakayım mı?',
