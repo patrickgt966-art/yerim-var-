@@ -1,5 +1,6 @@
 import raw from '../../data/places-izmir.json';
 import { distanceMeters, type LatLng } from './geo';
+import { cleanName } from './names';
 import { CURATED_PLACES, IZMIR_CENTER, isInIzmirArea, POPULAR_PLACES } from './places';
 import { categoryForQuery, type FoodCategory } from './restaurants';
 import { staticParkings } from './staticParkings';
@@ -151,7 +152,7 @@ function entry(hit: SearchHit, aliases: string[] = []): Entry {
 
 function buildIndex(): Entry[] {
   const places = (raw as { items: RawPlace[] }).items.map((p) =>
-    entry({ name: p.n, lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
+    entry({ name: cleanName(p.n), lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
   );
   const popular = POPULAR_PLACES.map((p) =>
     entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'popular', district: p.district }),
@@ -182,7 +183,7 @@ let towns: (LatLng & { name: string })[] | null = null;
 function nearestTown(p: LatLng): string | undefined {
   towns ??= (raw as { items: RawPlace[] }).items
     .filter((t) => t.k === 'town')
-    .map((t) => ({ name: t.n, lat: t.a, lng: t.o }));
+    .map((t) => ({ name: cleanName(t.n), lat: t.a, lng: t.o }));
   let best: string | undefined;
   let bestD = Infinity;
   for (const t of towns) {
