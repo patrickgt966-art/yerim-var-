@@ -71,10 +71,10 @@ describe('assistant', () => {
     }
   });
 
-  it('still says place-not-found for gibberish', async () => {
-    const r = await answer('xqzv', emptyContext('park'), deps);
+  it('still says place-not-found for an unknown word that could be a place', async () => {
+    const r = await answer('xqzvu', emptyContext('park'), deps);
     expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(true);
-    expect(r.reply.text).toContain('"q":"xqzv"');
+    expect(r.reply.text).toContain('"q":"xqzvu"');
   });
 
   it('keeps the place when the user says "burada"', async () => {
@@ -816,5 +816,109 @@ describe('assistant', () => {
       const r = await answer('zırtapoz mahallesi', emptyContext('food'), deps);
       expect(r.reply.text.startsWith('chat.dishOrPlace')).toBe(false);
     });
+  });
+});
+
+describe('assistant: chat bugs from the phone', () => {
+  const sections = ['park', 'food'] as const;
+
+  describe.each(sections)('section %s', (section) => {
+    it('finds kuşbaşı as a dish, with reasons', async () => {
+      const r = await answer('kuşbaşı', emptyContext(section), deps);
+      expect(r.reply.text).toContain('chat.dishLikely');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      expect(r.reply.cards.every((c) => c.kind === 'restaurant' && !!c.reason)).toBe(true);
+      expect(r.ctx.section).toBe('food');
+      expect(r.ctx.cat).toBe('meat');
+    });
+
+    it('finds kuşbaşı around a named place', async () => {
+      const r = await answer('kemeraltında kuşbaşı', emptyContext(section), deps);
+      expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
+      expect(r.ctx.place?.label).toBe('Kemeraltı');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      expect(r.reply.cards.every((c) => c.kind === 'restaurant' && !!c.reason)).toBe(true);
+    });
+
+    it('reads "X derken yemekten kast etmiştim" as a search for X', async () => {
+      const plain = await answer('kuşbaşı', emptyContext(section), deps);
+      const r = await answer('Kuşbaşı derken yemekten kast etmiştim', emptyContext(section), deps);
+      expect(r.ctx.dish).toBe('kuşbaşı');
+      expect(r.ctx.cat).toBe('meat');
+      expect(r.reply.cards.map((c) => c.name)).toEqual(plain.reply.cards.map((c) => c.name));
+      expect(r.reply.text).not.toContain('NotFound');
+    });
+
+    it.each(['Selamin aleykum', 'selamün aleyküm'])('greets back "%s"', async (q) => {
+      const r = await answer(q, emptyContext(section), deps);
+      expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+      expect(r.reply.cards).toEqual([]);
+    });
+
+    it.each(['Oo', 'aa', 'xd', 'hmm'])(
+      'answers "%s" with the guide, no search, no AI',
+      async (q) => {
+        const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+        const narrate = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+        const r = await answer(q, emptyContext(section), {
+          ...deps,
+          ai: { understand, narrate, quotaNotice: () => false },
+        });
+        expect(r.reply.text.startsWith('chat.unknown_')).toBe(true);
+        expect(r.reply.cards).toEqual([]);
+        expect(r.ctx).toEqual(emptyContext(section));
+        expect(understand).not.toHaveBeenCalled();
+        expect(narrate).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it('never calls the AI for a greeting', async () => {
+    const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+    const r = await answer('selamın aleyküm', emptyContext('park'), {
+      ...deps,
+      ai: {
+        understand,
+        narrate: async () => ({ ok: false, reason: 'error' }),
+        quotaNotice: () => false,
+      },
+    });
+    expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+    expect(understand).not.toHaveBeenCalled();
+  });
+
+  it('asks dish-or-place in the park section for a text that is not place-like', async () => {
+    const r = await answer('nasıl zırtapoz', emptyContext('park'), deps);
+    expect(r.reply.text.startsWith('chat.dishOrPlace')).toBe(true);
+    const short = await answer('xqzvu', emptyContext('park'), deps);
+    expect(short.reply.text.startsWith('chat.placeNotFound')).toBe(true);
+  });
+
+  it('routes an AI dish to the food search even in the park section', async () => {
+    const r = await answer('bi şey yesem', emptyContext('park'), {
+      ...deps,
+      ai: {
+        understand: async () => ({
+          ok: true,
+          remaining: 3,
+          value: {
+            kind: 'search',
+            district: null,
+            cat: null,
+            dish: 'kuşbaşı',
+            place: null,
+            food: false,
+            requireParking: false,
+            appleQuery: null,
+            nearMe: false,
+            dishServes: null,
+          },
+        }),
+        narrate: async () => ({ ok: false, reason: 'error' }),
+        quotaNotice: () => false,
+      },
+    });
+    expect(r.ctx.section).toBe('food');
+    expect(r.reply.cards.every((c) => c.kind === 'restaurant')).toBe(true);
   });
 });

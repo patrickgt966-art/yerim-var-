@@ -2,7 +2,13 @@ import { dishProfile, GENERIC_DISH_STEMS, likelyServes, type DishProfile } from 
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import { IZMIR_DISTRICTS, parseQuery, typedPlaceText, type QueryIntent } from '@/data/intent';
+import {
+  IZMIR_DISTRICTS,
+  looksLikePlace,
+  parseQuery,
+  typedPlaceText,
+  type QueryIntent,
+} from '@/data/intent';
 import {
   allRestaurants,
   categoryOf,
@@ -211,6 +217,8 @@ function intentFromUnderstanding(
   const district = u.district
     ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)
     : null;
+  // A dish or a category is food, whichever section the chat is in.
+  const food = u.food || u.cat !== null || !!u.dish;
   return {
     kind: 'search',
     text: fold(text),
@@ -222,9 +230,9 @@ function intentFromUnderstanding(
     requireParking: u.requireParking,
     quality: false,
     uncertain: false,
-    food: u.food || u.cat !== null,
+    food,
     nearMe: u.nearMe,
-    mentionsParking: u.requireParking || (!u.food && u.cat === null),
+    mentionsParking: u.requireParking || !food,
   };
 }
 
@@ -233,7 +241,7 @@ type SearchIntent = Extract<QueryIntent, { kind: 'search' }>;
 /** Rule intent + AI intent: AI fills what the rules left empty; rule-found values stay. */
 function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
   const cat = rule.cat ?? ai.cat;
-  const food = rule.food || ai.food || cat !== null;
+  const food = rule.food || ai.food || cat !== null || !!ai.dish;
   const requireParking = rule.requireParking || ai.requireParking;
   return {
     ...rule,
@@ -393,7 +401,8 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
   if (it.kind === 'abuse') {
     return plain({ text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) }, ctx);
   }
-  if (it.kind === 'empty') {
+  // 'gibberish' (too short / no vowel) never reaches the AI above: ask again, no search.
+  if (it.kind === 'empty' || it.kind === 'gibberish') {
     return withNotice(
       plain(
         {
@@ -526,8 +535,13 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
       if (!p) {
         const typed = typedRaw.charAt(0).toLocaleUpperCase('tr') + typedRaw.slice(1);
 
-        // 0. Unsure whether it is a dish or a place: ask (only when the chat is about food).
-        if (maybeDish && !it.food && !it.nearMe && ctx.section === 'food') {
+        // 0. Unsure whether it is a dish or a place: ask (in the food chat, or when the text is not place-like).
+        if (
+          maybeDish &&
+          !it.food &&
+          !it.nearMe &&
+          (ctx.section === 'food' || !looksLikePlace(text))
+        ) {
           return withNotice(
             plain(
               {

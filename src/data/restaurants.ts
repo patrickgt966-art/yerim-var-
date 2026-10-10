@@ -540,8 +540,7 @@ function isWeakMatch(r: Restaurant, cat: FoodCategory): boolean {
   }
   if (cat === 'lokanta') {
     return !(
-      nameCategories(r).includes('lokanta') ||
-      r.cuisines.some((c) => LOKANTA_CUISINES.includes(c))
+      nameCategories(r).includes('lokanta') || r.cuisines.some((c) => LOKANTA_CUISINES.includes(c))
     );
   }
   return false;
@@ -580,7 +579,8 @@ export function rankRestaurants(
 ): RestaurantRow[] {
   const out = [...rows];
   if (sort === 'distance') {
-    const eff = (row: RestaurantRow) => row.r.distanceM + (row.r.verified ? 0 : UNVERIFIED_PENALTY_M);
+    const eff = (row: RestaurantRow) =>
+      row.r.distanceM + (row.r.verified ? 0 : UNVERIFIED_PENALTY_M);
     return out.sort((a, b) => eff(a) - eff(b));
   }
   const score = new Map(out.map((row) => [row, parkEaseScore(row, cat)]));
@@ -597,9 +597,10 @@ export function rankRestaurants(
 }
 
 /** Rows whose nearest car park is known and within `maxM` metres. */
-export function withParkingWithin<
-  T extends { parking: { distanceM: number } | null | undefined },
->(rows: T[], maxM: number): T[] {
+export function withParkingWithin<T extends { parking: { distanceM: number } | null | undefined }>(
+  rows: T[],
+  maxM: number,
+): T[] {
   return rows.filter((row) => !!row.parking && row.parking.distanceM <= maxM);
 }
 
@@ -699,6 +700,19 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'sakatat',
     'bonfile',
     'kuzu incik',
+    'kusbasi',
+    'sac kavurma',
+    'et kavurma',
+    'kuzu sis',
+    'tavuk sis',
+    'ciger sis',
+    'kaburga',
+    'izgara kofte',
+    'sucuk izgara',
+    'karisik izgara',
+    'cokertme',
+    'orman kebabi',
+    'kebap cesitleri',
   ],
   lokanta: [
     'lokanta',
@@ -789,6 +803,7 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kusbasili pide',
     'kasarli pide',
     'etli ekmek',
+    'etli pide',
     'patso',
     'sosisli',
   ],

@@ -2,7 +2,7 @@ import '@/i18n';
 
 import { DISHES, dishProfile, likelyServes } from '../dishes';
 import { parseQuery } from '../intent';
-import { FOOD_CATEGORIES } from '../restaurants';
+import { categoryForQuery, FOOD_CATEGORIES } from '../restaurants';
 import { fold } from '../search';
 
 describe('dishProfile', () => {
@@ -59,6 +59,51 @@ describe('DISHES', () => {
       if (dishProfile(p.dish)?.dish !== p.dish) bad.push(`${p.dish}: does not resolve to itself`);
     }
     expect(bad).toEqual([]);
+  });
+});
+
+describe('meat dishes', () => {
+  it.each([
+    'kusbasi',
+    'sac kavurma',
+    'et kavurma',
+    'kavurma',
+    'tandir',
+    'kuzu tandir',
+    'sis',
+    'cop sis',
+    'kuzu sis',
+    'tavuk sis',
+    'kanat',
+    'pirzola',
+    'kaburga',
+    'antrikot',
+    'bonfile',
+    'ciger sis',
+    'izgara kofte',
+    'sucuk izgara',
+    'karisik izgara',
+    'testi kebabi',
+    'cokertme',
+    'kagit kebabi',
+    'orman kebabi',
+    'kebap cesitleri',
+  ])('knows %s as meat', (dish) => {
+    expect(dishProfile(dish)?.dish).toBe(dish);
+    expect(dishProfile(dish)?.cat).toBe('meat');
+    expect(categoryForQuery(dish)).toBe('meat');
+  });
+
+  it('knows etli pide as a pide', () => {
+    expect(dishProfile('etli pide')?.cat).toBe('fast');
+    expect(categoryForQuery('etli pide')).toBe('fast');
+  });
+
+  it('gives kuşbaşı name words of meat places, not generic words', () => {
+    const p = dishProfile('kusbasi')!;
+    expect(likelyServes(p, 'ates ocakbasi', [])).toBe(true);
+    expect(likelyServes(p, 'et lokantasi nimet', [])).toBe(true);
+    expect(likelyServes(p, 'sacit usta pastane', [])).toBe(false);
   });
 });
 
