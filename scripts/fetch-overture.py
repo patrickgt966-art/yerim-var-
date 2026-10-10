@@ -33,6 +33,7 @@ OSM_FILE = ROOT / 'data' / 'food-izmir.json'
 OUT_FILE = ROOT / 'data' / 'food-overture-izmir.json'
 REPORT_FILE = ROOT / 'data' / 'sources-report.md'
 WEB_CACHE_FILE = 'data/overture-web-check.json'
+BLOCKLIST_FILE = 'data/overture-blocklist.json'
 WEB_MAX_URLS = 6000
 WEB_WORKERS = 32
 WEB_TIMEOUT = 8  # seconds per request
@@ -427,6 +428,18 @@ def _check_url(url, deadline):
     return url, 'dead' if first == second == 'dead' else 'unknown'
 
 
+def load_blocklist(path=BLOCKLIST_FILE):
+    """Ids of places confirmed closed/moved by hand (missing or invalid file -> empty set)."""
+    path = Path(path)
+    if not path.is_absolute():
+        path = ROOT / path
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+        return set(doc.get('items') or {})
+    except (ValueError, OSError, AttributeError, TypeError):
+        return set()
+
+
 def check_websites(items, cache_path=WEB_CACHE_FILE):
     """Dead website -> the link (w) is removed; an unverified record (no v) also gets sp 1, verified records keep v.
     Network only when YERIM_WEB_CHECK == '1'.
@@ -534,7 +547,7 @@ def web_line(web):
     return '- Web sitesi kontrolü: yapılmadı (önbellek yok)'
 
 
-def append_report(release, raw, kept, dupes, items, size, threshold, dropped, web, diff):
+def append_report(release, raw, kept, dupes, items, size, threshold, dropped, web, diff, blocked_n):
     kinds = {}
     for r in items:
         kinds[r['k']] = kinds.get(r['k'], 0) + 1
@@ -550,6 +563,7 @@ def append_report(release, raw, kept, dupes, items, size, threshold, dropped, we
         f'- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): {sum(1 for r in items if r.get("v") == 1)}',
         f'- Ad süzgeciyle atılan: {sum(dropped.values())} (en sık 10 eşleşen kelime: '
         + (', '.join(f'{w} {n}' for w, n in dropped.most_common(10)) or '-') + ')',
+        f'- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: {blocked_n}',
         f'- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): {sum(1 for r in items if r.get("sp") == 1)}',
         web_line(web),
         *diff,
@@ -587,6 +601,10 @@ def main():
         print(f'file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}')
         items, dupes = select(cands, threshold, osm_grid)
         text = render(release, items)
+    blocked = load_blocklist()
+    n_before = len(items)
+    items = [i for i in items if i['id'] not in blocked]
+    blocked_n = n_before - len(items)
     web = check_websites(items)
     text = render(release, items)
     old = existing_count()
@@ -596,7 +614,7 @@ def main():
     diff = diff_lines(previous_items(), items)
     OUT_FILE.write_text(text + '\n', encoding='utf-8')
     size = len(text.encode('utf-8')) + 1
-    append_report(release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff)
+    append_report(release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff, blocked_n)
     print(f'wrote {len(items)} items ({size} bytes), {dupes} OSM duplicates removed')
 
 
@@ -631,6 +649,11 @@ def _selftest():
         assert items[0].get('v') == 1 and 'w' not in items[0] and 'sp' not in items[0], items[0]
         assert items[1].get('sp') == 1 and 'w' not in items[1], items[1]
         assert stats['unlinked'] == 2 and stats['marked'] == 1, stats
+    with tempfile.TemporaryDirectory() as tmp:
+        bl = Path(tmp) / 'blocklist.json'
+        bl.write_text(json.dumps({'items': {'ov-x': {}}}), encoding='utf-8')
+        assert load_blocklist(bl) == {'ov-x'}
+        assert load_blocklist(Path(tmp) / 'missing.json') == set()
     print('selftest ok')
 
 

@@ -39,8 +39,11 @@ Son güncelleme: 9 Ekim 2026. Önerilen başlangıç sırası: 6 → 2 → 1 →
 ### Veri doğruluğu (sırada)
 - Foursquare açık verisi (Apache 2.0) ile çapraz kontrol: kapanmış yerleri çıkar, güncel olanları "doğrulanmış" say. Gerekli: Foursquare Places portalına ücretsiz kayıt + erişim anahtarı → GitHub Secrets'a `FSQ_TOKEN` (kullanıcı ekler).
 - Uygulamada "Burası kapanmış mı?" bildirimi (Cloudflare sunucusu üzerinden; birkaç bildirimde yer gizlenir)
-- Apple Haritalar kontrolü (Apple Developer hesabından sonra): "Apple Haritalar'da da kayıtlı" işareti
+- Apple Haritalar kontrolü (Apple Developer hesabından sonra): Apple Maps Server API ile GitHub Actions'ta toplu kontrol (günde 25.000 sorgu ücretsiz).
+  - Önce denetimdeki 50 yerle dene: Apple kapanmış 13 yerin kaçını bulmuyor, açık 37 yerin kaçını buluyor?
+  - Sonuç iyiyse: Apple'da olan → "Apple Haritalar'da da kayıtlı"; Apple'da olmayan → gizle (açık yer kaybı kabul edilebilir düzeydeyse).
 - Denetim sayfası: https://claude.ai/artifact/JBSBiMWJuDVaMuhfuWrnxo (50 rastgele Overture yeri)
+  - Sonuç (10 Ekim 2026): 37 açık, 5 taşınmış, 8 kapanmış. "Doğrulanmış" sayılanlar da %75 doğru çıktı; bu yüzden tüm Overture yerlerine "Bilgi eski olabilir" etiketi kondu. 13 hatalı yer `data/overture-blocklist.json` ile kalıcı olarak çıkarıldı.
 
 ## Akıllı arama planı
 

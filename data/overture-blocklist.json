@@ -1,0 +1,70 @@
+{
+ "$comment": "Overture places confirmed closed or moved by a manual check (audit page). scripts/fetch-overture.py drops these ids. reason: closed | moved.",
+ "items": {
+  "ov-364a3bfcd62343de": {
+   "at": "2026-10-10",
+   "n": "Container Project",
+   "reason": "closed"
+  },
+  "ov-432301ce2d384f24": {
+   "at": "2026-10-10",
+   "n": "Dostlar Sofrası",
+   "reason": "closed"
+  },
+  "ov-45d8b291b8594bb8": {
+   "at": "2026-10-10",
+   "n": "Taşplak Restaurant",
+   "reason": "closed"
+  },
+  "ov-655a8695b0ee4753": {
+   "at": "2026-10-10",
+   "n": "Nazilli Pide Kebap Salonu",
+   "reason": "closed"
+  },
+  "ov-86bb1f3b4ae94e97": {
+   "at": "2026-10-10",
+   "n": "Efe balık Restaurant",
+   "reason": "closed"
+  },
+  "ov-8a9384ec617a420e": {
+   "at": "2026-10-10",
+   "n": "Publo Coffee and Cocktail",
+   "reason": "closed"
+  },
+  "ov-97fd6b9f27dd4bf6": {
+   "at": "2026-10-10",
+   "n": "Maviş Kahvaltı Pide ve Kebap Salonu",
+   "reason": "moved"
+  },
+  "ov-b0bc23b105624d29": {
+   "at": "2026-10-10",
+   "n": "Park Kahveteryasi",
+   "reason": "closed"
+  },
+  "ov-b56518ebb7114264": {
+   "at": "2026-10-10",
+   "n": "Domino's Pizza",
+   "reason": "moved"
+  },
+  "ov-b7f945ccb9694d0a": {
+   "at": "2026-10-10",
+   "n": "Sedir İzgara & Çorba & Kahvaltı",
+   "reason": "closed"
+  },
+  "ov-bab4e2d23e704a05": {
+   "at": "2026-10-10",
+   "n": "Örnekköy Çorbacısı",
+   "reason": "moved"
+  },
+  "ov-bd576de50ef8477a": {
+   "at": "2026-10-09",
+   "n": "Sakıpağa Dönerevi",
+   "reason": "moved"
+  },
+  "ov-feb1fc0e616b4f4b": {
+   "at": "2026-10-10",
+   "n": "Kebapçı Seyit Usta",
+   "reason": "moved"
+  }
+ }
+}

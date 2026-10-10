@@ -63,7 +63,7 @@ export type Restaurant = {
   reservation: boolean | null;
   /** Where the record comes from, by id prefix ('ov-' is Overture Maps). */
   source: 'osm' | 'overture';
-  /** OSM is always verified; Overture only when corroborated (v 1). */
+  /** OSM only. Overture records may be stale (manual audit: ~1 in 4 closed or moved), so they are never shown as verified. */
   verified: boolean;
 };
 
@@ -87,7 +87,7 @@ export function toRestaurant(r: FoodRecord): Restaurant {
     wheelchair: r.wc ?? null,
     reservation: r.res ?? null,
     source,
-    verified: source === 'osm' || r.v === 1,
+    verified: source === 'osm',
   };
 }
 
@@ -513,7 +513,7 @@ const NO_PARK_DISTANCE_M = NEAREST_PARKING_RADIUS_M;
 const RESTAURANT_DISTANCE_WEIGHT = 0.5;
 /** Street stands (midye, kokoreç) sink below sit-down places in fish and meat. */
 const STAND_PENALTY_M = 600;
-/** An unverified Overture row sorts after verified rows at the same score (m-equivalent). */
+/** An Overture row sorts after OSM rows at the same score (m-equivalent). */
 const UNVERIFIED_PENALTY_M = 250;
 
 /** A fast_food place, or a midye/kokoreç stand that is not also a fish restaurant. */
