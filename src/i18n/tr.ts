@@ -469,6 +469,8 @@ const tr = {
     unknown_0: 'Bunu tam anlayamadım. Bir yer adı ya da yemek yazar mısın?',
     unknown_1: 'Anlayamadım. "Konak otopark" ya da "yakınımda balıkçı" gibi yazabilirsin.',
     placeNotFound: '"{{q}}" diye bir yer bulamadım. Haritada işaretlemek ister misin?',
+    dishOrPlace: '"{{q}}" bir yemek mi, bir yer mi? Emin olamadım.',
+    actAsDish: 'Yemek olarak ara',
     foodFound_0:
       '{{where}} civarında {{count}} {{what}} var, {{withPark}} tanesinin yanında otopark var. Parkı kolay olanlar üstte:',
     foodFound_1:

@@ -59,7 +59,7 @@ describe('assistant', () => {
         r.cuisines.some((c) => fold(c.replace(/_/g, ' ')).includes('sushi')),
     );
     const r = await answer('yakınımda sushi', emptyContext('food'), deps);
-    expect(r.reply.text.startsWith(hasSushi ? 'chat.dishNamed' : 'chat.dishNotFound')).toBe(true);
+    expect(r.reply.text.includes(hasSushi ? 'chat.dishNamed' : 'chat.dishNotFound')).toBe(true);
     expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
   });
 
@@ -602,6 +602,8 @@ describe('assistant', () => {
                 food: true,
                 requireParking: false,
                 appleQuery: null,
+                nearMe: false,
+                dishServes: null,
               },
               remaining: 4,
             };
@@ -630,6 +632,8 @@ describe('assistant', () => {
               food: true,
               requireParking: true,
               appleQuery: null,
+              nearMe: false,
+              dishServes: null,
             },
             remaining: 4,
           }),
@@ -675,6 +679,142 @@ describe('assistant', () => {
         aiDeps({ understand: boom, narrate: boom }),
       );
       expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+    });
+
+    it('searches an unknown dish through the names the AI says serve it', async () => {
+      const search = (dishServes: string[], dish = 'çiğ börek') =>
+        aiDeps({
+          understand: async () => ({
+            ok: true,
+            value: {
+              kind: 'search',
+              district: null,
+              cat: 'breakfast',
+              dish,
+              place: null,
+              food: true,
+              requireParking: false,
+              appleQuery: null,
+              nearMe: true,
+              dishServes,
+            },
+            remaining: 4,
+          }),
+        });
+      const r = await answer(
+        'zırtapoz',
+        emptyContext('food'),
+        search(['çiğ börekçi', 'börekçi', 'restoran', 'lokanta']),
+      );
+      expect(r.ctx.dish).toBe('çiğ börek');
+      expect(r.ctx.dishServes).toEqual(['çiğ börekçi', 'börekçi', 'restoran', 'lokanta']);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      const cards = r.reply.cards.filter((c) => c.kind === 'restaurant');
+      expect(cards.every((c) => c.reason !== undefined)).toBe(true);
+      expect(r.reply.text.startsWith('chat.dishWider') || r.reply.text.includes('chat.dish')).toBe(
+        true,
+      );
+
+      // Tier 2: no name carries the dish, but names with "börekçi" very likely serve it.
+      const tier2 = await answer(
+        'zırtapoz',
+        emptyContext('food'),
+        search(['börekçi'], 'zırtapozlu börek'),
+      );
+      expect(tier2.reply.text).toContain('chat.dishLikely');
+      expect(tier2.reply.cards.length).toBeGreaterThan(0);
+      for (const c of tier2.reply.cards) {
+        expect(fold(c.name)).toContain('borekci');
+        expect(c.kind === 'restaurant' && c.reason).toContain('chat.reasonLikely');
+      }
+
+      // Generic words alone give no ad-hoc profile: only tier 1 (names with both words) remain.
+      const generic = await answer(
+        'zırtapoz',
+        emptyContext('food'),
+        search(['restoran', 'lokanta', 'yemek', 'mutfak', 'cafe']),
+      );
+      for (const c of generic.reply.cards) {
+        if (c.kind === 'restaurant' && c.reason) expect(c.reason).toContain('chat.reasonNamed');
+      }
+      expect(generic.reply.text).not.toContain('chat.dishLikely');
+    });
+
+    it('maps nearMe from the AI to the current location', async () => {
+      const c1 = await answer('Konak', emptyContext('park'), deps);
+      const r = await answer(
+        'zırtapoz buralarda',
+        c1.ctx,
+        aiDeps({
+          understand: async () => ({
+            ok: true,
+            value: {
+              kind: 'search',
+              district: null,
+              cat: 'fish',
+              dish: null,
+              place: null,
+              food: true,
+              requireParking: false,
+              appleQuery: null,
+              nearMe: true,
+              dishServes: null,
+            },
+            remaining: 4,
+          }),
+        }),
+      );
+      expect(r.ctx.place).toBeNull();
+    });
+  });
+
+  describe('rule fallback for unknown words', () => {
+    it('treats a word that starts restaurant names as a dish', async () => {
+      const has = allRestaurants().some((r) => fold(r.name).startsWith('pisi'));
+      const r = await answer('pişi', emptyContext('food'), deps);
+      if (has) {
+        expect(r.ctx.dish).toBe('pişi');
+        expect(r.reply.cards.length).toBeGreaterThan(0);
+        expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
+      } else {
+        expect(r.reply.text.startsWith('chat.placeNotFound')).toBe(false);
+      }
+    });
+
+    it('does not treat "pişiricisi" names as "pişi"', async () => {
+      const r = await answer('pişi', emptyContext('food'), deps);
+      expect(r.ctx.dish).toBe('pişi');
+      expect(r.ctx.dishExact).toBe(true);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      for (const c of r.reply.cards) {
+        const words = fold(c.name).split(' ');
+        expect(words).toContain('pisi');
+        expect(words).not.toContain('pisiricisi');
+      }
+    });
+
+    it('still matches seller-suffixed names ("kumru" / "kumrucu" -> "Kumrucu Hüseyin")', async () => {
+      for (const q of ['kumru', 'kumrucu']) {
+        const r = await answer(q, emptyContext('food'), deps);
+        expect(r.reply.cards.map((c) => c.name)).toContain('Kumrucu Hüseyin');
+      }
+    });
+
+    it('asks whether an invented word is a dish or a place', async () => {
+      const r = await answer('zırtapoz', emptyContext('food'), deps);
+      expect(r.reply.text.startsWith('chat.dishOrPlace')).toBe(true);
+      expect(r.reply.text).toContain('zırtapoz');
+      const act = r.reply.actions.find((a) => a.kind === 'refine');
+      expect(act).toMatchObject({
+        label: 'chat.actAsDish',
+        patch: { section: 'food', dish: 'zırtapoz', place: null },
+      });
+      expect(r.reply.actions.some((a) => a.kind === 'open')).toBe(true);
+    });
+
+    it('keeps place-not-found for clear place words', async () => {
+      const r = await answer('zırtapoz mahallesi', emptyContext('food'), deps);
+      expect(r.reply.text.startsWith('chat.dishOrPlace')).toBe(false);
     });
   });
 });

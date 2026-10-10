@@ -19,6 +19,8 @@ export type QueryIntent =
       notCat?: FoodCategory | null;
       /** The food word the user typed, as typed after folding, e.g. 'pirzola'. */
       dish: string | null;
+      /** AI only: short words that appear in the names of places serving an unknown dish. */
+      dishServes?: string[] | null;
       /** Official İzmir district named by any place word (that word is not in placeQuery). */
       district: District | null;
       /** Place words left after cleaning (folded), or '' */

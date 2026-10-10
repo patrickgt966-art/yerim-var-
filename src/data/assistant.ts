@@ -1,4 +1,4 @@
-import { dishProfile, likelyServes, type DishProfile } from '@/data/dishes';
+import { dishProfile, GENERIC_DISH_STEMS, likelyServes, type DishProfile } from '@/data/dishes';
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
@@ -13,6 +13,7 @@ import {
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
+  hasWordStart,
   WIDE_RADII_M,
   withParkingWithin,
   type FoodCategory,
@@ -40,6 +41,10 @@ export type ChatContext = {
   /** A category the user ruled out ("köfte değil balık"). */
   notCat: FoodCategory | null;
   dish: string | null;
+  /** AI only: name words of places that serve `dish` when it is not a known dish. */
+  dishServes?: string[] | null;
+  /** Rule fallback: a name must carry the dish word exactly (or with a seller / plural suffix). */
+  dishExact?: boolean;
   section: 'park' | 'food';
   requireParking: boolean;
   /** Only car parks known to be free ("otopark ücretsiz"). */
@@ -129,6 +134,29 @@ export type AssistantDeps = {
 type Result = { reply: BotMessage; ctx: ChatContext };
 
 const MAX_CARDS = 5;
+/** Folded seller / possessive / plural endings a name word may add to a typed dish word. */
+const NAME_SUFFIXES = [
+  '',
+  'ci',
+  'cu',
+  'si',
+  'su',
+  'i',
+  'u',
+  'in',
+  'un',
+  'ler',
+  'lar',
+  'cisi',
+  'cusu',
+];
+
+/** True when a word of the folded name is `word`, or `word` plus one of NAME_SUFFIXES. */
+function hasExactNameWord(foldedName: string, word: string): boolean {
+  return foldedName.split(' ').some((nw) => NAME_SUFFIXES.some((suf) => nw === word + suf));
+}
+/** Folded word starts that make an unknown text clearly a place (street, quarter ...). */
+const PLACE_WORDS = ['mahalle', 'mah', 'sokak', 'sk', 'cadde', 'cd', 'bulvar', 'meydan', 'semt'];
 /** A dish search with fewer places than this looks in the wider rings. */
 const MIN_DISH_PLACES = 3;
 
@@ -188,13 +216,14 @@ function intentFromUnderstanding(
     text: fold(text),
     cat: u.cat,
     dish: u.dish,
+    dishServes: u.dishServes,
     district,
     placeQuery: u.place ? fold(u.place) : '',
     requireParking: u.requireParking,
     quality: false,
     uncertain: false,
     food: u.food || u.cat !== null,
-    nearMe: false,
+    nearMe: u.nearMe,
     mentionsParking: u.requireParking || (!u.food && u.cat === null),
   };
 }
@@ -210,6 +239,7 @@ function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
     ...rule,
     cat,
     dish: rule.cat ? rule.dish : ai.dish,
+    dishServes: rule.cat ? null : ai.dishServes,
     district: rule.district ?? ai.district,
     // The rules' leftover words are the ones they could not place; the AI decides what they meant.
     placeQuery: ai.placeQuery,
@@ -430,10 +460,14 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
   if (it.cat) {
     next.cat = it.cat;
     next.dish = it.dish;
+    next.dishServes = it.dishServes ?? null;
+    next.dishExact = false;
     next.section = 'food';
   } else if (it.food) {
     next.cat = null;
-    next.dish = null;
+    next.dish = it.dish;
+    next.dishServes = it.dishServes ?? null;
+    next.dishExact = false;
     next.section = 'food';
   }
   if (it.notCat) next.notCat = it.notCat;
@@ -451,17 +485,76 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
   if (it.district) {
     next.place = { label: it.district.name, lat: it.district.lat, lng: it.district.lng };
   } else if (it.placeQuery) {
+    const typedRaw = typedPlaceText(text, it.placeQuery);
+    // One to three unknown words: maybe a dish rather than a place.
+    const qWords = it.placeQuery.split(' ').filter(Boolean);
+    const maybeDish =
+      qWords.length <= 3 &&
+      it.placeQuery.length >= 4 &&
+      !qWords.some((w) => PLACE_WORDS.some((p) => w.startsWith(p)));
     const h = searchPlaces(it.placeQuery, 1)[0];
+    // A place hit that does not carry the words in its name is only a fuzzy guess.
+    const weakHit = !!h && !qWords.every((w) => hasWordStart(fold(h.name), w));
+    if (maybeDish && (!h || weakHit)) {
+      const from: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+      const reach = WIDE_RADII_M[WIDE_RADII_M.length - 1]!;
+      // Names that start with the typed words: search it as a dish (tier 1 = these names).
+      const nameHit = restaurantsNear(from, reach, 5000).some(
+        (r) => categoryOf(r) !== null && qWords.every((w) => hasExactNameWord(fold(r.name), w)),
+      );
+      if (nameHit) {
+        return withNotice(
+          await run(
+            {
+              ...ctx,
+              section: 'food',
+              cat: null,
+              dish: typedRaw,
+              dishServes: null,
+              dishExact: true,
+            },
+            deps,
+            text,
+          ),
+        );
+      }
+    }
     if (h) {
       next.place = { label: h.name, lat: h.lat, lng: h.lng };
     } else {
       const p = await deps.geocode(it.placeQuery);
       if (!p) {
-        const typedRaw = typedPlaceText(text, it.placeQuery);
         const typed = typedRaw.charAt(0).toLocaleUpperCase('tr') + typedRaw.slice(1);
 
+        // 0. Unsure whether it is a dish or a place: ask (only when the chat is about food).
+        if (maybeDish && !it.food && !it.nearMe && ctx.section === 'food') {
+          return withNotice(
+            plain(
+              {
+                text: t('chat.dishOrPlace', { q: typedRaw }),
+                cards: [],
+                actions: [
+                  {
+                    kind: 'refine',
+                    label: t('chat.actAsDish'),
+                    patch: {
+                      section: 'food',
+                      cat: null,
+                      dish: typedRaw,
+                      dishServes: null,
+                      dishExact: false,
+                      place: null,
+                    },
+                  },
+                  pickOnMap(text, t),
+                ],
+              },
+              ctx,
+            ),
+          );
+        }
+
         // 1. A dish or cuisine the user named: show restaurants matching it.
-        const qWords = it.placeQuery.split(' ').filter(Boolean);
         const hasAll = (hay: string) => qWords.every((w) => hay.includes(w));
         const named = allRestaurants().filter(
           (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
@@ -680,51 +773,33 @@ async function narrate(
   reply.sparkle = true;
 }
 
-const GENERIC_DISH_STEMS = new Set([
-  'et',
-  'balik',
-  'kahvalti',
-  'corba',
-  'lokanta',
-  'kafe',
-  'meyhane',
-  'tatli',
-  'restoran',
-  'cafe',
-  'kahve',
-  'coffee',
-  'balikci',
-  'fast food',
-  'hizli yemek',
-  'ev yemegi',
-  'esnaf lokantasi',
-  'kahvalti salonu',
-  'bar',
-  'pub',
-  'meat',
-  'grill',
-  'fish',
-  'soup',
-  'seafood',
-  'breakfast',
-  'brunch',
-  'dessert',
-  'pastane',
-  'kahvehane',
-  'cay bahcesi',
-  'deniz urunleri',
-]);
+/** Folded, short, non-generic name words the AI says places serving an unknown dish carry. */
+function adHocProfile(
+  dishServes: string[] | null | undefined,
+  cat: FoodCategory | null,
+): DishProfile | null {
+  const serves = [
+    ...new Set(
+      (dishServes ?? [])
+        .map((w) => fold(w))
+        .filter((w) => w.length >= 3 && w.length <= 20 && !GENERIC_DISH_STEMS.has(w)),
+    ),
+  ];
+  const first = serves[0];
+  if (!first) return null;
+  return { dish: first, cat: cat ?? 'lokanta', serves, label: first };
+}
 
 /** How a place fits a searched dish: 1 = the name or cuisine says it, 2 = it very likely serves it. */
 type DishHit = { tier: 1 | 2; byName: boolean };
 
-function dishClassifier(stem: string, profile: DishProfile | null) {
+function dishClassifier(stem: string, profile: DishProfile | null, exact = false) {
   const stemWords = stem.split(' ');
   const kebab = (x: string) => x.replace(/kebap/g, 'kebab');
   const stemKebab = kebab(stem);
   return (r: Restaurant): DishHit | null => {
     const n = fold(r.name);
-    const byName = stemWords.every((w) => n.includes(w));
+    const byName = stemWords.every((w) => (exact ? hasExactNameWord(n, w) : n.includes(w)));
     if (byName || r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))) {
       return { tier: 1, byName };
     }
@@ -775,8 +850,8 @@ function runFood(
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
   const dishName = ctx.dish ? shownDish(ctx.dish, stem) : '';
   if (ctx.dish && stem && !GENERIC_DISH_STEMS.has(stem)) {
-    profile = dishProfile(stem);
-    const classify = dishClassifier(stem, profile);
+    profile = dishProfile(stem) ?? adHocProfile(ctx.dishServes, ctx.cat);
+    const classify = dishClassifier(stem, profile, ctx.dishExact);
     // Both tiers come from every meal place around, not only the dish's own category:
     // a lahmacun can be at a kebab house (meat), an iskender at a döner shop (fast).
     const tiered = (radius: number) => {

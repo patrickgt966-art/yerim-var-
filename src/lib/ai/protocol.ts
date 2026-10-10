@@ -32,16 +32,34 @@ const FOOD_CATEGORY_VALUES = [
   'dessert',
 ] as const satisfies readonly FoodCategory[];
 
+const searchFields = {
+  kind: z.literal('search'),
+  district: z.string().nullable(),
+  cat: z.enum(FOOD_CATEGORY_VALUES).nullable(),
+  dish: z.string().nullable(),
+  place: z.string().nullable(),
+  food: z.boolean(),
+  requireParking: z.boolean(),
+  appleQuery: z.string().nullable(),
+};
+
+/** Server format schema: structured outputs need every field present. */
 export const UnderstandingSchema = z.discriminatedUnion('kind', [
   z.object({
-    kind: z.literal('search'),
-    district: z.string().nullable(),
-    cat: z.enum(FOOD_CATEGORY_VALUES).nullable(),
-    dish: z.string().nullable(),
-    place: z.string().nullable(),
-    food: z.boolean(),
-    requireParking: z.boolean(),
-    appleQuery: z.string().nullable(),
+    ...searchFields,
+    nearMe: z.boolean(),
+    dishServes: z.array(z.string()).max(5).nullable(),
+  }),
+  z.object({ kind: z.literal('offtopic'), reply: z.string() }),
+  z.object({ kind: z.literal('unknown') }),
+]);
+
+/** Client parse: an older deployed server answers without nearMe / dishServes. */
+export const UnderstandingClientSchema = z.discriminatedUnion('kind', [
+  z.object({
+    ...searchFields,
+    nearMe: z.boolean().optional().default(false),
+    dishServes: z.array(z.string()).max(5).nullable().optional().default(null),
   }),
   z.object({ kind: z.literal('offtopic'), reply: z.string() }),
   z.object({ kind: z.literal('unknown') }),
@@ -77,7 +95,9 @@ export const UNDERSTAND_SYSTEM = `Sen İzmir için bir otopark ve restoran uygul
 
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
-- Kullanıcı bir yer, otopark ya da yemek arıyorsa kind "search" döndür: district (İzmir ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null).
+- Kullanıcı bir yer, otopark ya da yemek arıyorsa kind "search" döndür: district (İzmir ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes null olsun.
+- "yakınımda", "en yakın", "buralarda", "etrafta" gibi ifadelerde nearMe true olsun, yoksa false.
 - Sohbet, spor, haber, hava durumu gibi konularda kind "offtopic" döndür ve reply alanına kısa, sıcak, esprili, en çok 2 cümlelik bir Türkçe cevap yaz. Bu cevap HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok) ve konuyu otopark ya da yemeğe çevirsin.
 - Ne istediği anlaşılmıyorsa kind "unknown" döndür.
 - Sadece şemaya uygun JSON döndür.`;

@@ -39,6 +39,44 @@ describe('ai client', () => {
     );
   });
 
+  it('accepts an old-shape search understanding (no nearMe / dishServes)', async () => {
+    const old = {
+      kind: 'search',
+      district: 'Bornova',
+      cat: 'fish',
+      dish: null,
+      place: null,
+      food: true,
+      requireParking: false,
+      appleQuery: null,
+    };
+    const f = fakeFetch(200, { understanding: old, remaining: 4 });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toEqual({
+      ok: true,
+      value: { ...old, nearMe: false, dishServes: null },
+      remaining: 4,
+    });
+  });
+
+  it('accepts a new-shape search understanding', async () => {
+    const next = {
+      kind: 'search',
+      district: null,
+      cat: 'breakfast',
+      dish: 'çiğ börek',
+      place: null,
+      food: true,
+      requireParking: false,
+      appleQuery: null,
+      nearMe: true,
+      dishServes: ['börekçi'],
+    };
+    const f = fakeFetch(200, { understanding: next, remaining: 3 });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toEqual({ ok: true, value: next, remaining: 3 });
+  });
+
   it('returns the narration', async () => {
     const f = fakeFetch(200, { reply: 'Hocam {1} yakın', remaining: 3 });
     const r = await createAiClient('https://ai.test', f).narrate(narrateReq);
@@ -46,16 +84,12 @@ describe('ai client', () => {
   });
 
   it('maps 429 to quota', async () => {
-    const r = await createAiClient('https://ai.test', fakeFetch(429, {})).understand(
-      understandReq,
-    );
+    const r = await createAiClient('https://ai.test', fakeFetch(429, {})).understand(understandReq);
     expect(r).toEqual({ ok: false, reason: 'quota' });
   });
 
   it('maps a server error to error', async () => {
-    const r = await createAiClient('https://ai.test', fakeFetch(500, {})).understand(
-      understandReq,
-    );
+    const r = await createAiClient('https://ai.test', fakeFetch(500, {})).understand(understandReq);
     expect(r).toEqual({ ok: false, reason: 'error' });
   });
 
