@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Linking, ScrollView } from 'react-native';
+import { Linking, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
@@ -9,7 +9,9 @@ import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { formatClock } from '@/data/freshness';
 import { useParkings } from '@/data/useParkings';
+import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
+import { useAi } from '@/store/ai';
 import { useApp } from '@/store/app';
 import { useColors } from '@/theme';
 
@@ -19,6 +21,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { data } = useParkings();
   const setOnboarded = useApp((s) => s.setOnboarded);
+  const consent = useAi((s) => s.consent);
+  const setConsent = useAi((s) => s.setConsent);
 
   return (
     <ScrollView
@@ -48,6 +52,18 @@ export default function ProfileScreen() {
           </Txt>
         ) : null}
       </Section>
+      {aiBaseUrl() ? (
+        <Section title={t('chat.aiSetting')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
+            <Txt style={{ flex: 1 }}>{t('chat.aiConsentBody')}</Txt>
+            <Switch
+              value={consent === 'yes'}
+              onValueChange={(on) => setConsent(on ? 'yes' : 'no')}
+              accessibilityLabel={t('chat.aiSetting')}
+            />
+          </View>
+        </Section>
+      ) : null}
       <Section title={t('profile.privacy')}>
         <Txt>{t('profile.privacyBody')}</Txt>
       </Section>

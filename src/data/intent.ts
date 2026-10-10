@@ -15,9 +15,11 @@ export type QueryIntent =
       /** Cleaned text (folded) for a name search. */
       text: string;
       cat: FoodCategory | null;
+      /** A category the user ruled out ("kebap olmasın"); parseQuery always sets it, null when none. */
+      notCat?: FoodCategory | null;
       /** The food word the user typed, as typed after folding, e.g. 'pirzola'. */
       dish: string | null;
-      /** Official İzmir district when the place part is exactly one. */
+      /** Official İzmir district named by any place word (that word is not in placeQuery). */
       district: District | null;
       /** Place words left after cleaning (folded), or '' */
       placeQuery: string;
@@ -82,8 +84,10 @@ const ADDRESS = words(
   'dostum dost kardesim kardes kanka kanki abi abla hocam hoca reis birader moruk canim guzelim usta kral kralice baba aga',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum',
 );
+// Filler only when the text is about food or names a district; else it may be a place name.
+const COND_FILLER = words('restoran restorani restorant lokal sey seyler acik');
 // Words that mean "food in general"; they stay filler for place purposes.
 const FOOD_WORDS = words(
   'yemek yiyelim yiyecek yiyecegim yiyebilirim yiyebilecegim restoran karnim acim ac',
@@ -93,12 +97,16 @@ const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan 
 const QUALITY = words('saglam guzel lezzetli meshur unlu kaliteli harika efsane en iyi');
 const PARKING = words('park parki parkli parkyeri');
 const NEAR_ME = words(
-  'yakinimda yakinda yakindaki yakin etrafimda cevremde',
+  'yakinimda yakinimdaki yakinda yakindaki yakin yakinlarda buralarda etrafta etrafimda civarda cevrede cevremde',
 );
-const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok');
+const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok degil');
+// A category word right before one of these is ruled out ("kebap olmasın", "köfte değil de balık").
+const NEGATES_PREVIOUS = words('olmasin istemiyorum istemem olmayan haric degil');
+// Dishes that are also matched with one typo ("lahmcun").
+const TYPO_DISHES = ['lahmacun'];
 // Subjects that are not about parking or food, e.g. football or weather.
 const TOPIC = words(
-  'mac maci gol skor derbi galatasaray gs fenerbahce fb besiktas bjk trabzonspor altay takim hava yagmur haber secim dolar borsa',
+  'mac maci gol skor derbi fikra fikrasi saka espri anlat galatasaray gs fenerbahce fb besiktas bjk trabzonspor altay takim hava yagmur haber secim dolar borsa',
 );
 const QUESTION = words('nasil neden niye kim kimin hangi kac');
 // Past / progressive verb endings (folded).
@@ -228,6 +236,15 @@ function placeTokens(tokens: string[]): string[] {
   return tokens.map((t) => fixDistrictTypo(t, placeStem(t)));
 }
 
+/** Two or more words that one place's name words cover, e.g. "adnan menderes". */
+function isOnePlaceName(tokens: string[]): boolean {
+  if (tokens.length < 2) return false;
+  const hit = searchPlaces(tokens.join(' '), 1)[0];
+  if (!hit) return false;
+  const nw = nameWords(hit.name);
+  return tokens.every((t) => nw.some((w) => w.startsWith(t)));
+}
+
 /** Short text that can be a place name: no question, no verb, at most 4 words. */
 export function looksLikePlace(text: string): boolean {
   const tokens = fold(text).split(' ').filter(Boolean);
@@ -256,6 +273,7 @@ export function parseQuery(raw: string): QueryIntent {
       !greetIyi(i) &&
       !ABUSE.has(t) &&
       !FILLER.has(t) &&
+      !(t === 'yerde' && all[i - 1] === 'bulundugum') &&
       !ADDRESS.has(t) &&
       !SUFFIX_TOKENS.has(t),
   );
@@ -278,17 +296,35 @@ export function parseQuery(raw: string): QueryIntent {
     !all.some((t) => ABUSE.has(t)) &&
     !categoryForQuery(rest.join(' ')) &&
     !rest.some(
-      (t) =>
-        categoryForQuery(t) !== null || FOOD_WORDS.has(t) || isParking(t) || isPlaceToken(t),
+      (t) => categoryForQuery(t) !== null || FOOD_WORDS.has(t) || isParking(t) || isPlaceToken(t),
     )
   ) {
     return { kind: 'greeting' };
   }
 
   // 'iyi' counts as quality unless it opens a greeting like "iyi akşamlar".
-  const nearMe = all.some((t) => NEAR_ME.has(t));
+  const nearMe = all.some((t) => NEAR_ME.has(t)) || all.join(' ').includes('bulundugum yerde');
   const quality = all.some((t, i) => QUALITY.has(t) && !greetIyi(i));
   rest = rest.filter((t) => !QUALITY.has(t));
+
+  // "kebap olmasın", "köfte değil de balık": the category before the negation is ruled out.
+  let notCat: FoodCategory | null = null;
+  for (let i = 1; i < rest.length; i++) {
+    if (!NEGATES_PREVIOUS.has(rest[i]!)) continue;
+    const len = i >= 2 && categoryForQuery(rest.slice(i - 2, i).join(' ')) ? 2 : 1;
+    const c = categoryForQuery(rest.slice(i - len, i).join(' '));
+    if (!c) continue;
+    notCat = c;
+    rest = [...rest.slice(0, i - len), ...rest.slice(i)];
+    i -= len;
+  }
+
+  // One typo in a dish word ("lahmcun" -> "lahmacun").
+  rest = rest.map((t) => {
+    if (t.length < 6 || categoryForQuery(t) !== null) return t;
+    const fixed = TYPO_DISHES.find((d) => withinOneEdit(t, d));
+    return fixed && !namesToken(t) ? fixed : t;
+  });
 
   // Category: a two-word phrase first, then a single word.
   let cat: FoodCategory | null = null;
@@ -312,7 +348,10 @@ export function parseQuery(raw: string): QueryIntent {
   rest = rest.filter((t) => !isParking(t) && !NEGATION.has(t));
   const requireParking = hasPark && cat !== null;
 
-  const food = cat !== null || foodWord;
+  // Ruling out the same category that was picked ("et ... kebap olmasın") excludes nothing.
+  if (notCat === cat) notCat = null;
+  const food = cat !== null || foodWord || notCat !== null;
+  if (food) rest = rest.filter((t) => !COND_FILLER.has(t));
 
   rest = rest.map((t) => (STADIUM.has(t) ? 'stadyum' : t));
 
@@ -326,18 +365,30 @@ export function parseQuery(raw: string): QueryIntent {
       (t) =>
         t.length >= 3 && !TOPIC.has(t) && !QUESTION.has(t) && !hasVerbSuffix(t) && isPlaceToken(t),
     ) &&
-    (all.some((t) => TOPIC.has(t)) ||
-      (all.some((t) => QUESTION.has(t)) && all.some(hasVerbSuffix)))
+    (all.some((t) => TOPIC.has(t)) || (all.some((t) => QUESTION.has(t)) && all.some(hasVerbSuffix)))
   ) {
     return { kind: 'offtopic' };
   }
 
-  const placeQuery = placeTokens(rest).join(' ');
-  if (placeQuery === '' && !cat && !hasPark && !food) return { kind: 'empty' };
+  let tokens = placeTokens(rest);
+  const fullPlace = tokens.join(' ');
 
-  const district = IZMIR_DISTRICTS.find((d) => fold(d.name) === placeQuery) ?? null;
-  const uncertain = placeQuery !== '' && !district && searchPlaces(placeQuery, 1).length === 0;
-  const text = cat ? [placeQuery, dish].filter(Boolean).join(' ') : placeQuery;
+  // Any place word that is a district sets it; but not inside one place's full name.
+  const districtAt = isOnePlaceName(tokens)
+    ? -1
+    : tokens.findIndex((t) => IZMIR_DISTRICTS.some((d) => fold(d.name) === t));
+  const district =
+    districtAt >= 0
+      ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === tokens[districtAt]) ?? null)
+      : null;
+  if (district) {
+    tokens = tokens.filter((_, i) => i !== districtAt).filter((t) => !COND_FILLER.has(t));
+  }
+  const placeQuery = tokens.join(' ');
+  if (fullPlace === '' && !cat && !hasPark && !food) return { kind: 'empty' };
+
+  const uncertain = placeQuery !== '' && searchPlaces(placeQuery, 1).length === 0;
+  const text = cat ? [fullPlace, dish].filter(Boolean).join(' ') : fullPlace;
 
   // Show the dish as typed (Turkish letters) when the raw words line up with the folded ones.
   let shownDish = dish;
@@ -358,6 +409,7 @@ export function parseQuery(raw: string): QueryIntent {
     kind: 'search',
     text,
     cat,
+    notCat,
     dish: shownDish,
     district,
     placeQuery,

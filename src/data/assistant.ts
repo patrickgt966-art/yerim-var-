@@ -1,25 +1,24 @@
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import {
-  IZMIR_DISTRICTS,
-  parseQuery,
-  typedPlaceText,
-  type QueryIntent,
-} from '@/data/intent';
+import { IZMIR_DISTRICTS, parseQuery, typedPlaceText, type QueryIntent } from '@/data/intent';
 import {
   allRestaurants,
+  categoryOf,
+  cuisineLabels,
   dishStem,
+  nearestParking,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
   WIDE_RADII_M,
   withParkingWithin,
   type FoodCategory,
+  type RestaurantRow,
 } from '@/data/restaurants';
 import { fold, searchPlaces } from '@/data/search';
 import type { Parking } from '@/data/types';
-import { openState } from '@/lib/openNow';
+import { openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
 import {
   fillPlaceholders,
@@ -57,6 +56,14 @@ export type ChatAction =
   | { kind: 'refine'; label: string; patch: Partial<ChatContext> }
   | { kind: 'open'; label: string; pathname: string; params: Record<string, string> };
 
+/** True facts about a restaurant card that only the AI narration uses. */
+export type CardNarr = {
+  cat?: string;
+  open: OpenState;
+  parkingPaid: boolean | null;
+  parkingFree: number | null;
+};
+
 export type ChatCard =
   | {
       kind: 'restaurant';
@@ -66,6 +73,7 @@ export type ChatCard =
       parkingM: number | null;
       open: 'open' | 'closed' | 'unknown';
       unverified?: boolean;
+      narr?: CardNarr;
     }
   | {
       kind: 'parking';
@@ -175,11 +183,7 @@ function intentFromUnderstanding(
   };
 }
 
-export async function answer(
-  text: string,
-  ctx: ChatContext,
-  deps: AssistantDeps,
-): Promise<Result> {
+export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
   const { t } = deps;
   let it = parseQuery(text);
   let notice: string | undefined;
@@ -231,10 +235,7 @@ export async function answer(
     return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'abuse') {
-    return plain(
-      { text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) },
-      ctx,
-    );
+    return plain({ text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'empty') {
     return withNotice(
@@ -259,12 +260,7 @@ export async function answer(
         .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
         .sort((a, b) => a.distanceM - b.distanceM)
         .slice(0, MAX_CARDS);
-      const rows = buildRestaurantRows(
-        nearest,
-        deps.parkings,
-        target,
-        deps.now ?? new Date(),
-      );
+      const rows = buildRestaurantRows(nearest, deps.parkings, target, deps.now ?? new Date());
       const cards: ChatCard[] = rows.map((row) => ({
         kind: 'restaurant',
         id: row.r.id,
@@ -273,6 +269,7 @@ export async function answer(
         parkingM: row.parking?.distanceM ?? null,
         open: 'unknown',
         unverified: !row.r.verified,
+        narr: cardNarr(row, deps, deps.now ?? new Date()),
       }));
       const actions: ChatAction[] = ctx.place
         ? [
@@ -293,8 +290,9 @@ export async function answer(
           where: ctx.place?.label ?? t('chat.nearYou'),
           what: t('chat.noun.all'),
           total: matches.length,
-          withParking: cards.filter((c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300)
-            .length,
+          withParking: cards.filter(
+            (c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300,
+          ).length,
         };
         await narrate(found, facts, false, deps, deps.ai);
       }
@@ -338,8 +336,7 @@ export async function answer(
         const qWords = it.placeQuery.split(' ').filter(Boolean);
         const hasAll = (hay: string) => qWords.every((w) => hay.includes(w));
         const named = allRestaurants().filter(
-          (r) =>
-            hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
+          (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
         );
         if (named.length > 0) {
           const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
@@ -347,12 +344,7 @@ export async function answer(
             .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
             .sort((a, b) => a.distanceM - b.distanceM)
             .slice(0, MAX_CARDS);
-          const rows = buildRestaurantRows(
-            nearest,
-            deps.parkings,
-            target,
-            deps.now ?? new Date(),
-          );
+          const rows = buildRestaurantRows(nearest, deps.parkings, target, deps.now ?? new Date());
           const cards: ChatCard[] = rows.map((row) => ({
             kind: 'restaurant',
             id: row.r.id,
@@ -361,6 +353,7 @@ export async function answer(
             parkingM: row.parking?.distanceM ?? null,
             open: 'unknown',
             unverified: !row.r.verified,
+            narr: cardNarr(row, deps, deps.now ?? new Date()),
           }));
           return withNotice(
             plain(
@@ -469,13 +462,31 @@ async function run(
   }
 
   const facts: Partial<Facts> = {};
-  const reply = ctx.section === 'food'
-    ? runFood(ctx, deps, seed, quality, target, where, now, facts)
-    : runPark(ctx, deps, seed, target, where, now, facts);
+  const reply =
+    ctx.section === 'food'
+      ? runFood(ctx, deps, seed, quality, target, where, now, facts)
+      : runPark(ctx, deps, seed, target, where, now, facts);
   if (deps.ai && reply.cards.length > 0 && facts.where !== undefined) {
     await narrate(reply, facts as Facts, quality, deps, deps.ai);
   }
   return { reply, ctx };
+}
+
+/** Card facts for the narration: only what the app itself would show as true. */
+function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date): CardNarr {
+  const r = row.r;
+  const catKey = categoryOf(r);
+  // deps.t is the plain i18n function; cuisineLabels wants i18next's TFunction type.
+  const tf = deps.t as Parameters<typeof cuisineLabels>[1];
+  const label = cuisineLabels(r.cuisines, tf)[0] ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  const near = row.parking ? nearestParking(r, deps.parkings) : null;
+  return {
+    ...(label && label.length <= 20 ? { cat: label } : {}),
+    open: r.openingHours ? openState({ openingHoursText: r.openingHours }, now) : 'unknown',
+    parkingPaid: near?.parking.isPaid ?? null,
+    // row.parking.free is already null unless the reading is fresh (same rules as visibleFree).
+    parkingFree: row.parking?.free ?? null,
+  };
 }
 
 /** Replaces the template text with the AI's sentence when it passes the grounding check. */
@@ -486,12 +497,27 @@ async function narrate(
   deps: AssistantDeps,
   ai: NonNullable<AssistantDeps['ai']>,
 ): Promise<void> {
-  const results = reply.cards.map((c, i) => ({
-    n: i + 1,
-    kind: c.kind,
-    distanceM: Math.round(c.distanceM),
-    parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
-  }));
+  const results: NarrateRequest['results'] = reply.cards.map((c, i) => {
+    const item: NarrateRequest['results'][number] = {
+      n: i + 1,
+      kind: c.kind,
+      distanceM: Math.round(c.distanceM),
+      parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
+    };
+    if (c.kind === 'restaurant') {
+      if (c.narr) {
+        if (c.narr.cat) item.cat = c.narr.cat;
+        item.open = c.narr.open;
+        item.parkingPaid = c.narr.parkingPaid;
+        item.parkingFree = c.narr.parkingFree;
+      }
+    } else {
+      item.open = c.open;
+      item.parkingPaid = deps.parkings.find((p) => p.id === c.id)?.isPaid ?? null;
+      item.parkingFree = c.free;
+    }
+    return item;
+  });
   const res = await ai.narrate({ ...facts, results });
   if (!res.ok) {
     if (res.reason === 'quota' && ai.quotaNotice()) reply.notice = deps.t('chat.sparkleOut');
@@ -506,8 +532,14 @@ async function narrate(
     300,
     500,
     ...results.flatMap((r) => (r.parkingM != null ? [r.distanceM, r.parkingM] : [r.distanceM])),
+    ...results.flatMap((r) => (r.parkingFree != null ? [r.parkingFree] : [])),
   ];
-  if (!isGroundedReply(res.value, allowed, reply.cards.length)) return;
+  const replyFacts = {
+    anyOpen: results.some((r) => r.open === 'open'),
+    anyClosed: results.some((r) => r.open === 'closed'),
+    anyFree: results.some((r) => r.parkingFree != null),
+  };
+  if (!isGroundedReply(res.value, allowed, reply.cards.length, replyFacts)) return;
   reply.text =
     fillPlaceholders(
       res.value,
@@ -607,6 +639,7 @@ function runFood(
       parkingM: row.parking?.distanceM ?? null,
       open: 'unknown',
       unverified: !row.r.verified,
+      narr: cardNarr(row, deps, now),
     }));
     const actions: ChatAction[] = [];
     if (!ctx.requireParking) {

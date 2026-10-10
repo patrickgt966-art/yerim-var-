@@ -99,6 +99,60 @@ describe('validNarrate', () => {
     };
     expect(validNarrate(body)).toBeNull();
   });
+
+  const base = {
+    deviceId: 'd',
+    messageId: 'm',
+    text: 't',
+    where: 'Alsancak',
+    what: 'balik',
+    total: 1,
+    withParking: 1,
+  };
+
+  it('passes the optional fact fields through and drops unknown extras', () => {
+    const result = {
+      n: 1,
+      kind: 'restaurant',
+      distanceM: 120,
+      parkingM: 80,
+      cat: 'Köfte',
+      open: 'unknown',
+      parkingPaid: null,
+      parkingFree: 12,
+      name: 'Secret Place',
+    };
+    const out = validNarrate({ ...base, results: [result] });
+    expect(out?.results).toEqual([
+      {
+        n: 1,
+        kind: 'restaurant',
+        distanceM: 120,
+        parkingM: 80,
+        cat: 'Köfte',
+        open: 'unknown',
+        parkingPaid: null,
+        parkingFree: 12,
+      },
+    ]);
+  });
+
+  it('still accepts results without the optional fields', () => {
+    const out = validNarrate({
+      ...base,
+      results: [{ n: 1, kind: 'parking', distanceM: 5, parkingM: null }],
+    });
+    expect(out?.results).toEqual([{ n: 1, kind: 'parking', distanceM: 5, parkingM: null }]);
+  });
+
+  it('rejects invalid optional fields', () => {
+    const r = { n: 1, kind: 'restaurant', distanceM: 120, parkingM: null };
+    expect(validNarrate({ ...base, results: [{ ...r, open: 'maybe' }] })).toBeNull();
+    expect(validNarrate({ ...base, results: [{ ...r, cat: 'x'.repeat(21) }] })).toBeNull();
+    expect(validNarrate({ ...base, results: [{ ...r, parkingFree: -1 }] })).toBeNull();
+    expect(validNarrate({ ...base, results: [{ ...r, parkingFree: 1.5 }] })).toBeNull();
+    expect(validNarrate({ ...base, results: [{ ...r, parkingPaid: 'yes' }] })).toBeNull();
+  });
 });
 
 describe('toMessages', () => {

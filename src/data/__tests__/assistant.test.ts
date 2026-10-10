@@ -5,6 +5,8 @@ import { visibleFree } from '../freshness';
 import { allRestaurants } from '../restaurants';
 import { fold } from '../search';
 import { staticParkings } from '../staticParkings';
+import type { Parking } from '../types';
+import type { NarrateRequest } from '@/lib/ai/protocol';
 
 const parkings = staticParkings();
 const deps: AssistantDeps = {
@@ -40,8 +42,7 @@ describe('assistant', () => {
     expect(
       c3.reply.actions.some(
         (a) =>
-          a.kind === 'refine' &&
-          (a.patch as { requireParking?: boolean }).requireParking === false,
+          a.kind === 'refine' && (a.patch as { requireParking?: boolean }).requireParking === false,
       ),
     ).toBe(true);
   });
@@ -188,11 +189,72 @@ describe('assistant', () => {
       const r = await answer(
         'bornovadaki balıkçılar',
         emptyContext('food'),
-        aiDeps({ narrate: async () => ({ ok: true, value: 'Tabi hocam! {1} burada.', remaining: 4 }) }),
+        aiDeps({
+          narrate: async () => ({ ok: true, value: 'Tabi hocam! {1} burada.', remaining: 4 }),
+        }),
       );
       expect(r.reply.sparkle).toBe(true);
       expect(r.reply.text).toContain(first.name);
       expect(r.reply.text).not.toContain('{1}');
+    });
+
+    it('sends open, paid and fresh free spaces of the nearest car park to narrate', async () => {
+      const plainRes = await answer('bornovadaki balıkçılar', emptyContext('food'), deps);
+      const first = allRestaurants().find((x) => x.id === plainRes.reply.cards[0]!.id)!;
+      const now = new Date('2026-10-10T09:00:00Z');
+      const fresh: Parking = {
+        id: 'fresh-1',
+        name: 'Fresh',
+        lat: first.lat,
+        lng: first.lng,
+        capacity: 50,
+        free: 7,
+        isIndoor: null,
+        isOpen: true,
+        isPaid: true,
+        nonstop: null,
+        openingHours: null,
+        address: null,
+        source: 'izmir-open-data',
+        updatedAt: new Date(now.getTime() - 60_000).toISOString(),
+        fetchedAt: now.toISOString(),
+        occupancyKind: 'live',
+      };
+      let sent: NarrateRequest['results'] = [];
+      const withFresh: AssistantDeps = {
+        ...aiDeps({
+          narrate: async (req) => {
+            sent = req.results;
+            return { ok: true, value: '{1} yakınında 7 yerli otopark var.', remaining: 4 };
+          },
+        }),
+        parkings: [...parkings, fresh],
+        now,
+      };
+      const r2 = await answer('bornovadaki balıkçılar', emptyContext('food'), withFresh);
+      const idx = r2.reply.cards.findIndex((c) => c.id === first.id);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(sent[idx]).toMatchObject({
+        open: expect.any(String),
+        parkingPaid: true,
+        parkingFree: 7,
+      });
+      expect(r2.reply.sparkle).toBe(true);
+    });
+
+    it('rejects "açık" when no result is known open, and "boş yer" without a fresh count', async () => {
+      const r = await answer(
+        'bornovadaki balıkçılar',
+        emptyContext('food'),
+        aiDeps({
+          narrate: async () => ({
+            ok: true,
+            value: '{1} şu an açık, 7 boş yer var.',
+            remaining: 4,
+          }),
+        }),
+      );
+      expect(r.reply.sparkle).toBeFalsy();
     });
 
     it('keeps the template when the narration is not grounded', async () => {

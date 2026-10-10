@@ -104,7 +104,34 @@ export function validNarrate(body: unknown): NarrateRequest | null {
     if (r.kind !== 'restaurant' && r.kind !== 'parking') return null;
     if (!isNum(r.n) || !isNum(r.distanceM)) return null;
     if (r.parkingM !== null && !isNum(r.parkingM)) return null;
-    out.push({ n: r.n, kind: r.kind, distanceM: r.distanceM, parkingM: r.parkingM });
+    const item: NarrateRequest['results'][number] = {
+      n: r.n,
+      kind: r.kind,
+      distanceM: r.distanceM,
+      parkingM: r.parkingM,
+    };
+    if (r.cat !== undefined) {
+      if (typeof r.cat !== 'string' || r.cat.length > 20) return null;
+      item.cat = r.cat;
+    }
+    if (r.open !== undefined) {
+      if (r.open !== 'open' && r.open !== 'closed' && r.open !== 'unknown') return null;
+      item.open = r.open;
+    }
+    if (r.parkingPaid !== undefined) {
+      if (r.parkingPaid !== null && typeof r.parkingPaid !== 'boolean') return null;
+      item.parkingPaid = r.parkingPaid;
+    }
+    if (r.parkingFree !== undefined) {
+      if (
+        r.parkingFree !== null &&
+        !(Number.isInteger(r.parkingFree) && (r.parkingFree as number) >= 0)
+      ) {
+        return null;
+      }
+      item.parkingFree = r.parkingFree as number | null;
+    }
+    out.push(item);
   }
   return { deviceId, messageId, text, where, what, total, withParking, results: out };
 }
