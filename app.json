@@ -42,7 +42,7 @@
       }
     },
     "extra": {
-      "aiUrl": ""
+      "aiUrl": "https://yerim-ai.patrickgt966.workers.dev"
     },
     "plugins": [
       "expo-router",
