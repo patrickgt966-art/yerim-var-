@@ -511,8 +511,17 @@ const PARK_CLASS_PENALTY = [0, 500, 1000, 1000];
 const NO_PARK_DISTANCE_M = NEAREST_PARKING_RADIUS_M;
 /** The walk to the restaurant counts half as much as the walk from the car park. */
 const RESTAURANT_DISTANCE_WEIGHT = 0.5;
-/** Street stands (midye, kokoreç) sink below sit-down places in fish and meat. */
+/**
+ * Street stands (midye, kokoreç) sink below sit-down places in fish, meat,
+ * lokanta and the unfiltered "Tümü" list (not in fast, breakfast, cafe, etc.).
+ */
 const STAND_PENALTY_M = 600;
+/**
+ * A place that only loosely fits the chosen meyhane or lokanta category (a
+ * cocktail bar, an untagged fallback restaurant) sorts after a real match at a
+ * similar distance (m-equivalent).
+ */
+const WEAK_MATCH_PENALTY_M = 400;
 /** An Overture row sorts after OSM rows at the same score (m-equivalent). */
 const UNVERIFIED_PENALTY_M = 250;
 
@@ -521,6 +530,20 @@ function isStand(r: Restaurant): boolean {
   if (r.kind === 'fast_food') return true;
   const name = fold(r.name);
   return (name.includes('midye') || name.includes('kokorec')) && !name.includes('balik');
+}
+
+/** True when `r` only loosely fits the meyhane or lokanta category. */
+function isWeakMatch(r: Restaurant, cat: FoodCategory): boolean {
+  if (cat === 'meyhane') {
+    return !(fold(r.name).includes('meyhane') || r.cuisines.includes('meyhane'));
+  }
+  if (cat === 'lokanta') {
+    return !(
+      nameCategories(r).includes('lokanta') ||
+      r.cuisines.some((c) => LOKANTA_CUISINES.includes(c))
+    );
+  }
+  return false;
 }
 
 /** 0 best: fresh free spots; then unknown; then fresh zero; then no car park near. */
@@ -541,7 +564,10 @@ function parkEaseScore(row: RestaurantRow, cat?: FoodCategory): number {
     PARK_CLASS_PENALTY[parkClass(parking)]! +
     (parking ? parking.distanceM : NO_PARK_DISTANCE_M) +
     RESTAURANT_DISTANCE_WEIGHT * r.distanceM;
-  if ((cat === 'fish' || cat === 'meat') && isStand(r)) score += STAND_PENALTY_M;
+  if ((cat === undefined || cat === 'fish' || cat === 'meat' || cat === 'lokanta') && isStand(r)) {
+    score += STAND_PENALTY_M;
+  }
+  if (cat && isWeakMatch(r, cat)) score += WEAK_MATCH_PENALTY_M;
   if (!r.verified) score += UNVERIFIED_PENALTY_M;
   return score;
 }

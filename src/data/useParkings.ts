@@ -7,7 +7,7 @@ import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
 import { visibleFree } from './freshness';
 import { distanceMeters, walkMinutes, type LatLng } from './geo';
-import { isNearPier } from './places';
+import { isNearPier, isNearRail } from './places';
 import { loadParkings } from './repository';
 import { withStatic } from './staticParkings';
 import type { Parking, ParkingResult } from './types';
@@ -100,6 +100,7 @@ export type RankedParking = Parking & {
   distance: number;
   walk: number;
   nearPier: boolean;
+  nearRail: boolean;
 };
 
 /** Parkings sorted by distance to a target, limited to a radius. */
@@ -119,7 +120,9 @@ export function rankByDistance(
   for (const { p, distance } of sorted) {
     const isStatic = p.source === 'osm' || p.source === 'izelman' || p.source === 'apple';
     if (isStatic && ++statics > MAX_STATIC_RESULTS) continue;
-    out.push({ ...p, distance, walk: walkMinutes(target, p), nearPier: isNearPier(p) });
+    out.push({ ...p, distance, walk: walkMinutes(target, p), nearPier: isNearPier(p),
+      nearRail: isNearRail(p),
+    });
   }
   return out;
 }

@@ -38,6 +38,8 @@ type State = {
   setWork: (p: SavedPlace | null) => void;
   toggleFavorite: (p: FavoriteParking) => void;
   toggleFavoriteRestaurant: (id: string) => void;
+  /** Re-keys a saved favorite (e.g. after car park ids changed); never creates a duplicate. */
+  replaceFavoriteId: (oldId: string, newId: string) => void;
   startPark: (p: ActivePark) => void;
   endPark: () => void;
   confirmPark: () => void;
@@ -66,6 +68,16 @@ export const useApp = create<State>()(
             ? s.favorites.filter((f) => f.id !== p.id)
             : [...s.favorites, p],
         })),
+      replaceFavoriteId: (oldId, newId) =>
+        set((s) => {
+          if (oldId === newId || !s.favorites.some((f) => f.id === oldId)) return s;
+          const taken = s.favorites.some((f) => f.id === newId);
+          return {
+            favorites: taken
+              ? s.favorites.filter((f) => f.id !== oldId)
+              : s.favorites.map((f) => (f.id === oldId ? { ...f, id: newId } : f)),
+          };
+        }),
       toggleFavoriteRestaurant: (id) =>
         set((s) => ({
           favoriteRestaurants: s.favoriteRestaurants.includes(id)

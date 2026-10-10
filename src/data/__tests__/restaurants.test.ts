@@ -362,14 +362,38 @@ describe('rankRestaurants park ease with distance', () => {
     ]);
   });
 
-  it('sinks street stands below restaurants in fish and meat only', () => {
+  it('sinks street stands below restaurants except in fast, breakfast, cafe, dessert, soup, meyhane', () => {
     const rows = [
       mkRow('stand', 100, null, 'fast_food'),
       mkRow('midye', 100, null, 'restaurant', 'Midye Dolma Ali'),
       mkRow('real', 400, null),
     ];
     expect(ids(rows, 'fish')).toEqual(['real', 'stand', 'midye']);
-    expect(ids(rows).slice(0, 2).sort()).toEqual(['midye', 'stand']);
+    expect(ids(rows, 'fast').slice(0, 2).sort()).toEqual(['midye', 'stand']);
+  });
+
+  it('sinks a kokoreç stand below a sit-down restaurant in Tümü', () => {
+    const rows = [
+      mkRow('kokorec', 200, null, 'restaurant', 'Kokoreç Usta'),
+      mkRow('sit', 300, null, 'restaurant', 'Sofra'),
+    ];
+    expect(ids(rows)).toEqual(['sit', 'kokorec']);
+  });
+
+  it('ranks a real meyhane before a closer cocktail bar in meyhane', () => {
+    const rows = [
+      mkRow('bar', 100, unknown(100), 'restaurant', 'Y Cocktail Bar'),
+      mkRow('meyhane', 300, unknown(100), 'restaurant', 'X Meyhanesi'),
+    ];
+    expect(ids(rows, 'meyhane')).toEqual(['meyhane', 'bar']);
+  });
+
+  it('ranks a named lokanta before a closer untagged restaurant in lokanta', () => {
+    const rows = [
+      mkRow('q', 100, unknown(100), 'restaurant', 'Q Restaurant'),
+      mkRow('z', 300, unknown(100), 'restaurant', 'Z Lokantası'),
+    ];
+    expect(ids(rows, 'lokanta')).toEqual(['z', 'q']);
   });
 });
 
