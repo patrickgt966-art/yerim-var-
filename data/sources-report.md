@@ -31,11 +31,7 @@
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
-- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
-- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
-- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
-- data/food-izmir.json: 2435 yer.
+- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
@@ -55,8 +51,8 @@
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
-- Web sitesi kontrolü: 4099 kontrol edildi, 2241 açık, 1687 açılmıyor, 171 belirsiz
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1109
+- Web sitesi kontrolü: 4099 kontrol edildi, 2277 açık, 1684 açılmıyor, 138 belirsiz
 - Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
 - data/food-overture-izmir.json: 2.21 MB
