@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['claude/**']
-    paths: ['scripts/fetch-sources.mjs', 'scripts/fetch-overture.py', '.github/workflows/data-refresh.yml']
+    paths: ['scripts/fetch-sources.mjs', 'scripts/fetch-overture.py', 'data/overture-blocklist.json', '.github/workflows/data-refresh.yml']
 
 permissions:
   contents: write

@@ -21,23 +21,23 @@ describe('restaurant ids across OSM and Overture data', () => {
 describe('verified flag and ranking', () => {
   const base = { n: 'X', a: 1, o: 2, k: 'cafe' };
 
-  it('OSM is verified; Overture only with v 1', () => {
+  it('only OSM is verified', () => {
     expect(toRestaurant({ ...base, id: 'osm-1' })).toMatchObject({ source: 'osm', verified: true });
     expect(toRestaurant({ ...base, id: 'ov-1' })).toMatchObject({ source: 'overture', verified: false });
     expect(toRestaurant({ ...base, id: 'ov-2', v: 1 })).toMatchObject({
       source: 'overture',
-      verified: true,
+      verified: false,
     });
   });
 
-  const row = (id: string, v?: number): RestaurantRow => ({
-    r: { ...toRestaurant({ ...base, id, ...(v ? { v } : {}) }), distanceM: 100 },
+  const row = (id: string): RestaurantRow => ({
+    r: { ...toRestaurant({ ...base, id }), distanceM: 100 },
     parking: null,
     nearbyCount: 0,
   });
 
-  it.each(['parkEase', 'distance'] as const)('ranks the unverified row second (%s)', (sort) => {
-    const rows = [row('ov-unverified'), row('ov-verified', 1)];
-    expect(rankRestaurants(rows, sort).map((x) => x.r.id)).toEqual(['ov-verified', 'ov-unverified']);
+  it.each(['parkEase', 'distance'] as const)('ranks the Overture row second (%s)', (sort) => {
+    const rows = [row('ov-1'), row('osm-1')];
+    expect(rankRestaurants(rows, sort).map((x) => x.r.id)).toEqual(['osm-1', 'ov-1']);
   });
 });

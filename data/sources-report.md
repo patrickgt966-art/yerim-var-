@@ -1,8 +1,10 @@
 # Veri kaynakları raporu
 
-- Overpass alınamadı (otoparklar; tüm sunucular ve denemeler).
 ## OpenStreetMap (ODbL)
 
+- Ham öğe: 1729, herkese açık: 1576, çiftler ayıklanınca: 1454
+- Adı olan: 52, kapasitesi olan: 41, ücretli işaretli: 72
+- Giriş noktasından türeyen: 22, bina olarak işaretli: 1
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -21,18 +23,15 @@
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
-- OSM'den İzelman ile çakışan 0 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 0.
-- Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.
+- OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
+- Adsız otoparklardan yakın yer adı bulunan: 685.
+- data/parkings-static.json: 1489 otopark.
 - data/places-izmir.json: 3504 yer (arama için).
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
-- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
-- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
-- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
-- data/food-izmir.json: 2435 yer.
+- Overpass alınamadı (yeme-içme; tüm sunucular ve denemeler).
+- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
@@ -47,12 +46,13 @@
 - Release: 2026-09-23.1 (2026-10-10)
 - Izmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
-- Kept (confidence >= 0.6): 15743
+- Kept (confidence >= 0.6): 15730
 - Removed as OSM duplicates: 1099
-- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6053
+- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1112
-- Web sitesi kontrolü: 4102 kontrol edildi, 2272 açık, 1688 açılmıyor, 142 belirsiz
+- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1110
+- Web sitesi kontrolü: 4099 kontrol edildi, 2269 açık, 1685 açılmıyor, 145 belirsiz
 - Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
-- Per kind: bar 957, cafe 3874, fast_food 747, food_court 4, restaurant 9062
+- Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
 - data/food-overture-izmir.json: 2.21 MB
