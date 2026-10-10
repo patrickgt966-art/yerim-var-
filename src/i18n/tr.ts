@@ -274,7 +274,7 @@ const tr = {
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      "Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Arama yaparken yazdığın metin ve yaklaşık bölgen (~100 m) Apple Haritalar'a gider. Belediyeye giden tek istek boş yer bilgisidir.",
+      "Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Arama yaparken yazdığın metin ve yaklaşık bölgen (~100 m) Apple Haritalar'a gider. Belediyeye giden tek istek boş yer bilgisidir. ✨ Akıllı yardım kullanıldığında sohbete yazdığın mesaj, cevap için Anthropic'in Claude yapay zekâsına gönderilir; konumun gönderilmez. Günlük hak sayacı için rastgele bir cihaz numarası tutulur, 2 gün içinde silinir.",
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod: MIT. Yazı tipleri Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
