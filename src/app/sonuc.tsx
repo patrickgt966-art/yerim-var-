@@ -36,7 +36,7 @@ import { parkHere } from '@/lib/parkHere';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
-type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled';
+type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled' | 'free' | 'nonstop' | 'rail';
 type Notice = 'outside' | 'failed' | 'denied';
 
 const LOCATION_TIMEOUT_MS = 6000;
@@ -111,6 +111,9 @@ export default function ResultsScreen() {
   const filtered = useMemo(() => {
     let list: RankedParking[] = ranked;
     if (filter === 'indoor') list = list.filter((p) => p.isIndoor === true);
+    if (filter === 'free') list = list.filter((p) => p.isPaid === false);
+    if (filter === 'nonstop') list = list.filter((p) => p.nonstop === true);
+    if (filter === 'rail') list = list.filter((p) => p.nearRail);
     if (filter === 'nearPier') list = list.filter((p) => p.nearPier);
     if (filter === 'disabled') list = list.filter((p) => disabledInfo(p) != null);
     // "Hemen bul": put the nearest open parking with a visible free space first,
@@ -161,6 +164,9 @@ export default function ResultsScreen() {
     ((isPlaceholderData && ranked.length > 0) || lacksFreshCounts(ranked));
   const anyIndoorKnown = ranked.some((p) => p.isIndoor != null);
   const anyNearPier = ranked.some((p) => p.nearPier);
+  const anyFree = ranked.some((p) => p.isPaid === false);
+  const anyNonstop = ranked.some((p) => p.nonstop === true);
+  const anyNearRail = ranked.some((p) => p.nearRail);
   const anyDisabled = ranked.some((p) => disabledInfo(p) != null);
 
   // Screen reader: the map is hidden (the list is the way in) and changes are spoken.
@@ -207,6 +213,27 @@ export default function ResultsScreen() {
           label={t('results.indoor')}
           selected={filter === 'indoor'}
           onPress={() => setFilter('indoor')}
+        />
+      )}
+      {anyFree && (
+        <Chip
+          label={t('results.free')}
+          selected={filter === 'free'}
+          onPress={() => setFilter('free')}
+        />
+      )}
+      {anyNonstop && (
+        <Chip
+          label={t('results.nonstop')}
+          selected={filter === 'nonstop'}
+          onPress={() => setFilter('nonstop')}
+        />
+      )}
+      {anyNearRail && (
+        <Chip
+          label={t('results.nearRail')}
+          selected={filter === 'rail'}
+          onPress={() => setFilter('rail')}
         />
       )}
       {anyNearPier && (

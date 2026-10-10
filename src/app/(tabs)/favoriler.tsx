@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import {
 } from '@/data/restaurants';
 import { estimateCost } from '@/data/tariffs';
 import { useParkings } from '@/data/useParkings';
+import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
 import { useApp } from '@/store/app';
@@ -213,9 +214,19 @@ export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
   const favorites = useApp((s) => s.favorites);
   const toggleFavorite = useApp((s) => s.toggleFavorite);
+  const replaceFavoriteId = useApp((s) => s.replaceFavoriteId);
   const { data } = useParkings();
   const now = new Date(useNow(30_000));
   const [tab, setTab] = useState<FavTab>('parkings');
+
+  // Saved ids from before the stable İzelman ids are re-keyed to the matching car park.
+  useEffect(() => {
+    if (!data) return;
+    for (const f of favorites) {
+      const p = resolveFavoriteParking(f, data.parkings);
+      if (p && p.id !== f.id) replaceFavoriteId(f.id, p.id);
+    }
+  }, [data, favorites, replaceFavoriteId]);
 
   return (
     <ScrollView
@@ -236,7 +247,7 @@ export default function FavoritesScreen() {
         <Txt secondary>{t('favorites.empty')}</Txt>
       ) : (
         favorites.map((f) => {
-          const p = data?.parkings.find((x) => x.id === f.id);
+          const p = data ? resolveFavoriteParking(f, data.parkings) : null;
           const fresh = p ? getFreshness(p, now) : null;
           const free = p ? visibleFree(p, now) : null;
           // Only fresh counts are shown; anything else reads as no count / unknown.
@@ -265,7 +276,7 @@ export default function FavoritesScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
-                onPress={() => router.push({ pathname: '/otopark/[id]', params: { id: f.id } })}
+                onPress={() => router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } })}
                 style={{
                   flex: 1,
                   minHeight: HIT,

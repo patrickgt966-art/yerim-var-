@@ -34,7 +34,8 @@ type RawPlace = {
   n: string;
   a: number;
   o: number;
-  k: Exclude<PlaceKind, 'popular' | 'parking' | 'apple'>;
+  /** 'rail' (railway stations) is searched as a 'station'. */
+  k: Exclude<PlaceKind, 'popular' | 'parking' | 'apple'> | 'rail';
 };
 
 /** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
@@ -150,7 +151,7 @@ function entry(hit: SearchHit, aliases: string[] = []): Entry {
 
 function buildIndex(): Entry[] {
   const places = (raw as { items: RawPlace[] }).items.map((p) =>
-    entry({ name: p.n, lat: p.a, lng: p.o, kind: p.k }),
+    entry({ name: p.n, lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
   );
   const popular = POPULAR_PLACES.map((p) =>
     entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'popular', district: p.district }),
