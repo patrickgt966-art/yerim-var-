@@ -9,7 +9,7 @@ type Row = { c: ChatCase; pass: boolean; misses: string[]; error?: string };
 
 describe('chat eval (baseline, never fails on misses)', () => {
   it('runs every case through parseQuery and reports', () => {
-    expect(CHAT_CASES).toHaveLength(50);
+    expect(CHAT_CASES).toHaveLength(56);
 
     const rows: Row[] = CHAT_CASES.map((c) => {
       try {

@@ -1,3 +1,4 @@
+import { dishProfile, likelyServes, type DishProfile } from '@/data/dishes';
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
@@ -15,6 +16,7 @@ import {
   WIDE_RADII_M,
   withParkingWithin,
   type FoodCategory,
+  type Restaurant,
   type RestaurantRow,
 } from '@/data/restaurants';
 import { fold, searchPlaces } from '@/data/search';
@@ -83,6 +85,8 @@ export type ChatCard =
       parkingM: number | null;
       open: 'open' | 'closed' | 'unknown';
       unverified?: boolean;
+      /** Why a dish search lists this place ("Adında lahmacun geçiyor"). */
+      reason?: string;
       narr?: CardNarr;
     }
   | {
@@ -125,6 +129,8 @@ export type AssistantDeps = {
 type Result = { reply: BotMessage; ctx: ChatContext };
 
 const MAX_CARDS = 5;
+/** A dish search with fewer places than this looks in the wider rings. */
+const MIN_DISH_PLACES = 3;
 
 function hash(s: string): number {
   let h = 0;
@@ -548,6 +554,8 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
     next.sort = 'parkEase';
     next.freeParking = false;
   }
+  // "en yakın X": nearest first, like the "daha yakın" follow-up.
+  if (/\ben yakin\w*/.test(folded)) next.sort = 'distance';
 
   return withNotice(await run(next, deps, text, it.quality));
 }
@@ -691,7 +699,50 @@ const GENERIC_DISH_STEMS = new Set([
   'ev yemegi',
   'esnaf lokantasi',
   'kahvalti salonu',
+  'bar',
+  'pub',
+  'meat',
+  'grill',
+  'fish',
+  'soup',
+  'seafood',
+  'breakfast',
+  'brunch',
+  'dessert',
+  'pastane',
+  'kahvehane',
+  'cay bahcesi',
+  'deniz urunleri',
 ]);
+
+/** How a place fits a searched dish: 1 = the name or cuisine says it, 2 = it very likely serves it. */
+type DishHit = { tier: 1 | 2; byName: boolean };
+
+function dishClassifier(stem: string, profile: DishProfile | null) {
+  const stemWords = stem.split(' ');
+  const kebab = (x: string) => x.replace(/kebap/g, 'kebab');
+  const stemKebab = kebab(stem);
+  return (r: Restaurant): DishHit | null => {
+    const n = fold(r.name);
+    const byName = stemWords.every((w) => n.includes(w));
+    if (byName || r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))) {
+      return { tier: 1, byName };
+    }
+    return profile && likelyServes(profile, n, r.cuisines) ? { tier: 2, byName: false } : null;
+  };
+}
+
+/** The dish as typed, without a seller ending that the stem dropped ("pilavcı" -> "pilav"). */
+function shownDish(dish: string, stem: string): string {
+  const words = dish.split(' ');
+  const sw = stem.split(' ');
+  if (words.length !== sw.length) return dish;
+  const i = words.length - 1;
+  const last = words[i]!;
+  const f = fold(last);
+  if (f.length !== last.length || f === sw[i] || !f.startsWith(sw[i]!)) return dish;
+  return [...words.slice(0, i), last.slice(0, sw[i]!.length)].join(' ');
+}
 
 function runFood(
   ctx: ChatContext,
@@ -704,9 +755,11 @@ function runFood(
   facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
-  const found = ctx.cat
-    ? restaurantsInCategory(target, ctx.cat, undefined, ctx.wide ? WIDE_RADII_M : undefined).items
-    : restaurantsNear(target, ctx.wide ? 15000 : 1000, 600);
+  const inCategory = ctx.cat
+    ? restaurantsInCategory(target, ctx.cat, undefined, ctx.wide ? WIDE_RADII_M : undefined)
+    : null;
+  const searchRadiusM = inCategory?.radiusM ?? (ctx.wide ? 15000 : 1000);
+  const found = inCategory ? inCategory.items : restaurantsNear(target, searchRadiusM, 600);
   const notCat = ctx.notCat;
   const items = notCat ? found.filter((r) => !matchesCategory(r, notCat)) : found;
   const rows = rankRestaurants(
@@ -714,26 +767,65 @@ function runFood(
     ctx.sort,
     ctx.cat ?? undefined,
   );
-  // Dish-first: rows named after the dish go on top.
+  // Dish-first: rows named after the dish, then places that very likely serve it; no padding.
   let ordered = rows;
   let dishPrefix = '';
+  const hits = new Map<string, DishHit>();
+  let profile: DishProfile | null = null;
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
+  const dishName = ctx.dish ? shownDish(ctx.dish, stem) : '';
   if (ctx.dish && stem && !GENERIC_DISH_STEMS.has(stem)) {
-    const stemWords = stem.split(' ');
-    const kebab = (x: string) => x.replace(/kebap/g, 'kebab');
-    const stemKebab = kebab(stem);
-    const named = rows.filter((r) => {
-      const n = fold(r.r.name);
-      return (
-        stemWords.every((w) => n.includes(w)) ||
-        r.r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))
+    profile = dishProfile(stem);
+    const classify = dishClassifier(stem, profile);
+    // Both tiers come from every meal place around, not only the dish's own category:
+    // a lahmacun can be at a kebab house (meat), an iskender at a döner shop (fast).
+    const tiered = (radius: number) => {
+      const candidates = restaurantsNear(target, radius, 5000).filter(
+        (r) => categoryOf(r) !== null && (!notCat || !matchesCategory(r, notCat)) && classify(r),
       );
-    });
-    if (named.length > 0) {
-      ordered = [...named, ...rows.filter((r) => !named.includes(r))];
-      dishPrefix = t('chat.dishNamed', { dish: ctx.dish, count: named.length }) + ' ';
+      const ranked = rankRestaurants(
+        buildRestaurantRows(candidates, deps.parkings, target, now),
+        ctx.sort,
+        ctx.cat ?? undefined,
+      );
+      const t1: RestaurantRow[] = [];
+      const t2: RestaurantRow[] = [];
+      for (const row of ranked) {
+        const hit = classify(row.r)!;
+        hits.set(row.r.id, hit);
+        (hit.tier === 1 ? t1 : t2).push(row);
+      }
+      return { t1, t2 };
+    };
+    let { t1, t2 } = tiered(searchRadiusM);
+    let widened = false;
+    // Too few matches nearby: look in the wider rings before giving up.
+    if (!ctx.wide && t1.length + t2.length < MIN_DISH_PLACES) {
+      for (const radius of WIDE_RADII_M) {
+        const wide = tiered(radius);
+        const total = wide.t1.length + wide.t2.length;
+        if (total > t1.length + t2.length) {
+          t1 = wide.t1;
+          t2 = wide.t2;
+          widened = true;
+        }
+        if (total >= MIN_DISH_PLACES) break;
+      }
+    }
+    if (t1.length + t2.length > 0) {
+      ordered = [...t1, ...t2];
+      dishPrefix =
+        (widened ? t('chat.dishWider', { dish: dishName }) + ' ' : '') +
+        (t1.length > 0
+          ? t('chat.dishNamed', { dish: dishName, count: t1.length })
+          : t('chat.dishLikely', {
+              dish: dishName,
+              count: t2.length,
+              label: profile?.label ?? '',
+            })) +
+        ' ';
     } else {
-      dishPrefix = t('chat.dishUnknown', { dish: ctx.dish }) + ' ';
+      dishPrefix = t('chat.dishUnknown', { dish: dishName }) + ' ';
     }
   }
   const withPark = withParkingWithin(ordered, ctx.parkM);
@@ -754,7 +846,7 @@ function runFood(
         })
       : variant(t, 'chat.foodFound', 2, seed, {
           where,
-          count: rows.length,
+          count: ordered.length,
           what,
           withPark: withPark.length,
         });
@@ -763,19 +855,30 @@ function runFood(
     Object.assign(facts, {
       where,
       what,
-      total: ctx.requireParking ? shown.length : rows.length,
+      total: ctx.requireParking ? shown.length : ordered.length,
       withParking: withPark.length,
     });
-    const cards: ChatCard[] = shown.slice(0, MAX_CARDS).map((row) => ({
-      kind: 'restaurant',
-      id: row.r.id,
-      name: row.r.name,
-      distanceM: row.r.distanceM,
-      parkingM: row.parking?.distanceM ?? null,
-      open: 'unknown',
-      unverified: !row.r.verified,
-      narr: cardNarr(row, deps, now),
-    }));
+    const reasonOf = (id: string): string | undefined => {
+      const hit = hits.get(id);
+      if (!hit) return undefined;
+      if (hit.byName) return t('chat.reasonNamed', { dish: dishName });
+      // A cuisine-tag match is not "in the name": word it as a likely fit.
+      return profile ? t('chat.reasonLikely', { dish: dishName, label: profile.label }) : undefined;
+    };
+    const cards: ChatCard[] = shown.slice(0, MAX_CARDS).map((row) => {
+      const reason = reasonOf(row.r.id);
+      return {
+        kind: 'restaurant',
+        id: row.r.id,
+        name: row.r.name,
+        distanceM: row.r.distanceM,
+        parkingM: row.parking?.distanceM ?? null,
+        open: 'unknown',
+        unverified: !row.r.verified,
+        ...(reason ? { reason } : {}),
+        narr: cardNarr(row, deps, now),
+      };
+    });
     const actions: ChatAction[] = [];
     if (!ctx.requireParking) {
       actions.push({
@@ -822,7 +925,7 @@ function runFood(
     return { text: t('chat.foodNoFreePark', { where, what }), cards: [], actions };
   }
 
-  if (ctx.requireParking && rows.length > 0) {
+  if (ctx.requireParking && ordered.length > 0) {
     const actions: ChatAction[] = [];
     if (ctx.parkM === 300) {
       actions.push({ kind: 'refine', label: t('chat.actWiden500'), patch: { parkM: 500 } });

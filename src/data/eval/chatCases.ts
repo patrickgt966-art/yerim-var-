@@ -4,6 +4,7 @@ export type ChatCase = {
   text: string;
   group:
     | 'basic'
+    | 'dish'
     | 'slang_typo'
     | 'negation'
     | 'parking'
@@ -255,6 +256,38 @@ export const CHAT_CASES: ChatCase[] = [
     group: 'vague',
     expect: { kind: 'search', food: true },
     aiExpected: true,
+  },
+
+  // dish (6)
+  {
+    text: 'lahmacun yemek istiyorum',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'fast', food: true, nearMe: false },
+  },
+  {
+    text: 'canım iskender çekti',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'meat', food: true },
+  },
+  {
+    text: 'kumpir nerede yenir',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'fast', food: true },
+  },
+  {
+    text: 'bana en yakın tavuk pilavcı bul',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'lokanta', food: true, nearMe: true },
+  },
+  {
+    text: 'mantı yiyecek yer',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'lokanta', food: true },
+  },
+  {
+    text: 'boyoz gevrek',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'breakfast', food: true },
   },
 
   // offtopic (4)
