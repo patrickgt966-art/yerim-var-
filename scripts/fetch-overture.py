@@ -8,9 +8,15 @@ import json
 import math
 import os
 import re
+import socket
 import sys
+import time
 import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
 
@@ -25,6 +31,12 @@ ROOT = Path(__file__).resolve().parent.parent
 OSM_FILE = ROOT / 'data' / 'food-izmir.json'
 OUT_FILE = ROOT / 'data' / 'food-overture-izmir.json'
 REPORT_FILE = ROOT / 'data' / 'sources-report.md'
+WEB_CACHE_FILE = 'data/overture-web-check.json'
+WEB_MAX_URLS = 6000
+WEB_WORKERS = 32
+WEB_TIMEOUT = 8  # seconds per request
+WEB_BUDGET = 15 * 60  # seconds; no new checks are started after this
+WEB_USER_AGENT = 'YerimVarDataCheck/1.0 (+https://github.com/patrickgt966-art/yerim-var-)'
 
 BUCKET = 'overturemaps-us-west-2'
 MIN_CONFIDENCE = 0.6
@@ -346,6 +358,129 @@ def select(cands, threshold, osm_grid):
     return fresh, len(unique) - len(fresh)
 
 
+def classify(result):
+    """'ok' | 'dead' | 'unknown' for an HTTP status code or an exception raised by a request."""
+    if isinstance(result, urllib.error.HTTPError):
+        return classify(result.code)
+    if isinstance(result, urllib.error.URLError):
+        return classify(result.reason) if isinstance(result.reason, BaseException) else 'unknown'
+    if isinstance(result, (socket.gaierror, ConnectionRefusedError)):
+        return 'dead'
+    if isinstance(result, int):
+        if 200 <= result < 400 or result in (401, 403, 405, 429):
+            return 'ok'
+        if result in (404, 410):
+            return 'dead'
+    return 'unknown'
+
+
+def normalise_url(url):
+    """Lower-case host, no trailing '/'; a missing scheme becomes http://. None if not http(s)."""
+    url = (url or '').strip()
+    if not url:
+        return None
+    if '://' not in url:
+        url = 'http://' + url
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme.lower() not in ('http', 'https') or not parts.netloc:
+        return None
+    return urllib.parse.urlunsplit(
+        (parts.scheme.lower(), parts.netloc.lower(), parts.path, parts.query, parts.fragment)).rstrip('/')
+
+
+def _status(url, method, extra=None):
+    req = urllib.request.Request(url, method=method, headers={'User-Agent': WEB_USER_AGENT, **(extra or {})})
+    try:
+        with urllib.request.urlopen(req, timeout=WEB_TIMEOUT) as resp:
+            return resp.status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+
+def _probe(url):
+    """HEAD (GET with Range on 405/501); returns the status code or the exception raised."""
+    try:
+        status = _status(url, 'HEAD')
+        if status in (405, 501):
+            status = _status(url, 'GET', {'Range': 'bytes=0-0'})
+        return status
+    except Exception as e:  # classify() decides what it means
+        return e
+
+
+def _check_url(url, deadline):
+    """(url, verdict), or (url, None) when the time budget ran out before the check started."""
+    if time.monotonic() > deadline:
+        return url, None
+    first = classify(_probe(url))
+    if first == 'ok':
+        return url, first
+    # http:// failed -> try https:// once, and vice versa.
+    alt = ('https://' + url[7:]) if url.startswith('http://') else ('http://' + url[8:])
+    second = classify(_probe(alt))
+    if second == 'ok':
+        return url, 'ok'
+    return url, 'dead' if first == second == 'dead' else 'unknown'
+
+
+def check_websites(items, cache_path=WEB_CACHE_FILE):
+    """Mark records whose website is dead (drop w and v, set sp 1). Network only when YERIM_WEB_CHECK == '1'.
+
+    Returns a stats dict for the report: mode 'network' | 'cache' | 'none', the counts, the cache date.
+    """
+    path = Path(cache_path)
+    if not path.is_absolute():
+        path = ROOT / path
+    results, checked_on = {}, None
+    if path.exists():
+        try:
+            doc = json.loads(path.read_text(encoding='utf-8'))
+            results = dict(doc.get('results') or {})
+            checked_on = doc.get('checked')
+        except (ValueError, OSError, AttributeError):
+            results = {}
+    stats = {'mode': 'cache' if results or checked_on else 'none', 'checked': 0, 'ok': 0, 'dead': 0,
+             'unknown': 0, 'marked': 0, 'date': checked_on}
+
+    if os.environ.get('YERIM_WEB_CHECK') == '1':
+        urls = {u for u in (normalise_url(i.get('w')) for i in items) if u}
+        # Never-checked URLs first, then earlier 'unknown' ones, so a capped run makes progress over time.
+        order = {None: 0, 'unknown': 1}
+        todo = sorted(urls, key=lambda u: (order.get(results.get(u), 2), u))[:WEB_MAX_URLS]
+        deadline = time.monotonic() + WEB_BUDGET
+        with ThreadPoolExecutor(max_workers=WEB_WORKERS) as pool:
+            for url, verdict in pool.map(lambda u: _check_url(u, deadline), todo):
+                if verdict is None:
+                    continue  # budget exhausted: stays as it was (unknown if never checked)
+                results[url] = verdict
+                stats['checked'] += 1
+                stats[verdict] += 1
+        stats['mode'] = 'network'
+        stats['date'] = date.today().isoformat()
+        doc = {
+            '$comment': 'Generated by scripts/fetch-overture.py (YERIM_WEB_CHECK=1): liveness of Overture website URLs. '
+                        'ok = answered (or blocked us), dead = 404/410, DNS failure or connection refused, '
+                        'unknown = timeout, 5xx, SSL error or not checked.',
+            'checked': stats['date'],
+            'results': results,
+        }
+        path.write_text(json.dumps(doc, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n',
+                        encoding='utf-8')
+
+    if stats['mode'] != 'none':
+        for rec in items:
+            url = normalise_url(rec.get('w'))
+            if url and results.get(url) == 'dead':
+                rec.pop('w', None)
+                rec.pop('v', None)
+                rec['sp'] = 1
+                stats['marked'] += 1
+    return stats
+
+
 def render(release, items):
     comment = (
         f'Generated by scripts/fetch-overture.py from Overture Maps places release {release}. '
@@ -365,7 +500,38 @@ def existing_count():
         return 0
 
 
-def append_report(release, raw, kept, dupes, items, size, threshold, dropped):
+def previous_items():
+    """Items of the file about to be overwritten ([] if missing or unreadable)."""
+    if not OUT_FILE.exists():
+        return []
+    try:
+        return json.loads(OUT_FILE.read_text(encoding='utf-8')).get('items', [])
+    except (ValueError, OSError):
+        return []
+
+
+def diff_lines(old_items, items):
+    """Report lines for what changed since the previous run, keyed by id."""
+    new_ids = {r['id'] for r in items}
+    old_ids = {r['id'] for r in old_items}
+    gone = sorted((r for r in old_items if r['id'] not in new_ids), key=lambda r: (fold(r.get('n', '')), r['id']))
+    lines = [f'- Önceki çalıştırmaya göre: +{len(new_ids - old_ids)} yeni, −{len(gone)} kaybolan']
+    if gone:
+        lines.append('- Kaybolanlardan örnekler: ' + ', '.join(r.get('n', r['id']) for r in gone[:10]))
+    return lines
+
+
+def web_line(web):
+    if web['mode'] == 'network':
+        return (f"- Web sitesi kontrolü: {web['checked']} kontrol edildi, {web['ok']} açık, "
+                f"{web['dead']} açılmıyor, {web['unknown']} belirsiz")
+    if web['mode'] == 'cache':
+        return (f"- Web sitesi kontrolü: önbellekten ({web['date'] or '?'}), "
+                f"{web['marked']} açılmayan site işaretlendi")
+    return '- Web sitesi kontrolü: yapılmadı (önbellek yok)'
+
+
+def append_report(release, raw, kept, dupes, items, size, threshold, dropped, web, diff):
     kinds = {}
     for r in items:
         kinds[r['k']] = kinds.get(r['k'], 0) + 1
@@ -382,6 +548,8 @@ def append_report(release, raw, kept, dupes, items, size, threshold, dropped):
         f'- Ad süzgeciyle atılan: {sum(dropped.values())} (en sık 10 eşleşen kelime: '
         + (', '.join(f'{w} {n}' for w, n in dropped.most_common(10)) or '-') + ')',
         f'- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): {sum(1 for r in items if r.get("sp") == 1)}',
+        web_line(web),
+        *diff,
         '- Per kind: ' + ', '.join(f'{k} {n}' for k, n in sorted(kinds.items())),
         f'- data/food-overture-izmir.json: {size / 1024 / 1024:.2f} MB',
         '',
@@ -416,13 +584,16 @@ def main():
         print(f'file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}')
         items, dupes = select(cands, threshold, osm_grid)
         text = render(release, items)
+    web = check_websites(items)
+    text = render(release, items)
     old = existing_count()
     if old and len(items) < MIN_KEEP_RATIO * old:
         print(f'refusing to write: {len(items)} items is under 70% of the existing {old}')
         return
+    diff = diff_lines(previous_items(), items)
     OUT_FILE.write_text(text + '\n', encoding='utf-8')
     size = len(text.encode('utf-8')) + 1
-    append_report(release, raw, len(items) + dupes, dupes, items, size, threshold, dropped)
+    append_report(release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff)
     print(f'wrote {len(items)} items ({size} bytes), {dupes} OSM duplicates removed')
 
 
@@ -439,6 +610,10 @@ def _selftest():
     assert not is_suspect_phone('+902324463476')
     assert not is_suspect_phone('+905393289990')
     assert not is_suspect_phone('(0232) 220 22 11')
+    for status, want in ((200, 'ok'), (301, 'ok'), (403, 'ok'), (404, 'dead'), (410, 'dead'), (503, 'unknown')):
+        assert classify(status) == want, status
+    assert classify(socket.gaierror()) == 'dead'
+    assert classify(socket.timeout()) == 'unknown'
     print('selftest ok')
 
 

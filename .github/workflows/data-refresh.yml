@@ -22,8 +22,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Overpass is capped at 20 min in the script; CKAN calls have 60 s timeouts.
-    timeout-minutes: 40
+    # Overpass is capped at 20 min in the script; CKAN calls have 60 s timeouts;
+    # the Overture website check has a 15 min budget (+20 min over the previous 40).
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +36,8 @@ jobs:
           python-version: '3.12'
       - run: pip install pyarrow shapely
       - run: python scripts/fetch-overture.py
+        env:
+          YERIM_WEB_CHECK: '1'
       - run: cat data/sources-report.md >> "$GITHUB_STEP_SUMMARY"
 
       # Script changes on a working branch: commit the data to that branch.
