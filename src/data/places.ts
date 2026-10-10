@@ -1,5 +1,6 @@
 import raw from '../../data/places.json';
 import izmirPlaces from '../../data/places-izmir.json';
+import railIzmir from '../../data/rail-izmir.json';
 import { distanceMeters, type LatLng } from './geo';
 
 export type Place = { id: string; name: string; district: string; icon: string } & LatLng;
@@ -17,9 +18,12 @@ let railStations: LatLng[] | undefined;
 
 /** Within maxMeters of an İZBAN / metro / tram station (places with k 'rail'). */
 export function isNearRail(p: LatLng, maxMeters = 500): boolean {
-  railStations ??= (izmirPlaces as { items: { a: number; o: number; k: string }[] }).items
-    .filter((x) => x.k === 'rail')
-    .map((x) => ({ lat: x.a, lng: x.o }));
+  railStations ??= [
+    ...(railIzmir as { items: { a: number; o: number }[] }).items,
+    ...(izmirPlaces as { items: { a: number; o: number; k: string }[] }).items.filter(
+      (x) => x.k === 'rail',
+    ),
+  ].map((x) => ({ lat: x.a, lng: x.o }));
   return railStations.some((s) => distanceMeters(p, s) <= maxMeters);
 }
 
