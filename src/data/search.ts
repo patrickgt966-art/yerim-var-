@@ -254,7 +254,8 @@ function tokenScore(e: Entry, tokens: { vs: string[]; optional: boolean }[]): nu
  */
 export function searchPlaces(query: string, limit = 6): SearchHit[] {
   let q = fold(query);
-  if (q.length < 2) return [];
+  // Under 3 letters nothing is a real name: fuzzy matching would map "oo" to "Buca Koop".
+  if (q.replace(/ /g, '').length < 3) return [];
   const wantsInstitution = INSTITUTION_QUERIES.has(q);
   q = QUERY_ALIAS[q] ?? q;
   const alias = aliasFor(contentTokens(q));

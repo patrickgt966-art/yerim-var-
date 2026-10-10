@@ -12,9 +12,10 @@ export type ChatCase = {
     | 'vague'
     | 'offtopic'
     | 'greeting_abuse'
+    | 'gibberish'
     | 'followup';
   expect: Partial<{
-    kind: 'greeting' | 'abuse' | 'offtopic' | 'search' | 'empty';
+    kind: 'greeting' | 'abuse' | 'offtopic' | 'search' | 'empty' | 'gibberish';
     cat: FoodCategory | null;
     district: string | null;
     requireParking: boolean;
@@ -258,7 +259,7 @@ export const CHAT_CASES: ChatCase[] = [
     aiExpected: true,
   },
 
-  // dish (6)
+  // dish (7)
   {
     text: 'lahmacun yemek istiyorum',
     group: 'dish',
@@ -289,6 +290,11 @@ export const CHAT_CASES: ChatCase[] = [
     group: 'dish',
     expect: { kind: 'search', cat: 'breakfast', food: true },
   },
+  {
+    text: 'kuşbaşı derken yemekten kast etmiştim',
+    group: 'dish',
+    expect: { kind: 'search', cat: 'meat', food: true },
+  },
 
   // offtopic (4)
   { text: 'dün maç kaç kaç bitti', group: 'offtopic', expect: { kind: 'offtopic' } },
@@ -296,10 +302,14 @@ export const CHAT_CASES: ChatCase[] = [
   { text: 'dolar kaç oldu bugün', group: 'offtopic', expect: { kind: 'offtopic' } },
   { text: 'bana bir fıkra anlat', group: 'offtopic', expect: { kind: 'offtopic' } },
 
-  // greeting_abuse (3)
+  // greeting_abuse (4)
   { text: 'selam nasılsın', group: 'greeting_abuse', expect: { kind: 'greeting' } },
   { text: 'salak mısın', group: 'greeting_abuse', expect: { kind: 'abuse' } },
   { text: 'günaydın naber', group: 'greeting_abuse', expect: { kind: 'greeting' } },
+  { text: 'selamın aleyküm', group: 'greeting_abuse', expect: { kind: 'greeting' } },
+
+  // gibberish (1): too short, never searched
+  { text: 'Oo', group: 'gibberish', expect: { kind: 'gibberish' } },
 
   // followup (3): evaluated without context, so AI (with history) is expected
   {

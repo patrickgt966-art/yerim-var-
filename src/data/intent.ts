@@ -7,6 +7,8 @@ export type District = { name: string; lat: number; lng: number };
 /** What a free-text query means: chit-chat, or a search with its parts split out. */
 export type QueryIntent =
   | { kind: 'empty' }
+  /** Too short, repeated letters or no vowel ("oo", "aaa", "xd"): never searched, never sent to the AI. */
+  | { kind: 'gibberish' }
   | { kind: 'greeting' }
   | { kind: 'abuse' }
   | { kind: 'offtopic' }
@@ -75,8 +77,10 @@ export const IZMIR_DISTRICTS: District[] = [
 const words = (s: string) => new Set(s.split(' '));
 
 const GREETING = words(
-  'selam selamlar merhaba mrb slm hey gunaydin naber nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah aksamlar gunler geceler',
+  'selam selamlar merhaba merhabalar mrb slm hey gunaydin naber nbr nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah aksamlar gunler geceler selamun selamin aleykum selamunaleykum selaminaleykum aleykumselam',
 );
+// Short greetings ("sa", "as" for "selamün aleyküm"): only when they are most of the text.
+const SOLO_GREETING = words('sa as');
 // Whole tokens only: never matched as a substring.
 const ABUSE = words(
   'aq amk amq aqq sikim sikerim siktir sik orospu pic yarrak amina anani ananin anan got gotveren salak aptal gerizekali mal oc lan',
@@ -86,13 +90,13 @@ const ADDRESS = words(
   'dostum dost kardesim kardes kanka kanki abi abla hocam hoca reis birader moruk canim guzelim usta kral kralice baba aga',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim cekti cekiyor gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim cekti cekiyor gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum derken dedim demek istedim kastettim kast etmistim ettim yani hani aslinda onu bunu yemekten yemegi',
 );
 // Filler only when the text is about food or names a district; else it may be a place name.
 const COND_FILLER = words('restoran restorani restorant lokal sey seyler acik');
 // Words that mean "food in general"; they stay filler for place purposes.
 const FOOD_WORDS = words(
-  'yemek yiyelim yiyecek yiyecegim yiyebilirim yiyebilecegim restoran karnim acim ac',
+  'yemek yemekten yemegi yiyelim yiyecek yiyecegim yiyebilirim yiyebilecegim restoran karnim acim ac',
 );
 // Case suffixes left as their own token by apostrophes ("Alsancak'ta").
 const SUFFIX_TOKENS = words('a e ya ye da de ta te dan den tan ten nda nde ndan nden');
@@ -261,20 +265,35 @@ function isPlaceToken(tok: string): boolean {
   return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
 }
 
+/** Under 3 letters, one repeated letter ("aaa"), or no vowel ("xd", "hmm"): not a word to search. */
+function isGibberish(text: string): boolean {
+  const letters = text.replace(/[^a-z]/g, '');
+  if (letters.length === 0) return false;
+  if (letters.length < 3 || new Set(letters).size === 1) return true;
+  // A short no-vowel name can still be a real place ("ptt").
+  return !/[aeiou]/.test(letters) && !(text.indexOf(' ') < 0 && equalsNameWord(text));
+}
+
 /** Split a free-text query into chit-chat, or place / dish / filters. */
 export function parseQuery(raw: string): QueryIntent {
-  const all = fold(raw).split(' ').filter(Boolean);
+  // "s.a" is a greeting ("selamün aleyküm"), not two letters.
+  const all = fold(raw)
+    .replace(/(^| )s a( |$)/g, '$1sa$2')
+    .split(' ')
+    .filter(Boolean);
   if (all.length === 0) return { kind: 'empty' };
 
   // Greeting / abuse: nothing left once the chit-chat words are dropped.
+  const isGreet = (t: string) => GREETING.has(t) || (SOLO_GREETING.has(t) && all.length <= 2);
   const greetIyi = (i: number) => all[i] === 'iyi' && IYI_GREETING_NEXT.has(all[i + 1] ?? '');
-  const hasGreeting = all.some((t, i) => GREETING.has(t) || greetIyi(i));
+  const hasGreeting = all.some((t, i) => isGreet(t) || greetIyi(i));
   let rest = all.filter(
     (t, i) =>
-      !GREETING.has(t) &&
+      !isGreet(t) &&
       !greetIyi(i) &&
       !ABUSE.has(t) &&
-      !FILLER.has(t) &&
+      // "ev yemeği" / "öğle yemeği" are dishes, not filler.
+      (!FILLER.has(t) || (t === 'yemegi' && (all[i - 1] === 'ev' || all[i - 1] === 'ogle'))) &&
       !(t === 'yerde' && all[i - 1] === 'bulundugum') &&
       !ADDRESS.has(t) &&
       !SUFFIX_TOKENS.has(t),
@@ -375,6 +394,9 @@ export function parseQuery(raw: string): QueryIntent {
   ) {
     return { kind: 'offtopic' };
   }
+
+  // Nothing to search for: no food, no parking, and the leftover is not a word.
+  if (!cat && !food && !hasPark && isGibberish(rest.join(' '))) return { kind: 'gibberish' };
 
   let tokens = placeTokens(rest);
   const fullPlace = tokens.join(' ');

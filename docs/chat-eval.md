@@ -3,8 +3,8 @@
 Date: 2026-10-10
 
 ```
-Chat eval (parseQuery): 48/56
-Rules-only score excluding aiExpected: 43/43
+Chat eval (parseQuery): 51/59
+Rules-only score excluding aiExpected: 46/46
 Per group:
   basic: 10/10
   slang_typo: 8/8
@@ -12,9 +12,10 @@ Per group:
   parking: 6/6
   near_me: 5/5
   vague: 0/6
-  dish: 6/6
+  dish: 7/7
   offtopic: 4/4
-  greeting_abuse: 3/3
+  greeting_abuse: 4/4
+  gibberish: 1/1
   followup: 1/3
 Failing (8):
   [vague] (AI) "akşam romantik bir yer" -> food: want true, got false

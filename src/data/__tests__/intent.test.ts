@@ -361,3 +361,58 @@ describe('off-topic requests', () => {
     expect(parseQuery('bana bir fıkra anlat').kind).toBe('offtopic');
   });
 });
+
+describe('correction words, greetings and gibberish', () => {
+  it('reads kuşbaşı as meat', () => {
+    expect(search('kuşbaşı')).toMatchObject({ cat: 'meat', dish: 'kuşbaşı', food: true });
+  });
+
+  it('drops correction words: "X derken yemekten kast etmiştim" is a dish search for X', () => {
+    expect(search('Kuşbaşı derken yemekten kast etmiştim')).toMatchObject({
+      cat: 'meat',
+      dish: 'kuşbaşı',
+      food: true,
+      placeQuery: '',
+    });
+    expect(search('sushi derken yemekten kast etmiştim')).toMatchObject({
+      food: true,
+      placeQuery: 'sushi',
+    });
+  });
+
+  it('still reads "ev yemeği" as a category', () => {
+    expect(search('ev yemeği')).toMatchObject({ cat: 'lokanta' });
+  });
+
+  it.each([
+    'selam',
+    'Selamin aleykum',
+    'selamün aleyküm',
+    'selamunaleykum',
+    'selamın aleyküm',
+    's.a',
+    'sa',
+    'aleykum selam',
+    'as',
+    'slm',
+    'mrb',
+    'merhabalar',
+    'iyi akşamlar',
+    'günaydın',
+    'iyi geceler',
+    'naber',
+    'nbr',
+    'nasılsın',
+  ])('treats "%s" as a greeting', (q) => {
+    expect(parseQuery(q).kind).toBe('greeting');
+  });
+
+  it.each(['Oo', 'aa', 'aaa', 'hmmm', 'xd', 'brb', 'x'])('treats "%s" as gibberish', (q) => {
+    expect(parseQuery(q).kind).toBe('gibberish');
+  });
+
+  it('keeps short food words and places', () => {
+    expect(search('et').cat).toBe('meat');
+    expect(search('konak').district?.name).toBe('Konak');
+  });
+});

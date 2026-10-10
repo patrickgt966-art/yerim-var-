@@ -232,7 +232,10 @@ export default function SearchScreen() {
   // "Bornova balık" searches the place part only; the category word is applied on submit.
   const { hits, settled, deferredQuery } = usePlaceSearch(query, localPart);
   const intent = useMemo(() => parseQuery(deferredQuery), [deferredQuery]);
-  const guide = deferredQuery.trim().length >= 2 && intent.kind !== 'search' ? intent.kind : null;
+  const guide =
+    deferredQuery.trim().length >= 2 && intent.kind !== 'search' && intent.kind !== 'gibberish'
+      ? intent.kind
+      : null;
   const split = useMemo(
     () => (food ? splitPlaceAndCategory(deferredQuery) : null),
     [food, deferredQuery],
@@ -463,30 +466,36 @@ export default function SearchScreen() {
             </Txt>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {(food
-                ? (['search.exampleKofte', 'search.exampleBreakfast', 'search.exampleFish'] as const)
-                : (['search.exampleAlsancak', 'search.exampleKonak', 'search.exampleBornova'] as const)
-              ).map(
-                (key) => (
-                  <Pressable
-                    key={key}
-                    accessibilityRole="button"
-                    onPress={() => setQuery(t(key))}
-                    style={({ pressed }) => [
-                      asym(14, 4),
-                      {
-                        minHeight: 44,
-                        paddingHorizontal: 14,
-                        justifyContent: 'center',
-                        backgroundColor: pressed ? c.surface : c.card,
-                        borderWidth: 1,
-                        borderColor: c.line,
-                      },
-                    ]}
-                  >
-                    <Txt variant="bodyBold">{t(key)}</Txt>
-                  </Pressable>
-                ),
-              )}
+                ? ([
+                    'search.exampleKofte',
+                    'search.exampleBreakfast',
+                    'search.exampleFish',
+                  ] as const)
+                : ([
+                    'search.exampleAlsancak',
+                    'search.exampleKonak',
+                    'search.exampleBornova',
+                  ] as const)
+              ).map((key) => (
+                <Pressable
+                  key={key}
+                  accessibilityRole="button"
+                  onPress={() => setQuery(t(key))}
+                  style={({ pressed }) => [
+                    asym(14, 4),
+                    {
+                      minHeight: 44,
+                      paddingHorizontal: 14,
+                      justifyContent: 'center',
+                      backgroundColor: pressed ? c.surface : c.card,
+                      borderWidth: 1,
+                      borderColor: c.line,
+                    },
+                  ]}
+                >
+                  <Txt variant="bodyBold">{t(key)}</Txt>
+                </Pressable>
+              ))}
             </View>
           </View>
         )}

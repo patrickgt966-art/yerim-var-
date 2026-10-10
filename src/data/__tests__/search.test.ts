@@ -200,3 +200,13 @@ describe('curated places are listed once', () => {
     },
   );
 });
+
+describe('searchPlaces: very short queries', () => {
+  it.each(['oo', 'aa', 'o', ' a ', 'k o'])('finds nothing for "%s"', (q) => {
+    expect(searchPlaces(q)).toEqual([]);
+  });
+
+  it('still finds a three-letter query', () => {
+    expect(searchPlaces('deu').length).toBeGreaterThan(0);
+  });
+});
