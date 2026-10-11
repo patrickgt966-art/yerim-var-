@@ -12,5 +12,6 @@ export const CATEGORY_ICON: Record<FoodCategory, IconName> = {
   cafe: 'cup',
   meyhane: 'glass',
   fast: 'burger',
+  world: 'globe',
   dessert: 'icecream',
 };

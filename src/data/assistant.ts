@@ -19,6 +19,7 @@ import {
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
+  hasWordForm,
   hasWordStart,
   WIDE_RADII_M,
   withParkingWithin,
@@ -813,7 +814,7 @@ function dishClassifier(stem: string, profile: DishProfile | null, exact = false
   const stemKebab = kebab(stem);
   return (r: Restaurant): DishHit | null => {
     const n = fold(r.name);
-    const byName = stemWords.every((w) => (exact ? hasExactNameWord(n, w) : n.includes(w)));
+    const byName = stemWords.every((w) => (exact ? hasExactNameWord(n, w) : hasWordForm(n, w)));
     if (byName || r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))) {
       return { tier: 1, byName };
     }

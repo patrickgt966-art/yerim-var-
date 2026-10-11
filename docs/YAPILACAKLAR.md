@@ -13,12 +13,10 @@ Son güncelleme: 11 Ekim 2026.
 ## Şimdi yapılabilir (hesap gerekmez)
 
 1. **Sohbet "Listede aç" düğmesi**: liste "hariç" ve "ücretsiz otopark" filtrelerini taşımıyor.
-2. **Dünya mutfağı kategorisi**: sushi, ramen, makarna, steak için ayrı kategori ve sözlük.
-3. **Yemek sözlüğünü büyütmek**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~180 yemek).
-4. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
-5. **İngilizce arayüz.**
-6. **ROADMAP.md güncellemesi.**
-7. Ufak: "pişi" Otopark bölümünde hâlâ gevşek eşleşiyor (Balık Pişiricisi).
+2. **Yemek sözlüğü**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~380 yemek).
+3. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
+4. **İngilizce arayüz.**
+5. **ROADMAP.md güncellemesi.**
 
 ## Veri olmadan yapılamayanlar (kaynak lazım)
 
@@ -65,6 +63,9 @@ Son güncelleme: 11 Ekim 2026.
 - Başka şehir (İstanbul) araştırılsın mı?
 
 ## Tamamlananlar (10–11 Ekim)
+
+- Yemek: Dünya mutfağı kategorisi (Japon, Çin, İtalyan, Meksika, Hint, Tay, Kore, Orta Doğu); sözlük ~180 → ~380 yemek; isimde tam kelime eşleşmesi ("pişi" artık "Pişiricisi"ni, "lokma" "Lokman"ı bulmuyor)
+- Restoran ekranı: üstte otoparklı harita
 
 - Veri: Overture web sitesi kontrolü ve aylık fark raporu; 13 kapanmış yer kara listede; raylı sistem istasyonları (165); otomatik veri PR'ları için GitHub izni
 - Otopark: İzelman kimlikleri sabit (favoriler kaybolmuyor); Ücretsiz / 7/24 / Raylı sisteme yakın filtreleri
