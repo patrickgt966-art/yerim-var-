@@ -23,6 +23,19 @@ export type ActivePark = {
 } & LatLng;
 export type ParkMode = 'now' | 'twoHours';
 
+/** Recent searches kept in the store. */
+export const MAX_RECENT_SEARCHES = 10;
+
+const recentKey = (q: string) => q.trim().replace(/\s+/g, ' ').toLocaleLowerCase('tr');
+
+/** `q` first, an earlier copy of it (any case or spacing) dropped, at most MAX_RECENT_SEARCHES kept. */
+export function addRecentSearch(list: string[], q: string): string[] {
+  const text = q.trim().replace(/\s+/g, ' ');
+  if (!text) return list;
+  const key = recentKey(text);
+  return [text, ...list.filter((x) => recentKey(x) !== key)].slice(0, MAX_RECENT_SEARCHES);
+}
+
 type State = {
   onboarded: boolean;
   home: SavedPlace | null;
@@ -32,6 +45,10 @@ type State = {
   active: ActivePark | null;
   mode: ParkMode;
   city: string;
+  /** Most recent first, deduped, at most MAX_RECENT_SEARCHES. */
+  recentSearches: string[];
+  addRecentSearch: (q: string) => void;
+  clearRecentSearches: () => void;
   setCity: (id: string) => void;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
@@ -57,6 +74,10 @@ export const useApp = create<State>()(
       active: null,
       mode: 'now',
       city: DEFAULT_CITY,
+      recentSearches: [],
+      addRecentSearch: (q) =>
+        set((s) => ({ recentSearches: addRecentSearch(s.recentSearches, q) })),
+      clearRecentSearches: () => set({ recentSearches: [] }),
       // Unavailable or unknown cities are ignored.
       setCity: (id) => set((s) => (isAvailableCity(id) ? { city: id } : s)),
       setOnboarded: (onboarded) => set({ onboarded }),
@@ -108,6 +129,7 @@ export const useApp = create<State>()(
         active,
         mode,
         city,
+        recentSearches,
       }) => ({
         onboarded,
         home,
@@ -117,6 +139,7 @@ export const useApp = create<State>()(
         active,
         mode,
         city,
+        recentSearches,
       }),
     },
   ),

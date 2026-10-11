@@ -13,12 +13,13 @@ import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
 import { useAi } from '@/store/ai';
 import { useApp } from '@/store/app';
-import { useColors } from '@/theme';
+import { useColors, useTabBarSpace } from '@/theme';
 
 export default function ProfileScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const tabSpace = useTabBarSpace();
   const { data } = useParkings();
   const setOnboarded = useApp((s) => s.setOnboarded);
   const consent = useAi((s) => s.consent);
@@ -30,7 +31,7 @@ export default function ProfileScreen() {
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 20,
-        paddingBottom: 32,
+        paddingBottom: tabSpace,
         gap: 14,
       }}
     >

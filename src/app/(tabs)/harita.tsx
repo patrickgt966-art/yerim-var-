@@ -23,7 +23,7 @@ import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { currentLocation } from '@/lib/location';
 import { parseLatLng } from '@/lib/params';
-import { asym, fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Mode = 'parkings' | 'food';
@@ -32,6 +32,8 @@ export default function MapTab() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // Overlays at the bottom must clear the floating tab bar.
+  const tabSpace = useTabBarSpace(12);
   const { data } = useParkings();
   const { fontScale } = useWindowDimensions();
   const screenReader = useScreenReader();
@@ -217,7 +219,7 @@ export default function MapTab() {
                   },
             )
           }
-          style={{ position: 'absolute', left: 16, right: 16, bottom: 12 }}
+          style={{ position: 'absolute', left: 16, right: 16, bottom: tabSpace }}
         />
       )}
       {mode === 'food' && selected && (
@@ -243,7 +245,8 @@ function RestaurantCard({
 }) {
   const c = useColors();
   const { t } = useTranslation();
-  // The tab bar sits below this screen, so only a small gap is needed.
+  // The floating tab bar overlaps the map, so lift the card above it.
+  const tabSpace = useTabBarSpace(12);
   const near = useMemo(() => (parkings ? nearestParking(r, parkings) : null), [r, parkings]);
   const summary = useMemo(() => (near ? parkingSummary(r, [near.parking]) : null), [r, near]);
   const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t).slice(0, 2)]
@@ -267,7 +270,7 @@ function RestaurantCard({
           position: 'absolute',
           left: 16,
           right: 16,
-          bottom: 12,
+          bottom: tabSpace,
           padding: 14,
           gap: 10,
           backgroundColor: c.card,

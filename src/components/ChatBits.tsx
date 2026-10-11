@@ -1,11 +1,15 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { cardModel, understoodChips } from '@/components/chat/model';
+import { ResultCard } from '@/components/chat/ResultCard';
+import { BOT_INSET, softShadow } from '@/components/chat/style';
+import { TypingDots } from '@/components/chat/TypingDots';
+import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
-import type { ChatAction, ChatCard } from '@/data/assistant';
-import { asym, brand, useColors } from '@/theme';
+import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
+import { brand, fonts, useColors } from '@/theme';
 
 export type ChatMessage = {
   id: string;
@@ -15,190 +19,244 @@ export type ChatMessage = {
   actions?: ChatAction[];
   sparkle?: boolean;
   notice?: string;
+  /** Epoch ms the message was added (day chip). */
+  at?: number;
+  /** What the assistant understood when it wrote this reply. */
+  ctx?: ChatContext;
 };
 
 export function UserBubble({ text }: { text: string }) {
   const { t } = useTranslation();
+  const c = useColors();
   return (
     <View
-      style={[
-        asym(20, 6),
-        {
-          alignSelf: 'flex-end',
-          maxWidth: '85%',
-          paddingVertical: 10,
-          paddingHorizontal: 14,
-          backgroundColor: brand.navy,
-        },
-      ]}
+      style={{
+        alignSelf: 'flex-end',
+        marginHorizontal: 16,
+        maxWidth: '76%',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        backgroundColor: c.hero,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 6,
+        borderBottomRightRadius: 20,
+        borderBottomLeftRadius: 20,
+      }}
     >
-      <Txt color={brand.white} accessibilityLabel={t('chat.a11yUser', { text })}>
+      <Txt
+        color={c.onHero}
+        style={{ fontSize: 14, lineHeight: 20 }}
+        accessibilityLabel={t('chat.a11yUser', { text })}
+      >
         {text}
       </Txt>
     </View>
   );
 }
 
-function BotShell({ children }: { children: ReactNode }) {
+const botCorners = {
+  borderTopLeftRadius: 6,
+  borderTopRightRadius: 20,
+  borderBottomRightRadius: 20,
+  borderBottomLeftRadius: 20,
+} as const;
+
+export function TypingBubble() {
+  const { t } = useTranslation();
   const c = useColors();
   return (
     <View
-      style={[
-        asym(20, 6),
-        {
-          alignSelf: 'flex-start',
-          maxWidth: '92%',
-          padding: 12,
-          gap: 10,
-          backgroundColor: c.card,
-          borderWidth: 1,
-          borderColor: c.line,
-        },
-      ]}
+      accessible
+      accessibilityLabel={t('chat.typing')}
+      style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
     >
-      {children}
+      <YAvatar />
+      <View
+        style={[
+          botCorners,
+          { paddingVertical: 14, paddingHorizontal: 14, backgroundColor: c.card },
+          softShadow(),
+        ]}
+      >
+        <TypingDots />
+      </View>
     </View>
   );
 }
 
-export function TypingBubble() {
-  const { t } = useTranslation();
-  return (
-    <BotShell>
-      <Txt accessibilityLabel={t('chat.typing')}>• • •</Txt>
-    </BotShell>
-  );
-}
-
-function CardView({ card }: { card: ChatCard }) {
+function UnderstoodRow({ ctx, onAction }: { ctx: ChatContext; onAction: (a: ChatAction) => void }) {
   const c = useColors();
   const { t } = useTranslation();
-  const distance = t('chat.distance', { km: (card.distanceM / 1000).toFixed(1) });
-  let caption: string;
-  if (card.kind === 'restaurant') {
-    caption =
-      (card.parkingM != null
-        ? t('chat.parkingAt', { m: Math.round(card.parkingM) })
-        : t('chat.noParkNear')) +
-      ' · ' +
-      distance +
-      (card.unverified ? ' · ' + t('food.unverified') : '');
-  } else {
-    const count =
-      card.free != null
-        ? t('chat.freeCount', { count: card.free })
-        : card.capacity != null
-          ? t('chat.capacity', { count: card.capacity })
-          : '';
-    caption = count + (card.open === 'closed' ? ' · ' + t('chat.closed') : '') + ' · ' + distance;
-  }
-  const open = () =>
-    card.kind === 'restaurant'
-      ? router.push({ pathname: '/restoran/[id]', params: { id: card.id } })
-      : router.push({ pathname: '/otopark/[id]', params: { id: card.id } });
+  const chips = understoodChips(ctx, t);
+  if (chips.length === 0) return null;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${card.name}, ${caption}${card.kind === 'restaurant' && card.reason ? ', ' + card.reason : ''}`}
-      onPress={open}
-      style={({ pressed }) => [
-        asym(14, 4),
-        {
-          minHeight: 52,
-          paddingVertical: 8,
-          paddingHorizontal: 12,
-          justifyContent: 'center',
-          backgroundColor: pressed ? c.surface : c.bg,
-          borderWidth: 1,
-          borderColor: c.line,
-        },
-      ]}
-    >
-      <Txt variant="bodyBold" numberOfLines={2}>
-        {card.name}
-      </Txt>
-      <Txt variant="caption" secondary numberOfLines={2}>
-        {caption}
-      </Txt>
-      {card.kind === 'restaurant' && card.reason && (
-        <Txt variant="caption" secondary numberOfLines={2}>
-          {card.reason}
-        </Txt>
-      )}
-    </Pressable>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+      {chips.map((chip) => (
+        <View
+          key={chip.key}
+          style={{
+            minHeight: 24,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingLeft: 8,
+            paddingRight: 2,
+            borderRadius: 12,
+            backgroundColor: c.chipBg,
+          }}
+        >
+          <Txt
+            color={c.textSecondary}
+            style={{ fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 15 }}
+          >
+            {chip.text}
+          </Txt>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.chipDropLabel', { what: chip.what })}
+            onPress={() => onAction(chip.drop)}
+            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Txt
+              accessible={false}
+              color={c.textSecondary}
+              style={{ fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 14 }}
+            >
+              ✕
+            </Txt>
+          </Pressable>
+        </View>
+      ))}
+    </View>
   );
 }
 
 export function BotBubble({
   message,
   onAction,
+  onDirections,
+  showChips = false,
 }: {
   message: ChatMessage;
   onAction: (a: ChatAction) => void;
+  onDirections: (card: ChatCard) => void;
+  /** Only the newest reply offers the "understood" chips; they act on the live context. */
+  showChips?: boolean;
 }) {
   const c = useColors();
   const { t } = useTranslation();
+  const cards = message.cards ?? [];
+  const actions = message.actions ?? [];
+  const openCard = (card: ChatCard) =>
+    card.kind === 'restaurant'
+      ? router.push({ pathname: '/restoran/[id]', params: { id: card.id } })
+      : router.push({ pathname: '/otopark/[id]', params: { id: card.id } });
   return (
-    <BotShell>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <Txt accessible={false} importantForAccessibility="no">
-          🅿️
-        </Txt>
-        <View style={{ flexShrink: 1, gap: 2 }}>
-          {message.sparkle && (
-            <Txt variant="caption" secondary accessible={false} importantForAccessibility="no">
-              {t('chat.sparkle')}
-            </Txt>
-          )}
-          <Txt
-            accessibilityLabel={
-              (message.sparkle ? t('chat.sparkle') + '. ' : '') +
-              t('chat.a11yBot', { text: message.text })
-            }
+    <View style={{ gap: 12 }}>
+      <View
+        style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
+      >
+        <YAvatar />
+        <View style={{ flexShrink: 1, gap: 6, minWidth: 0 }}>
+          <View
+            style={[
+              botCorners,
+              { paddingVertical: 10, paddingHorizontal: 12, backgroundColor: c.card },
+              softShadow(),
+            ]}
           >
-            {message.text}
-          </Txt>
-          {message.notice && (
-            <Txt variant="caption" secondary>
-              {message.notice}
+            <Txt
+              style={{ fontSize: 14, lineHeight: 20 }}
+              accessibilityLabel={
+                (message.sparkle ? t('chat.sparkle') + '. ' : '') +
+                t('chat.a11yBot', { text: message.text })
+              }
+            >
+              {message.text}
+              {message.sparkle && (
+                <Text
+                  accessible={false}
+                  importantForAccessibility="no"
+                  style={{ fontSize: 11, lineHeight: 20 }}
+                >
+                  {' ✨'}
+                </Text>
+              )}
             </Txt>
+            {message.notice && (
+              <Txt variant="caption" secondary style={{ marginTop: 4 }}>
+                {message.notice}
+              </Txt>
+            )}
+          </View>
+          {showChips && message.ctx && cards.length > 0 && (
+            <UnderstoodRow ctx={message.ctx} onAction={onAction} />
           )}
         </View>
       </View>
-      {message.cards && message.cards.length > 0 && (
-        <View style={{ gap: 8 }}>
-          {message.cards.map((card) => (
-            <CardView key={`${card.kind}-${card.id}`} card={card} />
+      {cards.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            gap: 10,
+            paddingLeft: BOT_INSET,
+            paddingRight: 16,
+            paddingBottom: 4,
+          }}
+        >
+          {cards.map((card, i) => (
+            <ResultCard
+              key={`${card.kind}-${card.id}`}
+              card={card}
+              model={cardModel(card, i, message.ctx?.sort, t)}
+              onOpen={openCard}
+              onDirections={onDirections}
+            />
           ))}
-        </View>
+        </ScrollView>
       )}
-      {message.actions && message.actions.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {message.actions.map((a, i) => (
+      {actions.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            gap: 8,
+            paddingLeft: BOT_INSET,
+            paddingRight: 16,
+            paddingVertical: 4,
+          }}
+        >
+          {actions.map((a, i) => (
             <Pressable
               key={`${i}-${a.label}`}
               accessibilityRole="button"
               accessibilityLabel={a.label}
               onPress={() => onAction(a)}
-              style={({ pressed }) => [
-                asym(14, 4),
-                {
-                  minHeight: 44,
-                  paddingHorizontal: 14,
-                  justifyContent: 'center',
-                  backgroundColor: pressed ? c.surface : c.card,
-                  borderWidth: 1.5,
-                  borderColor: brand.orange,
-                },
-              ]}
+              hitSlop={{ top: 4, bottom: 4 }}
+              style={({ pressed }) => ({
+                minHeight: 36,
+                paddingHorizontal: 12,
+                borderRadius: 18,
+                justifyContent: 'center',
+                backgroundColor: pressed ? c.surface : c.card,
+                borderWidth: 1.5,
+                borderColor: brand.orangeLight,
+              })}
             >
-              <Txt variant="bodyBold" style={{ fontSize: 14 }}>
+              <Txt
+                accessible={false}
+                style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
+              >
                 {a.label}
               </Txt>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       )}
-    </BotShell>
+    </View>
   );
 }

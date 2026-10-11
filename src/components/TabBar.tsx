@@ -3,26 +3,40 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
-import { asym, brand, fonts, HIT, useColors } from '@/theme';
+import {
+  brand,
+  fonts,
+  HIT,
+  TAB_BAR_GAP,
+  TAB_BAR_HEIGHT,
+  TAB_BAR_OVERHANG,
+  useColors,
+} from '@/theme';
 
-import { Icon, type IconName } from './Icon';
+import { TabGlyph, type TabGlyphName } from './home/TabGlyph';
 import { Txt } from './Txt';
 
-const ICONS: Record<string, IconName> = {
-  index: 'search',
+const GLYPHS: Record<string, TabGlyphName> = {
+  index: 'home',
   harita: 'map',
-  favoriler: 'star',
+  favoriler: 'heart',
   profil: 'user',
 };
 
 const LABELS: Record<string, string> = {
-  index: 'tabs.search',
+  index: 'home.tabHome',
   harita: 'tabs.map',
   favoriler: 'tabs.favorites',
   profil: 'tabs.profile',
 };
 
-/** Five-slot tab bar: four routes plus the central "Hemen bul" action. */
+const CENTER_SIZE = 60;
+
+/**
+ * Floating tab bar (home design B3): a rounded card 12 pt from the sides and
+ * above the safe area, four tab routes and a raised orange "Yerim" button in
+ * the middle that opens the chat (it is an action, not a tab route).
+ */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const c = useColors();
   const { t } = useTranslation();
@@ -53,98 +67,109 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           gap: 3,
         }}
       >
-        <Icon name={ICONS[route.name] ?? 'search'} color={color} strokeWidth={focused ? 2.2 : 2} />
+        <View
+          style={{
+            width: 40,
+            height: 28,
+            borderRadius: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: focused ? c.badgeNearBg : 'transparent',
+          }}
+        >
+          <TabGlyph
+            name={GLYPHS[route.name] ?? 'home'}
+            color={color}
+            strokeWidth={focused ? 2.3 : 2}
+          />
+        </View>
         <Txt
-          variant="label"
           color={color}
-          numberOfLines={2}
+          numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.8}
-          maxFontSizeMultiplier={1.6}
-          style={{ textAlign: 'center' }}
+          maxFontSizeMultiplier={1.3}
+          style={{
+            fontFamily: focused ? fonts.bodyExtraBold : fonts.bodyBold,
+            fontSize: 11,
+            lineHeight: 14,
+            textAlign: 'center',
+          }}
         >
           {label}
         </Txt>
-        <View
-          style={{
-            height: 3,
-            width: 18,
-            borderRadius: 2,
-            borderTopWidth: focused ? 3 : 0,
-            borderColor: c.accentStrong,
-            borderStyle: 'dashed',
-          }}
-        />
       </Pressable>
     );
   });
 
-  // "Yerim!": the app's promise as the main action, in the brand's one orange button.
-  const center = (
-    <View key="find" style={{ flex: 1.5, alignItems: 'center' }}>
+  return (
+    // The wrapper includes the overhang of the raised button so its top edge stays tappable.
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 12,
+        right: 12,
+        bottom: insets.bottom + TAB_BAR_GAP,
+        paddingTop: TAB_BAR_OVERHANG,
+      }}
+    >
+      <View
+        accessibilityRole="tablist"
+        style={{
+          minHeight: TAB_BAR_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderRadius: 26,
+          backgroundColor: c.card,
+          shadowColor: brand.navy,
+          shadowOpacity: 0.18,
+          shadowRadius: 15,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 12,
+        }}
+      >
+        {items.slice(0, 2)}
+        <View style={{ flex: 1 }} />
+        {items.slice(2)}
+      </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${t('tabs.yerim')} ${t('tabs.findNow')}`}
-        accessibilityHint={t('tabs.findHint')}
-        onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
+        accessibilityLabel={t('home.a11yYerim')}
+        accessibilityHint={t('home.a11yYerimHint')}
+        onPress={() => router.push('/sohbet')}
         style={({ pressed }) => [
-          asym(20, 6),
           {
-            marginTop: -22,
-            minWidth: 76,
-            maxWidth: '96%',
-            height: 54,
-            paddingHorizontal: 10,
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            marginLeft: -CENTER_SIZE / 2,
+            width: CENTER_SIZE,
+            height: CENTER_SIZE,
+            borderRadius: 22,
+            borderWidth: 4,
+            borderColor: c.card,
             backgroundColor: c.accent,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
-            shadowColor: '#0B3C49',
-            shadowOpacity: 0.28,
+            shadowColor: brand.orange,
+            shadowOpacity: 0.45,
             shadowRadius: 9,
-            shadowOffset: { width: 0, height: 6 },
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 10,
           },
         ]}
       >
+        <TabGlyph name="chat" color={brand.navy} size={22} strokeWidth={2.3} />
         <Txt
-          style={{ fontFamily: fonts.display, fontSize: 19, color: brand.navy }}
-          maxFontSizeMultiplier={1.2}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
+          allowFontScaling={false}
+          style={{ fontFamily: fonts.display, fontSize: 10, lineHeight: 12, marginTop: 1 }}
+          color={brand.navy}
         >
-          {t('tabs.yerim')}
+          {t('home.tabYerim')}
         </Txt>
       </Pressable>
-      <Txt
-        variant="label"
-        secondary
-        style={{ textAlign: 'center', marginTop: 3 }}
-        maxFontSizeMultiplier={1.6}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
-      >
-        {t('tabs.yerimHint')}
-      </Txt>
-    </View>
-  );
-
-  return (
-    <View
-      accessibilityRole="tablist"
-      style={{
-        flexDirection: 'row',
-        paddingBottom: Math.max(insets.bottom, 8),
-        paddingTop: 6,
-        backgroundColor: c.card,
-        borderTopWidth: 1,
-        borderTopColor: c.line,
-      }}
-    >
-      {items.slice(0, 2)}
-      {center}
-      {items.slice(2)}
     </View>
   );
 }

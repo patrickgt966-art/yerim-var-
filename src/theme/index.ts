@@ -1,4 +1,12 @@
-import { lightPalette, type Palette } from './tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import {
+  lightPalette,
+  TAB_BAR_GAP,
+  TAB_BAR_HEIGHT,
+  TAB_BAR_OVERHANG,
+  type Palette,
+} from './tokens';
 
 export * from './tokens';
 
@@ -9,4 +17,13 @@ export * from './tokens';
  */
 export function useColors(): Palette {
   return lightPalette;
+}
+
+/**
+ * Bottom space a tab screen needs so its content clears the floating tab bar
+ * (bar, raised button, gap, safe area) plus a small breathing gap.
+ */
+export function useTabBarSpace(extra = 16): number {
+  const { bottom } = useSafeAreaInsets();
+  return TAB_BAR_HEIGHT + TAB_BAR_OVERHANG + TAB_BAR_GAP + bottom + extra;
 }

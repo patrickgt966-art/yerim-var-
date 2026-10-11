@@ -3,19 +3,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
-  Pressable,
-  TextInput,
   View,
 } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BotBubble, TypingBubble, UserBubble, type ChatMessage } from '@/components/ChatBits';
-import { Icon } from '@/components/Icon';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ChatHeader } from '@/components/chat/ChatHeader';
+import { Composer } from '@/components/chat/Composer';
+import { ConsentCard } from '@/components/chat/ConsentCard';
+import { suggestions } from '@/components/chat/model';
 import { Txt } from '@/components/Txt';
 import {
   answer,
@@ -24,9 +26,12 @@ import {
   type AssistantDeps,
   type BotMessage,
   type ChatAction,
+  type ChatCard,
   type ChatContext,
 } from '@/data/assistant';
+import { appleMapsUrl } from '@/data/geo';
 import { isInIzmirArea } from '@/data/places';
+import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
@@ -35,7 +40,7 @@ import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
 import { resolvePlace } from '@/lib/usePlaceSearch';
 import { useAi } from '@/store/ai';
-import { asym, brand, fonts, HIT, useColors } from '@/theme';
+import { fonts, useColors } from '@/theme';
 
 /** Same quick location wait as the food home. */
 const LOCATION_TIMEOUT_MS = 5000;
@@ -47,6 +52,12 @@ function trackAi<T>(r: AiResult<T>): AiResult<T> {
   else if (r.reason === 'quota') store.markOut();
   return r;
 }
+
+/** "12:40" in the device's local time. */
+const clock = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -150,8 +161,8 @@ export default function ChatScreen() {
     };
   };
   const addUser = (text: string) =>
-    setMessages((m) => [...m, { id: nextId(), role: 'user', text }]);
-  const addBot = (reply: BotMessage) => {
+    setMessages((m) => [...m, { id: nextId(), role: 'user', text, at: Date.now() }]);
+  const addBot = (reply: BotMessage, understood?: ChatContext) => {
     setMessages((m) => [
       ...m,
       {
@@ -162,6 +173,8 @@ export default function ChatScreen() {
         actions: reply.actions,
         sparkle: reply.sparkle,
         notice: reply.notice,
+        at: Date.now(),
+        ...(understood ? { ctx: understood } : {}),
       },
     ]);
     AccessibilityInfo.announceForAccessibility(reply.text);
@@ -174,7 +187,7 @@ export default function ChatScreen() {
       const [res] = await Promise.all([produce(), wait(reduce ? 0 : 450)]);
       ctxRef.current = res.ctx;
       setCtx(res.ctx);
-      addBot(res.reply);
+      addBot(res.reply, res.ctx);
     } catch {
       addBot({ text: t('chat.error'), cards: [], actions: [] });
     } finally {
@@ -202,6 +215,15 @@ export default function ChatScreen() {
     void reply(() => refine(ctxRef.current, a.patch, deps));
   };
 
+  const onDirections = (card: ChatCard) => {
+    const dest =
+      card.kind === 'restaurant' ? getRestaurant(card.id) : parkings.find((p) => p.id === card.id);
+    if (!dest) return;
+    Linking.openURL(appleMapsUrl({ lat: dest.lat, lng: dest.lng }, dest.name)).catch(() =>
+      Alert.alert(t('chat.openFailed')),
+    );
+  };
+
   const submitInput = () => {
     const text = input;
     if (!text.trim() || typingRef.current) return;
@@ -216,151 +238,97 @@ export default function ChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const last = messages[messages.length - 1];
+  const picks =
+    !typing && last?.role === 'bot' && (last.cards?.length ?? 0) > 0
+      ? suggestions(ctx, (key, opts) => t(key, opts))
+      : [];
+  const firstAt = messages[0]?.at;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
-      style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}
+      style={{ flex: 1, backgroundColor: c.surface }}
     >
-      <View style={{ paddingHorizontal: 20 }}>
-        <ScreenHeader
-          title={t('chat.title')}
-          back
-          right={
-            aiOn ? (
-              <View
-                accessible
-                accessibilityLabel={t('chat.a11yAiLeft', { count: left })}
-                style={{
-                  marginLeft: 'auto',
-                  paddingVertical: 4,
-                  paddingHorizontal: 10,
-                  borderRadius: 999,
-                  backgroundColor: c.badgeInfoBg,
-                }}
+      <ChatHeader
+        top={insets.top + 4}
+        right={
+          aiOn ? (
+            <View
+              accessible
+              accessibilityLabel={t('chat.a11yAiLeft', { count: left })}
+              style={{
+                minHeight: 34,
+                justifyContent: 'center',
+                paddingHorizontal: 12,
+                borderRadius: 17,
+                backgroundColor: c.badgeInfoBg,
+              }}
+            >
+              <Txt
+                color={c.badgeInfoText}
+                accessible={false}
+                style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
               >
-                <Txt variant="caption" color={c.badgeInfoText} accessible={false}>
-                  {left > 0 ? t('chat.aiLeft', { count: left }) : t('chat.aiNone')}
-                </Txt>
-              </View>
-            ) : null
-          }
-        />
-      </View>
+                {left > 0 ? t('chat.aiLeft', { count: left }) : t('chat.aiNone')}
+              </Txt>
+            </View>
+          ) : null
+        }
+      />
       <FlatList
         ref={listRef}
         data={messages}
         keyExtractor={(m) => m.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 16, gap: 10 }}
+        contentContainerStyle={{ paddingTop: 14, paddingBottom: 10, gap: 12 }}
         ListHeaderComponent={
-          aiClient && consent === 'unknown' ? (
-            <View
-              style={[
-                asym(20, 6),
-                {
-                  padding: 12,
-                  gap: 10,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.line,
-                },
-              ]}
-            >
-              <Txt variant="bodyBold">{t('chat.aiConsentTitle')}</Txt>
-              <Txt>{t('chat.aiConsentBody')}</Txt>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {(['yes', 'no'] as const).map((v) => (
-                  <Pressable
-                    key={v}
-                    accessibilityRole="button"
-                    accessibilityLabel={t(v === 'yes' ? 'chat.aiConsentYes' : 'chat.aiConsentNo')}
-                    onPress={() => setConsent(v)}
-                    style={({ pressed }) => [
-                      asym(14, 4),
-                      {
-                        minHeight: HIT,
-                        paddingHorizontal: 14,
-                        justifyContent: 'center',
-                        backgroundColor: pressed ? c.surface : c.card,
-                        borderWidth: 1.5,
-                        borderColor: brand.orange,
-                      },
-                    ]}
-                  >
-                    <Txt variant="bodyBold" style={{ fontSize: 14 }}>
-                      {t(v === 'yes' ? 'chat.aiConsentYes' : 'chat.aiConsentNo')}
-                    </Txt>
-                  </Pressable>
-                ))}
+          <View style={{ gap: 12 }}>
+            {firstAt != null && (
+              <View
+                style={{
+                  alignSelf: 'center',
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                  borderRadius: 10,
+                  backgroundColor: c.chipBg,
+                }}
+              >
+                <Txt
+                  color={c.textSecondary}
+                  style={{ fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 15 }}
+                >
+                  {t('chat.today', { time: clock(firstAt) })}
+                </Txt>
               </View>
-            </View>
-          ) : null
+            )}
+            {aiClient && consent === 'unknown' ? <ConsentCard onChoose={setConsent} /> : null}
+          </View>
         }
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: !reduce })}
-        renderItem={({ item }) =>
+        renderItem={({ item, index }) =>
           item.role === 'user' ? (
             <UserBubble text={item.text} />
           ) : (
-            <BotBubble message={item} onAction={onAction} />
+            <BotBubble
+              message={item}
+              onAction={onAction}
+              onDirections={onDirections}
+              showChips={index === messages.length - 1}
+            />
           )
         }
         ListFooterComponent={typing ? <TypingBubble /> : null}
       />
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 8),
-          borderTopWidth: 1,
-          borderTopColor: c.line,
-          backgroundColor: c.bg,
-        }}
-      >
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          onSubmitEditing={submitInput}
-          placeholder={t('chat.placeholder')}
-          placeholderTextColor={c.textSecondary}
-          accessibilityLabel={t('chat.placeholder')}
-          returnKeyType="send"
-          style={[
-            asym(22, 6),
-            {
-              flex: 1,
-              minHeight: HIT,
-              paddingHorizontal: 14,
-              fontFamily: fonts.body,
-              fontSize: 16,
-              color: c.text,
-              backgroundColor: c.card,
-              borderWidth: 1,
-              borderColor: c.line,
-            },
-          ]}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('chat.send')}
-          onPress={submitInput}
-          style={[
-            asym(15, 5),
-            {
-              width: HIT,
-              height: HIT,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: brand.navy,
-            },
-          ]}
-        >
-          <Icon name="arrow" size={20} color={brand.white} />
-        </Pressable>
-      </View>
+      <Composer
+        value={input}
+        onChange={setInput}
+        onSubmit={submitInput}
+        suggestions={picks}
+        onPick={(text) => void send(text)}
+        bottom={Math.max(insets.bottom, 8)}
+      />
     </KeyboardAvoidingView>
   );
 }

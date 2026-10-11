@@ -11,6 +11,10 @@ export const brand = {
   line: '#B5C3C8',
   textSecondary: '#4F6A75',
   white: '#FFFFFF',
+  /** Live line on a navy surface (home "Yakınımda otopark"). */
+  mint: '#9FE3D2',
+  /** Small text on the orange surface (home "parkı kolay"). */
+  brown: '#5A2A00',
 } as const;
 
 export const occupancy = {
@@ -135,3 +139,8 @@ export function asym(r: number, tight = Math.max(2, Math.round(r * 0.27))) {
 
 /** Minimum touch target (HIG). */
 export const HIT = 44;
+
+/** Floating tab bar: bar height, how far the raised "Yerim" button rises above it, gap below. */
+export const TAB_BAR_HEIGHT = 68;
+export const TAB_BAR_OVERHANG = 11;
+export const TAB_BAR_GAP = 8;

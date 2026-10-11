@@ -87,6 +87,13 @@ export function sanitizeAppState(persisted: unknown): unknown {
   for (const key of ['home', 'work']) {
     if (key in s && s[key] != null && !validPlace(s[key])) s[key] = null;
   }
+  if ('recentSearches' in s) {
+    s.recentSearches = Array.isArray(s.recentSearches)
+      ? s.recentSearches
+          .filter((q): q is string => typeof q === 'string' && q.trim() !== '')
+          .slice(0, 10)
+      : [];
+  }
   if ('mode' in s && s.mode !== 'now' && s.mode !== 'twoHours') s.mode = 'now';
   if ('city' in s && !isAvailableCity(s.city)) s.city = DEFAULT_CITY;
   return s;
@@ -101,6 +108,7 @@ const DATA_KEYS = [
   'active',
   'mode',
   'city',
+  'recentSearches',
 ] as const;
 
 /** Only the persisted data keys, sanitised: a stray key can never overwrite an action. */
