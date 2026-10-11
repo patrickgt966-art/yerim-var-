@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import raw from '../../data/food-izmir.json';
 import overtureRaw from '../../data/food-overture-izmir.json';
 import { getFreshness } from './freshness';
+import { FOOD_LEXICON, MODIFIERS } from './foodLexicon';
 import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
 import { fold } from './search';
@@ -760,6 +761,11 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kahvalti tabagi',
     'pankek',
     'pancake',
+    'muhlama',
+    'sembusek',
+    'kaygana',
+    'misir ekmegi',
+    'trabzon ekmegi',
   ],
   soup: [
     'corba',
@@ -783,6 +789,8 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'sehriye corba',
     'mantar corba',
     'dugun corbasi',
+    'yuvarlama',
+    'lebeniye',
   ],
   meat: [
     'kebap',
@@ -861,6 +869,16 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kuzu pirzola',
     'pastirma',
     'sucuk',
+    'mumbar',
+    'sirdan',
+    'tepsi kebabi',
+    'simit kebabi',
+    'sogan kebabi',
+    'keme kebabi',
+    'hashas kebabi',
+    'ciger kebabi',
+    'salgam',
+    'isot',
   ],
   lokanta: [
     'lokanta',
@@ -909,6 +927,17 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kapama',
     'perde pilavi',
     'bulgur pilavi',
+    'eksili kofte',
+    'sulu kofte',
+    'eriste',
+    'cevizli eriste',
+    'bamya',
+    'radika',
+    'tirit',
+    'yaglama',
+    'yanic',
+    'sevketi bostan',
+    'bulgur koftesi',
   ],
   fish: [
     'balik',
@@ -942,6 +971,8 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'balik bugulama',
     'midye tava',
     'karides guvec',
+    'deniz mahsulleri',
+    'hamsi koftesi',
   ],
   cafe: [
     'kafe',
@@ -968,8 +999,35 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'smoothie',
     'milkshake',
     'limonata',
+    'dibek kahvesi',
+    'menengic kahvesi',
+    'mirra',
+    'kusburnu',
   ],
-  meyhane: ['meyhane', 'bar', 'pub', 'meze', 'raki', 'raki balik', 'bira'],
+  meyhane: [
+    'meyhane',
+    'bar',
+    'pub',
+    'meze',
+    'raki',
+    'raki balik',
+    'bira',
+    'coban salata',
+    'gavurdagi salatasi',
+    'patlican salatasi',
+    'rus salatasi',
+    'acili ezme',
+    'ezme',
+    'haydari',
+    'muhammara',
+    'babagannus',
+    'cacik',
+    'fava',
+    'saksuka',
+    'topik',
+    'lakerda',
+    'ciroz',
+  ],
   // Çiğ köfte is not meat (see CATEGORY_RULES.meat.notNames).
   fast: [
     'burger',
@@ -1003,6 +1061,7 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'hot dog',
     'et doner',
     'yaprak doner',
+    'cantik',
   ],
   world: [
     'dunya mutfagi',
@@ -1176,6 +1235,18 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'lokum',
     'kestane sekeri',
     'churros',
+    'muhallebi',
+    'su muhallebisi',
+    'hosmerim',
+    'kabak tatlisi',
+    'ayva tatlisi',
+    'cevizli sucuk',
+    'laz boregi',
+    'kerebic',
+    'sambali',
+    'sillik',
+    'bomba',
+    'pestil',
   ],
 };
 
@@ -1211,8 +1282,12 @@ const QUERY_SUFFIXES = [
   'cu',
 ];
 
-function exactCategory(f: string): FoodCategory | null {
-  return FOOD_CATEGORIES.find((cat) => CATEGORY_WORDS[cat].includes(f)) ?? null;
+/** The category listing the folded word or phrase; the food lexicon fills in what the lists miss. */
+function exactCategory(f: string, lexicon = true): FoodCategory | null {
+  return (
+    FOOD_CATEGORIES.find((cat) => CATEGORY_WORDS[cat].includes(f)) ??
+    (lexicon ? (FOOD_LEXICON.get(f) ?? null) : null)
+  );
 }
 
 /** The word minus one trailing suffix (stem of at least 3 chars, or 2 if it is a category word), or null. */
@@ -1226,28 +1301,162 @@ function stripSuffix(w: string): string | null {
   return suf ? w.slice(0, w.length - suf.length) : null;
 }
 
-/** The category a search text names outright ("balık", "kahvaltı"), or null. */
-export function categoryForQuery(q: string): FoodCategory | null {
+/**
+ * The category a search text names outright ("balık", "kahvaltı"), or null.
+ * `headNoun` also reads a 2-3 word phrase by the dish it ends with; `lexicon` false
+ * leaves out the Turkish food lexicon (only the category lists answer).
+ */
+export function categoryForQuery(q: string, headNoun = false, lexicon = true): FoodCategory | null {
   const f = fold(q.trim());
   if (!f) return null;
-  const exact = exactCategory(f);
+  const ex = (w: string) => exactCategory(w, lexicon);
+  const exact = ex(f);
   if (exact) return exact;
   if (f.includes(' ')) {
     // "tavuk pilavcı": a two-word phrase whose last word carries one suffix.
     const parts = f.split(' ');
-    if (parts.length !== 2) return null;
-    const [first, last] = parts;
-    if (first === undefined || last === undefined) return null;
-    const stem = stripSuffix(last);
-    return stem ? exactCategory(`${first} ${stem}`) : null;
+    if (parts.length === 2) {
+      const [first, last] = parts;
+      const stem = first !== undefined && last !== undefined ? stripSuffix(last) : null;
+      const c = stem ? ex(`${first} ${stem}`) : null;
+      if (c) return c;
+    }
+    return headNoun && parts.length <= 3 ? categoryByHeadNoun(parts, lexicon) : null;
   }
+  if (headNoun && f in HEAD_ONLY_CATEGORY) return HEAD_ONLY_CATEGORY[f] ?? null;
   // "köfteci", "köftecide": try the stem with one, then two suffixes removed.
   const one = stripSuffix(f);
   if (!one) return null;
-  const c1 = exactCategory(one);
+  const c1 = ex(one);
   if (c1) return c1;
   const two = stripSuffix(one);
-  return two ? exactCategory(two) : null;
+  return two ? ex(two) : null;
+}
+
+/** True for a dish modifier ("cevizli", "kiremitte") or any word that names a food category. */
+export function isFoodWord(folded: string): boolean {
+  return MODIFIERS.has(folded) || categoryForQuery(folded) !== null;
+}
+
+/** Words that name a kind of place, not a dish: never the head noun of a dish phrase ("taze balık"). */
+const PLACE_KIND_WORDS = new Set([
+  'et',
+  'balik',
+  'balikci',
+  'kahvalti',
+  'lokanta',
+  'restoran',
+  'kafe',
+  'cafe',
+  'kahve',
+  'coffee',
+  'kahvehane',
+  'meyhane',
+  'bar',
+  'pub',
+  'pastane',
+  'meat',
+  'grill',
+  'fish',
+  'soup',
+  'seafood',
+  'breakfast',
+  'brunch',
+  'dessert',
+  'world',
+  'asian',
+  'fusion',
+]);
+
+/** Cooking words after a main ingredient ("hamsi tava", "kuzu kapama"): the ingredient names the dish. */
+export const COOKING_WORDS = new Set([
+  'tava',
+  'izgara',
+  'kapama',
+  'bugulama',
+  'guvec',
+  'dolma',
+  'kizartma',
+]);
+
+/** Words that are a category only as the head of a dish phrase ("rus salatası"); alone they stay out of categoryForQuery. */
+const HEAD_ONLY_CATEGORY: Record<string, FoodCategory> = { salata: 'meyhane' };
+
+/** The head-noun endings that mark a compound with the word before it ("kebabı", "tatlısı", "böreği"). */
+const COMPOUND_ENDINGS = ['si', 'su', 'i', 'u'];
+
+/** The last letter of a stem as it softens before a vowel ("simit" -> "simid", "kitap" -> "kitab", "çiçek" -> "çiçeğ"). */
+const SOFTENED: Record<string, string> = { g: 'k', d: 't', b: 'p' };
+
+/** True when `word` is `stem` plus a compound ending, also with the stem's last letter softened ("simidi"). */
+function hasCompoundEnding(word: string, stem: string): boolean {
+  return COMPOUND_ENDINGS.some((e) => {
+    if (!word.endsWith(e)) return false;
+    const base = word.slice(0, word.length - e.length);
+    const hard = SOFTENED[base.slice(-1)];
+    return base === stem || (hard !== undefined && base.slice(0, -1) + hard === stem);
+  });
+}
+
+/**
+ * The category of a 2- or 3-word phrase read by its head noun at the end:
+ * "tepsi kebabı", "kabak tatlısı" (compound ending), "sucuklu pide" (-lı modifier),
+ * "kumru sandviç" (the rest is a food word), "hamsi tava" (cooking word after a dish word),
+ * "cevizli baklava", "kiremitte köfte" (a known modifier, a -sız / -da word naming a cooking place).
+ * A modifier that says nothing ("zzqxv köfte") leaves the phrase to the caller.
+ */
+function categoryByHeadNoun(parts: string[], lexicon: boolean): FoodCategory | null {
+  const ex = (w: string) => exactCategory(w, lexicon);
+  const word = parts[parts.length - 1] ?? '';
+  const modifier = parts.slice(0, -1);
+  const first = modifier[0] ?? '';
+  const isModifier = (m: string): boolean => lexicon && MODIFIERS.has(m);
+  const isCategory = (m: string): boolean =>
+    (m === 'et' || !PLACE_KIND_WORDS.has(m)) && ex(m) !== null;
+  const isFood = (m: string): boolean => isModifier(m) || isCategory(m);
+  const modifierIsFood = (): boolean => [...modifier, modifier.join(' ')].some(isFood);
+  const stems = headStems(word);
+  if (stems.some((stem) => COOKING_WORDS.has(stem)) && modifierIsFood()) {
+    const c = ex(first) ?? ex(modifier.join(' '));
+    if (c) return c;
+  }
+  // "kiremitte", "tencerede": the place of cooking, when the word before the ending is a food word.
+  const locative = lexicon && /(da|de|ta|te)$/.test(first) && isFood(first.slice(0, -2));
+  const byWord =
+    /l[iu]$/.test(first) ||
+    (lexicon && /s[iu]z$/.test(first)) ||
+    locative ||
+    [...modifier, modifier.join(' ')].some(isModifier);
+  const byFood = [...modifier, modifier.join(' ')].some(isCategory);
+  for (const stem of stems) {
+    if (PLACE_KIND_WORDS.has(stem)) continue;
+    const c = ex(stem) ?? HEAD_ONLY_CATEGORY[stem];
+    if (!c) continue;
+    const fromLexicon =
+      exactCategory(stem, false) === null && HEAD_ONLY_CATEGORY[stem] === undefined;
+    // A short lexicon word ("dil", "kek") is too common a word to be a head by its ending alone.
+    const compound = !(fromLexicon && stem.length < 4) && hasCompoundEnding(word, stem);
+    // A drink next to a dish is its side ("lahmacun ayran"), not the head.
+    const side = fromLexicon && c === 'cafe';
+    if (compound || byWord || (byFood && !side)) return c;
+  }
+  return null;
+}
+
+/** Endings of a dish's head noun: plural, seller and compound ("kebabı", "tatlısı", "böreği", "çorbası"). */
+const HEAD_ENDINGS = ['lari', 'leri', 'lar', 'ler', 'ci', 'cu', 'si', 'su', 'i', 'u'];
+
+/** The folded word and its forms without an ending, also with the last letter hardened ("boregi" -> "borek", "simidi" -> "simit"). */
+export function headStems(word: string): string[] {
+  const out = [word];
+  for (const e of HEAD_ENDINGS) {
+    if (!word.endsWith(e) || word.length - e.length < 3) continue;
+    const stem = word.slice(0, word.length - e.length);
+    out.push(stem);
+    const hard = SOFTENED[stem.slice(-1)];
+    if (hard !== undefined) out.push(`${stem.slice(0, -1)}${hard}`);
+  }
+  return out;
 }
 
 /** The folded dish minus up to two suffixes on its last word, as far as it is still a category word. */

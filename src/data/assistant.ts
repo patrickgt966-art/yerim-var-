@@ -614,6 +614,33 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
           );
         }
 
+        // 1b. The words name a category (a food word plus something unknown): never answer a
+        // food question with nothing; say honestly nothing is known and show that category.
+        if (it.cat) {
+          const dishFirst =
+            !!it.dish && folded.indexOf(fold(it.dish)) < folded.indexOf(it.placeQuery);
+          const label = (dishFirst ? [it.dish, typedRaw] : [typedRaw, it.dish])
+            .filter(Boolean)
+            .join(' ');
+          const fresh = ctx.cat !== next.cat;
+          return withNotice(
+            await run(
+              {
+                ...next,
+                dish: label,
+                dishServes: null,
+                dishExact: false,
+                ...(fresh
+                  ? { parkM: 300, wide: false, sort: 'parkEase' as const, freeParking: false }
+                  : {}),
+              },
+              deps,
+              text,
+              it.quality,
+            ),
+          );
+        }
+
         // 2. Looks like food: say no place makes it, offer nearby restaurants.
         if (it.food || it.nearMe || ctx.section === 'food') {
           return withNotice(
@@ -815,7 +842,11 @@ function dishClassifier(stem: string, profile: DishProfile | null, exact = false
   return (r: Restaurant): DishHit | null => {
     const n = fold(r.name);
     const byName = stemWords.every((w) => (exact ? hasExactNameWord(n, w) : hasWordForm(n, w)));
-    if (byName || r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))) {
+    const byCuisine = r.cuisines.some((c) => {
+      const tag = fold(c.replace(/_/g, ' '));
+      return !profile?.notCuisines?.includes(tag) && kebab(tag).includes(stemKebab);
+    });
+    if (byName || byCuisine) {
       return { tier: 1, byName };
     }
     return profile && likelyServes(profile, n, r.cuisines) ? { tier: 2, byName: false } : null;
@@ -865,7 +896,12 @@ function runFood(
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
   const dishName = ctx.dish ? shownDish(ctx.dish, stem) : '';
   if (ctx.dish && stem && !GENERIC_DISH_STEMS.has(stem)) {
-    profile = dishProfile(stem) ?? adHocProfile(ctx.dishServes, ctx.cat);
+    // The AI's name words for an unknown dish come before reading it by its head noun
+    // (and when the AI named only generic words it has no opinion to override).
+    profile =
+      dishProfile(stem, false) ??
+      adHocProfile(ctx.dishServes, ctx.cat) ??
+      (ctx.dishServes?.length ? null : dishProfile(stem));
     const classify = dishClassifier(stem, profile, ctx.dishExact);
     // Both tiers come from every meal place around, not only the dish's own category:
     // a lahmacun can be at a kebab house (meat), an iskender at a döner shop (fast).
@@ -916,6 +952,24 @@ function runFood(
         ' ';
     } else {
       dishPrefix = t('chat.dishUnknown', { dish: dishName }) + ' ';
+      // Nothing of the category within reach of this place: look wider rather than answer with nothing.
+      if (ordered.length === 0 && !ctx.wide) {
+        const wideItems = ctx.cat
+          ? restaurantsInCategory(target, ctx.cat, undefined, WIDE_RADII_M).items
+          : restaurantsNear(target, WIDE_RADII_M[WIDE_RADII_M.length - 1]!, 600);
+        ordered = rankRestaurants(
+          buildRestaurantRows(
+            notCat ? wideItems.filter((r) => !matchesCategory(r, notCat)) : wideItems,
+            deps.parkings,
+            target,
+            now,
+          ),
+          ctx.sort,
+          ctx.cat ?? undefined,
+        );
+        if (ordered.length > 0)
+          dishPrefix = t('chat.dishWider', { dish: dishName }) + ' ' + dishPrefix;
+      }
     }
   }
   const withPark = withParkingWithin(ordered, ctx.parkM);

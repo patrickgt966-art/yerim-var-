@@ -1,4 +1,4 @@
-import { categoryForQuery, type FoodCategory } from './restaurants';
+import { categoryForQuery, isFoodWord, type FoodCategory } from './restaurants';
 import { fold, searchPlaces } from './search';
 
 /** An official İzmir district with its centre. */
@@ -265,6 +265,21 @@ function isPlaceToken(tok: string): boolean {
   return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
 }
 
+/** The token is an official İzmir district (also with a case suffix or a typo). */
+function isDistrictToken(tok: string): boolean {
+  const fixed = fixDistrictTypo(tok, placeStem(tok));
+  return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
+}
+
+/**
+ * The first word of a food phrase is a place, so the phrase is a place plus a dish ("Bornova kebap").
+ * A district always is; any other place name is only when it is not a food word as well
+ * ("pirinç pilavı", "çiftlik kebabı", "cevizli baklava" are dishes whatever a shop or quarter is called).
+ */
+function placeBeforeDish(tok: string): boolean {
+  return isDistrictToken(tok) || (namesToken(tok) && !isFoodWord(tok));
+}
+
 /** Under 3 letters, one repeated letter ("aaa"), or no vowel ("xd", "hmm"): not a word to search. */
 function isGibberish(text: string): boolean {
   const letters = text.replace(/[^a-z]/g, '');
@@ -351,13 +366,25 @@ export function parseQuery(raw: string): QueryIntent {
     return fixed && !namesToken(t) ? fixed : t;
   });
 
-  // Category: a two-word phrase first, then a single word.
+  // A word only the food lexicon knows is not a dish when the whole text names one place ("Pirinç Center").
+  const text0 = rest;
+  let wholePlace: boolean | undefined;
+  const isWholePlace = () => (wholePlace ??= text0.length >= 2 && isOnePlaceName(text0));
+
+  // Category: a three- or two-word phrase first, then a single word.
   let cat: FoodCategory | null = null;
   let dish: string | null = null;
-  for (const len of [2, 1]) {
+  for (const len of [3, 2, 1]) {
     for (let i = 0; i + len <= rest.length && !cat; i++) {
-      const phrase = rest.slice(i, i + len).join(' ');
-      const c = categoryForQuery(phrase);
+      const words = rest.slice(i, i + len);
+      const phrase = words.join(' ');
+      let c = categoryForQuery(phrase);
+      if (!c) {
+        // "tepsi kebabı": the head noun names the category, but not after a place ("Bornova kebap").
+        const head = categoryForQuery(phrase, true);
+        if (head && (len === 1 || !placeBeforeDish(words[0]!))) c = head;
+      }
+      if (c && !categoryForQuery(phrase, true, false) && isWholePlace()) c = null;
       if (!c) continue;
       cat = c;
       dish = phrase;
@@ -366,7 +393,11 @@ export function parseQuery(raw: string): QueryIntent {
   }
 
   // A food word (or the dish phrase) is never a place.
-  rest = rest.filter((t) => categoryForQuery(t) === null);
+  rest = rest.filter(
+    (t) =>
+      categoryForQuery(t) === null ||
+      (categoryForQuery(t, false, false) === null && isWholePlace()),
+  );
 
   // A car-park word only narrows a food search; alone it is the app default.
   const hasPark = rest.some(isParking);

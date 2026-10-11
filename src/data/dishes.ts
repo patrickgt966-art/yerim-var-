@@ -1,4 +1,11 @@
-import { dishStem, hasWordForm, type FoodCategory } from '@/data/restaurants';
+import { FOOD_LEXICON } from '@/data/foodLexicon';
+import {
+  COOKING_WORDS,
+  dishStem,
+  hasWordForm,
+  headStems,
+  type FoodCategory,
+} from '@/data/restaurants';
 import { fold } from '@/data/search';
 
 /**
@@ -18,6 +25,8 @@ export type DishProfile = {
   cuisines?: string[];
   /** Short Turkish type label for the card reason, e.g. 'pide-kebap salonu'. */
   label: string;
+  /** Cuisine tags that spell the dish but mean something else ("pasta" the cake is not the noodle dish). */
+  notCuisines?: string[];
 };
 
 function d(
@@ -86,6 +95,8 @@ const MEXICAN_TAGS = ['mexican', 'tex-mex'];
 const MIDEAST = ['falafel', 'humus', 'lubnan', 'arap', 'suriye', 'halep', 'shawarma', 'savurma'];
 const MIDEAST_TAGS = ['lebanese', 'arab', 'middle_eastern', 'syrian'];
 const TOST = ['tost', 'tostcu', 'sandvic', 'sandwich'];
+const MEZE = ['meyhane', 'meze', ...KEBAP];
+const MEZE_TAGS = ['meze', 'meyhane', 'salad'];
 
 export const DISHES: DishProfile[] = [
   // fast: pide, lahmacun, döner, burger and friends
@@ -113,12 +124,19 @@ export const DISHES: DishProfile[] = [
   d('durum', 'fast', 'dürümcü', DONER, ['doner', 'kebab']),
   d('cig kofte', 'fast', 'çiğ köfteci', ['cig kofte', 'cigkofte'], ['cigkofte', 'cig kofte']),
   d('cigkofte', 'fast', 'çiğ köfteci', ['cig kofte', 'cigkofte'], ['cigkofte', 'cig kofte']),
+  d('cantik', 'fast', 'pide salonu', [...PIDE, 'pide salonu'], ['pide', 'pide_lahmacun']),
   d('hamburger', 'fast', 'hamburgerci', ['burger', 'hamburger'], ['burger']),
   d('burger', 'fast', 'burgerci', ['burger', 'hamburger'], ['burger']),
   d('pizza', 'fast', 'pizzacı', ['pizza', 'pizzeria'], ['pizza']),
   d('tost', 'fast', 'tostçu', ['tost', 'tostcu', 'sandvic', 'sandwich'], ['tost', 'sandwich']),
   d('kumpir', 'fast', 'kumpirci', ['kumpir', 'patates'], ['kumpir', 'patates']),
-  d('patso', 'fast', 'patsocu', ['patso'], ['fries']),
+  d(
+    'patso',
+    'fast',
+    'patsocu',
+    ['patso', 'patates', 'burger', 'sosisli', 'tost'],
+    ['fries', 'burger'],
+  ),
   d('sandvic', 'fast', 'sandviççi', ['sandvic', 'sandwich', 'subway', 'tost'], ['sandwich']),
   d('sosisli', 'fast', 'sosisli satıcısı', ['sosisli', 'hot dog', 'hotdog'], ['hotdog']),
 
@@ -212,6 +230,16 @@ export const DISHES: DishProfile[] = [
   d('kokorec', 'meat', 'kokoreççi', ['kokorec', 'kokorecci'], ['kokorec']),
   d('tantuni', 'meat', 'tantunici', ['tantuni', 'doner', 'donerci']),
   d('sakatat', 'meat', 'sakatatçı', ['sakatat', 'kokorec', 'ciger', 'iskembe']),
+  d('mumbar', 'meat', 'sakatatçı', [...OFFAL, 'mumbar', 'sirdan', 'kokorec']),
+  d('sirdan', 'meat', 'sakatatçı', [...OFFAL, 'mumbar', 'sirdan', 'kokorec']),
+  d('tepsi kebabi', 'meat', 'kebapçı', KEBAP, ['kebab']),
+  d('simit kebabi', 'meat', 'kebapçı', KEBAP, ['kebab']),
+  d('sogan kebabi', 'meat', 'kebapçı', KEBAP, ['kebab']),
+  d('keme kebabi', 'meat', 'kebapçı', KEBAP, ['kebab']),
+  d('hashas kebabi', 'meat', 'kebapçı', KEBAP, ['kebab']),
+  d('ciger kebabi', 'meat', 'kebapçı', ['ciger', 'cigerci', ...KEBAP], ['kebab']),
+  d('salgam', 'meat', 'kebapçı', [...KEBAP, 'salgam'], ['kebab']),
+  d('isot', 'meat', 'kebapçı', ['urfa', ...KEBAP], ['kebab']),
   d('steak', 'meat', 'steakhouse', ['steak', 'steakhouse', 'bonfile', 'kasap'], ['steak_house']),
   d('biftek', 'meat', 'steakhouse', ['biftek', 'steak', 'steakhouse', 'kasap'], ['steak_house']),
   d(
@@ -240,6 +268,8 @@ export const DISHES: DishProfile[] = [
   d('kelle paca', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
   d('paca', 'soup', 'paçacı', OFFAL, ['soup']),
   d('sogus', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
+  d('yuvarlama', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
+  d('lebeniye', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
 
   // lokanta: home food
   d('manti', 'lokanta', 'ev yemekleri lokantası', ['manti', 'mantici', ...HOME]),
@@ -262,6 +292,17 @@ export const DISHES: DishProfile[] = [
   d('guvec', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
   d('tas kebabi', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
   d('mucver', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('eksili kofte', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('sulu kofte', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('bulgur koftesi', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('eriste', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('cevizli eriste', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('bamya', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('radika', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('tirit', 'lokanta', 'ev yemekleri lokantası', ['et lokantasi', ...HOME], HOME_TAGS),
+  d('yaglama', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('yanic', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
+  d('sevketi bostan', 'lokanta', 'ev yemekleri lokantası', HOME, HOME_TAGS),
   d('kuzu incik', 'meat', 'tandır-kebap salonu', ['incik', 'tandir', 'ocakbasi', ...KEBAP]),
 
   // fish
@@ -282,12 +323,29 @@ export const DISHES: DishProfile[] = [
   d('somon', 'fish', 'balık restoranı', FISH, FISH_TAGS),
   d('alabalik', 'fish', 'balık restoranı', FISH, FISH_TAGS),
   d('balik ekmek', 'fish', 'balık ekmekçi', ['balik ekmek', 'balikci', 'balik'], FISH_TAGS),
+  d('deniz mahsulleri', 'fish', 'balık restoranı', FISH, FISH_TAGS),
+  d('hamsi koftesi', 'fish', 'balık restoranı', [...FISH, 'karadeniz'], FISH_TAGS),
 
   // meyhane
   d('meze', 'meyhane', 'meyhane', ['meyhane', 'meze', 'taverna'], ['meyhane', 'meze']),
   d('raki', 'meyhane', 'meyhane', ['meyhane', 'taverna', 'raki'], ['meyhane']),
   d('raki balik', 'meyhane', 'meyhane', ['meyhane', 'balik', 'taverna'], ['meyhane']),
   d('bira', 'meyhane', 'pub-birahane', ['pub', 'birahane', 'bira', 'biergarten', 'brewery']),
+  d('coban salata', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('gavurdagi salatasi', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('patlican salatasi', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('rus salatasi', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('acili ezme', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('ezme', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('haydari', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('muhammara', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('babagannus', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('cacik', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('fava', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('saksuka', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('topik', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('lakerda', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
+  d('ciroz', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
 
   // breakfast
   d(
@@ -300,6 +358,17 @@ export const DISHES: DishProfile[] = [
   d('gozleme', 'breakfast', 'gözlemeci', ['gozleme', 'gozlemeci', 'koy kahvalti', 'serpme']),
   d('boyoz', 'breakfast', 'boyoz-gevrek', ['boyoz', 'boyozcu', 'gevrek', 'simit'], ['bagel']),
   d('gevrek', 'breakfast', 'boyoz-gevrek', ['gevrek', 'boyoz', 'boyozcu', 'simit'], ['bagel']),
+  d(
+    'muhlama',
+    'breakfast',
+    'kahvaltı salonu',
+    ['muhlama', 'karadeniz', ...KAHVALTI],
+    ['breakfast'],
+  ),
+  d('sembusek', 'breakfast', 'börekçi', ['sembusek', 'borek', 'boreg', 'borekci']),
+  d('kaygana', 'breakfast', 'kahvaltı salonu', ['karadeniz', ...KAHVALTI], ['breakfast']),
+  d('misir ekmegi', 'breakfast', 'fırın-kahvaltı salonu', ['ekmek', 'firin', ...KAHVALTI]),
+  d('trabzon ekmegi', 'breakfast', 'fırın-kahvaltı salonu', ['ekmek', 'firin', ...KAHVALTI]),
   d('simit', 'breakfast', 'simitçi-fırın', ['simit', 'simitci', 'gevrek', 'boyoz'], ['bagel']),
   d('kumru', 'breakfast', 'kumrucu', ['kumru', 'kumrucu'], ['kumru']),
   d('borek', 'breakfast', 'börekçi', ['borek', 'boreg', 'borekci', 'pogaca']),
@@ -313,6 +382,8 @@ export const DISHES: DishProfile[] = [
   d('sucuklu yumurta', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'menemenci'], ['breakfast']),
   d('omlet', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'menemenci'], ['breakfast']),
   d('serpme kahvalti', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'serpme'], ['breakfast']),
+  d('serpme', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'serpme'], ['breakfast']),
+  d('koy kahvaltisi', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'koy'], ['breakfast']),
 
   // dessert
   d('baklava', 'dessert', 'baklavacı-tatlıcı', ['baklava', 'baklavaci', ...SWEET]),
@@ -339,12 +410,28 @@ export const DISHES: DishProfile[] = [
   d('sekerpare', 'dessert', 'pastane-tatlıcı', SWEET),
   d('kadayif', 'dessert', 'tatlıcı', ['kadayif', 'tatlici', 'baklava']),
   d('supangle', 'dessert', 'muhallebici-tatlıcı', ['muhallebi', 'muhallebici', 'tatlici']),
+  d('muhallebi', 'dessert', 'muhallebici-tatlıcı', ['muhallebi', 'muhallebici', ...SWEET]),
+  d('su muhallebisi', 'dessert', 'muhallebici-tatlıcı', ['muhallebi', 'muhallebici', ...SWEET]),
+  d('hosmerim', 'dessert', 'tatlıcı', SWEET),
+  d('kabak tatlisi', 'dessert', 'tatlıcı', SWEET),
+  d('ayva tatlisi', 'dessert', 'tatlıcı', SWEET),
+  d('cevizli sucuk', 'dessert', 'tatlıcı-kuruyemişçi', [...SWEET, 'kuruyemis']),
+  d('laz boregi', 'dessert', 'tatlıcı-pastane', [...SWEET, 'borek']),
+  d('kerebic', 'dessert', 'tatlıcı', SWEET),
+  d('sambali', 'dessert', 'tatlıcı', SWEET),
+  d('sillik', 'dessert', 'tatlıcı', SWEET),
+  d('bomba', 'dessert', 'tatlıcı-pastane', [...SWEET, 'donut']),
+  d('pestil', 'dessert', 'tatlıcı-kuruyemişçi', [...SWEET, 'kuruyemis', 'sekerci']),
   d('donut', 'dessert', 'donut dükkanı', ['donut', 'dunkin'], ['donut']),
   d('macaron', 'dessert', 'pastane', ['macaron', 'pastane', 'patisserie'], ['pastry', 'cake']),
 
   // cafe
   d('filtre kahve', 'cafe', 'kahveci', COFFEE, COFFEE_TAGS),
   d('turk kahvesi', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], [...COFFEE_TAGS, 'turk_kahvesi']),
+  d('dibek kahvesi', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], COFFEE_TAGS),
+  d('menengic kahvesi', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], COFFEE_TAGS),
+  d('mirra', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], COFFEE_TAGS),
+  d('kusburnu', 'cafe', 'çay bahçesi-kahvehane', ['cay', 'kahvehane', ...COFFEE], ['tea']),
   d('espresso', 'cafe', 'kahveci', COFFEE, COFFEE_TAGS),
   d('latte', 'cafe', 'kahveci', COFFEE, COFFEE_TAGS),
   d('cay', 'cafe', 'çay bahçesi-kahvehane', ['cay', 'kahvehane'], ['tea']),
@@ -599,7 +686,10 @@ export const DISHES: DishProfile[] = [
   d('helva', 'dessert', 'tatlıcı', ['helva', 'helvaci', ...SWEET]),
   d('pismaniye', 'dessert', 'tatlıcı', ['pismaniye', 'sekerci', ...SWEET]),
   d('ekler', 'dessert', 'pastane', ['ekler', 'patisserie', ...SWEET], ['cake', 'pastry']),
-  d('pasta', 'dessert', 'pastane', ['pastane', 'pasta', 'patisserie', 'pastacilik'], ['cake']),
+  {
+    ...d('pasta', 'dessert', 'pastane', ['pastane', 'pasta', 'patisserie', 'pastacilik'], ['cake']),
+    notCuisines: ['pasta'],
+  },
   d('kurabiye', 'dessert', 'pastane', ['kurabiye', 'patisserie', ...SWEET], ['cake', 'pastry']),
   d(
     'cikolata',
@@ -690,12 +780,48 @@ function candidates(f: string): string[] {
   return out;
 }
 
+/** Generic head nouns that are place words, not dishes ("kabak tatlısı", "mercimek çorbası"): the category's profile. */
+const HEAD_PROFILES = new Map<string, DishProfile>([
+  ['tatli', d('tatli', 'dessert', 'tatlıcı', [...SWEET, 'tatli'])],
+  ['corba', d('corba', 'soup', 'çorbacı', SOUP, ['soup'])],
+  ['salata', d('salata', 'meyhane', 'salata-meze', ['salata', ...MEZE], MEZE_TAGS)],
+]);
+
+/** The profile of a folded head noun with its ending removed, "borek" for "boregi", or null. */
+function headProfile(words: string[]): DishProfile | null {
+  const last = words[words.length - 1] ?? '';
+  const before = words.slice(0, -1);
+  for (const stem of headStems(last)) {
+    const key = [...before, stem].join(' ');
+    const hit = BY_DISH.get(key) ?? HEAD_PROFILES.get(key);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * A dish phrase of 2+ words that is not in the dictionary, read by its head noun:
+ * "sucuklu pide", "tepsi kebabı", "kabak tatlısı" end with the dish; "hamsi tava" starts with it.
+ */
+function dishByHeadNoun(f: string): DishProfile | null {
+  const parts = f.split(' ');
+  if (parts.length < 2) return null;
+  const first = BY_DISH.get(parts[0] ?? '');
+  const byFirst = first && !GENERIC_DISH_STEMS.has(first.dish) ? first : null;
+  // "levrek ızgara": the fish names the dish, not the grill.
+  if (byFirst && headStems(parts[parts.length - 1] ?? '').some((w) => COOKING_WORDS.has(w))) {
+    return byFirst;
+  }
+  return headProfile(parts.slice(-1)) ?? headProfile(parts.slice(-2)) ?? byFirst;
+}
+
 /**
  * The profile of a folded dish ("lahmacuncu", "tavuk pilavci", "lahmcun"), or null.
  * Tries the exact dish, the stem without its seller/plural ending, then one typo
- * (only for words of 5 or more characters).
+ * (only for words of 5 or more characters), then the head noun of a longer phrase
+ * (unless `headNoun` is false).
  */
-export function dishProfile(dishFolded: string): DishProfile | null {
+export function dishProfile(dishFolded: string, headNoun = true): DishProfile | null {
   const f = fold(dishFolded.trim());
   if (!f) return null;
   const forms = candidates(f);
@@ -704,11 +830,12 @@ export function dishProfile(dishFolded: string): DishProfile | null {
     if (hit) return hit;
   }
   for (const c of forms) {
-    if (c.length < 5) continue;
+    // A food-lexicon word is a real word ("mısır" is not a typo of "kısır").
+    if (c.length < 5 || FOOD_LEXICON.has(c)) continue;
     const hit = DISHES.find((p) => p.dish.length >= 5 && withinOne(c, p.dish));
     if (hit) return hit;
   }
-  return null;
+  return headNoun ? dishByHeadNoun(f) : null;
 }
 
 const normCuisine = (c: string) => fold(c.replace(/_/g, ' '));
@@ -731,6 +858,7 @@ export const GENERIC_DISH_STEMS = new Set([
   'kafe',
   'meyhane',
   'tatli',
+  'salata',
   'restoran',
   'cafe',
   'kahve',

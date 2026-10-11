@@ -249,7 +249,7 @@ describe('assistant', () => {
     });
 
     it('says honestly when no place fits the dish', async () => {
-      const r = await answer('patso yemek istiyorum', emptyContext('food'), deps);
+      const r = await answer('biryani yemek istiyorum', emptyContext('food'), deps);
       expect(r.reply.text).toContain('chat.dishUnknown');
       expect(r.reply.cards.length).toBeGreaterThan(0);
       for (const c of r.reply.cards) expect(reasonOf(c)).toBeUndefined();
