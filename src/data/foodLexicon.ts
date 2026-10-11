@@ -49,7 +49,7 @@ const GROUPS: [FoodCategory, string][] = [
   // Drinks.
   [
     'cafe',
-    `serbet, salep, sahlep, boza, ayran, limonata, meyve suyu, portakal suyu, nar suyu, havuc suyu, elma suyu, taze sikma, smoothie, milkshake, sicak cikolata, cay, kahve, nescafe, cortado, flat white, macchiato, ice tea, icetea, soguk cay, bitki cayi, adacayi, ada cayi, ihlamur, papatya cayi, nane limon, gazoz, maden suyu, kefir, sutlu kahve, hot chocolate, turk cayi, cay ocagi, demleme kahve, nitro kahve, dalgona, limonlu soda, soguk kahve, buzlu kahve`,
+    `serbet, salep, sahlep, boza, ayran, limonata, meyve suyu, portakal suyu, nar suyu, havuc suyu, elma suyu, taze sikma, taze sikma portakal suyu, taze sikma nar suyu, taze sikma meyve suyu, taze sikma elma suyu, taze sikma havuc suyu, taze sikma limonata, sikma portakal suyu, taze portakal suyu, smoothie, milkshake, sicak cikolata, cay, kahve, nescafe, cortado, flat white, macchiato, ice tea, icetea, soguk cay, bitki cayi, adacayi, ada cayi, ihlamur, papatya cayi, nane limon, gazoz, maden suyu, kefir, sutlu kahve, hot chocolate, turk cayi, cay ocagi, demleme kahve, nitro kahve, dalgona, limonlu soda, soguk kahve, buzlu kahve`,
   ],
 
   // Street food and fast food.
@@ -96,3 +96,47 @@ export const MODIFIERS: ReadonlySet<string> = new Set(
     .map((w) => w.replace(/\s+/g, ' ').trim())
     .filter(Boolean),
 );
+
+/** Dish modifiers written with -lı/-li/-lu/-lü ("peynirli") and the noun they come from ("peynir"). */
+const MODIFIER_BASES: ReadonlySet<string> = new Set(
+  [...MODIFIERS].filter((m) => /l[iu]$/.test(m) && m.length >= 6).map((m) => m.slice(0, -2)),
+);
+
+/**
+ * True for a word that only describes the dish before it: "su böreği peynirli", "kumru
+ * sucuklu", "pişi peynir", "menemen soğanlı". Only the -lı/-li/-lu forms of the modifier
+ * list and their base nouns count, so a second dish ("kebap tavuk") is not read as one.
+ */
+export function isTrailingModifier(folded: string): boolean {
+  return (MODIFIERS.has(folded) && /l[iu]$/.test(folded)) || MODIFIER_BASES.has(folded);
+}
+
+/**
+ * Spellings that are one dish written another way, for the ones no generic joined /
+ * split rule can find: "çibörek" is çiğ börek. `key` is the folded token.
+ */
+const SPELLING_ALIASES = [{ key: 'ciborek', folded: 'cig borek', written: 'çiğ börek' }];
+
+/** What may follow an aliased word: the compound ending ("çiböreği"), plural or seller. */
+const ALIAS_TAILS = ['i', 'in', 'e', 'ler', 'leri', 'lar', 'ci', 'cu'];
+
+/** The dish a folded token is another spelling of ("ciborek", "ciboregi"), folded and as written, or null. */
+export function respellAlias(token: string): { folded: string; written: string } | null {
+  for (const a of SPELLING_ALIASES) {
+    if (token === a.key) return a;
+    const tail = (stem: string) => (token.startsWith(stem) ? token.slice(stem.length) : '');
+    const plain = tail(a.key);
+    if (ALIAS_TAILS.includes(plain)) {
+      return { folded: a.folded + plain, written: a.written + plain };
+    }
+    // The final k softens before a vowel: "ciborek" -> "ciboregi".
+    const soft = tail(`${a.key.slice(0, -1)}g`);
+    if (a.key.endsWith('k') && ALIAS_TAILS.includes(soft)) {
+      return {
+        folded: `${a.folded.slice(0, -1)}g${soft}`,
+        written: `${a.written.slice(0, -1)}ğ${soft}`,
+      };
+    }
+  }
+  return null;
+}

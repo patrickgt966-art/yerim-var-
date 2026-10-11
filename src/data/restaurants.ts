@@ -392,7 +392,24 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
     ],
   },
   fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik', 'midye'] },
-  cafe: { kinds: ['cafe'], cuisines: ['coffee_shop'] },
+  // Juice bars are often mapped as a plain restaurant ("Energy Vitamin"): the name makes them a café.
+  cafe: {
+    kinds: ['cafe'],
+    cuisines: ['coffee_shop'],
+    names: ['vitamin', 'meyve suyu', 'smoothie', 'juice', 'taze sikma'],
+    // "Vitamin Pide ve Kebap" is not a juice bar.
+    notNames: [
+      'kebap',
+      'kebab',
+      'pide',
+      'pizza',
+      'burger',
+      'doner',
+      'lokanta',
+      'kofte',
+      'lahmacun',
+    ],
+  },
   meyhane: { kinds: ['bar', 'pub', 'biergarten'], cuisines: ['meyhane'], names: ['meyhane'] },
   fast: {
     kinds: ['fast_food'],

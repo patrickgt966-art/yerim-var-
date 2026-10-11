@@ -1,10 +1,11 @@
-import { FOOD_LEXICON } from '@/data/foodLexicon';
+import { FOOD_LEXICON, respellAlias } from '@/data/foodLexicon';
 import {
   COOKING_WORDS,
   dishStem,
   hasWordForm,
   headStems,
   type FoodCategory,
+  type Restaurant,
 } from '@/data/restaurants';
 import { fold } from '@/data/search';
 
@@ -767,11 +768,27 @@ const SELLER_SUFFIXES = ['lari', 'leri', 'lar', 'ler', 'ci', 'cu', 'si', 'su'];
 
 const BY_DISH = new Map(DISHES.map((p) => [p.dish, p]));
 
+/** A one-word dish typed without its space ("kellepaca" -> "kelle paca"): the two-word dishes it can be. */
+function splitSpellings(word: string): string[] {
+  if (word.length < 7) return [];
+  const out: string[] = [];
+  for (let i = 3; i <= word.length - 3; i++) {
+    const two = `${word.slice(0, i)} ${word.slice(i)}`;
+    if (BY_DISH.has(two)) out.push(two);
+  }
+  return out;
+}
+
 /** The folded text and the forms it takes with the last word's ending removed. */
 function candidates(f: string): string[] {
   const out = [f, dishStem(f)];
+  // "ezo gelin" / "ezogelin", "kellepaça" / "kelle paça": the other spelling of the same dish.
+  if (f.includes(' ')) out.push(f.replace(/ /g, ''));
+  else out.push(...splitSpellings(f));
   const parts = f.split(' ');
   const last = parts.pop() ?? '';
+  // "çiğ böreği" -> "çiğ börek": the compound ending off, the last letter hardened.
+  for (const stem of headStems(last).slice(1)) out.push([...parts, stem].join(' '));
   for (const suf of SELLER_SUFFIXES) {
     if (last.endsWith(suf) && last.length - suf.length >= 3) {
       out.push([...parts, last.slice(0, last.length - suf.length)].join(' '));
@@ -822,8 +839,9 @@ function dishByHeadNoun(f: string): DishProfile | null {
  * (unless `headNoun` is false).
  */
 export function dishProfile(dishFolded: string, headNoun = true): DishProfile | null {
-  const f = fold(dishFolded.trim());
-  if (!f) return null;
+  const typed = fold(dishFolded.trim());
+  if (!typed) return null;
+  const f = respellAlias(typed)?.folded ?? typed;
   const forms = candidates(f);
   for (const c of forms) {
     const hit = BY_DISH.get(c);
@@ -894,3 +912,131 @@ export const GENERIC_DISH_STEMS = new Set([
   'asian',
   'fusion',
 ]);
+
+/** What an ordinary place of a category is called or tagged (folded name keywords, cuisine tags, OSM kinds). */
+export type Typical = { names: string[]; cuisines: string[]; kinds: string[] };
+
+const FAST_NAMES = [
+  ...DONER,
+  ...PIDE,
+  'burger',
+  'hamburger',
+  'pizza',
+  'cig kofte',
+  'cigkofte',
+  ...TOST,
+  'kumpir',
+];
+const WORLD_NAMES = [
+  ...new Set([...JAPAN, ...CHINA, ...ASIA, ...INDIAN, ...ITALIAN, ...MEXICAN, ...MIDEAST, 'thai']),
+];
+const WORLD_TAGS = [
+  ...new Set([
+    ...JAPAN_TAGS,
+    ...CHINA_TAGS,
+    ...ITALIAN_TAGS,
+    ...MEXICAN_TAGS,
+    ...MIDEAST_TAGS,
+    'indian',
+    'thai',
+    'korean',
+    'vietnamese',
+    'french',
+    'greek',
+  ]),
+];
+/** Name words of a juice bar; a drink like "meyve suyu" asks for these before any coffee shop. */
+const JUICE_NAMES = ['meyve', 'juice', 'smoothie', 'vitamin', 'taze', 'sikma', 'limonata'];
+const JUICE_DISH_WORDS = ['meyve', 'suyu', 'smoothie', 'sikma', 'juice', 'limonata', 'portakal'];
+
+/**
+ * The profile a place of each category has when the dish itself is not known: the
+ * place is ranked by how well its name, cuisine tag or kind fits it. A weak
+ * category member (the plain restaurant that fits no other category) fits none.
+ */
+export const TYPICAL: Record<FoodCategory, Typical> = {
+  lokanta: {
+    names: [...HOME, 'esnaf', 'ev yemek', 'lokanta', 'sofrasi', 'mutfagi'],
+    cuisines: [...HOME_TAGS, 'regional', 'local'],
+    kinds: [],
+  },
+  meat: {
+    names: [...KEBAP, ...KOFTE, 'et lokantasi', 'izgara', 'ocakbasi'],
+    cuisines: ['kebab', 'barbecue', 'grill', 'steak_house', 'meatball'],
+    kinds: [],
+  },
+  breakfast: {
+    names: [...KAHVALTI, 'borek', 'firin', 'pogaca', 'simit', 'gevrek', 'boyoz'],
+    cuisines: ['breakfast', 'bagel'],
+    kinds: ['bakery'],
+  },
+  dessert: {
+    names: [...SWEET, 'baklava', 'patisserie', 'tatli'],
+    cuisines: ['dessert', 'cake', 'pastry'],
+    kinds: ['pastry'],
+  },
+  cafe: {
+    names: [...COFFEE, 'kafe', 'cafe', 'kahve'],
+    cuisines: [...COFFEE_TAGS, 'tea', 'bubble_tea'],
+    kinds: [],
+  },
+  fish: { names: FISH, cuisines: FISH_TAGS, kinds: [] },
+  soup: { names: [...SOUP, ...OFFAL], cuisines: ['soup'], kinds: [] },
+  fast: {
+    names: FAST_NAMES,
+    cuisines: ['burger', 'pizza', 'chicken', 'sandwich', 'doner', 'kumpir'],
+    kinds: ['fast_food'],
+  },
+  meyhane: { names: [...MEZE, 'taverna', 'birahane'], cuisines: MEZE_TAGS, kinds: [] },
+  world: { names: WORLD_NAMES, cuisines: WORLD_TAGS, kinds: [] },
+};
+
+const isJuiceDish = (dishFolded: string) =>
+  dishFolded.split(' ').some((w) => JUICE_DISH_WORDS.includes(w));
+
+/** True when the place's name or cuisine tag is one of the category's typical ones (a juice bar's name counts for the café). */
+export function typicalMatch(r: Pick<Restaurant, 'name' | 'cuisines'>, cat: FoodCategory): boolean {
+  const name = fold(r.name);
+  const t = TYPICAL[cat];
+  if (t.names.some((k) => hasWordForm(name, k))) return true;
+  if (cat === 'cafe' && JUICE_NAMES.some((k) => hasWordForm(name, k))) return true;
+  const want = t.cuisines.map(normCuisine);
+  return r.cuisines.some((c) => want.includes(normCuisine(c)));
+}
+
+/**
+ * How typical the place is for the category, 0 best: 0 a typical name keyword, 1 a typical
+ * cuisine tag or kind, 2 none of them, 3 a butcher (for meat) or a helva shop (unless the
+ * dish is a helva), which sell the raw thing or one sweet. For a juice-like dish
+ * (`dishFolded`) a juice bar's name comes before any coffee shop.
+ */
+export function typicalTier(
+  r: Pick<Restaurant, 'name' | 'cuisines' | 'kind'>,
+  cat: FoodCategory,
+  dishFolded = '',
+): 0 | 1 | 2 | 3 {
+  const name = fold(r.name);
+  const t = TYPICAL[cat];
+  const byName = t.names.some((k) => hasWordForm(name, k));
+  if (cat === 'cafe' && isJuiceDish(dishFolded)) {
+    if (JUICE_NAMES.some((k) => hasWordForm(name, k))) return 0;
+    if (byName || hasWordForm(name, 'bar')) return 1;
+    return typicalMatch(r, cat) ? 1 : 2;
+  }
+  if (byName) return 0;
+  if (cat === 'meat' && hasWordForm(name, 'kasap')) return 3;
+  if (cat === 'dessert' && hasWordForm(name, 'helva') && !dishFolded.includes('helva')) return 3;
+  return typicalMatch(r, cat) || t.kinds.includes(r.kind) ? 1 : 2;
+}
+
+/** The rows with the places that are typical for the category first (a stable sort: the given order holds within a tier). */
+export function typicalFirst<T extends { r: Pick<Restaurant, 'name' | 'cuisines' | 'kind'> }>(
+  rows: T[],
+  cat: FoodCategory | null,
+  dish = '',
+): T[] {
+  if (!cat) return rows;
+  const dishFolded = fold(dish);
+  const tier = new Map(rows.map((row) => [row, typicalTier(row.r, cat, dishFolded)]));
+  return [...rows].sort((a, b) => tier.get(a)! - tier.get(b)!);
+}

@@ -1,4 +1,10 @@
-import { dishProfile, GENERIC_DISH_STEMS, likelyServes, type DishProfile } from '@/data/dishes';
+import {
+  dishProfile,
+  GENERIC_DISH_STEMS,
+  likelyServes,
+  typicalFirst,
+  type DishProfile,
+} from '@/data/dishes';
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
@@ -889,7 +895,8 @@ function runFood(
     ctx.cat ?? undefined,
   );
   // Dish-first: rows named after the dish, then places that very likely serve it; no padding.
-  let ordered = rows;
+  // The places typical for the category come first, unless the user asked for the nearest.
+  let ordered = ctx.sort === 'distance' ? rows : typicalFirst(rows, ctx.cat, ctx.dish ?? '');
   let dishPrefix = '';
   const hits = new Map<string, DishHit>();
   let profile: DishProfile | null = null;
@@ -952,20 +959,27 @@ function runFood(
         ' ';
     } else {
       dishPrefix = t('chat.dishUnknown', { dish: dishName }) + ' ';
+      // Only the category is known: a place that is typical for it (by name, cuisine, kind) comes first,
+      // not just the best-ranked one ("Kasap Fuat" for a kızartma, a juice bar for meyve suyu).
+      ordered = typicalFirst(ordered, ctx.cat, stem);
       // Nothing of the category within reach of this place: look wider rather than answer with nothing.
       if (ordered.length === 0 && !ctx.wide) {
         const wideItems = ctx.cat
           ? restaurantsInCategory(target, ctx.cat, undefined, WIDE_RADII_M).items
           : restaurantsNear(target, WIDE_RADII_M[WIDE_RADII_M.length - 1]!, 600);
-        ordered = rankRestaurants(
-          buildRestaurantRows(
-            notCat ? wideItems.filter((r) => !matchesCategory(r, notCat)) : wideItems,
-            deps.parkings,
-            target,
-            now,
+        ordered = typicalFirst(
+          rankRestaurants(
+            buildRestaurantRows(
+              notCat ? wideItems.filter((r) => !matchesCategory(r, notCat)) : wideItems,
+              deps.parkings,
+              target,
+              now,
+            ),
+            ctx.sort,
+            ctx.cat ?? undefined,
           ),
-          ctx.sort,
-          ctx.cat ?? undefined,
+          ctx.cat,
+          stem,
         );
         if (ordered.length > 0)
           dishPrefix = t('chat.dishWider', { dish: dishName }) + ' ' + dishPrefix;

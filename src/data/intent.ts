@@ -1,4 +1,6 @@
 import { categoryForQuery, isFoodWord, type FoodCategory } from './restaurants';
+import { dishProfile } from './dishes';
+import { isTrailingModifier, respellAlias } from './foodLexicon';
 import { fold, searchPlaces } from './search';
 
 /** An official İzmir district with its centre. */
@@ -289,13 +291,73 @@ function isGibberish(text: string): boolean {
   return !/[aeiou]/.test(letters) && !(text.indexOf(' ') < 0 && equalsNameWord(text));
 }
 
+/** Joined dish typed apart ("ezo gelin") or apart dish typed joined ("kellepaça"): the other spelling that is a food word. */
+function respell(
+  words: string[],
+  raws: string[] | null,
+): { words: string[]; raws: string[] | null } {
+  const outW: string[] = [];
+  const outR: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!;
+    const rw = raws?.[i] ?? w;
+    const alias = respellAlias(w);
+    if (alias) {
+      const typed = alias.written.split(' ');
+      alias.folded.split(' ').forEach((f, j) => {
+        outW.push(f);
+        outR.push(typed[j] ?? f);
+      });
+      continue;
+    }
+    const next = words[i + 1];
+    const joined = next === undefined ? '' : w + next;
+    if (
+      next !== undefined &&
+      w.length >= 3 &&
+      next.length >= 3 &&
+      !categoryForQuery(`${w} ${next}`, true) &&
+      categoryForQuery(joined)
+    ) {
+      outW.push(joined);
+      outR.push(rw + (raws?.[i + 1] ?? next));
+      i++;
+      continue;
+    }
+    if (w.length >= 7 && !categoryForQuery(w)) {
+      let split: number | null = null;
+      for (let k = 3; k <= w.length - 3 && split === null; k++) {
+        if (categoryForQuery(`${w.slice(0, k)} ${w.slice(k)}`)) split = k;
+      }
+      if (split !== null && !isPlaceToken(w)) {
+        const lined = fold(rw).length === w.length;
+        outW.push(w.slice(0, split), w.slice(split));
+        outR.push(
+          lined ? rw.slice(0, split) : w.slice(0, split),
+          lined ? rw.slice(split) : w.slice(split),
+        );
+        continue;
+      }
+    }
+    outW.push(w);
+    outR.push(rw);
+  }
+  return { words: outW, raws: raws ? outR : null };
+}
+
 /** Split a free-text query into chit-chat, or place / dish / filters. */
 export function parseQuery(raw: string): QueryIntent {
   // "s.a" is a greeting ("selamün aleyküm"), not two letters.
-  const all = fold(raw)
+  const all0 = fold(raw)
     .replace(/(^| )s a( |$)/g, '$1sa$2')
     .split(' ')
     .filter(Boolean);
+  const typed0 = raw
+    .toLocaleLowerCase('tr')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    .filter(Boolean);
+  const { words: all, raws: typed } = respell(all0, typed0.length === all0.length ? typed0 : null);
   if (all.length === 0) return { kind: 'empty' };
 
   // Greeting / abuse: nothing left once the chit-chat words are dropped.
@@ -374,20 +436,31 @@ export function parseQuery(raw: string): QueryIntent {
   // Category: a three- or two-word phrase first, then a single word.
   let cat: FoodCategory | null = null;
   let dish: string | null = null;
-  for (const len of [3, 2, 1]) {
+  for (const len of [4, 3, 2, 1]) {
     for (let i = 0; i + len <= rest.length && !cat; i++) {
       const words = rest.slice(i, i + len);
       const phrase = words.join(' ');
       let c = categoryForQuery(phrase);
+      let named = phrase;
+      // "su böreği peynirli", "kumru sucuklu": the dish first, a word that only describes it after.
+      const lead = words.slice(0, -1).join(' ');
+      if (!c && len >= 2 && isTrailingModifier(words[len - 1]!)) {
+        const leadCat = categoryForQuery(lead);
+        // Only a dish the app knows is the head ("bal kaymak" is not "bal" with a modifier).
+        if (leadCat && dishProfile(lead, false) && !isDistrictToken(words[len - 1]!)) {
+          c = leadCat;
+          named = lead;
+        }
+      }
       if (!c) {
         // "tepsi kebabı": the head noun names the category, but not after a place ("Bornova kebap").
         const head = categoryForQuery(phrase, true);
         if (head && (len === 1 || !placeBeforeDish(words[0]!))) c = head;
       }
-      if (c && !categoryForQuery(phrase, true, false) && isWholePlace()) c = null;
+      if (c && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
       if (!c) continue;
       cat = c;
-      dish = phrase;
+      dish = named;
       rest = [...rest.slice(0, i), ...rest.slice(i + len)];
     }
   }
@@ -451,17 +524,10 @@ export function parseQuery(raw: string): QueryIntent {
 
   // Show the dish as typed (Turkish letters) when the raw words line up with the folded ones.
   let shownDish = dish;
-  if (dish) {
-    const rawWords = raw
-      .toLocaleLowerCase('tr')
-      .replace(/[^\p{L}\p{N}]+/gu, ' ')
-      .split(' ')
-      .filter(Boolean);
-    if (rawWords.length === all.length) {
-      const dishTokens = dish.split(' ');
-      const at = all.findIndex((_, i) => all.slice(i, i + dishTokens.length).join(' ') === dish);
-      if (at >= 0) shownDish = rawWords.slice(at, at + dishTokens.length).join(' ');
-    }
+  if (dish && typed) {
+    const dishTokens = dish.split(' ');
+    const at = all.findIndex((_, i) => all.slice(i, i + dishTokens.length).join(' ') === dish);
+    if (at >= 0) shownDish = typed.slice(at, at + dishTokens.length).join(' ');
   }
 
   return {

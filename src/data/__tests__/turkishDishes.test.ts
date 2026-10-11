@@ -1,9 +1,9 @@
 import '@/i18n';
 
 import { answer, emptyContext, type AssistantDeps } from '../assistant';
-import { dishProfile, GENERIC_DISH_STEMS, likelyServes } from '../dishes';
+import { dishProfile, GENERIC_DISH_STEMS, likelyServes, typicalMatch } from '../dishes';
 import { parseQuery } from '../intent';
-import { dishStem, getRestaurant } from '../restaurants';
+import { dishStem, getRestaurant, type FoodCategory } from '../restaurants';
 import { fold } from '../search';
 import { staticParkings } from '../staticParkings';
 
@@ -236,5 +236,116 @@ describe('head noun of a dish phrase', () => {
     const echo: AssistantDeps = { ...deps, t: (k, o) => (o ? `${k} ${JSON.stringify(o)}` : k) };
     const { reply } = await answer('tepsi kebabı yemek istiyorum', emptyContext('food'), echo);
     expect(reply.text).toContain('"dish":"tepsi kebabı"');
+  });
+});
+
+// Dishes the app only understands by their category (the reply says so and lists the category's
+// places): the top card must then be a place that is typical for that category, not just the
+// best-ranked one. Dishes it does know ("su böreği peynirli") must be read as the dish.
+const FALLBACK_BASE = [
+  'et haşlama,dana haşlama,patlıcan kızartma,kabak kızartma,biber kızartma,etli bezelye,etli patates',
+  'kıymalı patates,kıymalı ıspanak,havuç dilim,karışık kızartma,et kızartma,oğlak kızartma,keçi eti',
+  'kek,muffin,kruvasan,kavurmalı yumurta,bal kaymak,kahvaltılık,meyve suyu,smoothie',
+  'taze sıkma portakal suyu,su böreği peynirli,kol böreği patatesli,sigara böreği peynirli',
+  'kumru sucuklu,pişi peynir,simit peynir,menemen soğanlı,omlet peynirli,çiğ börek kıymalı',
+  'çibörek,çiböreği,ezo gelin,çiğköfte,kelle paça,kellepaça',
+]
+  .join(',')
+  .split(',');
+
+const FALLBACK_RELEVANCE = FALLBACK_BASE.flatMap((p) => [p, `canım ${p} çekti`, `Bornova'da ${p}`]);
+
+/**
+ * Places the category ranking used to put first for these dishes, by the category the dish is
+ * read as: not what anyone asking for it wants. ("Energy Vitamin" is a juice bar, so it is
+ * wrong for a lokanta dish and right for a juice.)
+ */
+const KNOWN_BAD_TOP: Partial<Record<FoodCategory, string[]>> = {
+  lokanta: ['Energy Vitamin', 'Şefin Tavsiyesi'],
+  meat: ['Kasap Fuat'],
+  dessert: ['Helvacı Ali'],
+  breakfast: ['By Melly'],
+  cafe: ['Kendine Has', 'Manti Evi'],
+};
+
+/** Phrases whose leading words are a dish and the last word only describes it. */
+const LEADING_DISH: Record<string, string> = {
+  'su böreği peynirli': 'su böreği',
+  'kol böreği patatesli': 'kol böreği',
+  'sigara böreği peynirli': 'sigara böreği',
+  'kumru sucuklu': 'kumru',
+  'pişi peynir': 'pişi',
+  'simit peynir': 'simit',
+  'menemen soğanlı': 'menemen',
+  'omlet peynirli': 'omlet',
+  'çiğ börek kıymalı': 'çiğ börek',
+};
+
+describe('dishes known only by category: the top card is typical for it', () => {
+  it('has no duplicate phrases', () => {
+    expect(FALLBACK_RELEVANCE.length - new Set(FALLBACK_RELEVANCE).size).toBe(0);
+  });
+
+  it('puts a typical place first, never a butcher, juice bar mix-up or helva shop', async () => {
+    const bad: string[] = [];
+    // Like the dish lists: CI asks the phrase alone and with a district, DISH_AUDIT=full every form.
+    for (const q of FALLBACK_RELEVANCE.filter((x) => FULL || !x.startsWith('canım '))) {
+      const it = parseQuery(q);
+      if (it.kind !== 'search' || !it.cat) {
+        bad.push(`${q}: not read as a food search`);
+        continue;
+      }
+      const { reply } = await answer(q, emptyContext('food'), deps);
+      if (
+        BAD_TEXT.filter((w) => w !== 'dishUnknown').some((w) => reply.text.includes(w)) ||
+        reply.cards.length === 0
+      ) {
+        bad.push(`${q}: ${reply.text}`);
+        continue;
+      }
+      const top = reply.cards[0]!;
+      if (top.kind !== 'restaurant') {
+        bad.push(`${q}: first card is not a place`);
+        continue;
+      }
+      const place = getRestaurant(top.id);
+      if (reply.text.includes('dishUnknown')) {
+        // Only the category is known: the card's name or cuisine must say it fits.
+        if (!place || !typicalMatch(place, it.cat)) bad.push(`${q}: atypical top card ${top.name}`);
+        if (KNOWN_BAD_TOP[it.cat]?.includes(top.name))
+          bad.push(`${q}: known-bad top card ${top.name}`);
+      } else if (!topCardFits(it.dish ?? q, top.id, top.name)) {
+        bad.push(`${q}: irrelevant top card ${top.name}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  }, 1_800_000);
+
+  it('reads "dish + modifier" as the dish', () => {
+    for (const [phrase, dish] of Object.entries(LEADING_DISH)) {
+      for (const q of [phrase, `Bornova'da ${phrase}`, `canım ${phrase} çekti`]) {
+        const it = parseQuery(q);
+        expect({ q, dish: it.kind === 'search' ? it.dish : null }).toEqual({ q, dish });
+      }
+    }
+  });
+
+  it('keeps a modifier next to a word that is not a dish, and a second dish, as they were', () => {
+    expect(parseQuery('bal kaymak')).toMatchObject({ dish: 'bal kaymak' });
+    expect(parseQuery('peynirli pide')).toMatchObject({ cat: 'fast', dish: 'peynirli pide' });
+  });
+});
+
+describe('joined and split spellings of a dish', () => {
+  it('reads çibörek as çiğ börek, ezo gelin as ezogelin, kellepaça as kelle paça', () => {
+    expect(parseQuery('çibörek')).toMatchObject({ cat: 'fast', dish: 'çiğ börek' });
+    expect(parseQuery('çiböreği')).toMatchObject({ dish: 'çiğ böreği' });
+    expect(parseQuery('canım ezo gelin çekti')).toMatchObject({ cat: 'soup', dish: 'ezogelin' });
+    expect(parseQuery('kellepaça')).toMatchObject({ cat: 'soup', dish: 'kelle paça' });
+    expect(parseQuery('cigborek')).toMatchObject({ cat: 'fast' });
+    expect(dishProfile('ciboregi')?.dish).toBe('cig borek');
+    expect(dishProfile('ezo gelin')?.dish).toBe('ezogelin');
+    expect(dishProfile('kellepaca')?.dish).toBe('kelle paca');
+    expect(dishProfile('cigkofte')?.dish).toBe('cigkofte');
   });
 });
