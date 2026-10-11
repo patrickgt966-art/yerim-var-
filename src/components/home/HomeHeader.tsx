@@ -89,6 +89,14 @@ export function HomeHeader() {
         style={{ marginTop: 10, fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
         accessibilityRole="header"
       >
+        {t('home.title0')}
+        <Txt
+          variant="display"
+          color={brand.orangeLight}
+          style={{ fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
+        >
+          {t('home.titleEat')}
+        </Txt>
         {t('home.title1')}
         <Txt
           variant="display"
