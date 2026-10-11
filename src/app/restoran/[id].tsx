@@ -1,25 +1,32 @@
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Pressable, View } from 'react-native';
+import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Tag } from '@/components/FreshnessBadge';
 import { ParkingCard } from '@/components/ParkingCard';
+import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { useRanked } from '@/data/useParkings';
+import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { useApp, useIsFavoriteRestaurant } from '@/store/app';
-import { HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, useColors } from '@/theme';
 
 const NEAR_RADIUS_M = 1000;
+
+/** Top bar (52) plus its 8 pt gaps above and below. */
+const TOP_BAR_SPACE = 68;
 
 function webUrl(w: string): string {
   return /^https?:\/\//i.test(w) ? w : `https://${w}`;
@@ -45,6 +52,10 @@ export default function RestaurantDetail() {
   const { ranked, isLoading } = useRanked(target, NEAR_RADIUS_M);
   const isFav = useIsFavoriteRestaurant(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavoriteRestaurant);
+  const mapRef = useRef<MapView>(null);
+  const screenReader = useScreenReader();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const snapPoints = useMemo(() => ['32%', '60%', '100%'], []);
 
   const open = (url: string) => {
     Linking.openURL(url).catch(() => Alert.alert(t('food.openFailed')));
@@ -74,132 +85,212 @@ export default function RestaurantDetail() {
     r.wheelchair != null ? t(r.wheelchair ? 'food.wheelchairYes' : 'food.wheelchairNo') : null,
   ].filter(Boolean);
   const nearest = ranked.slice(0, 3);
+  const selected = selectedId ? ranked.find((p) => p.id === selectedId) : undefined;
+  const list = selected
+    ? [selected, ...nearest.filter((p) => p.id !== selected.id)].slice(
+        0,
+        nearest.some((p) => p.id === selected.id) ? 3 : 4,
+      )
+    : nearest;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
-      {/* Header stays fixed so "back" is always reachable while the page scrolls. */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 6 }}>
-        <ScreenHeader
-          title={r.name}
-          back
-          right={
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}
-              accessibilityState={{ selected: isFav }}
-              onPress={() => toggleFavorite(r.id)}
-              style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Icon
-                name={isFav ? 'starFilled' : 'star'}
-                size={26}
-                color={isFav ? c.accentStrong : c.text}
-              />
-            </Pressable>
-          }
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      {/* With a screen reader on, the list below is the way in; the map is skipped. */}
+      <View
+        style={{ flex: 1 }}
+        accessibilityElementsHidden={screenReader}
+        importantForAccessibility={screenReader ? 'no-hide-descendants' : 'auto'}
+      >
+        <ParkingMap
+          ref={mapRef}
+          parkings={ranked}
+          center={{ lat: r.lat, lng: r.lng }}
+          restaurants={[r]}
+          selectedRestaurantId={r.id}
+          selectedId={selectedId}
+          onSelect={(p) => {
+            setSelectedId(p.id);
+            mapRef.current?.animateToRegion(
+              {
+                latitude: (r.lat + p.lat) / 2,
+                longitude: (r.lng + p.lng) / 2,
+                latitudeDelta: 0.008,
+                longitudeDelta: 0.008,
+              },
+              300,
+            );
+          }}
+          bottomInset={300}
+          delta={0.008}
         />
       </View>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: insets.bottom + 32,
-          gap: 14,
+
+      <BottomSheet
+        index={1}
+        snapPoints={snapPoints}
+        // The fully open sheet stops below the floating top bar, so "back" never hides.
+        topInset={insets.top + TOP_BAR_SPACE}
+        backgroundStyle={{
+          backgroundColor: c.card,
+          borderTopLeftRadius: 32,
+          borderTopRightRadius: 32,
         }}
+        handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
       >
-        {(!!meta || !r.verified) && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-            {!!meta && <Txt secondary>{meta}</Txt>}
-            {!r.verified && (
-              <View accessible accessibilityLabel={t('food.a11yUnverified')}>
-                <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
-              </View>
-            )}
-          </View>
-        )}
-
-        {!!r.openingHours && (
-          <View style={{ gap: 2 }}>
-            <Txt variant="label" secondary>
-              {t('food.hours')}
-            </Txt>
-            <Txt>{r.openingHours}</Txt>
-          </View>
-        )}
-        {facts.map((f) => (
-          <Txt key={f} variant="caption" secondary>
-            {f}
-          </Txt>
-        ))}
-
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
-          {!!r.website && (
-            <Button
-              kind="secondary"
-              label={t('food.website')}
-              onPress={() => open(webUrl(r.website!))}
-            />
-          )}
-          {!!r.instagram && (
-            <Button
-              kind="secondary"
-              label={t('food.instagram')}
-              onPress={() => open(instagramUrl(r.instagram!))}
-            />
-          )}
-          <Button
-            kind="secondary"
-            label={t('food.directions')}
-            onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
-          />
-        </View>
-
-        <Txt variant="title" accessibilityRole="header" style={{ marginTop: 6 }}>
-          {t('food.parkTitle')}
-        </Txt>
-        {nearest.length === 0 ? (
-          <Txt secondary>{isLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
-        ) : (
-          nearest.map((p, i) => (
-            <View key={p.id} style={{ gap: 6 }}>
-              <ParkingCard
-                parking={p}
-                featured={i === 0}
-                nearest={i === 0 && openState(p) !== 'closed'}
-                onParkHere={() =>
-                  parkHere(p, {
-                    kind: 'restaurant',
-                    id: r.id,
-                    name: r.name,
-                    lat: r.lat,
-                    lng: r.lng,
-                  })
-                }
-                onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
-              />
-              <Txt
-                variant="caption"
-                secondary
-                style={{ paddingHorizontal: 4 }}
-                accessibilityLabel={t('food.a11yRouteLine', {
-                  distance: Math.round(distanceMeters(p, r)),
-                  count: walkMinutes(p, r),
-                })}
-              >
-                {t('food.routeLine', {
-                  distance: Math.round(distanceMeters(p, r)),
-                  count: walkMinutes(p, r),
-                })}
-              </Txt>
+        <BottomSheetScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingBottom: insets.bottom + 32,
+            gap: 14,
+          }}
+        >
+          {(!!meta || !r.verified) && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+              {!!meta && <Txt secondary>{meta}</Txt>}
+              {!r.verified && (
+                <View accessible accessibilityLabel={t('food.a11yUnverified')}>
+                  <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+                </View>
+              )}
             </View>
-          ))
-        )}
+          )}
 
-        <Txt variant="caption" secondary style={{ marginTop: 10 }}>
-          {t(r.source === 'overture' ? 'food.footerOverture' : 'food.footer')}
+          <Txt variant="title" accessibilityRole="header">
+            {t('food.parkTitle')}
+          </Txt>
+          {list.length === 0 ? (
+            <Txt secondary>{isLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
+          ) : (
+            list.map((p, i) => (
+              <View key={p.id} style={{ gap: 6 }}>
+                <ParkingCard
+                  parking={p}
+                  featured={i === 0}
+                  nearest={p.id === ranked[0]?.id && openState(p) !== 'closed'}
+                  onParkHere={() =>
+                    parkHere(p, {
+                      kind: 'restaurant',
+                      id: r.id,
+                      name: r.name,
+                      lat: r.lat,
+                      lng: r.lng,
+                    })
+                  }
+                  onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
+                />
+                <Txt
+                  variant="caption"
+                  secondary
+                  style={{ paddingHorizontal: 4 }}
+                  accessibilityLabel={t('food.a11yRouteLine', {
+                    distance: Math.round(distanceMeters(p, r)),
+                    count: walkMinutes(p, r),
+                  })}
+                >
+                  {t('food.routeLine', {
+                    distance: Math.round(distanceMeters(p, r)),
+                    count: walkMinutes(p, r),
+                  })}
+                </Txt>
+              </View>
+            ))
+          )}
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
+            {!!r.website && (
+              <Button
+                kind="secondary"
+                label={t('food.website')}
+                onPress={() => open(webUrl(r.website!))}
+              />
+            )}
+            {!!r.instagram && (
+              <Button
+                kind="secondary"
+                label={t('food.instagram')}
+                onPress={() => open(instagramUrl(r.instagram!))}
+              />
+            )}
+            <Button
+              kind="secondary"
+              label={t('food.directions')}
+              onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
+            />
+          </View>
+
+          {!!r.openingHours && (
+            <View style={{ gap: 2 }}>
+              <Txt variant="label" secondary>
+                {t('food.hours')}
+              </Txt>
+              <Txt>{r.openingHours}</Txt>
+            </View>
+          )}
+          {facts.map((f) => (
+            <Txt key={f} variant="caption" secondary>
+              {f}
+            </Txt>
+          ))}
+
+          <Txt variant="caption" secondary style={{ marginTop: 10 }}>
+            {t(r.source === 'overture' ? 'food.footerOverture' : 'food.footer')}
+          </Txt>
+        </BottomSheetScrollView>
+      </BottomSheet>
+
+      {/* Top bar: after the sheet so it always stays on top and reachable. */}
+      <View
+        style={[
+          asym(26, 7),
+          {
+            position: 'absolute',
+            top: insets.top + 8,
+            left: 16,
+            right: 16,
+            minHeight: 52,
+            paddingLeft: 4,
+            paddingRight: 4,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: c.card,
+            shadowColor: '#0B3C49',
+            shadowOpacity: 0.14,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
+          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="back" size={22} color={c.text} strokeWidth={2.2} />
+        </Pressable>
+        <Txt
+          accessibilityRole="header"
+          style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}
+          numberOfLines={1}
+        >
+          {r.name}
         </Txt>
-      </ScrollView>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}
+          accessibilityState={{ selected: isFav }}
+          onPress={() => toggleFavorite(r.id)}
+          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon
+            name={isFav ? 'starFilled' : 'star'}
+            size={26}
+            color={isFav ? c.accentStrong : c.text}
+          />
+        </Pressable>
+      </View>
     </View>
   );
 }
