@@ -28,7 +28,7 @@ import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
 import { useApp } from '@/store/app';
-import { asym, fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
 
 function confirmRemove(t: TFunction, name: string, remove: () => void) {
   Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
@@ -212,6 +212,7 @@ export default function FavoritesScreen() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const tabSpace = useTabBarSpace();
   const favorites = useApp((s) => s.favorites);
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const replaceFavoriteId = useApp((s) => s.replaceFavoriteId);
@@ -234,7 +235,7 @@ export default function FavoritesScreen() {
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 20,
-        paddingBottom: 32,
+        paddingBottom: tabSpace,
         gap: 14,
       }}
     >
@@ -276,7 +277,9 @@ export default function FavoritesScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
-                onPress={() => router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } })}
+                onPress={() =>
+                  router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } })
+                }
                 style={{
                   flex: 1,
                   minHeight: HIT,
