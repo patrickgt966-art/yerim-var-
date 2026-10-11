@@ -53,7 +53,7 @@ export function HomeHeader() {
         paddingTop: insets.top + 10,
         paddingHorizontal: 16,
         // Room for the İzmir skyline between the title and the search card.
-        paddingBottom: 96,
+        paddingBottom: 104,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
         overflow: 'hidden',
