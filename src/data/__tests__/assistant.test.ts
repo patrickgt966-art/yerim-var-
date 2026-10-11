@@ -732,7 +732,7 @@ describe('assistant', () => {
       const generic = await answer(
         'zırtapoz',
         emptyContext('food'),
-        search(['restoran', 'lokanta', 'yemek', 'mutfak', 'cafe']),
+        search(['restoran', 'lokanta', 'yemek', 'mutfak', 'cafe'], 'zırtapozlu börek'),
       );
       for (const c of generic.reply.cards) {
         if (c.kind === 'restaurant' && c.reason) expect(c.reason).toContain('chat.reasonNamed');
@@ -784,13 +784,11 @@ describe('assistant', () => {
     it('does not treat "pişiricisi" names as "pişi"', async () => {
       const r = await answer('pişi', emptyContext('food'), deps);
       expect(r.ctx.dish).toBe('pişi');
-      expect(r.ctx.dishExact).toBe(true);
       expect(r.reply.cards.length).toBeGreaterThan(0);
-      for (const c of r.reply.cards) {
-        const words = fold(c.name).split(' ');
-        expect(words).toContain('pisi');
-        expect(words).not.toContain('pisiricisi');
-      }
+      // Pişi is a known dish now: kahvaltı salonu names may follow as "likely" places.
+      const named = r.reply.cards.map((c) => fold(c.name).split(' '));
+      expect(named.some((words) => words.includes('pisi'))).toBe(true);
+      for (const words of named) expect(words).not.toContain('pisiricisi');
     });
 
     it('still matches seller-suffixed names ("kumru" / "kumrucu" -> "Kumrucu Hüseyin")', async () => {

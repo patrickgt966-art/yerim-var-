@@ -194,6 +194,23 @@ const CUISINE_KEYS: Record<string, string> = {
   waffle: 'waffle',
   pancake: 'waffle',
   mediterranean: 'mediterranean',
+  mexican: 'mexican',
+  'tex-mex': 'mexican',
+  indian: 'indian',
+  thai: 'thai',
+  korean: 'korean',
+  vietnamese: 'vietnamese',
+  french: 'french',
+  greek: 'greek',
+  lebanese: 'lebanese',
+  georgian: 'georgian',
+  russian: 'russian',
+  spanish: 'spanish',
+  tapas: 'spanish',
+  middle_eastern: 'middle_eastern',
+  arab: 'middle_eastern',
+  ramen: 'ramen',
+  poke: 'poke',
 };
 
 export function kindLabel(kind: string, t: TFunction): string | null {
@@ -259,7 +276,16 @@ export function telUrl(phone: string): string | null {
 }
 
 export type FoodCategory =
-  'breakfast' | 'soup' | 'meat' | 'lokanta' | 'fish' | 'cafe' | 'meyhane' | 'fast' | 'dessert';
+  | 'breakfast'
+  | 'soup'
+  | 'meat'
+  | 'lokanta'
+  | 'fish'
+  | 'cafe'
+  | 'meyhane'
+  | 'fast'
+  | 'world'
+  | 'dessert';
 
 export const FOOD_CATEGORIES: FoodCategory[] = [
   'breakfast',
@@ -270,6 +296,7 @@ export const FOOD_CATEGORIES: FoodCategory[] = [
   'cafe',
   'meyhane',
   'fast',
+  'world',
   'dessert',
 ];
 
@@ -291,6 +318,23 @@ export function hasWordStart(name: string, kw: string): boolean {
   return false;
 }
 
+/** What may follow a keyword inside one name word: seller, compound and possessive endings ("kebapçım", "dönerevi", "birahanesi", "baklavacıbaşı", "burgerhouse"). */
+const WORD_TAIL =
+  /^(?:c[iu](?:basi|zade|oglu)?)?(?:evi|hane|house|matik|zade|basi|co)?(?:l[iu])?(?:l[ae]r)?(?:[iu]?m|[iu]?n[iu]z|s?[iu]|[iu]n|s)?$/;
+
+/** True when `kw` starts a word of the folded name and the rest of that word is only an ending (see WORD_TAIL). */
+export function hasWordForm(name: string, kw: string): boolean {
+  let i = name.indexOf(kw);
+  while (i !== -1) {
+    if (i === 0 || !/[a-z0-9]/.test(name[i - 1]!)) {
+      const rest = /^[a-z0-9]*/.exec(name.slice(i + kw.length))![0];
+      if (WORD_TAIL.test(rest)) return true;
+    }
+    i = name.indexOf(kw, i + 1);
+  }
+  return false;
+}
+
 // Name keywords are folded (see search.ts) and only used to FILTER; they are
 // never shown as a fact about the place.
 const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
@@ -298,8 +342,9 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
     kinds: ['bakery'],
     cuisines: ['breakfast'],
     names: [
-      'kahvalt',
+      'kahvalti',
       'borek',
+      'borekcilik',
       'pogaca',
       'simit',
       'gozleme',
@@ -307,6 +352,8 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'boyoz',
       'gevrek',
       'kumru',
+      'bakery',
+      'boulangerie',
     ],
   },
   soup: { cuisines: ['soup'], names: ['corba', 'iskembe', 'kelle paca', 'paca'] },
@@ -332,6 +379,16 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   // no other category (see matchesCategory) plus the names below.
   lokanta: {
     names: ['lokanta', 'ev yemek', 'pilav', 'esnaf', 'sofrasi', 'mutfagi'],
+    // "Kore Mutfağı" is a world-cuisine place, not a home-style lokanta.
+    notNames: [
+      'asya mutfagi',
+      'kore mutfagi',
+      'hint mutfagi',
+      'cin mutfagi',
+      'meksika mutfagi',
+      'italyan mutfagi',
+      'japon mutfagi',
+    ],
   },
   fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik', 'midye'] },
   cafe: { kinds: ['cafe'], cuisines: ['coffee_shop'] },
@@ -341,10 +398,75 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
     cuisines: ['burger', 'pizza', 'chicken', 'sandwich', 'doner'],
     names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun', 'cig kofte', 'cigkofte'],
   },
+  world: {
+    cuisines: [
+      'japanese',
+      'sushi',
+      'chinese',
+      'asian',
+      'italian',
+      'pasta',
+      'mexican',
+      'tex-mex',
+      'indian',
+      'thai',
+      'korean',
+      'vietnamese',
+      'ramen',
+      'noodle',
+      'french',
+      'greek',
+      'lebanese',
+      'arab',
+      'middle_eastern',
+      'georgian',
+      'russian',
+      'spanish',
+      'tapas',
+      'poke',
+      'hawaiian',
+      'dim_sum',
+      'wok',
+      'fusion',
+      'international',
+      'peruvian',
+      'latin_american',
+    ],
+    names: [
+      'sushi',
+      'ramen',
+      'noodle',
+      'wok',
+      'taco',
+      'burrito',
+      'trattoria',
+      'osteria',
+      'ristorante',
+      'italyan',
+      'japon',
+      'meksika',
+      'uzak dogu',
+      'uzakdogu',
+      'asya mutfagi',
+      'asian',
+      'dumpling',
+      'gyoza',
+      'poke',
+      'falafel',
+      'hinkali',
+      'hacapuri',
+      'dim sum',
+      'thai',
+      'kore mutfagi',
+      'hint mutfagi',
+      'cin lokantasi',
+      'cin mutfagi',
+    ],
+  },
   dessert: {
     kinds: ['ice_cream', 'pastry', 'confectionery'],
     cuisines: ['dessert', 'ice_cream', 'cake', 'pastry'],
-    names: ['tatli', 'pastane', 'dondurma', 'baklava', 'kunefe'],
+    names: ['tatli', 'pastane', 'patisserie', 'dondurma', 'baklava', 'kunefe'],
   },
 };
 
@@ -354,7 +476,7 @@ function nameCategories(r: Restaurant): FoodCategory[] {
   return FOOD_CATEGORIES.filter((cat) => {
     const rule = CATEGORY_RULES[cat];
     if (!rule.names || rule.notNames?.some((k) => name.includes(k))) return false;
-    return rule.names.some((k) => hasWordStart(name, k));
+    return rule.names.some((k) => hasWordForm(name, k));
   });
 }
 
@@ -440,11 +562,13 @@ export function categoryOf(r: Restaurant): FoodCategory | null {
   if (isPubName(r)) return 'meyhane';
   if (isExcluded(r)) return null;
   // The place's own first cuisine tag decides ("Ada balık": fish before breakfast).
+  const byName = nameCategories(r).find((k) => matchesCategory(r, k));
   for (const c of r.cuisines) {
     const cat = FOOD_CATEGORIES.find((k) => CATEGORY_RULES[k].cuisines?.includes(c));
+    // A cuisine tag is weaker than a name that says what is served ("Milos Balık" tagged greek).
+    if (cat === 'world' && byName && byName !== 'world') return byName;
     if (cat && matchesCategory(r, cat)) return cat;
   }
-  const byName = nameCategories(r).find((k) => matchesCategory(r, k));
   return byName ?? FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
 }
 
@@ -627,6 +751,15 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'kuymak',
     'sucuklu yumurta',
     'omlet',
+    'pisi',
+    'bazlama',
+    'mihlama',
+    'cilbir',
+    'sahanda yumurta',
+    'kaymak bal',
+    'kahvalti tabagi',
+    'pankek',
+    'pancake',
   ],
   soup: [
     'corba',
@@ -647,6 +780,9 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'iskembe corba',
     'kelle',
     'sogus',
+    'sehriye corba',
+    'mantar corba',
+    'dugun corbasi',
   ],
   meat: [
     'kebap',
@@ -713,6 +849,18 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'cokertme',
     'orman kebabi',
     'kebap cesitleri',
+    'tavuk',
+    'cag kebabi',
+    'cag kebap',
+    'tokat kebabi',
+    'bursa kebabi',
+    'buryan',
+    'kuyu kebabi',
+    'halep isi',
+    'firin kebabi',
+    'kuzu pirzola',
+    'pastirma',
+    'sucuk',
   ],
   lokanta: [
     'lokanta',
@@ -727,7 +875,6 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'pilav',
     'sulu yemek',
     'tavuk pilav',
-    'tavuk',
     'taze fasulye',
     'nohut',
     'etli nohut',
@@ -741,6 +888,27 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'guvec',
     'tas kebabi',
     'mucver',
+    'hunkar begendi',
+    'kuzu guvec',
+    'mercimek koftesi',
+    'icli kofte',
+    'kisir',
+    'yaprak sarma',
+    'etli yaprak sarma',
+    'lahana sarmasi',
+    'zeytinyagli',
+    'enginar',
+    'borulce',
+    'kabak cicegi',
+    'keskek',
+    'hingel',
+    'tavuk sote',
+    'et sote',
+    'sebzeli',
+    'turlu',
+    'kapama',
+    'perde pilavi',
+    'bulgur pilavi',
   ],
   fish: [
     'balik',
@@ -765,6 +933,15 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'palamut',
     'somon',
     'alabalik',
+    'kalkan',
+    'mezgit',
+    'cupra',
+    'cinekop',
+    'kefal',
+    'balik corbasi',
+    'balik bugulama',
+    'midye tava',
+    'karides guvec',
   ],
   cafe: [
     'kafe',
@@ -779,6 +956,18 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'espresso',
     'latte',
     'bubble tea',
+    'cappuccino',
+    'americano',
+    'mocha',
+    'frappe',
+    'cold brew',
+    'matcha',
+    'sicak cikolata',
+    'salep',
+    'boza',
+    'smoothie',
+    'milkshake',
+    'limonata',
   ],
   meyhane: ['meyhane', 'bar', 'pub', 'meze', 'raki', 'raki balik', 'bira'],
   // Çiğ köfte is not meat (see CATEGORY_RULES.meat.notNames).
@@ -806,6 +995,143 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'etli pide',
     'patso',
     'sosisli',
+    'ayvalik tostu',
+    'cig borek',
+    'tavuk burger',
+    'nugget',
+    'patates kizartmasi',
+    'hot dog',
+    'et doner',
+    'yaprak doner',
+  ],
+  world: [
+    'dunya mutfagi',
+    'world',
+    'world cuisine',
+    'uzak dogu',
+    'uzakdogu',
+    'asya',
+    'asya mutfagi',
+    'japon mutfagi',
+    'cin mutfagi',
+    'italyan mutfagi',
+    'hint mutfagi',
+    'meksika mutfagi',
+    'kore mutfagi',
+    'tay mutfagi',
+    'asian',
+    'japon',
+    'japanese',
+    'cin',
+    'cin yemegi',
+    'chinese',
+    'italyan',
+    'italian',
+    'meksika',
+    'mexican',
+    'hint',
+    'indian',
+    'tay',
+    'thai',
+    'kore',
+    'korean',
+    'vietnam',
+    'fransiz',
+    'french',
+    'yunan',
+    'greek',
+    'lubnan',
+    'arap',
+    'gurcu',
+    'rus',
+    'ispanyol',
+    'tapas',
+    'fusion',
+    'sushi',
+    'susi',
+    'sashimi',
+    'maki',
+    'california roll',
+    'nigiri',
+    'ramen',
+    'udon',
+    'soba',
+    'tempura',
+    'gyoza',
+    'katsu',
+    'teriyaki',
+    'yakitori',
+    'miso corba',
+    'onigiri',
+    'bento',
+    'edamame',
+    'noodle',
+    'wok',
+    'dim sum',
+    'dumpling',
+    'pekin ordegi',
+    'cin boregi',
+    'spring roll',
+    'kung pao',
+    'tatli eksi',
+    'kizarmis pilav',
+    'bao',
+    'pad thai',
+    'tom yum',
+    'yesil kori',
+    'pho',
+    'kimchi',
+    'bibimbap',
+    'kore barbeku',
+    'tteokbokki',
+    'kori',
+    'curry',
+    'tikka masala',
+    'butter chicken',
+    'naan',
+    'biryani',
+    'samosa',
+    'tandoori',
+    'makarna',
+    'spagetti',
+    'spaghetti',
+    'lazanya',
+    'lasagna',
+    'risotto',
+    'ravioli',
+    'gnocchi',
+    'fettuccine',
+    'carbonara',
+    'penne',
+    'bolonez',
+    'pesto',
+    'bruschetta',
+    'carpaccio',
+    'taco',
+    'burrito',
+    'burrito bowl',
+    'quesadilla',
+    'kesadilya',
+    'nachos',
+    'fajita',
+    'enchilada',
+    'guacamole',
+    'falafel',
+    'humus',
+    'shawarma',
+    'savurma',
+    'tabule',
+    'fattoush',
+    'mutabbel',
+    'kibbeh',
+    'hinkali',
+    'hacapuri',
+    'pelmeni',
+    'borsch',
+    'paella',
+    'poke',
+    'poke bowl',
+    'fondue',
   ],
   dessert: [
     'tatli',
@@ -831,6 +1157,25 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'supangle',
     'donut',
     'macaron',
+    'kemalpasa tatlisi',
+    'asure',
+    'gullac',
+    'keskul',
+    'tavuk gogsu',
+    'irmik helvasi',
+    'helva',
+    'pismaniye',
+    'ekler',
+    'pasta',
+    'kurabiye',
+    'cikolata',
+    'magnolia',
+    'sufle',
+    'brownie',
+    'cupcake',
+    'lokum',
+    'kestane sekeri',
+    'churros',
   ],
 };
 

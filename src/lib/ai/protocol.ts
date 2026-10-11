@@ -29,6 +29,7 @@ const FOOD_CATEGORY_VALUES = [
   'cafe',
   'meyhane',
   'fast',
+  'world',
   'dessert',
 ] as const satisfies readonly FoodCategory[];
 

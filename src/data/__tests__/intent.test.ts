@@ -374,9 +374,9 @@ describe('correction words, greetings and gibberish', () => {
       food: true,
       placeQuery: '',
     });
-    expect(search('sushi derken yemekten kast etmiştim')).toMatchObject({
+    expect(search('poutine derken yemekten kast etmiştim')).toMatchObject({
       food: true,
-      placeQuery: 'sushi',
+      placeQuery: 'poutine',
     });
   });
 

@@ -7,6 +7,7 @@ export type CravingId =
   | 'fish'
   | 'soup'
   | 'chickenRice'
+  | 'world'
   | 'dessert'
   | 'coffee'
   | 'meyhane';
@@ -19,6 +20,8 @@ const PATHS: Record<CravingId, string> = {
   fish: 'M3 12c3-4 7-5 11-4 2 .5 4 2 7 4-3 2-5 3.5-7 4-4 1-8 0-11-4zM17 12h.01',
   soup: 'M4 11h16a8 8 0 0 1-16 0zM9 7c0-1 1-1 1-2M14 7c0-1 1-1 1-2',
   chickenRice: 'M4 13h16a8 8 0 0 1-16 0zM8 10l2-3 2 3 2-3 2 3',
+  world:
+    'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c-3.5 3.5-3.5 14.5 0 18M12 3c3.5 3.5 3.5 14.5 0 18',
   dessert: 'M6 12h12l-2 8H8zM8 12a4 4 0 0 1 8 0M12 4v4',
   coffee: 'M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a2 2 0 0 1 0 4h-2M8 3v2M12 3v2',
   meyhane: 'M7 3h10l-1 8a4 4 0 0 1-8 0zM12 15v6M8 21h8',

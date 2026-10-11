@@ -5,6 +5,7 @@ import { t } from 'i18next';
 import {
   categoryForQuery,
   categoryOf,
+  hasWordForm,
   parkingInfo,
   cuisineLabels,
   infoScore,
@@ -568,5 +569,61 @@ describe('restaurantsInCategory with wide radii', () => {
     const { radiusM } = restaurantsInCategory(origin, 'cafe', [rest('c1', 100)], WIDE_RADII_M);
     expect(WIDE_RADII_M).toContain(radiusM);
     expect([6000, 15000]).toContain(radiusM);
+  });
+});
+
+describe('hasWordForm', () => {
+  it.each([
+    ['kebapcim', 'kebap'],
+    ['donerevi', 'doner'],
+    ['birahanesi', 'bira'],
+    ['kahvaltisi', 'kahvalti'],
+    ['steakhouse', 'steak'],
+    ['mangalbasi', 'mangal'],
+    ['kahveciniz', 'kahve'],
+    ['pide', 'pide'],
+    ['kumrucu huseyin', 'kumru'],
+  ])('%s carries %s as a word', (name, kw) => {
+    expect(hasWordForm(name, kw)).toBe(true);
+  });
+
+  it.each([
+    ['balik pisiricisi', 'pisi'],
+    ['lokman hekim', 'lokma'],
+    ['sarmasik', 'sarma'],
+    ['sisman', 'sis'],
+    ['public', 'pub'],
+    ['cafer', 'cafe'],
+    ['kahverengi', 'kahve'],
+    ['caykovski', 'cay'],
+    ['kuzuoglu', 'kuzu'],
+    ['balikesirli', 'balik'],
+  ])('%s does not carry %s', (name, kw) => {
+    expect(hasWordForm(name, kw)).toBe(false);
+  });
+});
+
+describe('world cuisine category', () => {
+  const mk = (n: string, k: string, c?: string[]) => toRestaurant({ id: n, n, a: 1, o: 2, k, c });
+
+  it('takes foreign cuisine tags and names', () => {
+    expect(matchesCategory(mk('Tokyo', 'restaurant', ['japanese']), 'world')).toBe(true);
+    expect(matchesCategory(mk('Mario', 'restaurant', ['italian']), 'world')).toBe(true);
+    expect(matchesCategory(mk('Sushi Corner', 'restaurant'), 'world')).toBe(true);
+    expect(matchesCategory(mk('Kore Mutfağı', 'restaurant'), 'world')).toBe(true);
+    expect(matchesCategory(mk('Kore Mutfağı', 'restaurant'), 'lokanta')).toBe(false);
+    expect(matchesCategory(mk('Köşe', 'restaurant', ['turkish']), 'world')).toBe(false);
+  });
+
+  it('keeps pizza places in fast and lets the first cuisine tag decide', () => {
+    expect(categoryOf(mk('Napoli', 'restaurant', ['pizza', 'italian']))).toBe('fast');
+    expect(categoryOf(mk('Napoli', 'restaurant', ['italian', 'pizza']))).toBe('world');
+    expect(categoryOf(mk('Tokyo', 'restaurant', ['sushi']))).toBe('world');
+  });
+
+  it('reads the category words', () => {
+    expect(categoryForQuery('dünya mutfağı')).toBe('world');
+    expect(categoryForQuery('sushi')).toBe('world');
+    expect(categoryForQuery('makarna')).toBe('world');
   });
 });

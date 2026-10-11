@@ -29,6 +29,7 @@ export type IconName =
   | 'icecream'
   | 'bowl'
   | 'cutlery'
+  | 'globe'
   | 'edit'
   | 'pin'
   | 'check'
@@ -157,6 +158,12 @@ export function Icon({ name, size = 24, color, strokeWidth = 2 }: Props) {
         <Path d="M4 11h16a8 8 0 0 1-16 0zM9 4c0 2 2 2 2 4M14 4c0 2 2 2 2 4" {...common} />
       )}
       {name === 'icecream' && <Path d="M7.5 12a4.5 4.5 0 1 1 9 0zM8 12l4 9 4-9" {...common} />}
+      {name === 'globe' && (
+        <>
+          <Circle cx={12} cy={12} r={9} {...common} />
+          <Path d="M3 12h18M12 3c-3.5 3.5-3.5 14.5 0 18M12 3c3.5 3.5 3.5 14.5 0 18" {...common} />
+        </>
+      )}
       {name === 'cutlery' && (
         <Path
           d="M7 3v7M4.5 3v5a2.5 2.5 0 0 0 5 0V3M7 11v10M17 21V3c-2.5 1.5-3 5-3 8h3"

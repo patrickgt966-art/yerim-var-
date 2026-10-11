@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
+import { dishProfile } from '@/data/dishes';
 import { distanceMeters, type LatLng } from '@/data/geo';
 import { isInIzmirArea, POPULAR_PLACES } from '@/data/places';
 import {
   allRestaurants,
   FOOD_CATEGORIES,
+  hasWordForm,
   kindLabel,
   type FoodCategory,
   type Restaurant,
@@ -127,7 +129,8 @@ let folded: { r: Restaurant; key: string }[] | null = null;
 const MAX_SAME_NAME = 2;
 
 /**
- * Up to `limit` restaurants whose name contains the query (min 2 characters),
+ * Up to `limit` restaurants whose name contains the query (min 2 characters;
+ * a complete dish word must be a whole name word),
  * names that start with it first, each group nearest to `from` first (the
  * user, else the search target; Kordon when neither is known). A chain keeps
  * only its nearest branches.
@@ -136,9 +139,12 @@ export function matchRestaurants(query: string, limit = 5, from: LatLng = FALLBA
   const q = fold(query.trim());
   if (q.length < 2) return [];
   if (!folded) folded = allRestaurants().map((r) => ({ r, key: fold(r.name) }));
+  // A complete dish ("pişi") only matches names that carry it as a word, not "Balık Pişiricisi".
+  const wholeWord = dishProfile(q)?.dish === q;
   const starts: { r: Restaurant; d: number }[] = [];
   const inside: { r: Restaurant; d: number }[] = [];
   for (const x of folded) {
+    if (wholeWord && !hasWordForm(x.key, q)) continue;
     const hit = x.key.startsWith(q) ? starts : x.key.includes(q) ? inside : null;
     if (hit) hit.push({ r: x.r, d: distanceMeters(from, x.r) });
   }

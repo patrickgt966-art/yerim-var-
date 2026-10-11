@@ -2,6 +2,7 @@ import '@/i18n';
 
 import { distanceMeters } from '@/data/geo';
 import { IZMIR_CENTER } from '@/data/places';
+import { fold } from '@/data/search';
 
 import { matchRestaurants } from '../FoodHome';
 
@@ -17,6 +18,10 @@ describe('matchRestaurants', () => {
   it('keeps at most two branches of a chain', () => {
     const names = matchRestaurants('çiğköfte', 10).map((r) => r.name);
     for (const n of names) expect(names.filter((x) => x === n).length).toBeLessThanOrEqual(2);
+  });
+
+  it('matches a complete dish only as a whole name word', () => {
+    for (const r of matchRestaurants('pişi', 10)) expect(fold(r.name)).not.toContain('pisiricisi');
   });
 
   it('needs two characters', () => {
