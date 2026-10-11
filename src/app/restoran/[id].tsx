@@ -155,6 +155,30 @@ export default function RestaurantDetail() {
             </View>
           )}
 
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <Button
+              kind="accent"
+              style={{ flexGrow: 1 }}
+              label={t('food.directions')}
+              onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
+            />
+            {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
+            {!!r.website && (
+              <Button
+                kind="secondary"
+                label={t('food.website')}
+                onPress={() => open(webUrl(r.website!))}
+              />
+            )}
+            {!!r.instagram && (
+              <Button
+                kind="secondary"
+                label={t('food.instagram')}
+                onPress={() => open(instagramUrl(r.instagram!))}
+              />
+            )}
+          </View>
+
           <Txt variant="title" accessibilityRole="header">
             {t('food.parkTitle')}
           </Txt>
@@ -195,29 +219,6 @@ export default function RestaurantDetail() {
               </View>
             ))
           )}
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
-            {!!r.website && (
-              <Button
-                kind="secondary"
-                label={t('food.website')}
-                onPress={() => open(webUrl(r.website!))}
-              />
-            )}
-            {!!r.instagram && (
-              <Button
-                kind="secondary"
-                label={t('food.instagram')}
-                onPress={() => open(instagramUrl(r.instagram!))}
-              />
-            )}
-            <Button
-              kind="secondary"
-              label={t('food.directions')}
-              onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
-            />
-          </View>
 
           {!!r.openingHours && (
             <View style={{ gap: 2 }}>
