@@ -1,6 +1,6 @@
 import { categoryForQuery, isFoodWord, type FoodCategory } from './restaurants';
-import { dishProfile } from './dishes';
-import { isTrailingModifier, respellAlias } from './foodLexicon';
+import { dishProfile, leadDishProfile } from './dishes';
+import { isTrailingModifier, LEADING_GENERIC, respellAlias } from './foodLexicon';
 import { fold, searchPlaces } from './search';
 
 /** An official İzmir district with its centre. */
@@ -282,6 +282,18 @@ function placeBeforeDish(tok: string): boolean {
   return isDistrictToken(tok) || (namesToken(tok) && !isFoodWord(tok));
 }
 
+/** Dish heads with a compound ending: a dish phrase whatever place name the words before them match. */
+const COMPOUND_HEADS = /^(?:kebabi|tatlisi|boregi|corbasi|pilavi|koftesi|salatasi|dolmasi)$/;
+
+/**
+ * "ali paşa kebabı", "hasan paşa köftesi": a compound head with words before it is a dish, even
+ * when those words are also a person's or a place's name; only an İzmir district ("Bornova
+ * köftesi") still reads as a place plus a dish.
+ */
+function compoundDish(words: string[]): boolean {
+  return COMPOUND_HEADS.test(words[words.length - 1]!) && !words.slice(0, -1).some(isDistrictToken);
+}
+
 /** Under 3 letters, one repeated letter ("aaa"), or no vowel ("xd", "hmm"): not a word to search. */
 function isGibberish(text: string): boolean {
   const letters = text.replace(/[^a-z]/g, '');
@@ -370,7 +382,14 @@ export function parseQuery(raw: string): QueryIntent {
       !greetIyi(i) &&
       !ABUSE.has(t) &&
       // "ev yemeği" / "öğle yemeği" are dishes, not filler.
-      (!FILLER.has(t) || (t === 'yemegi' && (all[i - 1] === 'ev' || all[i - 1] === 'ogle'))) &&
+      (!FILLER.has(t) ||
+        (t === 'yemegi' && (all[i - 1] === 'ev' || all[i - 1] === 'ogle')) ||
+        // "sebze yemeği", "etli yemek": the meal word stays with the word that names its category.
+        ((t === 'yemegi' || t === 'yemek') &&
+          i > 0 &&
+          categoryForQuery(`${all[i - 1]} ${t}`) !== null) ||
+        // "ara sıcak" is the meze course, not "search hot".
+        (t === 'ara' && (all[i + 1] ?? '').startsWith('sicak'))) &&
       !(t === 'yerde' && all[i - 1] === 'bulundugum') &&
       !ADDRESS.has(t) &&
       !SUFFIX_TOKENS.has(t),
@@ -442,6 +461,8 @@ export function parseQuery(raw: string): QueryIntent {
       const phrase = words.join(' ');
       let c = categoryForQuery(phrase);
       let named = phrase;
+      // "pilavlı tavuk", "makarnalı tavuk": the -lı word is the dish, the plain protein only says what is in it.
+      if (!c && len === 2 && !placeBeforeDish(words[0]!)) c = leadDishProfile(words)?.cat ?? null;
       // "su böreği peynirli", "kumru sucuklu": the dish first, a word that only describes it after.
       const lead = words.slice(0, -1).join(' ');
       if (!c && len >= 2 && isTrailingModifier(words[len - 1]!)) {
@@ -455,13 +476,21 @@ export function parseQuery(raw: string): QueryIntent {
       if (!c) {
         // "tepsi kebabı": the head noun names the category, but not after a place ("Bornova kebap").
         const head = categoryForQuery(phrase, true);
-        if (head && (len === 1 || !placeBeforeDish(words[0]!))) c = head;
+        if (head && (len === 1 || !placeBeforeDish(words[0]!) || compoundDish(words))) c = head;
       }
       if (c && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
       if (!c) continue;
+      // "taze meyve suyu", "sade kahve": how it is served belongs to the dish, it is not a place.
+      let from = i;
+      let size = len;
+      if (i > 0 && LEADING_GENERIC.has(rest[i - 1]!) && !isDistrictToken(rest[i - 1]!)) {
+        named = `${rest[i - 1]} ${named}`;
+        from = i - 1;
+        size = len + 1;
+      }
       cat = c;
       dish = named;
-      rest = [...rest.slice(0, i), ...rest.slice(i + len)];
+      rest = [...rest.slice(0, from), ...rest.slice(from + size)];
     }
   }
 

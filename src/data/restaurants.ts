@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 import raw from '../../data/food-izmir.json';
 import overtureRaw from '../../data/food-overture-izmir.json';
 import { getFreshness } from './freshness';
-import { FOOD_LEXICON, MODIFIERS } from './foodLexicon';
+import { BREAD_MODIFIER_WORDS, FOOD_LEXICON, MODIFIERS } from './foodLexicon';
 import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
 import { fold } from './search';
@@ -1319,6 +1319,25 @@ function stripSuffix(w: string): string | null {
 }
 
 /**
+ * The category of "X yemeği" / "X yemekleri" / "-lı yemek" ("sebze yemeği", "etli yemek"): the one
+ * X names, an -lı word by the noun it comes from ("etli" -> "et"). A bare "X yemek" is the verb
+ * ("pide yemek istiyorum"), so only the -lı form counts. Null when X names no category.
+ */
+function mealPhraseCategory(parts: string[], lexicon: boolean): FoodCategory | null {
+  const meal = parts[parts.length - 1];
+  const prefix = parts.slice(0, -1);
+  if (parts.length < 2 || parts.length > 4 || !meal) return null;
+  const last = prefix[prefix.length - 1] ?? '';
+  const adjective = /l[iu]$/.test(last) && last.length >= 4;
+  if (!(meal === 'yemegi' || meal === 'yemekleri' || (meal === 'yemek' && adjective))) return null;
+  const direct = categoryForQuery(prefix.join(' '), true, lexicon);
+  if (direct) return direct;
+  return adjective && prefix.length === 1
+    ? categoryForQuery(last.slice(0, -2), false, lexicon)
+    : null;
+}
+
+/**
  * The category a search text names outright ("balık", "kahvaltı"), or null.
  * `headNoun` also reads a 2-3 word phrase by the dish it ends with; `lexicon` false
  * leaves out the Turkish food lexicon (only the category lists answer).
@@ -1330,8 +1349,11 @@ export function categoryForQuery(q: string, headNoun = false, lexicon = true): F
   const exact = ex(f);
   if (exact) return exact;
   if (f.includes(' ')) {
-    // "tavuk pilavcı": a two-word phrase whose last word carries one suffix.
     const parts = f.split(' ');
+    // "sebze yemeği", "et yemeği", "etli yemek": the generic meal word says nothing, the word before it names the category.
+    const meal = mealPhraseCategory(parts, lexicon);
+    if (meal) return meal;
+    // "tavuk pilavcı": a two-word phrase whose last word carries one suffix.
     if (parts.length === 2) {
       const [first, last] = parts;
       const stem = first !== undefined && last !== undefined ? stripSuffix(last) : null;
@@ -1433,6 +1455,9 @@ function categoryByHeadNoun(parts: string[], lexicon: boolean): FoodCategory | n
   const isFood = (m: string): boolean => isModifier(m) || isCategory(m);
   const modifierIsFood = (): boolean => [...modifier, modifier.join(' ')].some(isFood);
   const stems = headStems(word);
+  // "çavdar ekmeği", "köy ekmeği": bread from a bakery; a dish word before it ("sucuk ekmek") keeps its dish.
+  if (stems.includes('ekmek') && modifier.every((m) => BREAD_MODIFIER_WORDS.has(m)))
+    return 'breakfast';
   if (stems.some((stem) => COOKING_WORDS.has(stem)) && modifierIsFood()) {
     const c = ex(first) ?? ex(modifier.join(' '));
     if (c) return c;

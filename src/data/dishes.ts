@@ -98,6 +98,8 @@ const MIDEAST_TAGS = ['lebanese', 'arab', 'middle_eastern', 'syrian'];
 const TOST = ['tost', 'tostcu', 'sandvic', 'sandwich'];
 const MEZE = ['meyhane', 'meze', ...KEBAP];
 const MEZE_TAGS = ['meze', 'meyhane', 'salad'];
+const BAKERY = ['corek', 'firin', 'pastane', 'unlu mamul', 'borek', 'pogaca'];
+const DELI = [...KAHVALTI, ...TOST, 'sarkuteri', 'deli'];
 
 export const DISHES: DishProfile[] = [
   // fast: pide, lahmacun, döner, burger and friends
@@ -268,6 +270,7 @@ export const DISHES: DishProfile[] = [
   d('kelle', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
   d('kelle paca', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
   d('paca', 'soup', 'paçacı', OFFAL, ['soup']),
+  d('tuzlama', 'soup', 'işkembeci-paçacı', OFFAL, ['soup']),
   d('sogus', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
   d('yuvarlama', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
   d('lebeniye', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
@@ -330,6 +333,7 @@ export const DISHES: DishProfile[] = [
   // meyhane
   d('meze', 'meyhane', 'meyhane', ['meyhane', 'meze', 'taverna'], ['meyhane', 'meze']),
   d('raki', 'meyhane', 'meyhane', ['meyhane', 'taverna', 'raki'], ['meyhane']),
+  d('ara sicak', 'meyhane', 'meyhane', ['meyhane', 'meze', 'taverna'], ['meyhane', 'meze']),
   d('raki balik', 'meyhane', 'meyhane', ['meyhane', 'balik', 'taverna'], ['meyhane']),
   d('bira', 'meyhane', 'pub-birahane', ['pub', 'birahane', 'bira', 'biergarten', 'brewery']),
   d('coban salata', 'meyhane', 'meyhane-kebapçı', MEZE, MEZE_TAGS),
@@ -399,6 +403,20 @@ export const DISHES: DishProfile[] = [
     ['ice_cream'],
   ),
   d('profiterol', 'dessert', 'pastane-tatlıcı', ['profiterol', ...SWEET], ['dessert', 'cake']),
+  d(
+    'nutella',
+    'dessert',
+    'waffle-krep-tatlıcı',
+    ['waffle', 'krep', 'kreperi', 'tatlici', 'pastane', 'cikolata'],
+    ['waffle', 'pancake'],
+  ),
+  d(
+    'nutellali',
+    'dessert',
+    'waffle-krep-tatlıcı',
+    ['waffle', 'krep', 'kreperi', 'tatlici', 'pastane', 'cikolata'],
+    ['waffle', 'pancake'],
+  ),
   d('waffle', 'dessert', 'waffle-krep', ['waffle', 'krep', 'kreperi'], ['waffle', 'pancake']),
   d('krep', 'dessert', 'waffle-krep', ['krep', 'kreperi', 'waffle'], ['pancake', 'waffle']),
   d('tiramisu', 'dessert', 'pastane-tatlıcı', SWEET, ['cake', 'pastry']),
@@ -568,8 +586,20 @@ export const DISHES: DishProfile[] = [
     ['tapas', 'paella', 'ispanyol', 'spanish'],
     ['spanish', 'tapas'],
   ),
-  d('poke', 'world', 'poke restoranı', ['poke', 'hawaiian'], ['poke', 'hawaiian']),
-  d('poke bowl', 'world', 'poke restoranı', ['poke', 'hawaiian'], ['poke', 'hawaiian']),
+  d(
+    'poke',
+    'world',
+    'poke restoranı',
+    ['poke', 'hawaiian', ...JAPAN],
+    ['poke', 'hawaiian', ...JAPAN_TAGS],
+  ),
+  d(
+    'poke bowl',
+    'world',
+    'poke restoranı',
+    ['poke', 'hawaiian', ...JAPAN],
+    ['poke', 'hawaiian', ...JAPAN_TAGS],
+  ),
   d('fondue', 'world', 'Fransız restoranı', ['fondue', 'fransiz', 'french', 'bistro'], ['french']),
 
   // breakfast
@@ -584,7 +614,11 @@ export const DISHES: DishProfile[] = [
   ),
   d('cilbir', 'breakfast', 'kahvaltı salonu', KAHVALTI, ['breakfast']),
   d('sahanda yumurta', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'menemenci'], ['breakfast']),
+  d('corek', 'breakfast', 'fırın-pastane', BAKERY),
+  d('fume', 'breakfast', 'sandviççi-kahvaltı salonu', DELI, ['sandwich', 'breakfast']),
   d('kaymak bal', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'kaymak'], ['breakfast']),
+  d('bal kaymak', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'kaymak'], ['breakfast']),
+  d('kaymakli bal', 'breakfast', 'kahvaltı salonu', [...KAHVALTI, 'kaymak'], ['breakfast']),
   d('kahvalti tabagi', 'breakfast', 'kahvaltı salonu', KAHVALTI, ['breakfast']),
   d(
     'pankek',
@@ -720,6 +754,7 @@ export const DISHES: DishProfile[] = [
   d('smoothie', 'cafe', 'smoothie-meyve suyu', ['smoothie', 'juice', 'meyve suyu']),
   d('milkshake', 'cafe', 'milkshake-dondurma', ['milkshake', 'shake', 'dondurma']),
   d('limonata', 'cafe', 'limonata-meyve suyu', ['limonata', 'limon', 'juice', 'meyve suyu']),
+  d('sut', 'cafe', 'kafe-kahveci', [...COFFEE, 'sut', 'kahvehane'], COFFEE_TAGS),
 
   // world: whole cuisines ("japon", "italyan mutfağı")
   d('japon', 'world', 'Japon restoranı', JAPAN, JAPAN_TAGS),
@@ -801,6 +836,20 @@ function candidates(f: string): string[] {
 const HEAD_PROFILES = new Map<string, DishProfile>([
   ['tatli', d('tatli', 'dessert', 'tatlıcı', [...SWEET, 'tatli'])],
   ['corba', d('corba', 'soup', 'çorbacı', SOUP, ['soup'])],
+  // "çavdar ekmeği", "köy ekmeği": bread, from a bakery.
+  [
+    'ekmek',
+    d('ekmek', 'breakfast', 'fırın', [
+      'ekmek',
+      'firin',
+      'firini',
+      'unlu mamul',
+      'bakery',
+      'boulangerie',
+      'tas firin',
+      'simit',
+    ]),
+  ],
   ['salata', d('salata', 'meyhane', 'salata-meze', ['salata', ...MEZE], MEZE_TAGS)],
 ]);
 
@@ -816,6 +865,34 @@ function headProfile(words: string[]): DishProfile | null {
   return null;
 }
 
+/** Plain proteins: next to another dish word they only say what is in it ("poke tavuk", "pilavlı tavuk"). */
+const PLAIN_PROTEINS = new Set(['tavuk', 'et', 'balik', 'kuzu', 'dana', 'hindi', 'pilic']);
+
+/**
+ * "pilavlı tavuk", "makarnalı tavuk", "nohutlu tavuk": the -lı word is the dish people look for
+ * and the plain protein only says what is in it. The profile of that dish, or null when the
+ * phrase is not that shape or the -lı word has no dish ("peynirli tavuk"). A dish at the end
+ * ("tavuklu makarna", "peynirli pide") is the head and is not read here.
+ */
+export function leadDishProfile(words: string[]): DishProfile | null {
+  const [lead, protein] = words;
+  if (words.length !== 2 || !lead || !protein || !PLAIN_PROTEINS.has(protein)) return null;
+  if (!/l[iu]$/.test(lead) || lead.length < 5) return null;
+  const base = lead.slice(0, -2);
+  if (PLAIN_PROTEINS.has(base)) return null;
+  return (
+    BY_DISH.get(`${protein} ${base}`) ??
+    DISHES.find((p) => p.dish.startsWith(`${lead} `)) ??
+    BY_DISH.get(base) ??
+    null
+  );
+}
+
+/** True when the folded text is exactly a dish in the dictionary. */
+export function hasExactDish(folded: string): boolean {
+  return BY_DISH.has(folded);
+}
+
 /**
  * A dish phrase of 2+ words that is not in the dictionary, read by its head noun:
  * "sucuklu pide", "tepsi kebabı", "kabak tatlısı" end with the dish; "hamsi tava" starts with it.
@@ -823,13 +900,18 @@ function headProfile(words: string[]): DishProfile | null {
 function dishByHeadNoun(f: string): DishProfile | null {
   const parts = f.split(' ');
   if (parts.length < 2) return null;
+  const lead = leadDishProfile(parts);
+  if (lead) return lead;
   const first = BY_DISH.get(parts[0] ?? '');
   const byFirst = first && !GENERIC_DISH_STEMS.has(first.dish) ? first : null;
-  // "levrek ızgara": the fish names the dish, not the grill.
-  if (byFirst && headStems(parts[parts.length - 1] ?? '').some((w) => COOKING_WORDS.has(w))) {
-    return byFirst;
-  }
-  return headProfile(parts.slice(-1)) ?? headProfile(parts.slice(-2)) ?? byFirst;
+  const last = parts[parts.length - 1] ?? '';
+  // "levrek ızgara": the fish names the dish, not the grill; "poke tavuk": nor does the chicken.
+  if (byFirst && headStems(last).some((w) => COOKING_WORDS.has(w))) return byFirst;
+  if (byFirst && PLAIN_PROTEINS.has(last) && parts.length === 2) return byFirst;
+  const head = headProfile(parts.slice(-1)) ?? headProfile(parts.slice(-2));
+  // "sucuk ekmek": a dish before the bread word names it; the bakery is for "çavdar ekmeği".
+  if (head?.dish === 'ekmek' && byFirst) return byFirst;
+  return head ?? byFirst;
 }
 
 /**
@@ -946,7 +1028,7 @@ const WORLD_TAGS = [
   ]),
 ];
 /** Name words of a juice bar; a drink like "meyve suyu" asks for these before any coffee shop. */
-const JUICE_NAMES = ['meyve', 'juice', 'smoothie', 'vitamin', 'taze', 'sikma', 'limonata'];
+const JUICE_NAMES = ['meyve', 'juice', 'smoothie', 'vitamin', 'sikma', 'limonata'];
 const JUICE_DISH_WORDS = ['meyve', 'suyu', 'smoothie', 'sikma', 'juice', 'limonata', 'portakal'];
 
 /**
@@ -1039,4 +1121,19 @@ export function typicalFirst<T extends { r: Pick<Restaurant, 'name' | 'cuisines'
   const dishFolded = fold(dish);
   const tier = new Map(rows.map((row) => [row, typicalTier(row.r, cat, dishFolded)]));
   return [...rows].sort((a, b) => tier.get(a)! - tier.get(b)!);
+}
+
+/**
+ * The places that only "very likely serve" a dish (tier 2), best fit first: a name that says
+ * the dish's kind of place ("Ristorante", "pilavcı") before one that only has the cuisine tag
+ * (a pub with a "pasta" tag). Stable within a fit, so the given ranking holds among equals.
+ */
+export function likelyFirst<T extends { r: Pick<Restaurant, 'name'> }>(
+  rows: T[],
+  profile: DishProfile,
+): T[] {
+  const named = new Map(
+    rows.map((row) => [row, profile.serves.some((kw) => hasWordForm(fold(row.r.name), kw))]),
+  );
+  return [...rows].sort((a, b) => Number(!named.get(a)) - Number(!named.get(b)));
 }

@@ -349,3 +349,199 @@ describe('joined and split spellings of a dish', () => {
     expect(dishProfile('cigkofte')?.dish).toBe('cigkofte');
   });
 });
+
+// Round 3: dishes a holdout check could not place (hard failures, category fallbacks with an odd top card).
+const ROUND3_BASE = [
+  'çörek,haşhaşlı çörek,tahinli çörek,susamlı çörek,kandil çöreği,paskalya çöreği,çörekotlu',
+  'tuzlama,işkembe tuzlama,paça tuzlama,sıcak süt,ballı süt,soğuk süt,kakaolu süt,salep sıcak',
+  'sıcak şarap,ara sıcak,ara sıcaklar,soğuk meze,taze meyve suyu,sebze yemeği,et yemeği',
+  'tavuk yemeği,etli yemek,zeytinyağlı yemek,tavuklu makarna,peynirli makarna,makarnalı tavuk',
+  'pilavlı tavuk,nohutlu tavuk,poke tavuk,hindi füme',
+  // Round 4: bread by its loaf, nutella, a compound dish that starts with a name, honey with kaymak.
+  'tam buğday ekmeği,ekşi mayalı ekmek,çavdar ekmeği,köy ekmeği,nutella,ali paşa kebabı',
+  'hasan paşa köftesi,sultan kebabı,paşa böreği,vezir kebabı,kaymaklı bal,bal kaymak',
+]
+  .join(',')
+  .split(',');
+
+const ROUND3 = ROUND3_BASE.flatMap((p) => [p, `Bornova'da ${p}`, `canım ${p} çekti`]);
+
+/** The dish whose profile the top card must fit, where the phrase is another dish's word order. */
+const ROUND3_PROFILE: Record<string, string> = {
+  'tavuklu makarna': 'makarna',
+  'peynirli makarna': 'makarna',
+  'makarnalı tavuk': 'makarna',
+  'pilavlı tavuk': 'tavuk pilav',
+  'nohutlu tavuk': 'nohutlu pilav',
+  'poke tavuk': 'poke',
+  'hindi füme': 'fume',
+  'tam buğday ekmeği': 'tam bugday ekmegi',
+  'ekşi mayalı ekmek': 'eksi mayali ekmek',
+  'çavdar ekmeği': 'cavdar ekmegi',
+  'köy ekmeği': 'koy ekmegi',
+  nutella: 'nutella',
+  'ali paşa kebabı': 'kebap',
+  'hasan paşa köftesi': 'kofte',
+  'sultan kebabı': 'kebap',
+  'paşa böreği': 'borek',
+  'vezir kebabı': 'kebap',
+  'kaymaklı bal': 'kaymak bal',
+  'bal kaymak': 'kaymak bal',
+};
+
+describe('round 3: no hard failure, a typical top card, and never a modifier as the name match', () => {
+  it('has no duplicate phrases', () => {
+    expect(ROUND3.length - new Set(ROUND3).size).toBe(0);
+  });
+
+  it('answers every phrase with cards and a top card that fits', async () => {
+    const bad: string[] = [];
+    for (const q of ROUND3.filter((x) => FULL || !x.startsWith('canım '))) {
+      const it = parseQuery(q);
+      if (it.kind !== 'search' || !it.cat) {
+        bad.push(`${q}: not read as a food search`);
+        continue;
+      }
+      const { reply } = await answer(q, emptyContext('food'), deps);
+      if (
+        BAD_TEXT.filter((w) => w !== 'dishUnknown').some((w) => reply.text.includes(w)) ||
+        reply.cards.length === 0
+      ) {
+        bad.push(`${q}: ${reply.text}`);
+        continue;
+      }
+      const top = reply.cards[0]!;
+      const place = top.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
+      if (!place) {
+        bad.push(`${q}: first card is not a place`);
+        continue;
+      }
+      const fits = topCardFits(it.dish ?? q, top.id, top.name) || typicalMatch(place, it.cat);
+      if (!fits) bad.push(`${q}: irrelevant top card ${top.name}`);
+      if (reply.text.includes('dishUnknown') && !typicalMatch(place, it.cat))
+        bad.push(`${q}: atypical top card ${top.name}`);
+      const want = ROUND3_PROFILE[ROUND3_BASE.find((b) => q.includes(b)) ?? ''];
+      const wanted = want ? dishProfile(want) : null;
+      if (wanted && !likelyServes(wanted, fold(top.name), place.cuisines))
+        bad.push(`${q}: top card ${top.name} is no ${want} place`);
+    }
+    expect(bad).toEqual([]);
+  }, 1_800_000);
+
+  it('never answers with a place named after a modifier or a pub that only has the tag', async () => {
+    const top = async (q: string) => (await answer(q, emptyContext('food'), deps)).reply.cards[0];
+    for (const q of ['taze meyve suyu', "Bornova'da taze meyve suyu"]) {
+      expect(fold((await top(q))?.name ?? '')).not.toContain('balik');
+    }
+    for (const q of ['sebze yemeği', "Bornova'da sebze yemeği"]) {
+      expect(fold((await top(q))?.name ?? '')).not.toContain('doner');
+    }
+    for (const q of ['tavuklu makarna', 'peynirli makarna', 'makarnalı tavuk', 'pilavlı tavuk']) {
+      expect((await top(q))?.name).not.toBe('Laruv GastroPub & Cocktails');
+      expect((await top(`Bornova'da ${q}`))?.name).not.toBe('Laruv GastroPub & Cocktails');
+    }
+    expect((await top('nohutlu tavuk'))?.name).not.toBe('Laruv GastroPub & Cocktails');
+  });
+
+  it('reads the phrases by the category of the dish they name', () => {
+    const cat = (q: string) => {
+      const it = parseQuery(q);
+      return it.kind === 'search' ? it.cat : null;
+    };
+    expect(cat('çörek')).toBe('breakfast');
+    expect(cat('kandil çöreği')).toBe('breakfast');
+    expect(cat('tuzlama')).toBe('soup');
+    expect(cat('sıcak süt')).toBe('cafe');
+    expect(cat('ara sıcak')).toBe('meyhane');
+    expect(cat('sebze yemeği')).toBe('lokanta');
+    expect(cat('et yemeği')).toBe('meat');
+    expect(cat('tavuk yemeği')).toBe('meat');
+    expect(cat('etli yemek')).toBe('meat');
+    expect(cat('zeytinyağlı yemek')).toBe('lokanta');
+    expect(cat('makarnalı tavuk')).toBe('world');
+    expect(cat('pilavlı tavuk')).toBe('lokanta');
+    expect(cat('nohutlu tavuk')).toBe('lokanta');
+    expect(cat('poke tavuk')).toBe('world');
+    expect(cat('hindi füme')).toBe('breakfast');
+    // The -lı word is the dish only before a plain protein: a dish at the end stays the head.
+    expect(cat('tavuklu makarna')).toBe('world');
+    expect(cat('peynirli pide')).toBe('fast');
+    // "yemek" after a plain dish is the verb, as before.
+    expect(parseQuery('pide yemek istiyorum')).toMatchObject({ cat: 'fast', dish: 'pide' });
+  });
+
+  it('puts the taste modifier into the dish, not into a place search', () => {
+    expect(parseQuery('taze meyve suyu')).toMatchObject({
+      cat: 'cafe',
+      dish: 'taze meyve suyu',
+      placeQuery: '',
+    });
+    expect(parseQuery('salep sıcak')).toMatchObject({ cat: 'cafe', dish: 'salep', placeQuery: '' });
+  });
+});
+
+describe('round 4: bread, nutella, compound dishes that start with a name, short dish words', () => {
+  const read = (q: string) => {
+    const it = parseQuery(q);
+    return it.kind === 'search'
+      ? { cat: it.cat, dish: it.dish, placeQuery: it.placeQuery }
+      : { kind: it.kind };
+  };
+
+  it('reads "X ekmeği" as bread from a bakery and keeps the ekmek dishes as they were', () => {
+    for (const q of ['tam buğday ekmeği', 'ekşi mayalı ekmek', 'çavdar ekmeği', 'köy ekmeği']) {
+      for (const p of [q, `Bornova'da ${q}`, `canım ${q} çekti`]) {
+        expect(read(p)).toMatchObject({ cat: 'breakfast', dish: q, placeQuery: '' });
+      }
+    }
+    expect(dishProfile('çavdar ekmeği')?.cat).toBe('breakfast');
+    expect(dishProfile('çavdar ekmeği')?.serves).toContain('firin');
+    expect(read('etli ekmek')).toMatchObject({ cat: 'fast', dish: 'etli ekmek' });
+    expect(read('balık ekmek')).toMatchObject({ cat: 'fish', dish: 'balık ekmek' });
+    expect(read('köfte ekmek')).toMatchObject({ cat: 'meat', dish: 'köfte ekmek' });
+    expect(read('sucuk ekmek')).toMatchObject({ cat: 'meat', dish: 'sucuk' });
+    expect(read('tavuk ekmek')).toMatchObject({ cat: 'meat', dish: 'tavuk' });
+    expect(read('ekmek arası')).toMatchObject({ cat: 'fast', dish: 'ekmek arası' });
+    expect(read('ekmek kadayıfı')).toMatchObject({ cat: 'dessert', dish: 'ekmek kadayıfı' });
+    expect(read('mısır ekmeği')).toMatchObject({ cat: 'breakfast', dish: 'mısır ekmeği' });
+  });
+
+  it('reads nutella as a waffle / crêpe / pastry-shop dessert', () => {
+    for (const q of ['nutella', "Bornova'da nutella", 'canım nutella çekti']) {
+      expect(read(q)).toMatchObject({ cat: 'dessert', dish: 'nutella', placeQuery: '' });
+    }
+    expect(dishProfile('nutella')?.label).toBe('waffle-krep-tatlıcı');
+    expect(dishProfile('nutella')?.serves).toEqual(
+      expect.arrayContaining(['waffle', 'krep', 'kreperi', 'tatlici', 'pastane', 'cikolata']),
+    );
+  });
+
+  it('reads a compound head after a name as a dish, unless the name is an İzmir district', () => {
+    for (const q of [
+      'ali paşa kebabı',
+      'hasan paşa köftesi',
+      'sultan kebabı',
+      'paşa böreği',
+      'vezir kebabı',
+    ]) {
+      for (const p of [q, `Bornova'da ${q}`]) {
+        expect(read(p)).toMatchObject({ dish: q, placeQuery: '' });
+      }
+    }
+    expect(read('ali paşa kebabı')).toMatchObject({ cat: 'meat' });
+    expect(read('paşa böreği')).toMatchObject({ cat: 'breakfast' });
+    expect(read('bornova köftesi')).toMatchObject({ cat: 'meat', dish: 'köftesi' });
+  });
+
+  it('never matches a dish word of under 4 letters inside a longer name word', async () => {
+    const names = async (q: string) =>
+      (await answer(q, emptyContext('food'), deps)).reply.cards.map((c) => fold(c.name));
+    for (const q of ['kaymaklı bal', "Bornova'da kaymaklı bal", 'bal kaymak']) {
+      const top = (await names(q)).slice(0, 3);
+      expect(top.length).toBeGreaterThan(0);
+      expect(top.filter((n) => /\bbal(ci|li)\b/.test(n))).toEqual([]);
+    }
+    expect(dishProfile('kaymaklı bal')?.dish).toBe('kaymakli bal');
+    expect(dishProfile('bal kaymak')?.cat).toBe('breakfast');
+  });
+});
