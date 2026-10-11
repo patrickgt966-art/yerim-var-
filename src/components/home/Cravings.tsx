@@ -57,9 +57,9 @@ export function Cravings() {
             >
               <View
                 style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 20,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 22,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: c.card,
@@ -70,14 +70,14 @@ export function Cravings() {
                   elevation: 2,
                 }}
               >
-                <CravingIcon id={id} color={c.text} />
+                <CravingIcon id={id} color={c.text} size={34} />
               </View>
               <Txt
                 numberOfLines={2}
                 style={{
                   fontFamily: fonts.bodyBold,
-                  fontSize: 12,
-                  lineHeight: 16,
+                  fontSize: 13,
+                  lineHeight: 17,
                   textAlign: 'center',
                 }}
               >

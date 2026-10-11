@@ -30,7 +30,7 @@ const LABELS: Record<string, string> = {
   profil: 'tabs.profile',
 };
 
-const CENTER_SIZE = 60;
+const CENTER_SIZE = 66;
 
 /**
  * Floating tab bar (home design B3): a rounded card 12 pt from the sides and
@@ -69,9 +69,9 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
       >
         <View
           style={{
-            width: 40,
-            height: 28,
-            borderRadius: 14,
+            width: 52,
+            height: 34,
+            borderRadius: 17,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: focused ? c.badgeNearBg : 'transparent',
@@ -80,6 +80,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           <TabGlyph
             name={GLYPHS[route.name] ?? 'home'}
             color={color}
+            size={27}
             strokeWidth={focused ? 2.3 : 2}
           />
         </View>
@@ -91,8 +92,8 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           maxFontSizeMultiplier={1.3}
           style={{
             fontFamily: focused ? fonts.bodyExtraBold : fonts.bodyBold,
-            fontSize: 11,
-            lineHeight: 14,
+            fontSize: 13,
+            lineHeight: 16,
             textAlign: 'center',
           }}
         >
@@ -161,10 +162,10 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           },
         ]}
       >
-        <TabGlyph name="chat" color={brand.navy} size={22} strokeWidth={2.3} />
+        <TabGlyph name="chat" color={brand.navy} size={27} strokeWidth={2.3} />
         <Txt
           allowFontScaling={false}
-          style={{ fontFamily: fonts.display, fontSize: 10, lineHeight: 12, marginTop: 1 }}
+          style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 14, marginTop: 1 }}
           color={brand.navy}
         >
           {t('home.tabYerim')}
