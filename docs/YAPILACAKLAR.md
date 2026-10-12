@@ -42,7 +42,7 @@ Son güncelleme: 11 Ekim 2026.
 
 ## Yerim ✨ (Haiku) durumu
 
-- Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 5 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
+- Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 10 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
 - Haiku ne zaman çağrılır: kuralların anlamadığı kelime kalırsa. Selam, küfür, anlamsız mesaj hak harcamaz.
 - Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları.
 - Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.

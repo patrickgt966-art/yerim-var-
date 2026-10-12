@@ -12,7 +12,7 @@ Yerim ✨ için Cloudflare Worker. Henüz yayınlanmadı; aşağıdaki adımlarl
 
 ## Limitler
 
-- Cihaz başına günde 5 ✨ (aynı mesajın anlama + anlatma çağrıları tek ✨ sayılır).
+- Cihaz başına günde 10 ✨ (aynı mesajın /understand + /pick ya da /plan çağrıları tek ✨ sayılır; /narrate eski sürümler için duruyor, yeni uygulama kullanmıyor).
 - IP başına günde 100 çağrı.
 - Günlük sıfırlama İstanbul saatine göredir.
 

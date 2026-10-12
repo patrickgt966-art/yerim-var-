@@ -1,12 +1,27 @@
 // Pure logic: no Cloudflare or SDK imports, so it can be unit-tested with a fake KV.
 import {
+  DISH_MATCHES,
   FREE_DAILY,
   HISTORY_LIMIT,
+  MAX_CANDIDATES,
   MAX_MESSAGE_CHARS,
+  MAX_PLAN_PARKINGS,
   MAX_RESULTS,
+  OPEN_STATES,
+  PLAN_WHENS,
   todayIstanbul,
   type ChatTurn,
+  type DishMatch,
   type NarrateRequest,
+  type OpenStateCode,
+  type ParkPickCandidate,
+  type ParkPickRequest,
+  type PickCandidate,
+  type PickRequest,
+  type PlanCandidate,
+  type PlanParking,
+  type PlanRequest,
+  type PlanWhen,
   type QuotaRequest,
   type UnderstandRequest,
 } from '../../../src/lib/ai/protocol';
@@ -171,6 +186,141 @@ export function validNarrate(body: unknown): NarrateRequest | null {
     out.push(item);
   }
   return { deviceId, messageId, text, where, what, total, withParking, results: out };
+}
+
+const isCount = (v: unknown): v is number =>
+  Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 99999;
+const isBoolOrNull = (v: unknown): v is boolean | null => v === null || typeof v === 'boolean';
+const isOpenState = (v: unknown): v is OpenStateCode =>
+  typeof v === 'string' && (OPEN_STATES as readonly string[]).includes(v);
+const isDishMatch = (v: unknown): v is DishMatch =>
+  typeof v === 'string' && (DISH_MATCHES as readonly string[]).includes(v);
+
+/** The facts every restaurant candidate carries (pick and plan); unknown keys are dropped. */
+function restaurantFacts(c: Record<string, unknown>, index: number) {
+  if (c.i !== index || c.kind !== 'restaurant') return null;
+  if (!isCount(c.walkMin)) return null;
+  if (!isOpenState(c.openState) || typeof c.closesLate !== 'boolean') return null;
+  if (!isDishMatch(c.dishMatch) || !isBoolOrNull(c.outdoor)) return null;
+  return {
+    i: index,
+    kind: 'restaurant' as const,
+    walkMin: c.walkMin,
+    openState: c.openState,
+    closesLate: c.closesLate,
+    dishMatch: c.dishMatch,
+    outdoor: c.outdoor,
+  };
+}
+
+function validIds(body: Record<string, unknown>) {
+  const { deviceId, messageId, text } = body;
+  if (!isId(deviceId) || !isId(messageId)) return null;
+  if (!isText(text, MAX_MESSAGE_CHARS)) return null;
+  return { deviceId, messageId, text };
+}
+
+/**
+ * /pick: 1..5 candidates, indexed by position, facts only (no names are accepted). All are
+ * restaurants or all are car parks; the first one says which.
+ */
+export function validPick(body: unknown): PickRequest | ParkPickRequest | null {
+  if (!isRecord(body)) return null;
+  const ids = validIds(body);
+  if (!ids) return null;
+  const { candidates } = body;
+  if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > MAX_CANDIDATES) {
+    return null;
+  }
+  const parking = isRecord(candidates[0]) && candidates[0].kind === 'parking';
+  const restaurants: PickCandidate[] = [];
+  const parkings: ParkPickCandidate[] = [];
+  for (let k = 0; k < candidates.length; k++) {
+    const c: unknown = candidates[k];
+    if (!isRecord(c)) return null;
+    if (parking) {
+      if (c.i !== k || c.kind !== 'parking' || !isCount(c.walkMin) || !isOpenState(c.openState)) {
+        return null;
+      }
+      if (typeof c.nonstop !== 'boolean' || typeof c.tariffKnown !== 'boolean') return null;
+      if (!isBoolOrNull(c.free) || !isBoolOrNull(c.covered) || typeof c.nearRail !== 'boolean') {
+        return null;
+      }
+      if (c.freeSpots !== null && !isCount(c.freeSpots)) return null;
+      if (c.capacity !== null && !isCount(c.capacity)) return null;
+      parkings.push({
+        i: k,
+        kind: 'parking',
+        walkMin: c.walkMin,
+        openState: c.openState,
+        nonstop: c.nonstop,
+        free: c.free,
+        tariffKnown: c.tariffKnown,
+        covered: c.covered,
+        freeSpots: c.freeSpots as number | null,
+        nearRail: c.nearRail,
+        capacity: c.capacity as number | null,
+      });
+      continue;
+    }
+    const base = restaurantFacts(c, k);
+    if (!base) return null;
+    if (c.parkingM !== null && !isCount(c.parkingM)) return null;
+    if (!isBoolOrNull(c.parkingFree)) return null;
+    if (c.freeSpots !== null && !isCount(c.freeSpots)) return null;
+    restaurants.push({
+      ...base,
+      parkingM: c.parkingM as number | null,
+      parkingFree: c.parkingFree,
+      freeSpots: c.freeSpots as number | null,
+    });
+  }
+  return parking ? { ...ids, candidates: parkings } : { ...ids, candidates: restaurants };
+}
+
+/**
+ * /plan: 1..5 restaurants, each with 1..3 car parks. Car park indices `p` are global and must
+ * run 0,1,2,... in order, so the response bound is simply the total count.
+ */
+export function validPlan(body: unknown): PlanRequest | null {
+  if (!isRecord(body)) return null;
+  const ids = validIds(body);
+  if (!ids) return null;
+  const when = body.when;
+  if (typeof when !== 'string' || !(PLAN_WHENS as readonly string[]).includes(when)) return null;
+  const { candidates } = body;
+  if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > MAX_CANDIDATES) {
+    return null;
+  }
+  const out: PlanCandidate[] = [];
+  let nextP = 0;
+  for (let k = 0; k < candidates.length; k++) {
+    const c: unknown = candidates[k];
+    if (!isRecord(c)) return null;
+    const base = restaurantFacts(c, k);
+    if (!base) return null;
+    const { parkings } = c;
+    if (!Array.isArray(parkings) || parkings.length < 1 || parkings.length > MAX_PLAN_PARKINGS) {
+      return null;
+    }
+    const ps: PlanParking[] = [];
+    for (const raw of parkings as unknown[]) {
+      if (!isRecord(raw)) return null;
+      if (raw.p !== nextP || !isCount(raw.walkMin)) return null;
+      if (!isBoolOrNull(raw.parkingFree) || !isOpenState(raw.openState)) return null;
+      if (raw.freeSpots !== null && !isCount(raw.freeSpots)) return null;
+      ps.push({
+        p: nextP,
+        walkMin: raw.walkMin,
+        parkingFree: raw.parkingFree,
+        freeSpots: raw.freeSpots as number | null,
+        openState: raw.openState,
+      });
+      nextP++;
+    }
+    out.push({ ...base, parkings: ps });
+  }
+  return { ...ids, when: when as PlanWhen, candidates: out };
 }
 
 export function toMessages(

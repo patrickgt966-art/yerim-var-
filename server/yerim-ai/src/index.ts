@@ -4,8 +4,14 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import {
   FREE_DAILY,
   NARRATE_SYSTEM,
+  PARK_PICK_SYSTEM,
+  PICK_SYSTEM,
+  PLAN_SYSTEM,
   UNDERSTAND_SYSTEM,
   UnderstandingSchema,
+  parkPickOutputSchema,
+  pickOutputSchema,
+  planOutputSchema,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
 import {
@@ -15,6 +21,8 @@ import {
   refund,
   toMessages,
   validNarrate,
+  validPick,
+  validPlan,
   validQuota,
   validUnderstand,
 } from './quota';
@@ -54,7 +62,7 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
-    if (req.method !== 'POST' || (path !== '/understand' && path !== '/narrate')) {
+    if (req.method !== 'POST' || !['/understand', '/narrate', '/pick', '/plan'].includes(path)) {
       return json({ error: 'not_found' }, 404);
     }
 
@@ -67,7 +75,9 @@ export default {
 
     const understandReq = path === '/understand' ? validUnderstand(raw) : null;
     const narrateReq = path === '/narrate' ? validNarrate(raw) : null;
-    const parsed = understandReq ?? narrateReq;
+    const pickReq = path === '/pick' ? validPick(raw) : null;
+    const planReq = path === '/plan' ? validPlan(raw) : null;
+    const parsed = understandReq ?? narrateReq ?? pickReq ?? planReq;
     if (!parsed) return json({ error: 'bad_request' }, 400);
 
     const now = new Date();
@@ -108,6 +118,54 @@ export default {
           });
         }
         return json({ understanding: response.parsed_output, remaining: q.remaining });
+      }
+
+      // Candidates carry facts only (no names); the output schemas bound every index.
+      if (pickReq) {
+        const park = pickReq.candidates[0]?.kind === 'parking';
+        const n = pickReq.candidates.length;
+        const response = await client.messages.parse({
+          model: MODEL,
+          max_tokens: 1024,
+          system: park ? PARK_PICK_SYSTEM : PICK_SYSTEM,
+          output_config: {
+            effort: 'low',
+            format: zodOutputFormat(park ? parkPickOutputSchema(n) : pickOutputSchema(n)),
+          },
+          messages: [
+            {
+              role: 'user',
+              content: JSON.stringify({ text: pickReq.text, candidates: pickReq.candidates }),
+            },
+          ],
+        });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) return upstreamFail();
+        return json({ pick: response.parsed_output, remaining: q.remaining });
+      }
+
+      if (planReq) {
+        const total = planReq.candidates.reduce((n, c) => n + c.parkings.length, 0);
+        const response = await client.messages.parse({
+          model: MODEL,
+          max_tokens: 1024,
+          system: PLAN_SYSTEM,
+          output_config: {
+            effort: 'low',
+            format: zodOutputFormat(planOutputSchema(planReq.candidates.length, total)),
+          },
+          messages: [
+            {
+              role: 'user',
+              content: JSON.stringify({
+                text: planReq.text,
+                when: planReq.when,
+                candidates: planReq.candidates,
+              }),
+            },
+          ],
+        });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) return upstreamFail();
+        return json({ plan: response.parsed_output, remaining: q.remaining });
       }
 
       if (narrateReq) {

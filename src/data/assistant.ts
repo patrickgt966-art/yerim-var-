@@ -14,15 +14,19 @@ import {
   MODIFIERS,
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
-import { IZMIR_CENTER } from '@/data/places';
-import { visibleFree } from '@/data/freshness';
-import { distanceMeters, type LatLng } from '@/data/geo';
+import { IZMIR_CENTER, isNearRail } from '@/data/places';
+import { getFreshness, visibleFree } from '@/data/freshness';
+import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
 import {
   IZMIR_DISTRICTS,
   isQualifierWord,
   looksLikePlace,
   parseQuery,
+  parkTripIn,
+  planWhenIn,
   typedPlaceText,
+  wishesIn,
+  withoutPlanWords,
   type QueryIntent,
 } from '@/data/intent';
 import {
@@ -31,7 +35,9 @@ import {
   cuisineLabels,
   dishStem,
   matchesCategory,
+  getRestaurant,
   nearestParking,
+  NEAREST_PARKING_RADIUS_M,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
@@ -46,15 +52,33 @@ import {
 } from '@/data/restaurants';
 import { fold, searchPlaces } from '@/data/search';
 import type { Parking } from '@/data/types';
-import { openState, type OpenState } from '@/lib/openNow';
+import { closesLate, istanbulClock, openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
+import { validateFreeText, type FreeTextContext } from '@/lib/ai/freeText';
 import {
-  fillPlaceholders,
-  isGroundedReply,
-  type NarrateRequest,
+  MAX_CANDIDATES,
+  MAX_PLAN_PARKINGS,
+  type ClarifyAsk,
+  type DishMatch,
+  type ParkPickCandidate,
+  type ParkPickRequest,
+  type ParkPickResponse,
+  type ParkReason,
+  type PickCandidate,
+  type PickReason,
+  type PickRequest,
+  type PickResponse,
+  type PlanCandidate,
+  type PlanRequest,
+  type PlanResponse,
+  type PlanWhen,
   type Understanding,
+  type Wish,
 } from '@/lib/ai/protocol';
+import { verifyParkPick, verifyPick, verifyPlan, walkMinFromMeters } from '@/lib/ai/verify';
+import { disabledInfo } from '@/lib/disabledSpots';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
+import { tariffFor } from '@/data/tariffs';
 
 export type ChatPlace = { label: string; lat: number; lng: number };
 
@@ -77,6 +101,14 @@ export type ChatContext = {
   wide: boolean;
   /** 'distance' after "daha yakın". */
   sort: 'parkEase' | 'distance';
+  /** Wishes of the last message (rules + AI); only some change the order, see runFood. */
+  wishes?: Wish[];
+  /** Party size picked from a clarify chip (2 = "1-2 kişi", 4 = "3-5 kişi", 6 = "6+ kişi"). */
+  party?: number;
+  /** Prefer places known to be open at this time (clarify chip or plan). */
+  when?: PlanWhen;
+  /** The user's words that made this list; the "✨ Yerim seçsin" chip sends them. */
+  query?: string;
 };
 
 export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
@@ -95,14 +127,20 @@ export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
 export type ChatAction =
   | { kind: 'say'; label: string; text: string }
   | { kind: 'refine'; label: string; patch: Partial<ChatContext> }
-  | { kind: 'open'; label: string; pathname: string; params: Record<string, string> };
+  | { kind: 'open'; label: string; pathname: string; params: Record<string, string> }
+  /** "✨ Yerim seçsin": the AI picks one of these cards (needs the AI layer). */
+  | { kind: 'pick'; label: string; cards: ChatCard[]; query: string };
 
-/** True facts about a restaurant card that only the AI narration uses. */
+/** True facts about a restaurant card: shown on the card and checked against every AI claim. */
 export type CardNarr = {
   cat?: string;
   open: OpenState;
   parkingPaid: boolean | null;
   parkingFree: number | null;
+  /** Closes at 22:00 or later (or is open around the clock). */
+  closesLate: boolean;
+  outdoor: boolean | null;
+  dish: DishMatch;
 };
 
 export type ChatCard =
@@ -117,6 +155,8 @@ export type ChatCard =
       /** Why a dish search lists this place ("Adında lahmacun geçiyor"). */
       reason?: string;
       narr?: CardNarr;
+      /** Chosen by the AI and verified against the card's own facts. */
+      picked?: boolean;
     }
   | {
       kind: 'parking';
@@ -126,6 +166,8 @@ export type ChatCard =
       free: number | null;
       capacity: number | null;
       open: 'open' | 'closed' | 'unknown';
+      /** Chosen by the AI and verified against the car park's own facts. */
+      picked?: boolean;
     };
 
 export type BotMessage = {
@@ -136,6 +178,17 @@ export type BotMessage = {
   sparkle?: boolean;
   /** Small note under the text (e.g. the daily AI quota is used up). */
   notice?: string;
+  /** "Park, walk, eat" steps built from our data. */
+  plan?: PlanData;
+};
+
+/** A plan card: the steps are already-rendered templates filled with our data. */
+export type PlanData = {
+  steps: string[];
+  /** "Neden: ..." line made of verified reason templates, or null. */
+  why: string | null;
+  /** The car park to navigate to. */
+  dest: { lat: number; lng: number; name: string };
 };
 
 export type AssistantDeps = {
@@ -147,9 +200,12 @@ export type AssistantDeps = {
   /** Optional AI layer; the screen binds deviceId / messageId / text / history. */
   ai?: {
     understand(text: string): Promise<AiResult<Understanding>>;
-    narrate(
-      req: Omit<NarrateRequest, 'deviceId' | 'messageId' | 'text'>,
-    ): Promise<AiResult<string>>;
+    /** Jobs 2 and 4; an AI layer without them simply never picks or plans. */
+    pick?(req: Omit<PickRequest, 'deviceId' | 'messageId'>): Promise<AiResult<PickResponse>>;
+    plan?(req: Omit<PlanRequest, 'deviceId' | 'messageId'>): Promise<AiResult<PlanResponse>>;
+    pickPark?(
+      req: Omit<ParkPickRequest, 'deviceId' | 'messageId'>,
+    ): Promise<AiResult<ParkPickResponse>>;
     /** True the first time per day, so the "out of quota" notice shows once. */
     quotaNotice(): boolean;
   };
@@ -308,9 +364,6 @@ function pickOnMap(text: string, t: AssistantDeps['t']): ChatAction {
 
 const plain = (reply: BotMessage, ctx: ChatContext): Result => ({ reply, ctx });
 
-/** Facts about a found result list, handed to the AI narration. */
-type Facts = { where: string; what: string; total: number; withParking: number };
-
 /** A search intent from the AI's understanding of the text. */
 function intentFromUnderstanding(
   u: Extract<Understanding, { kind: 'search' }>,
@@ -422,9 +475,39 @@ function detectFollowUp(folded: string, it: QueryIntent): FollowUp | null {
   return null;
 }
 
+/** What one user message turned out to be, shared between understanding it and finishing the reply. */
+type AnswerMeta = {
+  text: string;
+  /** Wishes from the rules, plus the AI's when it understood the message. */
+  wishes: Wish[];
+  /** The AI's understanding when it returned a search. */
+  ai: Extract<Understanding, { kind: 'search' }> | null;
+  planWhen: PlanWhen | null;
+  /** The daily AI uses are gone: do not ask again for this message. */
+  quotaOut: boolean;
+};
+
 export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
+  const meta: AnswerMeta = {
+    text,
+    wishes: wishesIn(text),
+    ai: null,
+    planWhen: null,
+    quotaOut: false,
+  };
+  const res = await answerText(text, ctx, deps, meta);
+  return finishAnswer(res, deps, meta);
+}
+
+async function answerText(
+  text: string,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+  meta: AnswerMeta,
+): Promise<Result> {
   const { t } = deps;
-  let it = parseQuery(text);
+  meta.planWhen = planWhenIn(text) ?? (parkTripIn(text) ? 'now' : null);
+  let it = parseQuery(meta.planWhen ? withoutPlanWords(text) || text : text);
   let notice: string | undefined;
   const withNotice = (r: Result): Result =>
     notice && !r.reply.notice ? { ...r, reply: { ...r.reply, notice } } : r;
@@ -448,6 +531,8 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
           : f.kind === 'freePark'
             ? { requireParking: true, freeParking: true }
             : { wide: true };
+      meta.wishes = [];
+      meta.planWhen = null;
       const res = await run({ ...ctx, ...patch }, deps, text);
       // The free-parking reply already says what it did; the other two get a short lead-in.
       const lead =
@@ -468,15 +553,25 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
     !followUp &&
     (it.kind === 'offtopic' ||
       it.kind === 'empty' ||
-      (it.kind === 'search' && it.uncertain && !settled))
+      (it.kind === 'search' && it.uncertain && !settled) ||
+      // A wish the rules cannot act on ("romantik", "çocuklarla"): the AI may map it to data we have.
+      (it.kind === 'search' && meta.wishes.length > 0))
   ) {
     const res = await deps.ai.understand(text);
     if (res.ok) {
       if (res.remaining === 0 && deps.ai.quotaNotice()) notice = t('chat.sparkleLast');
       if (res.value.kind === 'offtopic') {
+        // The model's words go through the same checks as the tone; otherwise the template answers.
+        const said = validateFreeText('offtopic', res.value.reply, textContext(deps, IZMIR_CENTER));
         return withNotice(
           plain(
-            { text: res.value.reply, cards: [], actions: offTopicActions(), sparkle: true },
+            said
+              ? { text: said, cards: [], actions: offTopicActions(), sparkle: true }
+              : {
+                  text: variant(t, 'chat.offTopic', 2, text),
+                  cards: [],
+                  actions: offTopicActions(),
+                },
             ctx,
           ),
         );
@@ -484,9 +579,16 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
       if (res.value.kind === 'search') {
         const fromAi = intentFromUnderstanding(res.value, text);
         it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
+        meta.ai = res.value;
+        meta.wishes = [...new Set([...meta.wishes, ...(res.value.wishes ?? [])])];
+        if ((res.value.partySize ?? 0) >= 3 && !meta.wishes.includes('group')) {
+          meta.wishes.push('group');
+        }
+        meta.planWhen = res.value.plan?.when ?? meta.planWhen;
       }
-    } else if (res.reason === 'quota' && deps.ai.quotaNotice()) {
-      notice = t('chat.sparkleOut');
+    } else {
+      if (res.reason === 'quota') meta.quotaOut = true;
+      if (res.reason === 'quota' && deps.ai.quotaNotice()) notice = t('chat.sparkleOut');
     }
   }
 
@@ -558,17 +660,6 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
         cards,
         actions,
       };
-      if (deps.ai && cards.length > 0) {
-        const facts: Facts = {
-          where: ctx.place?.label ?? t('chat.nearYou'),
-          what: t('chat.noun.all'),
-          total: matches.length,
-          withParking: cards.filter(
-            (c) => c.kind === 'restaurant' && c.parkingM != null && c.parkingM <= 300,
-          ).length,
-        };
-        await narrate(found, facts, false, deps, deps.ai);
-      }
       return withNotice(plain(found, ctx));
     }
   }
@@ -607,6 +698,7 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
           deps,
           text,
           it.quality,
+          meta,
         ),
       );
     }
@@ -713,6 +805,8 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
             },
             deps,
             text,
+            false,
+            meta,
           ),
         );
       }
@@ -825,6 +919,7 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
               deps,
               text,
               it.quality,
+              meta,
             ),
           );
         }
@@ -880,7 +975,23 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
   // "en yakın X": nearest first, like the "daha yakın" follow-up.
   if (/\ben yakin\w*/.test(folded)) next.sort = 'distance';
 
-  return withNotice(await run(next, deps, text, it.quality));
+  // The AI asked for a missing piece the rules do not have: ask it, with chips from our own data.
+  const ask = meta.ai?.clarify?.ask;
+  if (
+    ask &&
+    ((ask === 'district' && next.place === null && !it.nearMe) ||
+      (ask === 'dish' && next.section === 'food' && !next.cat && !next.dish && !it.dish) ||
+      (ask === 'party' &&
+        next.section === 'food' &&
+        ctx.party === undefined &&
+        !meta.ai?.partySize) ||
+      (ask === 'time' && ctx.when === undefined && meta.planWhen === null) ||
+      (ask === 'duration' && next.section === 'park'))
+  ) {
+    return withNotice(await clarify(ask, next, it.food, deps, meta));
+  }
+
+  return withNotice(await run(next, deps, text, it.quality, meta));
 }
 
 export async function refine(
@@ -896,9 +1007,20 @@ async function run(
   deps: AssistantDeps,
   seed: string,
   quality = false,
+  meta?: AnswerMeta,
 ): Promise<Result> {
   const { t } = deps;
   const now = deps.now ?? new Date();
+  // A new message brings its own wishes; follow-ups and chips keep the last ones.
+  if (meta) {
+    ctx = {
+      ...ctx,
+      wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
+      when: undefined,
+      ...(deps.ai ? { query: meta.text } : {}),
+      ...(meta.wishes.includes('quick') ? { sort: 'distance' as const } : {}),
+    };
+  }
 
   let target: LatLng;
   let where: string;
@@ -916,19 +1038,15 @@ async function run(
     }
   }
 
-  const facts: Partial<Facts> = {};
   const reply =
     ctx.section === 'food'
-      ? runFood(ctx, deps, seed, quality, target, where, now, facts)
-      : runPark(ctx, deps, seed, target, where, now, facts);
-  if (deps.ai && reply.cards.length > 0 && facts.where !== undefined) {
-    await narrate(reply, facts as Facts, quality, deps, deps.ai);
-  }
+      ? runFood(ctx, deps, seed, quality, target, where, now)
+      : runPark(ctx, deps, seed, target, where, now);
   return { reply, ctx };
 }
 
-/** Card facts for the narration: only what the app itself would show as true. */
-function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date): CardNarr {
+/** Card facts: only what the app itself would show as true. */
+function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date, hit?: DishHit): CardNarr {
   const r = row.r;
   const catKey = categoryOf(r);
   // deps.t is the plain i18n function; cuisineLabels wants i18next's TFunction type.
@@ -941,66 +1059,11 @@ function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date): CardNarr 
     parkingPaid: near?.parking.isPaid ?? null,
     // row.parking.free is already null unless the reading is fresh (same rules as visibleFree).
     parkingFree: row.parking?.free ?? null,
+    closesLate: r.openingHours ? closesLate({ openingHoursText: r.openingHours }, now) : false,
+    outdoor: r.outdoorSeating,
+    // Only a name that carries the dish word is "named"; a cuisine tag or a typical place is "likely".
+    dish: hit ? (hit.byName ? 'named' : 'likely') : 'none',
   };
-}
-
-/** Replaces the template text with the AI's sentence when it passes the grounding check. */
-async function narrate(
-  reply: BotMessage,
-  facts: Facts,
-  quality: boolean,
-  deps: AssistantDeps,
-  ai: NonNullable<AssistantDeps['ai']>,
-): Promise<void> {
-  const results: NarrateRequest['results'] = reply.cards.map((c, i) => {
-    const item: NarrateRequest['results'][number] = {
-      n: i + 1,
-      kind: c.kind,
-      distanceM: Math.round(c.distanceM),
-      parkingM: c.kind === 'restaurant' && c.parkingM != null ? Math.round(c.parkingM) : null,
-    };
-    if (c.kind === 'restaurant') {
-      if (c.narr) {
-        if (c.narr.cat) item.cat = c.narr.cat;
-        item.open = c.narr.open;
-        item.parkingPaid = c.narr.parkingPaid;
-        item.parkingFree = c.narr.parkingFree;
-      }
-    } else {
-      item.open = c.open;
-      item.parkingPaid = deps.parkings.find((p) => p.id === c.id)?.isPaid ?? null;
-      item.parkingFree = c.free;
-    }
-    return item;
-  });
-  const res = await ai.narrate({ ...facts, results });
-  if (!res.ok) {
-    if (res.reason === 'quota' && ai.quotaNotice()) reply.notice = deps.t('chat.sparkleOut');
-    return;
-  }
-  if (res.remaining === 0 && !reply.notice && ai.quotaNotice()) {
-    reply.notice = deps.t('chat.sparkleLast');
-  }
-  const allowed = [
-    facts.total,
-    facts.withParking,
-    300,
-    500,
-    ...results.flatMap((r) => (r.parkingM != null ? [r.distanceM, r.parkingM] : [r.distanceM])),
-    ...results.flatMap((r) => (r.parkingFree != null ? [r.parkingFree] : [])),
-  ];
-  const replyFacts = {
-    anyOpen: results.some((r) => r.open === 'open'),
-    anyClosed: results.some((r) => r.open === 'closed'),
-    anyFree: results.some((r) => r.parkingFree != null),
-  };
-  if (!isGroundedReply(res.value, allowed, reply.cards.length, replyFacts)) return;
-  reply.text =
-    fillPlaceholders(
-      res.value,
-      reply.cards.map((c) => c.name),
-    ) + (quality ? '\n' + deps.t('chat.noRatings') : '');
-  reply.sparkle = true;
 }
 
 /** Folded, short, non-generic name words the AI says places serving an unknown dish carry. */
@@ -1083,6 +1146,66 @@ function shownDish(dish: string, stem: string): string {
   return [...words.slice(0, i), last.slice(0, sw[i]!.length)].join(' ');
 }
 
+/** When a "planned" time is meant: the next time of that name today, never in the past. */
+export function plannedTime(when: PlanWhen, now: Date): Date {
+  if (when === 'now') return now;
+  const { minutes } = istanbulClock(now);
+  const target =
+    when === 'later_today'
+      ? minutes + 120
+      : when === 'lunch'
+        ? 12 * 60 + 30
+        : when === 'dinner'
+          ? 19 * 60 + 30
+          : 20 * 60;
+  return target <= minutes ? now : new Date(now.getTime() + (target - minutes) * 60_000);
+}
+
+/** "20:00" in Istanbul time. */
+function clockLabel(at: Date): string {
+  const { minutes } = istanbulClock(at);
+  const m = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/** Open state of a restaurant's readable hours at a time (live data does not apply). */
+function openAt(r: Restaurant, at: Date): OpenState {
+  return r.openingHours ? openState({ openingHoursText: r.openingHours }, at) : 'unknown';
+}
+
+/** The wishes and the time we can act on with data we really have. */
+type Prefs = { late: boolean; outdoor: boolean; parking: boolean; at: Date | null };
+const GROUP_PARKING_M = 300;
+
+function preferences(ctx: ChatContext, now: Date): Prefs | null {
+  const w = ctx.wishes ?? [];
+  const prefs: Prefs = {
+    late: w.includes('late'),
+    outdoor: w.includes('outdoor'),
+    // No claim beyond this: a car park within 300 m is all we know that helps a group or a family.
+    parking: w.some((x) => x === 'family' || x === 'kids' || x === 'group'),
+    at: ctx.when ? plannedTime(ctx.when, now) : null,
+  };
+  return prefs.late || prefs.outdoor || prefs.parking || prefs.at ? prefs : null;
+}
+
+/** Keeps the dish tiers; inside a tier, places that fit more of the wishes come first. */
+function preferRows(rows: RestaurantRow[], p: Prefs, hits: Map<string, DishHit>): RestaurantRow[] {
+  const score = (row: RestaurantRow) =>
+    (p.late &&
+    row.r.openingHours &&
+    closesLate({ openingHoursText: row.r.openingHours }, p.at ?? undefined)
+      ? 1
+      : 0) +
+    (p.outdoor && row.r.outdoorSeating === true ? 1 : 0) +
+    (p.parking && row.parking && row.parking.distanceM <= GROUP_PARKING_M ? 1 : 0) +
+    (p.at && openAt(row.r, p.at) === 'open' ? 1 : 0);
+  return rows
+    .map((row, i) => ({ row, i, tier: hits.get(row.r.id)?.tier ?? 0, s: score(row) }))
+    .sort((a, b) => a.tier - b.tier || b.s - a.s || a.i - b.i)
+    .map((x) => x.row);
+}
+
 function runFood(
   ctx: ChatContext,
   deps: AssistantDeps,
@@ -1091,7 +1214,6 @@ function runFood(
   target: LatLng,
   where: string,
   now: Date,
-  facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
   const inCategory = ctx.cat
@@ -1214,6 +1336,9 @@ function runFood(
   const noun = ctx.cat ? t(`chat.noun.${ctx.cat}`) : t('chat.noun.all');
   const what = notCat ? `${noun} (${t('chat.except', { cat: t(`food.cats.${notCat}`) })})` : noun;
 
+  const prefs = preferences(ctx, now);
+  const list = prefs ? preferRows(shown, prefs, hits) : shown;
+
   if (shown.length > 0) {
     let text = ctx.requireParking
       ? t(freeOnly ? 'chat.foodFoundFree' : 'chat.foodFoundPark', {
@@ -1229,12 +1354,10 @@ function runFood(
         });
     text = dishPrefix + text;
     if (quality) text = t('chat.noRatings') + '\n' + text;
-    Object.assign(facts, {
-      where,
-      what,
-      total: ctx.requireParking ? shown.length : ordered.length,
-      withParking: withPark.length,
-    });
+    if (prefs?.at) {
+      const known = list.slice(0, MAX_CARDS).some((row) => openAt(row.r, prefs.at!) === 'open');
+      text += ' ' + t(known ? 'chat.whenPrefer' : 'chat.whenNone', { time: clockLabel(prefs.at) });
+    }
     const reasonOf = (id: string): string | undefined => {
       const hit = hits.get(id);
       if (!hit) return undefined;
@@ -1242,7 +1365,7 @@ function runFood(
       // A cuisine-tag match is not "in the name": word it as a likely fit.
       return profile ? t('chat.reasonLikely', { dish: dishName, label: profile.label }) : undefined;
     };
-    const cards: ChatCard[] = shown.slice(0, MAX_CARDS).map((row) => {
+    const cards: ChatCard[] = list.slice(0, MAX_CARDS).map((row) => {
       const reason = reasonOf(row.r.id);
       return {
         kind: 'restaurant',
@@ -1253,10 +1376,13 @@ function runFood(
         open: 'unknown',
         unverified: !row.r.verified,
         ...(reason ? { reason } : {}),
-        narr: cardNarr(row, deps, now),
+        narr: cardNarr(row, deps, now, hits.get(row.r.id)),
       };
     });
     const actions: ChatAction[] = [];
+    if (deps.ai?.pick && cards.length >= 2) {
+      actions.push({ kind: 'pick', label: t('chat.actPick'), cards, query: ctx.query ?? '' });
+    }
     if (!ctx.requireParking) {
       actions.push({
         kind: 'refine',
@@ -1326,6 +1452,77 @@ function runFood(
   return { text: t('chat.foodNone', { where, what }), cards: [], actions };
 }
 
+/** Car park wishes and the time we can act on with data we really have. */
+type ParkPrefs = {
+  free: boolean;
+  covered: boolean;
+  nonstop: boolean;
+  rail: boolean;
+  disabled: boolean;
+  late: boolean;
+  at: Date | null;
+};
+
+function parkPreferences(ctx: ChatContext, now: Date): ParkPrefs | null {
+  const w = ctx.wishes ?? [];
+  const prefs: ParkPrefs = {
+    free: w.includes('cheap') || w.includes('free'),
+    covered: w.includes('covered'),
+    nonstop: w.includes('nonstop') || w.includes('overnight'),
+    rail: w.includes('rail'),
+    disabled: w.includes('disabled'),
+    late: w.includes('late'),
+    at: ctx.when ? plannedTime(ctx.when, now) : null,
+  };
+  return Object.values(prefs).some(Boolean) ? prefs : null;
+}
+
+/** Open state of a car park at a time: live "isOpen" only counts for now. */
+function parkOpenAt(p: Parking, at: Date, now: Date): OpenState {
+  return at === now ? openState(p, now) : openState({ ...p, isOpen: null }, at);
+}
+
+/** The prefs a car park meets, by key. */
+function parkFits(p: Parking, prefs: ParkPrefs, now: Date): Record<string, boolean> {
+  return {
+    free: prefs.free && p.isPaid === false,
+    covered: prefs.covered && p.isIndoor === true,
+    nonstop: prefs.nonstop && p.nonstop === true,
+    rail: prefs.rail && isNearRail(p),
+    disabled: prefs.disabled && disabledInfo(p, now) != null,
+    late: prefs.late && (p.nonstop === true || closesLate(p, now)),
+    at: !!prefs.at && parkOpenAt(p, prefs.at, now) === 'open',
+  };
+}
+
+function preferParkings<T extends { p: Parking }>(list: T[], prefs: ParkPrefs, now: Date): T[] {
+  return list
+    .map((x, i) => ({ x, i, s: Object.values(parkFits(x.p, prefs, now)).filter(Boolean).length }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((e) => e.x);
+}
+
+/** One honest sentence per wish that changed the order: did any shown car park meet it? */
+function parkPrefLines(
+  shown: { p: Parking }[],
+  prefs: ParkPrefs,
+  now: Date,
+  t: AssistantDeps['t'],
+): string[] {
+  const keys = ['free', 'covered', 'nonstop', 'rail', 'disabled', 'late'] as const;
+  const lines: string[] = [];
+  for (const key of keys) {
+    if (!prefs[key]) continue;
+    const has = shown.some((x) => parkFits(x.p, prefs, now)[key]);
+    lines.push(t(`chat.parkWish.${key}${has ? '' : 'None'}`));
+  }
+  if (prefs.at) {
+    const has = shown.some((x) => parkFits(x.p, prefs, now).at);
+    lines.push(t(has ? 'chat.whenPrefer' : 'chat.whenNone', { time: clockLabel(prefs.at) }));
+  }
+  return lines;
+}
+
 function runPark(
   ctx: ChatContext,
   deps: AssistantDeps,
@@ -1333,7 +1530,6 @@ function runPark(
   target: LatLng,
   where: string,
   now: Date,
-  facts: Partial<Facts>,
 ): BotMessage {
   const { t } = deps;
   const radius = ctx.wide ? 5000 : 1500;
@@ -1341,13 +1537,15 @@ function runPark(
     .map((p) => ({ p, d: distanceMeters(target, p) }))
     .filter((x) => x.d <= radius && (!ctx.freeParking || x.p.isPaid === false))
     .sort((a, b) => a.d - b.d);
+  const prefs = parkPreferences(ctx, now);
+  const ranked = prefs ? preferParkings(list, prefs, now) : list;
 
   if (list.length > 0) {
     let text = variant(t, 'chat.parkFound', 2, seed, { where, count: list.length });
     const fresh = list.filter((x) => visibleFree(x.p, now) !== null).length;
     if (fresh > 0) text += ' ' + t('chat.parkFresh', { count: fresh });
-    Object.assign(facts, { where, what: 'otopark', total: list.length, withParking: 0 });
-    const cards: ChatCard[] = list.slice(0, MAX_CARDS).map(({ p, d }) => ({
+    if (prefs) text += ' ' + parkPrefLines(ranked.slice(0, MAX_CARDS), prefs, now, t).join(' ');
+    const cards: ChatCard[] = ranked.slice(0, MAX_CARDS).map(({ p, d }) => ({
       kind: 'parking',
       id: p.id,
       name: p.name,
@@ -1356,7 +1554,11 @@ function runPark(
       capacity: p.capacity,
       open: openState(p, now),
     }));
-    const actions: ChatAction[] = [
+    const actions: ChatAction[] = [];
+    if (deps.ai?.pickPark && cards.length >= 2) {
+      actions.push({ kind: 'pick', label: t('chat.actPick'), cards, query: ctx.query ?? '' });
+    }
+    actions.push(
       {
         kind: 'open',
         label: t('chat.actMap'),
@@ -1368,7 +1570,7 @@ function runPark(
         label: t('chat.actFoodHere'),
         patch: { section: 'food', cat: null, dish: null },
       },
-    ];
+    );
     return { text, cards, actions };
   }
 
@@ -1384,4 +1586,630 @@ function runPark(
     cards: [],
     actions,
   };
+}
+
+// --- Clarify (job 3) -------------------------------------------------------------------------
+
+const CLARIFY_CATS: FoodCategory[] = ['breakfast', 'meat', 'fish', 'lokanta', 'cafe', 'dessert'];
+
+/** One question and its chips. The wording may come from the AI (checked); the chips never do. */
+async function clarify(
+  ask: ClarifyAsk,
+  next: ChatContext,
+  food: boolean,
+  deps: AssistantDeps,
+  meta: AnswerMeta,
+): Promise<Result> {
+  const { t } = deps;
+  const here = (await deps.here()) ?? IZMIR_CENTER;
+  const asked = validateFreeText('clarify', meta.ai?.clarify?.text, textContext(deps, here));
+  const text = asked ?? t(`chat.ask_${ask}`);
+  const group = [...new Set<Wish>([...meta.wishes, 'group'])];
+  let actions: ChatAction[];
+  if (ask === 'district') {
+    const nearest = [...IZMIR_DISTRICTS]
+      .sort((a, b) => distanceMeters(here, a) - distanceMeters(here, b))
+      .slice(0, 3);
+    actions = [
+      ...nearest.map((d): ChatAction => ({
+        kind: 'refine',
+        label: d.name,
+        patch: { place: { label: d.name, lat: d.lat, lng: d.lng } },
+      })),
+      { kind: 'refine', label: t('chat.clarifyNear'), patch: { place: null } },
+    ];
+  } else if (ask === 'dish') {
+    actions = CLARIFY_CATS.map((cat): ChatAction => ({
+      kind: 'refine',
+      label: t(`food.cats.${cat}`),
+      patch: { section: 'food', cat, dish: null },
+    }));
+  } else if (ask === 'party') {
+    actions = [
+      { kind: 'refine', label: t('chat.party_1'), patch: { party: 2 } },
+      { kind: 'refine', label: t('chat.party_2'), patch: { party: 4, wishes: group } },
+      { kind: 'refine', label: t('chat.party_3'), patch: { party: 6, wishes: group } },
+    ];
+  } else if (ask === 'duration') {
+    // Only what the data can use: staying long prefers car parks known free, a night prefers 24 hours.
+    const wishes = (extra?: Wish) => [
+      ...new Set<Wish>([...meta.wishes, ...(extra ? [extra] : [])]),
+    ];
+    actions = [
+      { kind: 'refine', label: t('chat.durShort'), patch: { wishes: wishes() } },
+      { kind: 'refine', label: t('chat.durFew'), patch: { wishes: wishes('free') } },
+      { kind: 'refine', label: t('chat.durNight'), patch: { wishes: wishes('overnight') } },
+    ];
+  } else if (next.section === 'park' && !food) {
+    actions = [
+      { kind: 'refine', label: t('chat.timeNow'), patch: { when: 'now' } },
+      { kind: 'refine', label: t('chat.timeLater'), patch: { when: 'later_today' } },
+    ];
+  } else {
+    actions = [
+      { kind: 'refine', label: t('chat.timeNow'), patch: { when: 'now' } },
+      { kind: 'refine', label: t('chat.timeLunch'), patch: { when: 'lunch' } },
+      { kind: 'refine', label: t('chat.timeTonight'), patch: { when: 'tonight' } },
+    ];
+  }
+  const ctx: ChatContext = {
+    ...next,
+    section: food || ask === 'dish' || ask === 'party' ? 'food' : next.section,
+    wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
+    ...(deps.ai ? { query: meta.text } : {}),
+  };
+  return plain({ text, cards: [], actions, sparkle: asked !== null }, ctx);
+}
+
+// --- Wishes we have no data for (L4) -------------------------------------------------------
+
+/** What each unmappable wish asks about; the app has no data on any of these. */
+const PARK_NO_DATA_TOPIC: Partial<Record<Wish, 'security' | 'height' | 'motorcycle'>> = {
+  safe: 'security',
+  big_vehicle: 'height',
+  motorcycle: 'motorcycle',
+};
+
+const NO_DATA_TOPIC: Partial<Record<Wish, 'price' | 'ambiance' | 'reviews' | 'menu' | 'kids'>> = {
+  cheap: 'price',
+  romantic: 'ambiance',
+  quiet: 'ambiance',
+  view: 'ambiance',
+  tasty: 'reviews',
+  healthy: 'menu',
+  kids: 'kids',
+  family: 'kids',
+};
+
+/** The honest note for wishes we cannot answer, or null when every wish is one we can use. */
+function noInfoNote(
+  wishes: Wish[],
+  aiPicked: boolean,
+  t: AssistantDeps['t'],
+  section: 'park' | 'food' = 'food',
+): string | null {
+  const table = section === 'park' ? PARK_NO_DATA_TOPIC : NO_DATA_TOPIC;
+  const topics = [...new Set(wishes.flatMap((w) => table[w] ?? []))];
+  if (topics.length === 0) return null;
+  const names = topics.map((k) => t(`chat.noInfo_${k}`));
+  const what =
+    names.length === 1
+      ? names[0]!
+      : `${names.slice(0, -1).join(', ')} ${t('chat.and')} ${names[names.length - 1]}`;
+  const first = what.charAt(0).toLocaleUpperCase('tr') + what.slice(1);
+  const key = section === 'park' ? 'chat.noInfoPark' : 'chat.noInfo';
+  return t(`${key}${aiPicked ? 'Ai' : 'Rule'}`, { what: first });
+}
+
+/** Lines saying which wishes really changed the order, written only from the shown cards. */
+function wishLines(wishes: Wish[], cards: ChatCard[], t: AssistantDeps['t']): string[] {
+  const rest = cards.filter((c) => c.kind === 'restaurant');
+  const out: string[] = [];
+  if (wishes.includes('late')) {
+    out.push(t(rest.some((c) => c.narr?.closesLate) ? 'chat.wishLate' : 'chat.wishLateNone'));
+  }
+  if (wishes.includes('outdoor')) {
+    out.push(
+      t(rest.some((c) => c.narr?.outdoor === true) ? 'chat.wishOutdoor' : 'chat.wishOutdoorNone'),
+    );
+  }
+  if (wishes.some((w) => w === 'family' || w === 'kids' || w === 'group')) {
+    const ok = rest.some((c) => c.parkingM != null && c.parkingM <= GROUP_PARKING_M);
+    out.push(t(ok ? 'chat.wishParking' : 'chat.wishParkingNone'));
+  }
+  return out;
+}
+
+// --- Pick (job 2) and plan (job 4) ----------------------------------------------------------
+
+/** Names the model's few free words must not repeat (cards, nearby car parks and restaurants). */
+function textContext(deps: AssistantDeps, around: LatLng, cards: ChatCard[] = []): FreeTextContext {
+  return {
+    names: [
+      ...cards.map((c) => c.name),
+      ...deps.parkings
+        .filter((p) => !p.genericName && distanceMeters(around, p) <= 2000)
+        .map((p) => p.name),
+      ...restaurantsNear(around, 1500, 250).map((r) => r.name),
+    ],
+    districts: IZMIR_DISTRICTS.map((d) => d.name),
+  };
+}
+
+function pickCandidate(card: Extract<ChatCard, { kind: 'restaurant' }>, i: number): PickCandidate {
+  const n = card.narr;
+  return {
+    i,
+    kind: 'restaurant',
+    walkMin: walkMinFromMeters(card.distanceM),
+    openState: n?.open ?? card.open,
+    closesLate: n?.closesLate ?? false,
+    parkingM: card.parkingM != null ? Math.round(card.parkingM) : null,
+    parkingFree: n?.parkingPaid == null ? null : !n.parkingPaid,
+    freeSpots: n?.parkingFree ?? null,
+    dishMatch: n?.dish ?? 'none',
+    outdoor: n?.outdoor ?? null,
+  };
+}
+
+/** A verified reason code as a sentence part, filled only with the facts that made it true. */
+function reasonText(
+  code: PickReason,
+  facts: {
+    walkMin: number;
+    parkingM: number | null;
+    parkWalkMin?: number;
+    freeSpots: number | null;
+  },
+  dish: string,
+  t: AssistantDeps['t'],
+): string {
+  switch (code) {
+    case 'closest':
+      return t('chat.why.closest', { count: facts.walkMin });
+    case 'parking_close':
+      return facts.parkWalkMin !== undefined
+        ? t('chat.why.parking_close_walk', { count: facts.parkWalkMin })
+        : t('chat.why.parking_close', { m: facts.parkingM });
+    case 'most_free_spots':
+      return t('chat.why.most_free_spots', { count: facts.freeSpots });
+    case 'dish_named':
+      return t('chat.why.dish_named', { dish });
+    default:
+      return t(`chat.why.${code}`);
+  }
+}
+
+type AiFail = { ok: false; reason: 'quota' | 'error' | 'invalid'; remaining?: number };
+
+type PickDone = {
+  ok: true;
+  /** The picked card first (flagged), the others in their order. */
+  cards: ChatCard[];
+  line: string;
+  tone: string | null;
+  remaining: number;
+};
+
+/** Asks the AI to pick among the restaurant cards; shows nothing unless every claim checks out. */
+async function askPick(
+  cards: ChatCard[],
+  text: string,
+  dish: string,
+  deps: AssistantDeps,
+  tctx: FreeTextContext,
+): Promise<PickDone | AiFail> {
+  const ai = deps.ai;
+  if (!ai?.pick) return { ok: false, reason: 'error' };
+  const rest = cards
+    .filter((c): c is Extract<ChatCard, { kind: 'restaurant' }> => c.kind === 'restaurant')
+    .slice(0, MAX_CANDIDATES);
+  if (rest.length < 2) return { ok: false, reason: 'invalid' };
+  const candidates = rest.map(pickCandidate);
+  const res = await ai.pick({ text, candidates });
+  if (!res.ok) {
+    return res.remaining === undefined
+      ? { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error' }
+      : { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error', remaining: res.remaining };
+  }
+  const v = verifyPick(res.value, candidates, tctx);
+  if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
+  const t = deps.t;
+  const why = (code: PickReason, k: number) =>
+    reasonText(code, { ...candidates[k]!, freeSpots: candidates[k]!.freeSpots }, dish, t);
+  let line = t('chat.pickLine', {
+    name: rest[v.pick]!.name,
+    reasons: v.reasons.map((c) => why(c, v.pick)).join(', '),
+  });
+  if (v.runnerUp) {
+    line +=
+      ' ' +
+      t('chat.pickRunner', {
+        name: rest[v.runnerUp.index]!.name,
+        why: why(v.runnerUp.why, v.runnerUp.index),
+      });
+  }
+  const picked = rest[v.pick]!;
+  const ordered: ChatCard[] = [
+    { ...picked, picked: true },
+    ...cards.filter((c) => !(c.kind === 'restaurant' && c.id === picked.id)),
+  ];
+  return { ok: true, cards: ordered, line, tone: v.tone, remaining: res.remaining };
+}
+
+type PlanDone = { ok: true; plan: PlanData; tone: string | null; remaining: number };
+
+/** Builds the plan candidates from the shown restaurants and our car parks, asks, and verifies. */
+async function askPlan(
+  cards: ChatCard[],
+  text: string,
+  when: PlanWhen,
+  dish: string,
+  deps: AssistantDeps,
+  tctx: FreeTextContext,
+): Promise<PlanDone | AiFail> {
+  const ai = deps.ai;
+  if (!ai?.plan) return { ok: false, reason: 'error' };
+  const { t } = deps;
+  const now = deps.now ?? new Date();
+  const at = plannedTime(when, now);
+  const isNow = when === 'now' || at === now;
+  const entries: { card: ChatCard; r: Restaurant; cand: PlanCandidate; parks: Parking[] }[] = [];
+  let p = 0;
+  for (const card of cards) {
+    if (card.kind !== 'restaurant' || entries.length >= MAX_CANDIDATES) continue;
+    const r = getRestaurant(card.id);
+    if (!r) continue;
+    const state = openAt(r, at);
+    // A place known to be closed at that time is no plan.
+    if (state === 'closed') continue;
+    const near = deps.parkings
+      .filter((x) => x.access !== 'subscribers')
+      .map((x) => ({ x, d: distanceMeters(r, x) }))
+      .filter(({ x, d }) => {
+        if (d > NEAREST_PARKING_RADIUS_M) return false;
+        // Live "isOpen" is only true for now; for a later time the hours decide.
+        return (isNow ? openState(x, at) : openState({ ...x, isOpen: null }, at)) !== 'closed';
+      })
+      .sort((a, b) => a.d - b.d)
+      .slice(0, MAX_PLAN_PARKINGS);
+    if (near.length === 0) continue;
+    const n = card.narr;
+    const index = entries.length;
+    entries.push({
+      card,
+      r,
+      parks: near.map((x) => x.x),
+      cand: {
+        i: index,
+        kind: 'restaurant',
+        walkMin: walkMinFromMeters(card.distanceM),
+        openState: state,
+        closesLate: r.openingHours ? closesLate({ openingHoursText: r.openingHours }, at) : false,
+        dishMatch: n?.dish ?? 'none',
+        outdoor: r.outdoorSeating,
+        parkings: near.map(({ x }) => {
+          // A free-space count is only known for now, and only when it is fresh.
+          const f = getFreshness(x, now);
+          const fresh = isNow && (f.kind === 'live' || f.kind === 'updated') && x.free != null;
+          return {
+            p: p++,
+            walkMin: walkMinutes(r, x),
+            parkingFree: x.isPaid === null ? null : !x.isPaid,
+            freeSpots: fresh ? x.free : null,
+            openState: isNow ? openState(x, at) : openState({ ...x, isOpen: null }, at),
+          };
+        }),
+      },
+    });
+  }
+  if (entries.length === 0) return { ok: false, reason: 'invalid' };
+  const candidates = entries.map((e) => e.cand);
+  const res = await ai.plan({ text, when, candidates });
+  if (!res.ok) {
+    return res.remaining === undefined
+      ? { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error' }
+      : { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error', remaining: res.remaining };
+  }
+  const v = verifyPlan(res.value, candidates, when, tctx);
+  if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
+
+  const e = entries[v.restaurant]!;
+  const pc = e.cand.parkings.findIndex((x) => x.p === v.parking);
+  const park = e.parks[pc]!;
+  const pf = e.cand.parkings[pc]!;
+  const time = clockLabel(at);
+  const details = [
+    park.isPaid === false ? t('chat.parkFree') : park.isPaid === true ? t('chat.parkPaid') : null,
+    pf.freeSpots !== null ? t('chat.parkSpots', { count: pf.freeSpots }) : null,
+  ].filter(Boolean);
+  const state =
+    e.cand.openState === 'open'
+      ? t(isNow ? 'chat.planOpenNow' : 'chat.planOpenAt', { time })
+      : e.cand.openState === 'closed'
+        ? t(isNow ? 'chat.planClosedNow' : 'chat.planClosedAt', { time })
+        : t('chat.planNoHours');
+  const eat = e.cand.closesLate ? `${state}, ${t('chat.planLate')}` : state;
+  const reasons = v.reasons.map((code) =>
+    reasonText(
+      code,
+      { walkMin: e.cand.walkMin, parkingM: null, parkWalkMin: pf.walkMin, freeSpots: pf.freeSpots },
+      dish,
+      t,
+    ),
+  );
+  const plan: PlanData = {
+    steps: [
+      details.length > 0
+        ? t('chat.planParkWith', { name: park.name, details: details.join(', ') })
+        : t('chat.planPark', { name: park.name }),
+      t('chat.planWalk', { count: pf.walkMin }),
+      t('chat.planEat', { name: e.r.name, state: eat }),
+    ],
+    why: t('chat.planWhy', { reasons: reasons.join(', ') }),
+    dest: { lat: park.lat, lng: park.lng, name: park.name },
+  };
+  return { ok: true, plan, tone: v.tone, remaining: res.remaining };
+}
+
+/** Quota notices for an AI answer, as for understanding. */
+function noteQuota(
+  reply: BotMessage,
+  r: { ok: true; remaining: number } | AiFail,
+  deps: AssistantDeps,
+) {
+  const ai = deps.ai;
+  if (!ai || reply.notice) return;
+  if (r.ok ? r.remaining === 0 : r.reason === 'quota') {
+    if (ai.quotaNotice()) reply.notice = deps.t(r.ok ? 'chat.sparkleLast' : 'chat.sparkleOut');
+  }
+}
+
+/** A fresh free-space count of a car park: live or recently updated, never sample data. */
+function freshFree(p: Parking, now: Date): number | null {
+  const f = getFreshness(p, now);
+  return (f.kind === 'live' || f.kind === 'updated') && p.free != null ? p.free : null;
+}
+
+/** "ücretsiz, 12 boş": only what we know about the car park. */
+function parkDetails(p: Parking, freeSpots: number | null, t: AssistantDeps['t']): string {
+  return [
+    p.isPaid === false ? t('chat.parkFree') : p.isPaid === true ? t('chat.parkPaid') : null,
+    freeSpots !== null ? t('chat.parkSpots', { count: freeSpots }) : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+type ParkPickDone = {
+  ok: true;
+  cards: ChatCard[];
+  line: string;
+  tone: string | null;
+  remaining: number;
+  /** The chosen car park, its facts and the verified reasons as sentence parts. */
+  park: Parking;
+  cand: ParkPickCandidate;
+  reasons: string[];
+};
+
+/** Asks the AI to pick a car park among the shown ones; every claim is checked against our data. */
+async function askParkPick(
+  cards: ChatCard[],
+  text: string,
+  deps: AssistantDeps,
+  tctx: FreeTextContext,
+  when: PlanWhen = 'now',
+  minCards = 2,
+): Promise<ParkPickDone | AiFail> {
+  const ai = deps.ai;
+  if (!ai?.pickPark) return { ok: false, reason: 'error' };
+  const now = deps.now ?? new Date();
+  const at = plannedTime(when, now);
+  const rest: { card: Extract<ChatCard, { kind: 'parking' }>; p: Parking }[] = [];
+  for (const card of cards) {
+    if (card.kind !== 'parking' || rest.length >= MAX_CANDIDATES) continue;
+    const p = deps.parkings.find((x) => x.id === card.id);
+    if (p) rest.push({ card, p });
+  }
+  if (rest.length < minCards) return { ok: false, reason: 'invalid' };
+  const candidates: ParkPickCandidate[] = rest.map(({ card, p }, i) => ({
+    i,
+    kind: 'parking',
+    walkMin: walkMinFromMeters(card.distanceM),
+    openState: parkOpenAt(p, at, now),
+    nonstop: p.nonstop === true,
+    free: p.isPaid === null ? null : !p.isPaid,
+    tariffKnown: tariffFor(p.id) !== null,
+    covered: p.isIndoor,
+    // A count is only known for now, and only when it is fresh.
+    freeSpots: at === now ? freshFree(p, now) : null,
+    nearRail: isNearRail(p),
+    capacity: p.capacity,
+  }));
+  const res = await ai.pickPark({ text, candidates });
+  if (!res.ok) {
+    return res.remaining === undefined
+      ? { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error' }
+      : { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error', remaining: res.remaining };
+  }
+  const v = verifyParkPick(res.value, candidates, tctx);
+  if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
+  const { t } = deps;
+  const why = (code: ParkReason, k: number) => {
+    const c = candidates[k]!;
+    return t(`chat.whyPark.${code}`, {
+      count: code === 'closest' ? c.walkMin : code === 'big_capacity' ? c.capacity : c.freeSpots,
+    });
+  };
+  const reasons = v.reasons.map((code) => why(code, v.pick));
+  let line = t('chat.pickLine', { name: rest[v.pick]!.card.name, reasons: reasons.join(', ') });
+  if (v.runnerUp) {
+    line +=
+      ' ' +
+      t('chat.pickRunner', {
+        name: rest[v.runnerUp.index]!.card.name,
+        why: why(v.runnerUp.why, v.runnerUp.index),
+      });
+  }
+  const picked = rest[v.pick]!;
+  const ordered: ChatCard[] = [
+    { ...picked.card, picked: true },
+    ...cards.filter((c) => !(c.kind === 'parking' && c.id === picked.card.id)),
+  ];
+  return {
+    ok: true,
+    cards: ordered,
+    line,
+    tone: v.tone,
+    remaining: res.remaining,
+    park: picked.p,
+    cand: candidates[v.pick]!,
+    reasons,
+  };
+}
+
+/** A parking-only plan: leave the car here, walk to where you are going. */
+function parkOnlyPlan(done: ParkPickDone, place: ChatPlace | null, deps: AssistantDeps): PlanData {
+  const { t } = deps;
+  const details = parkDetails(done.park, done.cand.freeSpots, t);
+  return {
+    steps: [
+      details
+        ? t('chat.planParkWith', { name: done.park.name, details })
+        : t('chat.planPark', { name: done.park.name }),
+      place
+        ? t('chat.planWalkTo', { count: done.cand.walkMin, place: place.label })
+        : t('chat.planWalk', { count: done.cand.walkMin }),
+    ],
+    why: t('chat.planWhy', { reasons: done.reasons.join(', ') }),
+    dest: { lat: done.park.lat, lng: done.park.lng, name: done.park.name },
+  };
+}
+
+/**
+ * After a message was answered: the wishes we can and cannot use (L4), the AI's tone and dish
+ * note (validated), and, when the AI understood the message, its pick or plan (verified).
+ */
+async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta): Promise<Result> {
+  const { t } = deps;
+  const reply = res.reply;
+  const restaurants = reply.cards.filter((c) => c.kind === 'restaurant');
+  const parkings = reply.cards.filter((c) => c.kind === 'parking');
+  if (restaurants.length === 0 && parkings.length === 0) return res;
+  const food = restaurants.length > 0;
+
+  const lines: string[] = [];
+  const first = food ? getRestaurant(restaurants[0]!.id) : null;
+  const tctx = textContext(deps, first ?? res.ctx.place ?? IZMIR_CENTER, reply.cards);
+  const dish = res.ctx.dish ?? '';
+  let sparkle = false;
+
+  let tone = validateFreeText('tone', meta.ai?.tone, tctx);
+  let aiPicked = false;
+  const after: string[] = [];
+  const ai = deps.ai;
+
+  if (food) {
+    if (ai?.plan && !meta.quotaOut && meta.planWhen) {
+      const plan = await askPlan(reply.cards, meta.text, meta.planWhen, dish, deps, tctx);
+      noteQuota(reply, plan, deps);
+      if (plan.ok) {
+        reply.plan = plan.plan;
+        after.push(t('chat.planIntro'));
+        tone = plan.tone ?? tone;
+        aiPicked = true;
+        sparkle = true;
+      }
+    } else if (ai?.pick && !meta.quotaOut && meta.ai && restaurants.length >= 2) {
+      const pick = await askPick(reply.cards, meta.text, dish, deps, tctx);
+      noteQuota(reply, pick, deps);
+      if (pick.ok) {
+        reply.cards = pick.cards;
+        after.push(pick.line);
+        tone = pick.tone ?? tone;
+        aiPicked = true;
+        sparkle = true;
+      }
+    }
+  } else if (ai?.pickPark && !meta.quotaOut) {
+    // A trip ("Konak'a gideceğim"): one car park and the walk. Otherwise a pick after the AI understood.
+    const trip = meta.planWhen !== null;
+    if (trip || (meta.ai && parkings.length >= 2)) {
+      const pick = await askParkPick(
+        reply.cards,
+        meta.text,
+        deps,
+        tctx,
+        meta.planWhen ?? 'now',
+        trip ? 1 : 2,
+      );
+      noteQuota(reply, pick, deps);
+      if (pick.ok) {
+        if (trip) {
+          reply.plan = parkOnlyPlan(pick, res.ctx.place, deps);
+          after.push(t('chat.planIntro'));
+        } else {
+          reply.cards = pick.cards;
+          after.push(pick.line);
+        }
+        tone = pick.tone ?? tone;
+        aiPicked = true;
+        sparkle = true;
+      }
+    }
+  }
+
+  if (tone) {
+    lines.push(tone);
+    sparkle = true;
+  }
+  lines.push(reply.text);
+  if (food) {
+    const note = validateFreeText('dishNote', meta.ai?.dishNote, tctx);
+    if (note && res.ctx.dish) lines.push(note);
+    lines.push(...wishLines(res.ctx.wishes ?? [], reply.cards, t));
+  }
+  lines.push(...after);
+  const noInfo = noInfoNote(meta.wishes, aiPicked, t, food ? 'food' : 'park');
+  if (noInfo) lines.push(noInfo);
+
+  reply.text = lines.join('\n');
+  if (sparkle) reply.sparkle = true;
+  return res;
+}
+
+/** The "✨ Yerim seçsin" chip: the AI picks among the cards of the list the user is looking at. */
+export async function pickFromCards(
+  cards: ChatCard[],
+  query: string,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+): Promise<Result> {
+  const { t } = deps;
+  const food = cards.some((c) => c.kind === 'restaurant');
+  const first = cards[0];
+  const around = first && food ? getRestaurant(first.id) : null;
+  const tctx = textContext(deps, around ?? ctx.place ?? IZMIR_CENTER, cards);
+  const text = query.trim() || t('chat.noun.all');
+  const pick = food
+    ? await askPick(cards, text, ctx.dish ?? '', deps, tctx)
+    : await askParkPick(cards, text, deps, tctx);
+  if (!pick.ok) {
+    const reply: BotMessage = { text: t('chat.pickUnavailable'), cards: [], actions: [] };
+    // The user asked for this on purpose: always say why, not only once a day.
+    if (pick.reason === 'quota') reply.notice = t('chat.sparkleOut');
+    return plain(reply, ctx);
+  }
+  const lines = [pick.tone, pick.line];
+  const noInfo = noInfoNote(ctx.wishes ?? [], true, t, food ? 'food' : 'park');
+  if (noInfo) lines.push(noInfo);
+  const reply: BotMessage = {
+    text: lines.filter(Boolean).join('\n'),
+    cards: pick.cards,
+    actions: [],
+    sparkle: true,
+  };
+  noteQuota(reply, pick, deps);
+  return plain(reply, ctx);
 }

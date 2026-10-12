@@ -22,12 +22,14 @@ import { Txt } from '@/components/Txt';
 import {
   answer,
   emptyContext,
+  pickFromCards,
   refine,
   type AssistantDeps,
   type BotMessage,
   type ChatAction,
   type ChatCard,
   type ChatContext,
+  type PlanData,
 } from '@/data/assistant';
 import { appleMapsUrl } from '@/data/geo';
 import { isInIzmirArea } from '@/data/places';
@@ -123,15 +125,30 @@ export default function ChatScreen() {
                 };
                 return trackAi(await aiClient.understand(req));
               },
-              narrate: async (rest) => {
-                const bound = aiMsgRef.current;
+              // One id per user message: understand, pick and plan share one daily use.
+              pick: async (rest) => {
                 const req = {
                   ...rest,
                   deviceId: useAi.getState().deviceId,
-                  messageId: bound.messageId,
-                  text: bound.text,
+                  messageId: aiMsgRef.current.messageId,
                 };
-                return trackAi(await aiClient.narrate(req));
+                return trackAi(await aiClient.pick(req));
+              },
+              pickPark: async (rest) => {
+                const req = {
+                  ...rest,
+                  deviceId: useAi.getState().deviceId,
+                  messageId: aiMsgRef.current.messageId,
+                };
+                return trackAi(await aiClient.pickPark(req));
+              },
+              plan: async (rest) => {
+                const req = {
+                  ...rest,
+                  deviceId: useAi.getState().deviceId,
+                  messageId: aiMsgRef.current.messageId,
+                };
+                return trackAi(await aiClient.plan(req));
               },
               quotaNotice: () => useAi.getState().noticeOnce(),
             }
@@ -160,7 +177,7 @@ export default function ChatScreen() {
   }, []);
 
   const nextId = () => `m${idRef.current++}`;
-  /** One new id per user message, shared by its understand and narrate calls. */
+  /** One new id per user message, shared by its understand, pick and plan calls. */
   const bindAi = (text: string) => {
     aiMsgRef.current = {
       messageId: `u${Date.now().toString(36)}${idRef.current}`,
@@ -183,6 +200,7 @@ export default function ChatScreen() {
         actions: reply.actions,
         sparkle: reply.sparkle,
         notice: reply.notice,
+        plan: reply.plan,
         at: Date.now(),
         ...(understood ? { ctx: understood } : {}),
       },
@@ -222,7 +240,17 @@ export default function ChatScreen() {
     if (typingRef.current) return;
     bindAi(a.label);
     addUser(a.label);
+    if (a.kind === 'pick') {
+      void reply(() => pickFromCards(a.cards, a.query, ctxRef.current, deps));
+      return;
+    }
     void reply(() => refine(ctxRef.current, a.patch, deps));
+  };
+
+  const onPlanDirections = (dest: PlanData['dest']) => {
+    Linking.openURL(appleMapsUrl({ lat: dest.lat, lng: dest.lng }, dest.name)).catch(() =>
+      Alert.alert(t('chat.openFailed')),
+    );
   };
 
   const onDirections = (card: ChatCard) => {
@@ -325,6 +353,7 @@ export default function ChatScreen() {
               message={item}
               onAction={onAction}
               onDirections={onDirections}
+              onPlanDirections={onPlanDirections}
               showChips={index === messages.length - 1}
             />
           )

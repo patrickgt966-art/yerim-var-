@@ -8,6 +8,7 @@ import {
   orderSpan,
   respellAlias,
 } from './foodLexicon';
+import type { PlanWhen, Wish } from '../lib/ai/protocol';
 import { fold, searchPlaces } from './search';
 
 /** An official İzmir district with its centre. */
@@ -143,6 +144,7 @@ const QUALIFIER = words(
 export function isQualifierWord(t: string): boolean {
   return (
     QUALIFIER.has(t) ||
+    isWishWord(t) ||
     FILLER.has(t) ||
     COND_FILLER.has(t) ||
     QUALITY.has(t) ||
@@ -777,4 +779,116 @@ export function localPart(q: string): string {
   const it = parseQuery(q);
   if (it.kind !== 'search') return '';
   return it.district?.name ?? (it.cat || it.food ? it.placeQuery : it.placeQuery || q);
+}
+
+/**
+ * Words that wish for something a plain search cannot use ("romantik", "ucuz", "aileyle", "gece").
+ * Folded; a stem of 4+ letters also matches longer forms ("aile" -> "ailemle"). Dish and place
+ * words are never in here, so an ordinary query never reaches the AI because of this list.
+ */
+export const WISH_WORDS: Record<Wish, string[]> = {
+  cheap: ['ucuz', 'ekonomik', 'butce', 'hesapli'],
+  romantic: ['romantik', 'sevgili'],
+  quiet: ['sakin', 'sessiz', 'huzurlu'],
+  family: ['aile'],
+  kids: ['cocuk'],
+  group: ['grup', 'arkadas'],
+  quick: ['cabuk', 'acele', 'hizlica'],
+  view: ['manzara'],
+  late: ['gece', 'gec'],
+  healthy: ['saglikli', 'diyet'],
+  tasty: ['lezzetli', 'nefis', 'enfes', 'leziz'],
+  outdoor: ['bahce', 'teras', 'balkon', 'disarida'],
+  // Car parks. "ücretsiz", "metro" and "engelli" next to a place stay with the normal search, so
+  // free and rail only come from the AI; phrases below catch the rest.
+  free: [],
+  covered: [],
+  nonstop: ['nonstop'],
+  safe: ['guvenli', 'guvenlik', 'kamerali'],
+  big_vehicle: ['karavan', 'minibus', 'kamyonet', 'pikap'],
+  motorcycle: ['motosiklet', 'motor'],
+  disabled: ['engelli'],
+  overnight: [],
+  rail: [],
+};
+
+/** Wishes said in more than one word (folded, padded with spaces). */
+const WISH_PHRASES: [Wish, string][] = [
+  ['covered', ' kapali otopark'],
+  ['covered', ' katli otopark'],
+  ['nonstop', ' 24 saat'],
+  ['nonstop', ' 7 24 '],
+  ['overnight', ' gece boyu'],
+  ['overnight', ' sabaha kadar'],
+  ['big_vehicle', ' buyuk arac'],
+  ['big_vehicle', ' yuksek arac'],
+];
+
+/** True for one folded word that names a wish ("çocuklarla", "romantik"). */
+function isWishWord(t: string): boolean {
+  return Object.values(WISH_WORDS).some((stems) =>
+    stems.some((stem) => t === stem || (stem.length >= 4 && t.startsWith(stem))),
+  );
+}
+
+/** The wishes named in the text, found by rules (the AI may find more). */
+export function wishesIn(text: string): Wish[] {
+  const folded = fold(text);
+  const tokens = folded.split(' ').filter(Boolean);
+  const out: Wish[] = [];
+  for (const wish of Object.keys(WISH_WORDS) as Wish[]) {
+    const hit = WISH_WORDS[wish].some((stem) =>
+      tokens.some((t) => t === stem || (stem.length >= 4 && t.startsWith(stem))),
+    );
+    if (hit) out.push(wish);
+  }
+  const padded = ` ${folded} `;
+  if (padded.includes(' acik hava ') && !out.includes('outdoor')) out.push('outdoor');
+  for (const [wish, phrase] of WISH_PHRASES) {
+    if (padded.includes(phrase) && !out.includes(wish)) out.push(wish);
+  }
+  return out;
+}
+
+/** "önce park sonra yemek", "akşam 8'de yemek", "bu akşam": a plan for a time, or null. */
+export function planWhenIn(text: string): PlanWhen | null {
+  const f = fold(text);
+  if (/\bonce\b.*\bpark\w*\b.*\bsonra\b/.test(f) || /\bpark (edip|ettikten|edince)\b/.test(f)) {
+    return 'now';
+  }
+  if (/\baksam\s+(saat\s+)?\d{1,2}/.test(f) || /\bbu aksam\b/.test(f)) return 'tonight';
+  if (/\bogle(n)?\s+(saat\s+)?\d{1,2}/.test(f)) return 'lunch';
+  if (/\bogleden sonra\b|\bbirazdan\b|\bbiraz sonra\b/.test(f)) return 'later_today';
+  return null;
+}
+
+/** True when the text has a wish or plan word the rules cannot act on, so the AI may help. */
+export function hasWishWords(text: string): boolean {
+  return wishesIn(text).length > 0 || planWhenIn(text) !== null || parkTripIn(text);
+}
+
+/** "Konak'a gideceğim, nereye bırakayım": a car park for a trip, no restaurant involved. */
+export function parkTripIn(text: string): boolean {
+  const f = fold(text);
+  return (
+    /\bnereye (birak|park)\w*/.test(f) ||
+    (/\b(gidecegim|gidiyorum|gidicem|gidecek)\b/.test(f) && /\b(birak|park)\w*/.test(f))
+  );
+}
+
+/**
+ * The text without the words that only say when or that it is a trip ("akşam 8'de", "gideceğim,
+ * nereye bırakayım"), so they are not mistaken for an unknown place or dish. The plan itself is
+ * read from the original text by planWhenIn / parkTripIn.
+ */
+export function withoutPlanWords(text: string): string {
+  return text
+    .replace(
+      /(?:akşam|aksam|öğle|ogle|öğlen|oglen)\s+(?:saat\s+)?\d{1,2}(?:[’']?\s*(?:de|da|te|ta)\b)?/giu,
+      ' ',
+    )
+    .replace(/\bnereye\s+(?:bırak|birak|park)\p{L}*/giu, ' ')
+    .replace(/\b(?:gideceğim|gidecegim|gidiyorum|gidicem)\b/giu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

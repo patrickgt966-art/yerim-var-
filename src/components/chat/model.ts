@@ -2,7 +2,7 @@ import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
-export type CardBadge = 'easy' | 'likely';
+export type CardBadge = 'easy' | 'likely' | 'picked';
 
 /** Everything a result card shows, derived only from fields the card already carries. */
 export type CardModel = {
@@ -49,15 +49,18 @@ export function cardModel(
             ? t('chat.capacity', { count: card.capacity })
             : null;
     const walk = t('chat.walkMin', { count: Math.max(1, Math.round((card.distanceM * 1.3) / 80)) });
+    const badge: CardBadge | null = card.picked ? 'picked' : null;
     return {
-      badge: null,
+      badge,
       distance,
       name: card.name,
       subline: walk,
       pill,
       pillMark: false,
       unverified: false,
-      label: [card.name, distance, walk, pill].filter(Boolean).join(', '),
+      label: [badge ? t('chat.badgePicked') : null, card.name, distance, walk, pill]
+        .filter(Boolean)
+        .join(', '),
     };
   }
 
@@ -81,7 +84,8 @@ export function cardModel(
       : null;
 
   let badge: CardBadge | null = null;
-  if (card.reason && isLikelyReason(card.reason, t)) badge = 'likely';
+  if (card.picked) badge = 'picked';
+  else if (card.reason && isLikelyReason(card.reason, t)) badge = 'likely';
   else if (index === 0 && sort !== 'distance' && free != null && free > 0) badge = 'easy';
 
   const unverified = !!card.unverified;
@@ -94,7 +98,15 @@ export function cardModel(
     pillMark: pill != null,
     unverified,
     label: [
-      badge ? t(badge === 'easy' ? 'chat.badgeEasy' : 'chat.badgeLikely') : null,
+      badge
+        ? t(
+            badge === 'picked'
+              ? 'chat.badgePicked'
+              : badge === 'easy'
+                ? 'chat.badgeEasy'
+                : 'chat.badgeLikely',
+          )
+        : null,
       card.name,
       distance,
       subline,

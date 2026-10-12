@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { FREE_DAILY } from '@/lib/ai/protocol';
+
 import { useAi } from '../ai';
 
 const KEY = 'yerim-var/ai';
@@ -48,7 +50,7 @@ describe('ai store setRemaining', () => {
     useAi.getState().setRemaining(2, NOW);
     expect(useAi.getState().remaining(NOW)).toBe(2);
     useAi.getState().setRemaining(99, NOW);
-    expect(useAi.getState().remaining(NOW)).toBe(5);
+    expect(useAi.getState().remaining(NOW)).toBe(FREE_DAILY);
     useAi.getState().setRemaining(-3, NOW);
     expect(useAi.getState().remaining(NOW)).toBe(0);
   });
