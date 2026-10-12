@@ -61,17 +61,39 @@ export function HomeHeader() {
     >
       <HomeSkyline />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-        <Txt
-          style={{ flexGrow: 1, flexShrink: 1, fontFamily: fonts.display, fontSize: 21 }}
-          color={brand.white}
-          numberOfLines={1}
+        {/* Small brand mark, so the orange words of the title below stay the only highlight. */}
+        <View
+          accessible
           accessibilityRole="header"
+          accessibilityLabel="yerim var"
+          style={{ flexGrow: 1, flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
-          yerim{' '}
-          <Txt style={{ fontFamily: fonts.display, fontSize: 21 }} color={brand.orange}>
-            var
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 9,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: brand.orange,
+            }}
+          >
+            <Txt
+              allowFontScaling={false}
+              style={{ fontFamily: fonts.display, fontSize: 16, lineHeight: 19 }}
+              color={brand.navy}
+            >
+              Y
+            </Txt>
+          </View>
+          <Txt
+            style={{ flexShrink: 1, fontFamily: fonts.display, fontSize: 17, lineHeight: 22 }}
+            color="rgba(255,255,255,0.85)"
+            numberOfLines={1}
+          >
+            yerim var
           </Txt>
-        </Txt>
+        </View>
         <View
           style={{
             borderRadius: 22,
