@@ -516,6 +516,8 @@ const tr = {
     placeNotFound: '"{{q}}" diye bir yer bulamadım. Haritada işaretlemek ister misin?',
     dishOrPlace: '"{{q}}" bir yemek mi, bir yer mi? Emin olamadım.',
     actAsDish: 'Yemek olarak ara',
+    districtUnknownThing: '{{inDistrict}} "{{q}}" diye bir yer ya da yemek bulamadım.',
+    actDistrictFood: '{{inDistrict}} restoranlar',
     foodFound_0:
       '{{where}} civarında {{count}} {{what}} var, {{withPark}} tanesinin yanında otopark var. Parkı kolay olanlar üstte:',
     foodFound_1:

@@ -98,6 +98,9 @@ const MIDEAST_TAGS = ['lebanese', 'arab', 'middle_eastern', 'syrian'];
 const TOST = ['tost', 'tostcu', 'sandvic', 'sandwich'];
 const MEZE = ['meyhane', 'meze', ...KEBAP];
 const MEZE_TAGS = ['meze', 'meyhane', 'salad'];
+const EURO = ['schnitzel', 'snitzel', 'sinitzel', 'bistro', 'brasserie', 'steakhouse'];
+// Ege wild greens: home kitchens, olive-oil dishes, and names that say Aegean cooking or "ot" (greens).
+const GREENS = [...HOME, 'zeytinyagli', 'ege mutfagi', 'ege otlari', 'ot'];
 const BAKERY = ['corek', 'firin', 'pastane', 'unlu mamul', 'borek', 'pogaca'];
 const DELI = [...KAHVALTI, ...TOST, 'sarkuteri', 'deli'];
 
@@ -782,6 +785,35 @@ export const DISHES: DishProfile[] = [
   d('korean', 'world', 'Kore restoranı', ['korean', ...ASIA], ['korean', 'asian']),
   d('lubnan', 'world', 'Orta Doğu restoranı', MIDEAST, MIDEAST_TAGS),
   d('arap', 'world', 'Orta Doğu restoranı', MIDEAST, MIDEAST_TAGS),
+
+  // world: schnitzel and cordon bleu, Middle Eastern kibbe
+  d('schnitzel', 'world', 'bistro-steakhouse', EURO),
+  d('sinitzel', 'world', 'bistro-steakhouse', EURO),
+  d('cordon bleu', 'world', 'bistro-steakhouse', EURO),
+  d('kibbe', 'world', 'Orta Doğu restoranı', [...MIDEAST, 'icli kofte'], MIDEAST_TAGS),
+
+  // lokanta: içli köfte kin, hünkar beğendi kin, Ege greens
+  d('oruk', 'lokanta', 'ev yemekleri lokantası', ['icli kofte', 'oruk', ...HOME], HOME_TAGS),
+  d('begendi', 'lokanta', 'ev yemekleri lokantası', ['et lokantasi', ...HOME], HOME_TAGS),
+  d('arapsaci', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('cibes otu', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('sirken', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('ebegumeci', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('turp otu', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('kuskonmaz', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+  d('isirgan', 'lokanta', 'ev yemekleri lokantası', GREENS, HOME_TAGS),
+
+  // meat: offal, bıçak arası
+  d('bumbar', 'meat', 'sakatatçı', [...OFFAL, 'mumbar', 'bumbar', 'sirdan', 'kokorec']),
+  d('uykuluk', 'meat', 'sakatatçı', [...OFFAL, ...KEBAP, 'ciger']),
+  d('koc yumurtasi', 'meat', 'sakatatçı', [...OFFAL, ...KEBAP, 'ciger']),
+  d('bobrek', 'meat', 'sakatatçı', [...OFFAL, ...KEBAP, 'ciger']),
+  d('yurek', 'meat', 'sakatatçı', [...OFFAL, ...KEBAP, 'ciger']),
+  d('bicak arasi', 'meat', 'kebapçı', [...KEBAP, 'bicak arasi']),
+
+  // cafe: menengiç and dibek coffee by their short names
+  d('menengic', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], COFFEE_TAGS),
+  d('dibek', 'cafe', 'kahveci', [...COFFEE, 'kahvehane'], COFFEE_TAGS),
 ];
 
 /** Levenshtein distance at most one (insert, delete, substitute or swap neighbours). */
@@ -851,6 +883,8 @@ const HEAD_PROFILES = new Map<string, DishProfile>([
     ]),
   ],
   ['salata', d('salata', 'meyhane', 'salata-meze', ['salata', ...MEZE], MEZE_TAGS)],
+  // "kaymaklı dondurmalı irmik": the semolina helva, said without its last word.
+  ['irmik', BY_DISH.get('irmik helvasi')!],
 ]);
 
 /** The profile of a folded head noun with its ending removed, "borek" for "boregi", or null. */

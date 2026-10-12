@@ -1,4 +1,4 @@
-import { categoryForQuery, isFoodWord, type FoodCategory } from './restaurants';
+import { categoryForQuery, headStems, isFoodWord, type FoodCategory } from './restaurants';
 import { dishProfile, leadDishProfile } from './dishes';
 import { isTrailingModifier, LEADING_GENERIC, respellAlias } from './foodLexicon';
 import { fold, searchPlaces } from './search';
@@ -123,6 +123,28 @@ const hasVerbSuffix = (t: string) => VERB_SUFFIXES.some((s) => t.endsWith(s));
 // 'iyi' is a greeting only before these ("iyi akşamlar"); otherwise it is a quality word.
 const IYI_GREETING_NEXT = words('aksamlar gunler geceler');
 const STADIUM = words('stad stada stadi stadyum stadyuma stadyumu stadyumun');
+
+// Wishes about how a place feels, when or who it is for: they qualify a request, they name nothing.
+const QUALIFIER = words(
+  'romantik ucuz uygun pahali sakin sessiz manzarali manzara deniz aile ailece cocuklu cocuk kalabalik rahat eglenceli gece aksam ogle sabah kahvalti saati saatleri yemegi yemek yemekleri yer yeri mekan mekani oneri oneriler tavsiye tavsiyesi yenir yesek yiyelim yenilir yenebilir nerede nerde ne neresi acik kapali guzel iyi en meshur unlu lezzetli kaliteli',
+);
+
+/**
+ * True for a word that only qualifies a request ("romantik", "ucuz", "ne yenir", "bir yer", "akşam"):
+ * a filler, quality, near-me, greeting or address word, or one of the QUALIFIER wishes.
+ */
+export function isQualifierWord(t: string): boolean {
+  return (
+    QUALIFIER.has(t) ||
+    FILLER.has(t) ||
+    COND_FILLER.has(t) ||
+    QUALITY.has(t) ||
+    NEAR_ME.has(t) ||
+    GREETING.has(t) ||
+    ADDRESS.has(t) ||
+    FOOD_WORDS.has(t)
+  );
+}
 
 /** Place-name suffixes, longest first. */
 const PLACE_SUFFIXES = [
@@ -294,6 +316,54 @@ function compoundDish(words: string[]): boolean {
   return COMPOUND_HEADS.test(words[words.length - 1]!) && !words.slice(0, -1).some(isDistrictToken);
 }
 
+/** Dishes named after a district: a sweet word next to the name is the dish, not a place ("kemalpaşa dondurmalı"). */
+const TOWN_DISHES = [
+  { town: 'kemalpasa', head: 'tatli', folded: 'kemalpasa tatlisi', written: 'kemalpaşa tatlısı' },
+];
+// Said around the dish ("dondurmalı kemalpaşa tatlısı"): it only says how the dessert is served.
+const SWEET_SIDES = words('dondurmali kaymakli');
+
+/**
+ * "kemalpaşa dondurmalı", "kemalpaşa tatlı", "kemalpaşa dondurmalı tatlı" are the dessert
+ * "kemalpaşa tatlısı", not the district. Only a word that is right next to the name counts:
+ * "kemalpaşa'da dondurmalı" (a case suffix between) stays a place plus a food word.
+ */
+function townDish(ws: string[], raws: string[] | null): { words: string[]; raws: string[] | null } {
+  const outW: string[] = [];
+  const outR: string[] = [];
+  for (let i = 0; i < ws.length; i++) {
+    const dish = TOWN_DISHES.find((x) => x.town === ws[i]);
+    if (dish) {
+      const lead = outW.length;
+      let from = lead;
+      while (from > 0 && SWEET_SIDES.has(outW[from - 1]!)) from--;
+      let end = i + 1;
+      while (end < ws.length && SWEET_SIDES.has(ws[end]!)) end++;
+      const sweet = end > i + 1;
+      const head = end < ws.length && headStems(ws[end]!).includes(dish.head);
+      if (head) end++;
+      const already = !sweet && from === lead && head && ws[end - 1] === 'tatlisi';
+      if ((sweet || head || from < lead) && !already) {
+        const written = dish.written.split(' ');
+        outW.length = from;
+        outR.length = from;
+        dish.folded.split(' ').forEach((w, j) => {
+          outW.push(w);
+          outR.push(j === 0 ? (raws?.[i] ?? w) : (written[j] ?? w));
+        });
+        i = end - 1;
+        continue;
+      }
+    }
+    outW.push(ws[i]!);
+    outR.push(raws?.[i] ?? ws[i]!);
+  }
+  return { words: outW, raws: raws ? outR : null };
+}
+
+/** Towns whose name is a köfte style ("tire köfte", "ödemiş köfte"): the dish, not a place to search in. */
+const KOFTE_TOWNS = words('tire odemis bergama');
+
 /** Under 3 letters, one repeated letter ("aaa"), or no vowel ("xd", "hmm"): not a word to search. */
 function isGibberish(text: string): boolean {
   const letters = text.replace(/[^a-z]/g, '');
@@ -369,8 +439,13 @@ export function parseQuery(raw: string): QueryIntent {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .split(' ')
     .filter(Boolean);
-  const { words: all, raws: typed } = respell(all0, typed0.length === all0.length ? typed0 : null);
+  const spelled = respell(all0, typed0.length === all0.length ? typed0 : null);
+  const { words: all, raws: typed } = townDish(spelled.words, spelled.raws);
   if (all.length === 0) return { kind: 'empty' };
+  // "tire köfte": the town right before the köfte word is its style (see KOFTE_TOWNS).
+  const kofteStyles = new Set(
+    all.filter((t, i) => KOFTE_TOWNS.has(t) && headStems(all[i + 1] ?? '').includes('kofte')),
+  );
 
   // Greeting / abuse: nothing left once the chit-chat words are dropped.
   const isGreet = (t: string) => GREETING.has(t) || (SOLO_GREETING.has(t) && all.length <= 2);
@@ -478,7 +553,11 @@ export function parseQuery(raw: string): QueryIntent {
         const head = categoryForQuery(phrase, true);
         if (head && (len === 1 || !placeBeforeDish(words[0]!) || compoundDish(words))) c = head;
       }
-      if (c && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
+      // "tire köfte", "ödemiş köfte": a köfte style named after a town, not köfte in that town.
+      const style =
+        len === 2 && kofteStyles.has(words[0]!) && headStems(words[1]!).includes('kofte');
+      if (!c && style) c = categoryForQuery(words[1]!);
+      if (c && !style && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
       if (!c) continue;
       // "taze meyve suyu", "sade kahve": how it is served belongs to the dish, it is not a place.
       let from = i;

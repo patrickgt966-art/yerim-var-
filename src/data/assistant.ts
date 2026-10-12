@@ -13,6 +13,7 @@ import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
 import {
   IZMIR_DISTRICTS,
+  isQualifierWord,
   looksLikePlace,
   parseQuery,
   typedPlaceText,
@@ -30,6 +31,7 @@ import {
   restaurantsNear,
   hasWordForm,
   hasWordStart,
+  isFoodWord,
   WIDE_RADII_M,
   withParkingWithin,
   type FoodCategory,
@@ -175,6 +177,90 @@ function hasExactNameWord(foldedName: string, word: string): boolean {
 const PLACE_WORDS = ['mahalle', 'mah', 'sokak', 'sk', 'cadde', 'cd', 'bulvar', 'meydan', 'semt'];
 /** A dish search with fewer places than this looks in the wider rings. */
 const MIN_DISH_PLACES = 3;
+
+/** How far from a district's centre a restaurant or a place still counts as "in or near" it. */
+const DISTRICT_REACH_M = WIDE_RADII_M[WIDE_RADII_M.length - 1]!;
+
+/** "Bornova" -> "Bornova'da", "Konak" -> "Konak'ta", "Çiğli" -> "Çiğli'de"; `ki` adds "-ki" ("Bornova'daki"). */
+function inDistrict(name: string, ki = false): string {
+  const f = name.toLocaleLowerCase('tr');
+  const lastVowel = f.replace(/[^aeıioöuü]/g, '').slice(-1) || 'e';
+  const hard = 'çfhkpsşt'.includes(f.slice(-1));
+  return `${name}'${hard ? 't' : 'd'}${'aıou'.includes(lastVowel) ? 'a' : 'e'}${ki ? 'ki' : ''}`;
+}
+
+/**
+ * What a district plus one more word means. 'name': a restaurant near the district is named so;
+ * 'place': a known place (street, mall, school) near it; 'food': the word is a dish modifier;
+ * 'unknown': none of these, so the word may not be ignored.
+ */
+type Leftover =
+  { kind: 'name' | 'food' | 'unknown'; x: string } | { kind: 'place'; x: string; place: ChatPlace };
+
+/** Words a restaurant name may add to the typed name and still be that name ("Mado Cafe", "Sakura İzmir"). */
+const GENERIC_SUFFIX_WORDS = new Set([
+  ...GENERIC_NAME_WORDS,
+  'restoran',
+  'restorant',
+  'restaurant',
+  'cafe',
+  'kafe',
+  'lokanta',
+  'lokantasi',
+  'bufe',
+  'izmir',
+  ...IZMIR_DISTRICTS.map((d) => fold(d.name)),
+]);
+
+/** The word next to a district that no dish or category explains, and what it turns out to be. */
+function districtLeftover(it: QueryIntent, text: string): Leftover | null {
+  if (it.kind !== 'search' || !it.district || !it.placeQuery) return null;
+  if (it.cat || it.mentionsParking || it.nearMe || !looksLikePlace(it.placeQuery)) return null;
+  // "romantik", "ucuz", "ne yenir", "bir yer": a wish about the district's food, not a name.
+  const qWords = it.placeQuery.split(' ').filter((w) => w && !isQualifierWord(w));
+  if (qWords.length === 0) return null;
+  const pq = qWords.join(' ');
+  // A second district name is a place of its own ("Bornova Buca"), not an unknown word.
+  if (qWords.some((w) => IZMIR_DISTRICTS.some((d) => fold(d.name) === w))) return null;
+  const x = typedPlaceText(text, pq);
+  if (qWords.some(isFoodWord)) return { kind: 'food', x };
+  const centre = it.district;
+  const near = restaurantsNear(centre, DISTRICT_REACH_M, 5000).filter(
+    (r) => categoryOf(r) !== null,
+  );
+  const named = (r: Restaurant) => qWords.every((w) => hasExactNameWord(fold(r.name), w));
+  // 1. A restaurant that is called exactly that (the name has no word beyond a generic one).
+  const exact = (r: Restaurant) =>
+    named(r) &&
+    fold(r.name)
+      .split(' ')
+      .every(
+        (nw) =>
+          GENERIC_SUFFIX_WORDS.has(nw) ||
+          qWords.some((w) => NAME_SUFFIXES.some((s) => nw === w + s)),
+      );
+  if (pq.length >= 3 && near.some(exact)) return { kind: 'name', x };
+  // 2. A known place (university, mall, landmark) whose full name starts with the words.
+  const placeHits = searchPlaces(pq, 6).filter(
+    (hit) => distanceMeters(centre, hit) <= DISTRICT_REACH_M,
+  );
+  const asPlace = (h: (typeof placeHits)[number]): Leftover => ({
+    kind: 'place',
+    x,
+    place: { label: h.name, lat: h.lat, lng: h.lng },
+  });
+  const full = placeHits.find((h) => {
+    const n = fold(h.name);
+    return n === pq || n.startsWith(`${pq} `);
+  });
+  if (full) return asPlace(full);
+  // 3. Restaurants with the words somewhere in their names.
+  if (pq.length >= 3 && near.some(named)) return { kind: 'name', x };
+  // 4. The first hit that carries every word in its name.
+  const h = placeHits.find((hit) => qWords.every((w) => hasWordStart(fold(hit.name), w)));
+  if (h) return asPlace(h);
+  return { kind: 'unknown', x };
+}
 
 function hash(s: string): number {
   let h = 0;
@@ -367,10 +453,16 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
     }
   }
 
+  // A district with a word that is a restaurant's or a place's name needs no AI to be understood.
+  const ruleIt = it;
+  const ruleLeft = districtLeftover(it, text);
+  const settled = ruleLeft !== null && ruleLeft.kind !== 'unknown';
   if (
     deps.ai &&
     !followUp &&
-    (it.kind === 'offtopic' || it.kind === 'empty' || (it.kind === 'search' && it.uncertain))
+    (it.kind === 'offtopic' ||
+      it.kind === 'empty' ||
+      (it.kind === 'search' && it.uncertain && !settled))
   ) {
     const res = await deps.ai.understand(text);
     if (res.ok) {
@@ -475,6 +567,84 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
     }
   }
 
+  // A district plus a word nothing explained (not even the AI): never show the district's
+  // places as if the word had been understood.
+  let left = ruleLeft;
+  if (it !== ruleIt) {
+    const merged = districtLeftover(it, text);
+    const nothing = it.kind === 'search' && !it.cat && !it.dish && !it.placeQuery;
+    left = merged
+      ? { ...merged, x: ruleLeft?.x ?? merged.x }
+      : ruleLeft?.kind === 'unknown' && nothing
+        ? ruleLeft
+        : null;
+  }
+  if (left && it.kind === 'search' && it.district) {
+    const district = it.district;
+    const here: ChatPlace = { label: district.name, lat: district.lat, lng: district.lng };
+    if (left.kind === 'name' || left.kind === 'food') {
+      return withNotice(
+        await run(
+          {
+            ...ctx,
+            section: 'food',
+            cat: null,
+            dish: left.x,
+            dishServes: null,
+            dishExact: left.kind === 'name',
+            place: here,
+            parkM: 300,
+            wide: false,
+            sort: 'parkEase',
+            freeParking: false,
+          },
+          deps,
+          text,
+          it.quality,
+        ),
+      );
+    }
+    if (left.kind === 'unknown') {
+      const streetLike = left.x
+        .split(' ')
+        .some((w) => PLACE_WORDS.some((p) => fold(w).startsWith(p)));
+      const actions: ChatAction[] = [
+        streetLike
+          ? pickOnMap(text, t)
+          : {
+              kind: 'refine',
+              label: t('chat.actAsDish'),
+              patch: {
+                section: 'food',
+                cat: null,
+                dish: left.x,
+                dishServes: null,
+                dishExact: false,
+                place: here,
+              },
+            },
+        {
+          kind: 'refine',
+          label: t('chat.actDistrictFood', { inDistrict: inDistrict(district.name, true) }),
+          patch: { section: 'food', cat: null, dish: null, dishServes: null, place: here },
+        },
+      ];
+      return withNotice(
+        plain(
+          {
+            text: t('chat.districtUnknownThing', {
+              inDistrict: inDistrict(district.name),
+              q: left.x,
+            }),
+            cards: [],
+            actions,
+          },
+          ctx,
+        ),
+      );
+    }
+  }
+
   const next: ChatContext = { ...ctx };
   if (it.cat) {
     next.cat = it.cat;
@@ -502,7 +672,10 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
   }
 
   if (it.district) {
-    next.place = { label: it.district.name, lat: it.district.lat, lng: it.district.lng };
+    next.place =
+      left?.kind === 'place'
+        ? left.place
+        : { label: it.district.name, lat: it.district.lat, lng: it.district.lng };
   } else if (it.placeQuery) {
     const typedRaw = typedPlaceText(text, it.placeQuery);
     // One to three unknown words: maybe a dish rather than a place.

@@ -545,3 +545,193 @@ describe('round 4: bread, nutella, compound dishes that start with a name, short
     expect(dishProfile('bal kaymak')?.cat).toBe('breakfast');
   });
 });
+
+// Round 5: dishes that were missing (or read as a district / an unknown word), district-named dishes.
+const ROUND5_DISHES = [
+  'şinitzel,schnitzel,sinitzel,cordon bleu,kibbe,oruk,bumbar,menengiç,menengiç kahvesi,dibek',
+  'dibek kahvesi,bıçak arası,uykuluk,koç yumurtası,böbrek,yürek,beğendi,arapsaçı,cibes otu,sirken',
+  'ebegümeci,turp otu,kuşkonmaz,ısırgan,kaymaklı dondurmalı irmik,kemalpaşa dondurmalı',
+  'kemalpaşa tatlısı,kemalpaşa dondurmalı tatlı,künefe dondurmalı,kazandibi dondurmalı',
+  'irmik helvası dondurmalı,tire köfte,ödemiş köfte,bergama köfte',
+]
+  .join(',')
+  .split(',');
+
+// Fish only the food lexicon knows: the honest "no place is sure" text plus the fish places is the answer.
+const ROUND5_LEXICON = 'sarıgöz,karagöz,izmarit,kolyoz,torik'.split(',');
+
+describe('round 5: missing dishes, district-named dishes, a leading dish with "dondurmalı"', () => {
+  const read = (q: string) => {
+    const it = parseQuery(q);
+    return it.kind === 'search'
+      ? {
+          cat: it.cat,
+          dish: it.dish,
+          placeQuery: it.placeQuery,
+          district: it.district?.name ?? null,
+        }
+      : { kind: it.kind };
+  };
+
+  it('has no duplicate phrases', () => {
+    expect(ROUND5_DISHES.length - new Set(ROUND5_DISHES).size).toBe(0);
+    expect(ROUND5_LEXICON.length - new Set(ROUND5_LEXICON).size).toBe(0);
+  });
+
+  it('answers every dish with a food reply, cards and a top card that fits', async () => {
+    expect(await failures(ROUND5_DISHES, {})).toEqual([]);
+  }, 1_800_000);
+
+  it('answers the fish only the lexicon knows with the fish places', async () => {
+    expect(await failures(ROUND5_LEXICON, {}, true)).toEqual([]);
+    for (const q of ROUND5_LEXICON.flatMap((x) => [x, `Bornova'da ${x}`])) {
+      expect(read(q)).toMatchObject({ cat: 'fish', placeQuery: '' });
+    }
+  });
+
+  it('reads each new dish in the category of its kind of place', () => {
+    const cat = (q: string) => read(q).cat;
+    for (const q of ['şinitzel', 'schnitzel', 'sinitzel', 'cordon bleu', 'kibbe']) {
+      expect(cat(q)).toBe('world');
+    }
+    for (const q of ['oruk', 'beğendi', 'arapsaçı', 'cibes otu', 'sirken', 'ebegümeci']) {
+      expect(cat(q)).toBe('lokanta');
+    }
+    for (const q of ['turp otu', 'kuşkonmaz', 'ısırgan']) expect(cat(q)).toBe('lokanta');
+    for (const q of ['bumbar', 'bıçak arası', 'uykuluk', 'koç yumurtası', 'böbrek', 'yürek']) {
+      expect(cat(q)).toBe('meat');
+    }
+    for (const q of ['menengiç', 'menengiç kahvesi', 'dibek', 'dibek kahvesi']) {
+      expect(cat(q)).toBe('cafe');
+    }
+    expect(dishProfile('bumbar')?.serves).toEqual(expect.arrayContaining(['mumbar', 'bumbar']));
+    expect(dishProfile('kibbe')?.serves).toEqual(expect.arrayContaining(['falafel', 'icli kofte']));
+    expect(dishProfile('oruk')?.serves).toEqual(expect.arrayContaining(['icli kofte', 'oruk']));
+    expect(dishProfile('bicak arasi')?.serves).toEqual(
+      expect.arrayContaining(['kebap', 'bicak arasi']),
+    );
+    expect(dishProfile('uykuluk')?.serves).toEqual(
+      expect.arrayContaining(['iskembe', 'kebap', 'ciger']),
+    );
+    expect(dishProfile('sirken')?.serves).toEqual(
+      expect.arrayContaining(['zeytinyagli', 'ot', 'ege mutfagi', 'ege otlari']),
+    );
+    // "ege" alone would put every "Ege Döner" among the greens places.
+    expect(dishProfile('sirken')?.serves).not.toContain('ege');
+    expect(dishProfile('schnitzel')?.serves).toEqual(
+      expect.arrayContaining(['schnitzel', 'sinitzel']),
+    );
+    expect(dishProfile('menengic')?.cat).toBe('cafe');
+    expect(dishProfile('menengic kahve')?.dish).toBe('menengic');
+  });
+
+  it('reads "dondurmalı irmik" as the irmik helvası dessert', () => {
+    for (const q of ['kaymaklı dondurmalı irmik', "Bornova'da kaymaklı dondurmalı irmik"]) {
+      expect(read(q)).toMatchObject({
+        cat: 'dessert',
+        dish: 'kaymaklı dondurmalı irmik',
+        placeQuery: '',
+      });
+    }
+    expect(dishProfile('kaymakli dondurmali irmik')?.dish).toBe('irmik helvasi');
+  });
+
+  it('lets the leading dish win over "dondurmalı"', async () => {
+    for (const [q, dish] of [
+      ['künefe dondurmalı', 'künefe'],
+      ['kazandibi dondurmalı', 'kazandibi'],
+      ['irmik helvası dondurmalı', 'irmik helvası'],
+    ] as const) {
+      for (const p of [q, `Bornova'da ${q}`]) {
+        expect(read(p)).toMatchObject({ cat: 'dessert', dish, placeQuery: '' });
+        const top = (await answer(p, emptyContext('food'), deps)).reply.cards[0];
+        const place = top?.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
+        expect(place).toBeDefined();
+        // A künefeci / tatlıcı / muhallebici / helvacı, not a gelato shop.
+        expect(fold(top?.name ?? '')).not.toMatch(/gelato|dondurmaci/);
+        expect(likelyServes(dishProfile(fold(dish))!, fold(top!.name), place!.cuisines)).toBe(true);
+      }
+    }
+  });
+
+  it('reads a sweet word next to "kemalpaşa" as the dessert, not the district', async () => {
+    for (const q of [
+      'kemalpaşa dondurmalı',
+      'kemalpaşa tatlısı',
+      'kemalpaşa dondurmalı tatlı',
+      'kemalpaşa tatlı',
+    ]) {
+      expect(read(q)).toMatchObject({
+        cat: 'dessert',
+        dish: 'kemalpaşa tatlısı',
+        placeQuery: '',
+        district: null,
+      });
+      expect(read(`Bornova'da ${q}`)).toMatchObject({
+        cat: 'dessert',
+        dish: 'kemalpaşa tatlısı',
+        district: 'Bornova',
+      });
+    }
+    expect(read('dondurmalı kemalpaşa tatlısı')).toMatchObject({
+      dish: 'kemalpaşa tatlısı',
+      district: null,
+    });
+    // Same answer as the dish itself: dessert places, none of them a "where is Kemalpaşa" list.
+    const echo: AssistantDeps = { ...deps, t: (k, o) => (o ? `${k} ${JSON.stringify(o)}` : k) };
+    const { reply } = await answer('kemalpaşa dondurmalı', emptyContext('food'), echo);
+    expect(reply.text).toContain('"dish":"kemalpaşa tatlısı"');
+    const top = reply.cards[0];
+    expect(top?.kind === 'restaurant' && topCardFits('kemalpaşa tatlısı', top.id, top.name)).toBe(
+      true,
+    );
+  });
+
+  it('keeps the district readings next to it', () => {
+    expect(read('kemalpaşa')).toMatchObject({ cat: null, district: 'Kemalpaşa' });
+    expect(read("kemalpaşa'da kebap")).toMatchObject({
+      cat: 'meat',
+      dish: 'kebap',
+      district: 'Kemalpaşa',
+    });
+    expect(read('kemalpaşa lokanta')).toMatchObject({ cat: 'lokanta', district: 'Kemalpaşa' });
+    expect(read("kemalpaşa'da kemalpaşa tatlısı")).toMatchObject({
+      cat: 'dessert',
+      dish: 'kemalpaşa tatlısı',
+      district: 'Kemalpaşa',
+    });
+    // A case suffix between the name and the sweet word: a place plus a food word, as before.
+    expect(read("kemalpaşa'da dondurmalı")).toMatchObject({ district: 'Kemalpaşa' });
+    // "menemen" is a district and a dish: alone the dish, with a district in front it is in that district.
+    expect(read('menemen')).toMatchObject({ cat: 'breakfast', dish: 'menemen', district: null });
+    expect(read("Bornova'da menemen")).toMatchObject({
+      cat: 'breakfast',
+      dish: 'menemen',
+      district: 'Bornova',
+    });
+    expect(read('bornova köftesi')).toMatchObject({
+      cat: 'meat',
+      dish: 'köftesi',
+      district: 'Bornova',
+    });
+    expect(read('Bornova kebap')).toMatchObject({
+      cat: 'meat',
+      dish: 'kebap',
+      district: 'Bornova',
+    });
+  });
+
+  it('reads "<town> köfte" as a köfte style, not köfte in that town', async () => {
+    for (const town of ['tire', 'ödemiş', 'bergama']) {
+      const q = `${town} köfte`;
+      expect(read(q)).toMatchObject({ cat: 'meat', dish: q, placeQuery: '', district: null });
+      expect(read(`Bornova'da ${q}`)).toMatchObject({ cat: 'meat', dish: q, district: 'Bornova' });
+      // Places named after the style come first, wherever they are.
+      const { reply } = await answer(q, emptyContext('food'), deps);
+      expect(fold(reply.cards[0]?.name ?? '')).toContain(fold(town));
+    }
+    // Said with a case suffix, the town is where the köfte is wanted.
+    expect(read("tire'de köfte")).toMatchObject({ cat: 'meat', dish: 'köfte', district: 'Tire' });
+    expect(read('tire')).toMatchObject({ cat: null, district: 'Tire' });
+  });
+});
