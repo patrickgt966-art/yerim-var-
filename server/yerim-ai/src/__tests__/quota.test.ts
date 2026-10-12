@@ -1,4 +1,4 @@
-import { HISTORY_LIMIT, MAX_MESSAGE_CHARS } from '../../../../src/lib/ai/protocol';
+import { FREE_DAILY, HISTORY_LIMIT, MAX_MESSAGE_CHARS } from '../../../../src/lib/ai/protocol';
 import {
   charge,
   ipGuard,
@@ -88,38 +88,38 @@ describe('charge', () => {
 describe('refund', () => {
   it('gives back the use of this messageId only', async () => {
     const kv = fakeKV();
-    await charge(kv, 'dev', 'm1', 5, DAY1);
-    await charge(kv, 'dev', 'm2', 5, DAY1);
-    expect(await refund(kv, 'dev', 'm2', DAY1)).toBe(4);
+    await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1);
+    await charge(kv, 'dev', 'm2', FREE_DAILY, DAY1);
+    expect(await refund(kv, 'dev', 'm2', DAY1)).toBe(FREE_DAILY - 1);
     expect(JSON.parse(kv.store.get('q:2026-10-09:dev') ?? '[]')).toEqual(['m1']);
   });
 
   it('is idempotent and ignores unknown ids', async () => {
     const kv = fakeKV();
-    await charge(kv, 'dev', 'm1', 5, DAY1);
-    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(5);
-    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(5);
-    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(5);
-    await charge(kv, 'dev', 'm2', 5, DAY1);
-    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(4);
+    await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1);
+    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(FREE_DAILY);
+    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(FREE_DAILY);
+    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(FREE_DAILY);
+    await charge(kv, 'dev', 'm2', FREE_DAILY, DAY1);
+    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(FREE_DAILY - 1);
   });
 
   it('does not touch other devices or days', async () => {
     const kv = fakeKV();
-    await charge(kv, 'dev', 'm1', 5, DAY1);
-    await charge(kv, 'other', 'm1', 5, DAY1);
+    await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1);
+    await charge(kv, 'other', 'm1', FREE_DAILY, DAY1);
     await refund(kv, 'dev', 'm1', DAY2);
     await refund(kv, 'dev', 'm1', DAY1);
-    expect(await peek(kv, 'other', DAY1)).toBe(4);
+    expect(await peek(kv, 'other', DAY1)).toBe(FREE_DAILY - 1);
   });
 
   it('lets the same messageId be charged again after a refund', async () => {
     const kv = fakeKV();
-    await charge(kv, 'dev', 'm1', 5, DAY1);
+    await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1);
     await refund(kv, 'dev', 'm1', DAY1);
-    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({
+    expect(await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1)).toEqual({
       allowed: true,
-      remaining: 4,
+      remaining: FREE_DAILY - 1,
       added: true,
     });
   });
@@ -128,19 +128,22 @@ describe('refund', () => {
 describe('peek', () => {
   it('reports remaining without charging', async () => {
     const kv = fakeKV();
-    expect(await peek(kv, 'dev', DAY1)).toBe(5);
-    await charge(kv, 'dev', 'm1', 5, DAY1);
-    expect(await peek(kv, 'dev', DAY1)).toBe(4);
-    expect(await peek(kv, 'dev', DAY1)).toBe(4);
-    expect(await peek(kv, 'dev', DAY2)).toBe(5);
+    expect(await peek(kv, 'dev', DAY1)).toBe(FREE_DAILY);
+    await charge(kv, 'dev', 'm1', FREE_DAILY, DAY1);
+    expect(await peek(kv, 'dev', DAY1)).toBe(FREE_DAILY - 1);
+    expect(await peek(kv, 'dev', DAY1)).toBe(FREE_DAILY - 1);
+    expect(await peek(kv, 'dev', DAY2)).toBe(FREE_DAILY);
   });
 
   it('never goes below zero and survives corrupt JSON', async () => {
     const kv = fakeKV();
-    kv.store.set('q:2026-10-09:dev', JSON.stringify(['a', 'b', 'c', 'd', 'e', 'f', 'g']));
+    kv.store.set(
+      'q:2026-10-09:dev',
+      JSON.stringify(Array.from({ length: FREE_DAILY + 2 }, (_, i) => `id${i}`)),
+    );
     expect(await peek(kv, 'dev', DAY1)).toBe(0);
     kv.store.set('q:2026-10-09:dev', '{not json');
-    expect(await peek(kv, 'dev', DAY1)).toBe(5);
+    expect(await peek(kv, 'dev', DAY1)).toBe(FREE_DAILY);
   });
 });
 

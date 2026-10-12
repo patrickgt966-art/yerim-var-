@@ -25,11 +25,13 @@ export function ResultCard({
   const c = useColors();
   const { t } = useTranslation();
   const badge =
-    model.badge === 'easy'
-      ? { text: t('chat.badgeEasy'), bg: c.badgeFreshBg, fg: c.badgeFreshText }
-      : model.badge === 'likely'
-        ? { text: t('chat.badgeLikely'), bg: c.badgeNearBg, fg: c.badgeNearText }
-        : null;
+    model.badge === 'picked'
+      ? { text: t('chat.badgePicked'), bg: c.hero, fg: c.onHero }
+      : model.badge === 'easy'
+        ? { text: t('chat.badgeEasy'), bg: c.badgeFreshBg, fg: c.badgeFreshText }
+        : model.badge === 'likely'
+          ? { text: t('chat.badgeLikely'), bg: c.badgeNearBg, fg: c.badgeNearText }
+          : null;
   return (
     <View
       style={[

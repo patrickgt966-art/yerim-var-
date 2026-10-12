@@ -1,5 +1,7 @@
 import { useAi } from '@/store/ai';
 
+import { FREE_DAILY } from '../protocol';
+
 import { noteAiActivity, refreshAiQuota, resetAiRefresh } from '../refresh';
 
 let mockAiUrl: string | undefined;
@@ -54,7 +56,7 @@ describe('refreshAiQuota', () => {
   it('leaves the store alone on an older server (404)', async () => {
     mockFetch(404, {});
     await refreshAiQuota();
-    expect(useAi.getState().remaining()).toBe(5);
+    expect(useAi.getState().remaining()).toBe(FREE_DAILY);
   });
 
   it('drops a read that an AI response overtook', async () => {

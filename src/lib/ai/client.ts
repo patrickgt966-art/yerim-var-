@@ -4,7 +4,16 @@ import {
   HISTORY_LIMIT,
   MAX_MESSAGE_CHARS,
   UnderstandingClientSchema,
+  parkPickOutputSchema,
+  pickOutputSchema,
+  planOutputSchema,
   type NarrateRequest,
+  type ParkPickRequest,
+  type ParkPickResponse,
+  type PickRequest,
+  type PickResponse,
+  type PlanRequest,
+  type PlanResponse,
   type Understanding,
   type UnderstandRequest,
 } from './protocol';
@@ -12,6 +21,7 @@ import {
 // Haiku with structured output can take well over 6 s; understand is the shorter call.
 const UNDERSTAND_TIMEOUT_MS = 12000;
 const NARRATE_TIMEOUT_MS = 15000;
+const PICK_TIMEOUT_MS = 12000;
 const QUOTA_TIMEOUT_MS = 6000;
 
 /** Server URL from app.json extra.aiUrl; null keeps the AI layer off. */
@@ -101,6 +111,49 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         return fail('error');
       }
       return { ok: true, value: body.reply, remaining: body.remaining };
+    },
+
+    /** Job 2. The result must fit the candidate count, or it counts as a failure. */
+    async pick(req: PickRequest): Promise<AiResult<PickResponse>> {
+      const res = await post(
+        '/pick',
+        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        PICK_TIMEOUT_MS,
+      );
+      if ('failed' in res) return fail(res.failed, res.remaining);
+      const body = res.data as { pick?: unknown; remaining?: unknown } | null;
+      const parsed = pickOutputSchema(req.candidates.length).safeParse(body?.pick);
+      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: parsed.data, remaining: body.remaining };
+    },
+
+    /** Job 2 for car parks (same endpoint, the candidates say which kind). */
+    async pickPark(req: ParkPickRequest): Promise<AiResult<ParkPickResponse>> {
+      const res = await post(
+        '/pick',
+        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        PICK_TIMEOUT_MS,
+      );
+      if ('failed' in res) return fail(res.failed, res.remaining);
+      const body = res.data as { pick?: unknown; remaining?: unknown } | null;
+      const parsed = parkPickOutputSchema(req.candidates.length).safeParse(body?.pick);
+      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: parsed.data, remaining: body.remaining };
+    },
+
+    /** Job 4. Restaurant and car park indices are bounded by what was sent. */
+    async plan(req: PlanRequest): Promise<AiResult<PlanResponse>> {
+      const res = await post(
+        '/plan',
+        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        PICK_TIMEOUT_MS,
+      );
+      if ('failed' in res) return fail(res.failed, res.remaining);
+      const body = res.data as { plan?: unknown; remaining?: unknown } | null;
+      const parks = req.candidates.reduce((n, c) => n + c.parkings.length, 0);
+      const parsed = planOutputSchema(req.candidates.length, parks).safeParse(body?.plan);
+      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: parsed.data, remaining: body.remaining };
     },
 
     /** Server-side uses left today; null on any error (an older server has no /quota). */

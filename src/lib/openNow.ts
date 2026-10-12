@@ -79,3 +79,33 @@ export function openState(p: OpenInput, now: Date = new Date()): OpenState {
 export function isClosedNow(p: OpenInput, now: Date = new Date()): boolean {
   return openState(p, now) === 'closed';
 }
+
+/** "Late" means still open at 22:00 or after: it closes at 22:00 or later, past midnight, or never. */
+const LATE_MINUTES = 22 * 60;
+
+const isLateRange = ([start, end]: [number, number]): boolean =>
+  start === end || end < start || end >= LATE_MINUTES;
+
+/**
+ * True when the readable hours say the place closes at 22:00 or later (or is open around the
+ * clock) on the day of `at`. Hours it cannot read, or a closed day, are never "late".
+ */
+export function closesLate(p: OpenInput, at: Date = new Date()): boolean {
+  if (p.nonstop) return true;
+  const { day } = istanbulClock(at);
+  const today = p.openingHours?.[DAY_KEYS[day]!];
+  if (today) {
+    const range = parseRange(today);
+    if (range) return isLateRange(range);
+  }
+  if (!p.openingHoursText) return false;
+  const [hours, ...rest] = p.openingHoursText.split(',').map((s) => s.trim());
+  const range = parseRange(hours ?? '');
+  if (!range) return false;
+  for (const part of rest) {
+    const m = /^(\S+)\s+günleri\s+kapalı$/i.exec(part.toLocaleLowerCase('tr'));
+    const closedDay = m ? TR_DAYS.indexOf(m[1]!) : -1;
+    if (closedDay < 0 || closedDay === day) return false;
+  }
+  return isLateRange(range);
+}

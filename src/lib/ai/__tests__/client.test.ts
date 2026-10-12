@@ -20,6 +20,16 @@ const narrateReq: NarrateRequest = {
   results: [{ n: 1, kind: 'restaurant', distanceM: 120, parkingM: 90 }],
 };
 
+/** What the client fills in for the newer fields an older server does not send. */
+const NEW_DEFAULTS = {
+  wishes: [],
+  partySize: null,
+  clarify: null,
+  plan: null,
+  tone: null,
+  dishNote: null,
+};
+
 const fakeFetch = (status: number, body: unknown) =>
   jest.fn(async () => ({
     status,
@@ -54,7 +64,7 @@ describe('ai client', () => {
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
     expect(r).toEqual({
       ok: true,
-      value: { ...old, nearMe: false, dishServes: null },
+      value: { ...old, ...NEW_DEFAULTS, nearMe: false, dishServes: null },
       remaining: 4,
     });
   });
@@ -74,7 +84,7 @@ describe('ai client', () => {
     };
     const f = fakeFetch(200, { understanding: next, remaining: 3 });
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
-    expect(r).toEqual({ ok: true, value: next, remaining: 3 });
+    expect(r).toEqual({ ok: true, value: { ...next, ...NEW_DEFAULTS }, remaining: 3 });
   });
 
   it('returns the narration', async () => {
@@ -175,5 +185,141 @@ describe('ai client quota', () => {
       throw new Error('offline');
     }) as unknown as typeof fetch;
     expect(await createAiClient('https://ai.test', down).quota('d')).toBeNull();
+  });
+});
+
+describe('ai client pick / plan / understand extras', () => {
+  const pickReq = {
+    deviceId: 'd-test',
+    messageId: 'm1',
+    text: 'romantik bir yer',
+    candidates: [0, 1, 2].map((i) => ({
+      i,
+      kind: 'restaurant' as const,
+      walkMin: 5,
+      openState: 'unknown' as const,
+      closesLate: false,
+      parkingM: null,
+      parkingFree: null,
+      freeSpots: null,
+      dishMatch: 'none' as const,
+      outdoor: null,
+    })),
+  };
+  const pick = { pick: 1, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null };
+
+  it('returns a pick that fits the candidates', async () => {
+    const f = fakeFetch(200, { pick, remaining: 3 });
+    const r = await createAiClient('https://ai.test', f).pick(pickReq);
+    expect(r).toEqual({ ok: true, value: pick, remaining: 3 });
+    expect(f).toHaveBeenCalledWith('https://ai.test/pick', expect.anything());
+  });
+
+  it('treats an out-of-range pick, an unknown reason or a refusal as an error', async () => {
+    const bad = [
+      { ...pick, pick: 3 },
+      { ...pick, reasons: ['cheapest'] },
+      { ...pick, reasons: ['closest', 'open_now', 'outdoor', 'free_parking'] },
+      { ...pick, runnerUp: 7, runnerUpWhy: 'closest' },
+    ];
+    for (const b of bad) {
+      const r = await createAiClient(
+        'https://ai.test',
+        fakeFetch(200, { pick: b, remaining: 3 }),
+      ).pick(pickReq);
+      expect(r).toEqual({ ok: false, reason: 'error' });
+    }
+  });
+
+  it('carries remaining on a 502 and 429', async () => {
+    const r502 = await createAiClient(
+      'https://ai.test',
+      fakeFetch(502, { error: 'upstream', remaining: 4 }),
+    ).pick(pickReq);
+    expect(r502).toEqual({ ok: false, reason: 'error', remaining: 4 });
+    const r429 = await createAiClient('https://ai.test', fakeFetch(429, { remaining: 0 })).pick(
+      pickReq,
+    );
+    expect(r429).toEqual({ ok: false, reason: 'quota', remaining: 0 });
+  });
+
+  it('bounds a plan by the restaurants and the car parks sent', async () => {
+    const planReq = {
+      deviceId: 'd-test',
+      messageId: 'm1',
+      text: 'önce park sonra yemek',
+      when: 'now' as const,
+      candidates: [
+        {
+          ...pickReq.candidates[0]!,
+          parkings: [
+            { p: 0, walkMin: 1, parkingFree: null, freeSpots: null, openState: 'open' as const },
+            { p: 1, walkMin: 2, parkingFree: null, freeSpots: null, openState: 'open' as const },
+          ],
+        },
+      ],
+    };
+    const ok = { restaurant: 0, parking: 1, reasons: ['closest'], tone: null };
+    const good = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { plan: ok, remaining: 2 }),
+    ).plan(planReq);
+    expect(good).toEqual({ ok: true, value: ok, remaining: 2 });
+    const bad = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { plan: { ...ok, parking: 2 }, remaining: 2 }),
+    ).plan(planReq);
+    expect(bad).toEqual({ ok: false, reason: 'error' });
+  });
+
+  it('parses a car park pick with its own reason codes', async () => {
+    const parkReq = {
+      deviceId: 'd',
+      messageId: 'm',
+      text: 'konak otopark',
+      candidates: [0, 1].map((i) => ({
+        i,
+        kind: 'parking' as const,
+        walkMin: 3,
+        openState: 'open' as const,
+        nonstop: false,
+        free: null,
+        tariffKnown: false,
+        covered: null,
+        freeSpots: null,
+        nearRail: false,
+        capacity: null,
+      })),
+    };
+    const ok = { pick: 0, reasons: ['near_rail'], runnerUp: null, runnerUpWhy: null, tone: null };
+    const r = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { pick: ok, remaining: 1 }),
+    ).pickPark(parkReq);
+    expect(r.ok).toBe(true);
+    const food = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { pick: { ...ok, reasons: ['outdoor'] }, remaining: 1 }),
+    ).pickPark(parkReq);
+    expect(food.ok).toBe(false);
+  });
+
+  it('rejects an understanding with an unknown wish', async () => {
+    const u = {
+      kind: 'search',
+      district: null,
+      cat: null,
+      dish: null,
+      place: null,
+      food: true,
+      requireParking: false,
+      appleQuery: null,
+      wishes: ['spacey'],
+    };
+    const r = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { understanding: u, remaining: 3 }),
+    ).understand(understandReq);
+    expect(r).toEqual({ ok: false, reason: 'error' });
   });
 });

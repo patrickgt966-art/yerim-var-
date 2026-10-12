@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { cardModel, understoodChips } from '@/components/chat/model';
+import { PlanCard } from '@/components/chat/PlanCard';
 import { ResultCard } from '@/components/chat/ResultCard';
 import { BOT_INSET, softShadow } from '@/components/chat/style';
 import { TypingDots } from '@/components/chat/TypingDots';
 import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
-import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
+import type { ChatAction, ChatCard, ChatContext, PlanData } from '@/data/assistant';
 import { brand, fonts, useColors } from '@/theme';
 
 export type ChatMessage = {
@@ -19,6 +20,7 @@ export type ChatMessage = {
   actions?: ChatAction[];
   sparkle?: boolean;
   notice?: string;
+  plan?: PlanData;
   /** Epoch ms the message was added (day chip). */
   at?: number;
   /** What the assistant understood when it wrote this reply. */
@@ -136,11 +138,13 @@ export function BotBubble({
   message,
   onAction,
   onDirections,
+  onPlanDirections,
   showChips = false,
 }: {
   message: ChatMessage;
   onAction: (a: ChatAction) => void;
   onDirections: (card: ChatCard) => void;
+  onPlanDirections: (dest: PlanData['dest']) => void;
   /** Only the newest reply offers the "understood" chips; they act on the live context. */
   showChips?: boolean;
 }) {
@@ -195,6 +199,7 @@ export function BotBubble({
           )}
         </View>
       </View>
+      {message.plan && <PlanCard plan={message.plan} onDirections={onPlanDirections} />}
       {cards.length > 0 && (
         <ScrollView
           horizontal
