@@ -9,7 +9,10 @@ import {
   type UnderstandRequest,
 } from './protocol';
 
-const TIMEOUT_MS = 6000;
+// Haiku with structured output can take well over 6 s; understand is the shorter call.
+const UNDERSTAND_TIMEOUT_MS = 12000;
+const NARRATE_TIMEOUT_MS = 15000;
+const QUOTA_TIMEOUT_MS = 6000;
 
 /** Server URL from app.json extra.aiUrl; null keeps the AI layer off. */
 export function aiBaseUrl(): string | null {
@@ -18,20 +21,32 @@ export function aiBaseUrl(): string | null {
 }
 
 export type AiResult<T> =
-  { ok: true; value: T; remaining: number } | { ok: false; reason: 'off' | 'quota' | 'error' };
+  | { ok: true; value: T; remaining: number }
+  /** `remaining` is the server's count after a failure (an older server omits it). */
+  | { ok: false; reason: 'off' | 'quota' | 'error'; remaining?: number };
 
-const fail = (reason: 'quota' | 'error'): { ok: false; reason: 'quota' | 'error' } => ({
-  ok: false,
-  reason,
-});
+type Failure = { failed: 'quota' | 'error'; remaining?: number };
+
+const fail = (
+  reason: 'quota' | 'error',
+  remaining?: number,
+): { ok: false; reason: 'quota' | 'error'; remaining?: number } =>
+  remaining === undefined ? { ok: false, reason } : { ok: false, reason, remaining };
+
+const num = (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 
 export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch) {
   const root = baseUrl.replace(/\/+$/, '');
 
-  /** POSTs the body; resolves to the parsed JSON, 'quota' on 429, or 'error'. */
-  async function post(path: string, body: unknown): Promise<unknown | 'quota' | 'error'> {
+  /** POSTs the body; resolves to the parsed JSON, or a Failure (carrying `remaining` when sent). */
+  async function post(
+    path: string,
+    body: unknown,
+    timeoutMs: number,
+  ): Promise<{ data: unknown } | Failure> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetchImpl(`${root}${path}`, {
         method: 'POST',
@@ -39,11 +54,18 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         body: JSON.stringify(body),
         signal: controller.signal,
       });
-      if (res.status === 429) return 'quota';
-      if (!res.ok) return 'error';
-      return await res.json();
+      if (!res.ok) {
+        const failed = res.status === 429 ? 'quota' : 'error';
+        try {
+          const err = (await res.json()) as { remaining?: unknown } | null;
+          return { failed, remaining: num(err?.remaining) };
+        } catch {
+          return { failed };
+        }
+      }
+      return { data: await res.json() };
     } catch {
-      return 'error';
+      return { failed: 'error' };
     } finally {
       clearTimeout(timer);
     }
@@ -51,29 +73,41 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
 
   return {
     async understand(req: UnderstandRequest): Promise<AiResult<Understanding>> {
-      const data = await post('/understand', {
-        ...req,
-        text: req.text.slice(0, MAX_MESSAGE_CHARS),
-        history: req.history.slice(-HISTORY_LIMIT),
-      });
-      if (data === 'quota' || data === 'error') return fail(data);
-      const body = data as { understanding?: unknown; remaining?: unknown } | null;
+      const res = await post(
+        '/understand',
+        {
+          ...req,
+          text: req.text.slice(0, MAX_MESSAGE_CHARS),
+          history: req.history.slice(-HISTORY_LIMIT),
+        },
+        UNDERSTAND_TIMEOUT_MS,
+      );
+      if ('failed' in res) return fail(res.failed, res.remaining);
+      const body = res.data as { understanding?: unknown; remaining?: unknown } | null;
       const parsed = UnderstandingClientSchema.safeParse(body?.understanding);
       if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
       return { ok: true, value: parsed.data, remaining: body.remaining };
     },
 
     async narrate(req: NarrateRequest): Promise<AiResult<string>> {
-      const data = await post('/narrate', {
-        ...req,
-        text: req.text.slice(0, MAX_MESSAGE_CHARS),
-      });
-      if (data === 'quota' || data === 'error') return fail(data);
-      const body = data as { reply?: unknown; remaining?: unknown } | null;
+      const res = await post(
+        '/narrate',
+        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        NARRATE_TIMEOUT_MS,
+      );
+      if ('failed' in res) return fail(res.failed, res.remaining);
+      const body = res.data as { reply?: unknown; remaining?: unknown } | null;
       if (typeof body?.reply !== 'string' || typeof body.remaining !== 'number') {
         return fail('error');
       }
       return { ok: true, value: body.reply, remaining: body.remaining };
+    },
+
+    /** Server-side uses left today; null on any error (an older server has no /quota). */
+    async quota(deviceId: string): Promise<number | null> {
+      const res = await post('/quota', { deviceId }, QUOTA_TIMEOUT_MS);
+      if ('failed' in res) return null;
+      return num((res.data as { remaining?: unknown } | null)?.remaining) ?? null;
     },
   };
 }

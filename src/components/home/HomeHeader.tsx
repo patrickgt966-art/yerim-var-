@@ -1,3 +1,5 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CityButton } from '@/components/CityPicker';
 import { Txt } from '@/components/Txt';
 import { aiBaseUrl } from '@/lib/ai/client';
+import { refreshAiQuota } from '@/lib/ai/refresh';
 import { useAi } from '@/store/ai';
 import { brand, fonts, useColors } from '@/theme';
 
@@ -16,6 +19,12 @@ function AiPill() {
   const { t } = useTranslation();
   const consent = useAi((s) => s.consent);
   const left = useAi((s) => s.remaining());
+  // Throttled; keeps the pill honest after a failed or slow AI call.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshAiQuota();
+    }, []),
+  );
   if (!aiBaseUrl() || consent !== 'yes') return null;
   return (
     <View

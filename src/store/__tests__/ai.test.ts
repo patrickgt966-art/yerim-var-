@@ -40,3 +40,16 @@ describe('ai store consent', () => {
     expect(JSON.parse(raw ?? '{}').state.consent).toBe('yes');
   });
 });
+
+describe('ai store setRemaining', () => {
+  const NOW = new Date('2026-10-09T10:00:00Z');
+
+  it('mirrors the server count and clamps it', () => {
+    useAi.getState().setRemaining(2, NOW);
+    expect(useAi.getState().remaining(NOW)).toBe(2);
+    useAi.getState().setRemaining(99, NOW);
+    expect(useAi.getState().remaining(NOW)).toBe(5);
+    useAi.getState().setRemaining(-3, NOW);
+    expect(useAi.getState().remaining(NOW)).toBe(0);
+  });
+});
