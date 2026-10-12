@@ -1,5 +1,14 @@
 import { HISTORY_LIMIT, MAX_MESSAGE_CHARS } from '../../../../src/lib/ai/protocol';
-import { charge, ipGuard, toMessages, validNarrate, validUnderstand } from '../quota';
+import {
+  charge,
+  ipGuard,
+  peek,
+  refund,
+  toMessages,
+  validNarrate,
+  validQuota,
+  validUnderstand,
+} from '../quota';
 
 function fakeKV() {
   const store = new Map<string, string>();
@@ -20,21 +29,37 @@ const DAY2 = new Date('2026-10-10T10:00:00Z');
 describe('charge', () => {
   it('counts distinct messageIds', async () => {
     const kv = fakeKV();
-    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({ allowed: true, remaining: 4 });
-    expect(await charge(kv, 'dev', 'm2', 5, DAY1)).toEqual({ allowed: true, remaining: 3 });
+    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({
+      allowed: true,
+      remaining: 4,
+      added: true,
+    });
+    expect(await charge(kv, 'dev', 'm2', 5, DAY1)).toEqual({
+      allowed: true,
+      remaining: 3,
+      added: true,
+    });
   });
 
   it('does not double-charge the same messageId', async () => {
     const kv = fakeKV();
     await charge(kv, 'dev', 'm1', 5, DAY1);
-    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({ allowed: true, remaining: 4 });
+    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({
+      allowed: true,
+      remaining: 4,
+      added: false,
+    });
   });
 
   it('blocks at the limit', async () => {
     const kv = fakeKV();
     await charge(kv, 'dev', 'm1', 2, DAY1);
     await charge(kv, 'dev', 'm2', 2, DAY1);
-    expect(await charge(kv, 'dev', 'm3', 2, DAY1)).toEqual({ allowed: false, remaining: 0 });
+    expect(await charge(kv, 'dev', 'm3', 2, DAY1)).toEqual({
+      allowed: false,
+      remaining: 0,
+      added: false,
+    });
     expect((await charge(kv, 'dev', 'm2', 2, DAY1)).allowed).toBe(true);
   });
 
@@ -42,13 +67,92 @@ describe('charge', () => {
     const kv = fakeKV();
     await charge(kv, 'dev', 'm1', 1, DAY1);
     expect((await charge(kv, 'dev', 'm2', 1, DAY1)).allowed).toBe(false);
-    expect(await charge(kv, 'dev', 'm2', 1, DAY2)).toEqual({ allowed: true, remaining: 0 });
+    expect(await charge(kv, 'dev', 'm2', 1, DAY2)).toEqual({
+      allowed: true,
+      remaining: 0,
+      added: true,
+    });
   });
 
   it('survives corrupt JSON', async () => {
     const kv = fakeKV();
     kv.store.set('q:2026-10-09:dev', '{not json');
-    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({ allowed: true, remaining: 4 });
+    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({
+      allowed: true,
+      remaining: 4,
+      added: true,
+    });
+  });
+});
+
+describe('refund', () => {
+  it('gives back the use of this messageId only', async () => {
+    const kv = fakeKV();
+    await charge(kv, 'dev', 'm1', 5, DAY1);
+    await charge(kv, 'dev', 'm2', 5, DAY1);
+    expect(await refund(kv, 'dev', 'm2', DAY1)).toBe(4);
+    expect(JSON.parse(kv.store.get('q:2026-10-09:dev') ?? '[]')).toEqual(['m1']);
+  });
+
+  it('is idempotent and ignores unknown ids', async () => {
+    const kv = fakeKV();
+    await charge(kv, 'dev', 'm1', 5, DAY1);
+    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(5);
+    expect(await refund(kv, 'dev', 'm1', DAY1)).toBe(5);
+    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(5);
+    await charge(kv, 'dev', 'm2', 5, DAY1);
+    expect(await refund(kv, 'dev', 'nope', DAY1)).toBe(4);
+  });
+
+  it('does not touch other devices or days', async () => {
+    const kv = fakeKV();
+    await charge(kv, 'dev', 'm1', 5, DAY1);
+    await charge(kv, 'other', 'm1', 5, DAY1);
+    await refund(kv, 'dev', 'm1', DAY2);
+    await refund(kv, 'dev', 'm1', DAY1);
+    expect(await peek(kv, 'other', DAY1)).toBe(4);
+  });
+
+  it('lets the same messageId be charged again after a refund', async () => {
+    const kv = fakeKV();
+    await charge(kv, 'dev', 'm1', 5, DAY1);
+    await refund(kv, 'dev', 'm1', DAY1);
+    expect(await charge(kv, 'dev', 'm1', 5, DAY1)).toEqual({
+      allowed: true,
+      remaining: 4,
+      added: true,
+    });
+  });
+});
+
+describe('peek', () => {
+  it('reports remaining without charging', async () => {
+    const kv = fakeKV();
+    expect(await peek(kv, 'dev', DAY1)).toBe(5);
+    await charge(kv, 'dev', 'm1', 5, DAY1);
+    expect(await peek(kv, 'dev', DAY1)).toBe(4);
+    expect(await peek(kv, 'dev', DAY1)).toBe(4);
+    expect(await peek(kv, 'dev', DAY2)).toBe(5);
+  });
+
+  it('never goes below zero and survives corrupt JSON', async () => {
+    const kv = fakeKV();
+    kv.store.set('q:2026-10-09:dev', JSON.stringify(['a', 'b', 'c', 'd', 'e', 'f', 'g']));
+    expect(await peek(kv, 'dev', DAY1)).toBe(0);
+    kv.store.set('q:2026-10-09:dev', '{not json');
+    expect(await peek(kv, 'dev', DAY1)).toBe(5);
+  });
+});
+
+describe('validQuota', () => {
+  it('accepts a sane deviceId only', () => {
+    expect(validQuota({ deviceId: 'd-abc123' })).toEqual({ deviceId: 'd-abc123' });
+    expect(validQuota({})).toBeNull();
+    expect(validQuota(null)).toBeNull();
+    expect(validQuota({ deviceId: 5 })).toBeNull();
+    expect(validQuota({ deviceId: '' })).toBeNull();
+    expect(validQuota({ deviceId: 'x'.repeat(65) })).toBeNull();
+    expect(validQuota({ deviceId: 'a b' })).toBeNull();
   });
 });
 

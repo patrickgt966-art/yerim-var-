@@ -137,6 +137,30 @@ export const CURATED_PLACES: CuratedPlace[] = [
     lng: 27.1331,
     aliases: ['hisaronu kemeralti'],
   },
+  // Kıbrıs Şehitleri Caddesi, Alsancak: the shops numbered 90-140 sit at 38.4374-38.4410 N, 27.1426-27.1444 E.
+  {
+    name: 'Kıbrıs Şehitleri Caddesi',
+    district: 'Alsancak',
+    kind: 'area',
+    lat: 38.4378,
+    lng: 27.1435,
+    aliases: [
+      'kibris sehitleri',
+      'kibris sehitleri cad',
+      'kibris sehitleri cd',
+      'alsancak kibris sehitleri',
+      'alsancak kibris sehitleri caddesi',
+    ],
+  },
+  // Gündoğdu Meydanı (Ali Çetinkaya Bulvarı); the "Gündoğdu -2" car park and the cafés on the square lie within 100 m.
+  {
+    name: 'Gündoğdu Meydanı',
+    district: 'Alsancak',
+    kind: 'area',
+    lat: 38.435,
+    lng: 27.1407,
+    aliases: ['gundogdu'],
+  },
   // Ephesus ruins (main gate area), Selçuk.
   {
     name: 'Efes Antik Kenti',

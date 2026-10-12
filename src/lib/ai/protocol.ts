@@ -19,6 +19,8 @@ export type UnderstandRequest = {
   section: 'park' | 'food';
 };
 
+export type QuotaRequest = { deviceId: string };
+
 // Same literals as FOOD_CATEGORIES in data/restaurants.ts.
 const FOOD_CATEGORY_VALUES = [
   'breakfast',

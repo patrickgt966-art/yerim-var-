@@ -1,6 +1,13 @@
-import { categoryForQuery, isFoodWord, type FoodCategory } from './restaurants';
-import { dishProfile, leadDishProfile } from './dishes';
-import { isTrailingModifier, LEADING_GENERIC, respellAlias } from './foodLexicon';
+import { categoryForQuery, headStems, isFoodWord, type FoodCategory } from './restaurants';
+import { dishProfile, hasExactDish, leadDishProfile } from './dishes';
+import {
+  CITY_STYLES,
+  isTrailingModifier,
+  LEADING_GENERIC,
+  MODIFIERS,
+  orderSpan,
+  respellAlias,
+} from './foodLexicon';
 import { fold, searchPlaces } from './search';
 
 /** An official İzmir district with its centre. */
@@ -123,6 +130,28 @@ const hasVerbSuffix = (t: string) => VERB_SUFFIXES.some((s) => t.endsWith(s));
 // 'iyi' is a greeting only before these ("iyi akşamlar"); otherwise it is a quality word.
 const IYI_GREETING_NEXT = words('aksamlar gunler geceler');
 const STADIUM = words('stad stada stadi stadyum stadyuma stadyumu stadyumun');
+
+// Wishes about how a place feels, when or who it is for: they qualify a request, they name nothing.
+const QUALIFIER = words(
+  'romantik ucuz uygun pahali sakin sessiz manzarali manzara deniz aile ailece cocuklu cocuk kalabalik rahat eglenceli gece aksam ogle sabah kahvalti saati saatleri yemegi yemek yemekleri yer yeri mekan mekani oneri oneriler tavsiye tavsiyesi yenir yesek yiyelim yenilir yenebilir nerede nerde ne neresi acik kapali guzel iyi en meshur unlu lezzetli kaliteli',
+);
+
+/**
+ * True for a word that only qualifies a request ("romantik", "ucuz", "ne yenir", "bir yer", "akşam"):
+ * a filler, quality, near-me, greeting or address word, or one of the QUALIFIER wishes.
+ */
+export function isQualifierWord(t: string): boolean {
+  return (
+    QUALIFIER.has(t) ||
+    FILLER.has(t) ||
+    COND_FILLER.has(t) ||
+    QUALITY.has(t) ||
+    NEAR_ME.has(t) ||
+    GREETING.has(t) ||
+    ADDRESS.has(t) ||
+    FOOD_WORDS.has(t)
+  );
+}
 
 /** Place-name suffixes, longest first. */
 const PLACE_SUFFIXES = [
@@ -294,6 +323,127 @@ function compoundDish(words: string[]): boolean {
   return COMPOUND_HEADS.test(words[words.length - 1]!) && !words.slice(0, -1).some(isDistrictToken);
 }
 
+/** Dishes named after a district: a sweet word next to the name is the dish, not a place ("kemalpaşa dondurmalı"). */
+const TOWN_DISHES = [
+  { town: 'kemalpasa', head: 'tatli', folded: 'kemalpasa tatlisi', written: 'kemalpaşa tatlısı' },
+];
+// Said around the dish ("dondurmalı kemalpaşa tatlısı"): it only says how the dessert is served.
+const SWEET_SIDES = words('dondurmali kaymakli');
+
+/**
+ * "kemalpaşa dondurmalı", "kemalpaşa tatlı", "kemalpaşa dondurmalı tatlı" are the dessert
+ * "kemalpaşa tatlısı", not the district. Only a word that is right next to the name counts:
+ * "kemalpaşa'da dondurmalı" (a case suffix between) stays a place plus a food word.
+ */
+function townDish(ws: string[], raws: string[] | null): { words: string[]; raws: string[] | null } {
+  const outW: string[] = [];
+  const outR: string[] = [];
+  // Words of how much ("iki tane") say nothing: the town with only those is the dessert too.
+  const ordered = new Set<number>();
+  for (let k = 0; k < ws.length;) {
+    const n = orderSpan(ws, k);
+    for (let j = 0; j < n; j++) ordered.add(k + j);
+    k += n || 1;
+  }
+  for (let i = 0; i < ws.length; i++) {
+    const dish = TOWN_DISHES.find((x) => x.town === ws[i]);
+    if (dish) {
+      const lead = outW.length;
+      let from = lead;
+      while (from > 0 && SWEET_SIDES.has(outW[from - 1]!)) from--;
+      let end = i + 1;
+      while (end < ws.length && SWEET_SIDES.has(ws[end]!)) end++;
+      const sweet = end > i + 1;
+      const head = end < ws.length && headStems(ws[end]!).includes(dish.head);
+      if (head) end++;
+      const already = !sweet && from === lead && head && ws[end - 1] === 'tatlisi';
+      const onlyOrder = ws.length > 1 && ws.every((_, k) => k === i || ordered.has(k));
+      if ((sweet || head || from < lead || onlyOrder) && !already) {
+        const written = dish.written.split(' ');
+        outW.length = from;
+        outR.length = from;
+        dish.folded.split(' ').forEach((w, j) => {
+          outW.push(w);
+          outR.push(j === 0 ? (raws?.[i] ?? w) : (written[j] ?? w));
+        });
+        i = end - 1;
+        continue;
+      }
+    }
+    outW.push(ws[i]!);
+    outR.push(raws?.[i] ?? ws[i]!);
+  }
+  return { words: outW, raws: raws ? outR : null };
+}
+
+/** Just "su" and filler ("su istiyorum"): plain water, never "su" beside other words. */
+function isBareWater(ws: string[]): boolean {
+  return ws.includes('su') && ws.every((t) => t === 'su' || FILLER.has(t));
+}
+
+/** The words `from` to `to` are a food category, a dish or a two-word modifier in their own right. */
+function knownPhrase(ws: string[], from: number, to: number): boolean {
+  const phrase = ws.slice(from, to).join(' ');
+  return (
+    categoryForQuery(phrase) !== null ||
+    hasExactDish(phrase) ||
+    // "tam buğday": a modifier of two words keeps its first word.
+    (to - from > 1 && MODIFIERS.has(phrase))
+  );
+}
+
+/** Some window of up to 3 words names a food category ("baklava", "maraş dondurma", "sade kahve"). */
+function hasFoodWords(ws: string[]): boolean {
+  for (const len of [3, 2, 1]) {
+    for (let i = 0; i + len <= ws.length; i++) {
+      if (categoryForQuery(ws.slice(i, i + len).join(' '), true) !== null) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * "baklava kilo", "dondurma kase", "iskender yarım", "somon tabağı", "şekerli kahve": how much or how
+ * it is ordered says nothing about the dish, so those words go before the dish is looked up. Only
+ * when something food is left, and never a phrase that is a dish itself ("kahvaltı tabağı", "tam
+ * buğday ekmeği"); a text without food ("Yarım Ekmek", "Büyük Efes") keeps all its words.
+ */
+function withoutOrderWords(
+  ws: string[],
+  raws: string[] | null,
+): { words: string[]; raws: string[] | null } {
+  const drop = new Set<number>();
+  for (let i = 0; i < ws.length;) {
+    const n = orderSpan(ws, i);
+    if (n === 0) {
+      i++;
+      continue;
+    }
+    // "porsiyon döner", "yarım pide": said right before the dish it already belongs to the dish phrase.
+    if (n === 1 && LEADING_GENERIC.has(ws[i]!) && i + 1 < ws.length && orderSpan(ws, i + 1) === 0) {
+      i++;
+      continue;
+    }
+    // A dish or modifier of up to 4 words that holds the span and more ("kahvaltı tabağı") keeps it.
+    let kept = false;
+    for (let a = Math.max(0, i - 3); a < i + n && !kept; a++) {
+      for (let b = Math.max(a + 2, i + 1); b <= Math.min(ws.length, a + 4) && !kept; b++) {
+        if (!(a === i && b === i + n) && knownPhrase(ws, a, b)) kept = true;
+      }
+    }
+    if (!kept) for (let k = i; k < i + n; k++) drop.add(k);
+    i += n;
+  }
+  if (drop.size === 0) return { words: ws, raws };
+  const keep = ws.map((_, i) => i).filter((i) => !drop.has(i));
+  const left = keep.map((i) => ws[i]!);
+  if (left.length === 0 || !(hasFoodWords(left) || isBareWater(left))) return { words: ws, raws };
+  return { words: left, raws: raws ? keep.map((i) => raws[i]!) : null };
+}
+
+/** Towns whose name is a köfte style ("tire köfte", "ödemiş köfte"): the dish, not a place to search in. */
+const KOFTE_TOWNS = words('tire odemis bergama');
+
 /** Under 3 letters, one repeated letter ("aaa"), or no vowel ("xd", "hmm"): not a word to search. */
 function isGibberish(text: string): boolean {
   const letters = text.replace(/[^a-z]/g, '');
@@ -369,8 +519,14 @@ export function parseQuery(raw: string): QueryIntent {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .split(' ')
     .filter(Boolean);
-  const { words: all, raws: typed } = respell(all0, typed0.length === all0.length ? typed0 : null);
+  const spelled = respell(all0, typed0.length === all0.length ? typed0 : null);
+  const dished = townDish(spelled.words, spelled.raws);
+  const { words: all, raws: typed } = withoutOrderWords(dished.words, dished.raws);
   if (all.length === 0) return { kind: 'empty' };
+  // "tire köfte": the town right before the köfte word is its style (see KOFTE_TOWNS).
+  const kofteStyles = new Set(
+    all.filter((t, i) => KOFTE_TOWNS.has(t) && headStems(all[i + 1] ?? '').includes('kofte')),
+  );
 
   // Greeting / abuse: nothing left once the chit-chat words are dropped.
   const isGreet = (t: string) => GREETING.has(t) || (SOLO_GREETING.has(t) && all.length <= 2);
@@ -455,6 +611,12 @@ export function parseQuery(raw: string): QueryIntent {
   // Category: a three- or two-word phrase first, then a single word.
   let cat: FoodCategory | null = null;
   let dish: string | null = null;
+  // Plain water: only a text that is just "su" ("su istiyorum", "bir su") means it, never "su" beside other words.
+  if (rest.length === 1 && isBareWater(all)) {
+    cat = 'cafe';
+    dish = 'su';
+    rest = [];
+  }
   for (const len of [4, 3, 2, 1]) {
     for (let i = 0; i + len <= rest.length && !cat; i++) {
       const words = rest.slice(i, i + len);
@@ -478,7 +640,11 @@ export function parseQuery(raw: string): QueryIntent {
         const head = categoryForQuery(phrase, true);
         if (head && (len === 1 || !placeBeforeDish(words[0]!) || compoundDish(words))) c = head;
       }
-      if (c && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
+      // "tire köfte", "ödemiş köfte": a köfte style named after a town, not köfte in that town.
+      const style =
+        len === 2 && kofteStyles.has(words[0]!) && headStems(words[1]!).includes('kofte');
+      if (!c && style) c = categoryForQuery(words[1]!);
+      if (c && !style && !categoryForQuery(named, true, false) && isWholePlace()) c = null;
       if (!c) continue;
       // "taze meyve suyu", "sade kahve": how it is served belongs to the dish, it is not a place.
       let from = i;
@@ -491,6 +657,18 @@ export function parseQuery(raw: string): QueryIntent {
       cat = c;
       dish = named;
       rest = [...rest.slice(0, from), ...rest.slice(from + size)];
+    }
+  }
+
+  // "piyaz antalya": a city said after the dish is its style, not a place to look in (a district is).
+  if (cat && dish) {
+    const dishTokens = dish.split(' ');
+    const at = all.findIndex((_, i) => all.slice(i, i + dishTokens.length).join(' ') === dish);
+    if (at >= 0) {
+      const end = at + dishTokens.length;
+      rest = rest.filter(
+        (t) => !(CITY_STYLES.has(t) && all.lastIndexOf(t) >= end && !isDistrictToken(t)),
+      );
     }
   }
 

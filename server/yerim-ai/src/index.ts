@@ -8,7 +8,16 @@ import {
   UnderstandingSchema,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
-import { charge, ipGuard, toMessages, validNarrate, validUnderstand } from './quota';
+import {
+  charge,
+  ipGuard,
+  peek,
+  refund,
+  toMessages,
+  validNarrate,
+  validQuota,
+  validUnderstand,
+} from './quota';
 
 export interface Env {
   QUOTA: KVNamespace;
@@ -24,9 +33,27 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** Remaining uses without charging; never calls Anthropic. Own IP counter so it can't starve AI calls. */
+async function quotaRoute(req: Request, env: Env): Promise<Response> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const parsed = validQuota(raw);
+  if (!parsed) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+  if (!(await ipGuard(env.QUOTA, `quota:${ip}`, now, 500)))
+    return json({ error: 'rate_limited' }, 429);
+  return json({ remaining: await peek(env.QUOTA, parsed.deviceId, now) });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const path = new URL(req.url).pathname;
+    if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
     if (req.method !== 'POST' || (path !== '/understand' && path !== '/narrate')) {
       return json({ error: 'not_found' }, 404);
     }
@@ -52,6 +79,17 @@ export default {
     const q = await charge(env.QUOTA, parsed.deviceId, parsed.messageId, limit, now);
     if (!q.allowed) return json({ remaining: 0 }, 429);
 
+    // The use is only kept when the user got an answer: give it back on any failure.
+    const giveBack = async (): Promise<number> => {
+      if (!q.added) return q.remaining;
+      try {
+        return await refund(env.QUOTA, parsed.deviceId, parsed.messageId, now);
+      } catch {
+        return q.remaining;
+      }
+    };
+    const upstreamFail = async () => json({ error: 'upstream', remaining: await giveBack() }, 502);
+
     try {
       const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
@@ -63,11 +101,13 @@ export default {
           output_config: { effort: 'low', format: zodOutputFormat(UnderstandingSchema) },
           messages: toMessages(understandReq.history, understandReq.text),
         });
-        const understanding: Understanding =
-          response.stop_reason === 'refusal' || !response.parsed_output
-            ? { kind: 'unknown' }
-            : response.parsed_output;
-        return json({ understanding, remaining: q.remaining });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+          return json({
+            understanding: { kind: 'unknown' } satisfies Understanding,
+            remaining: await giveBack(),
+          });
+        }
+        return json({ understanding: response.parsed_output, remaining: q.remaining });
       }
 
       if (narrateReq) {
@@ -84,13 +124,13 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal') return json({ error: 'upstream' }, 502);
+        if (response.stop_reason === 'refusal') return upstreamFail();
         let reply = '';
         for (const block of response.content) {
           if (block.type === 'text') reply += block.text;
         }
         reply = reply.trim();
-        if (!reply) return json({ error: 'upstream' }, 502);
+        if (!reply) return upstreamFail();
         return json({ reply, remaining: q.remaining });
       }
 
@@ -98,7 +138,7 @@ export default {
     } catch (err) {
       // Never log the user's text; only the error name/message from the SDK.
       console.error('anthropic error', err instanceof Error ? err.message : 'unknown');
-      return json({ error: 'upstream' }, 502);
+      return upstreamFail();
     }
   },
 };

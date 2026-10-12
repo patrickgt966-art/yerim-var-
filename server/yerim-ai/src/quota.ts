@@ -1,11 +1,13 @@
 // Pure logic: no Cloudflare or SDK imports, so it can be unit-tested with a fake KV.
 import {
+  FREE_DAILY,
   HISTORY_LIMIT,
   MAX_MESSAGE_CHARS,
   MAX_RESULTS,
   todayIstanbul,
   type ChatTurn,
   type NarrateRequest,
+  type QuotaRequest,
   type UnderstandRequest,
 } from '../../../src/lib/ai/protocol';
 
@@ -32,16 +34,46 @@ export async function charge(
   messageId: string,
   limit: number,
   now: Date,
-): Promise<{ allowed: boolean; remaining: number }> {
+): Promise<{ allowed: boolean; remaining: number; added: boolean }> {
   const key = `q:${todayIstanbul(now)}:${deviceId}`;
   const ids = parseIds(await kv.get(key));
   if (ids.includes(messageId)) {
-    return { allowed: true, remaining: Math.max(0, limit - ids.length) };
+    return { allowed: true, remaining: Math.max(0, limit - ids.length), added: false };
   }
-  if (ids.length >= limit) return { allowed: false, remaining: 0 };
+  if (ids.length >= limit) return { allowed: false, remaining: 0, added: false };
   ids.push(messageId);
   await kv.put(key, JSON.stringify(ids), { expirationTtl: TTL_SECONDS });
-  return { allowed: true, remaining: limit - ids.length };
+  return { allowed: true, remaining: limit - ids.length, added: true };
+}
+
+/**
+ * Gives back a use taken by `charge` (call only when it returned added: true).
+ * Removes just this messageId, so it is idempotent; returns the remaining count.
+ */
+export async function refund(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+  limit = FREE_DAILY,
+): Promise<number> {
+  const key = `q:${todayIstanbul(now)}:${deviceId}`;
+  const ids = parseIds(await kv.get(key));
+  if (!ids.includes(messageId)) return Math.max(0, limit - ids.length);
+  const kept = ids.filter((id) => id !== messageId);
+  await kv.put(key, JSON.stringify(kept), { expirationTtl: TTL_SECONDS });
+  return Math.max(0, limit - kept.length);
+}
+
+/** Remaining uses today, without charging. */
+export async function peek(
+  kv: KV,
+  deviceId: string,
+  now: Date,
+  limit = FREE_DAILY,
+): Promise<number> {
+  const ids = parseIds(await kv.get(`q:${todayIstanbul(now)}:${deviceId}`));
+  return Math.max(0, limit - ids.length);
 }
 
 /** Per-IP daily call counter; false when over max (stops device-id rotation abuse). */
@@ -70,6 +102,11 @@ function isText(v: unknown, max: number): v is string {
 
 function isNum(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
+}
+
+export function validQuota(body: unknown): QuotaRequest | null {
+  if (!isRecord(body)) return null;
+  return isId(body.deviceId) ? { deviceId: body.deviceId } : null;
 }
 
 export function validUnderstand(body: unknown): UnderstandRequest | null {

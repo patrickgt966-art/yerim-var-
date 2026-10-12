@@ -129,6 +129,8 @@ const QUERY_ALIAS: Record<string, string> = {
   'cruise port': 'alsancak limani',
   port: 'alsancak limani',
   ephesus: 'efes antik kenti',
+  // The OSM station is spelled "Alsancak Gar".
+  'alsancak gari': 'alsancak gar',
 };
 // Queries that name a university or hospital even without the word for it.
 const INSTITUTION_QUERIES = new Set(['deu', 'ege tip', 'dokuz eylul']);

@@ -36,6 +36,7 @@ import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
 import { HISTORY_LIMIT, type ChatTurn } from '@/lib/ai/protocol';
+import { noteAiActivity, refreshAiQuota } from '@/lib/ai/refresh';
 import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
 import { resolvePlace } from '@/lib/usePlaceSearch';
@@ -48,8 +49,12 @@ const LOCATION_TIMEOUT_MS = 5000;
 /** The server is authoritative for the daily quota: mirror it into the store. */
 function trackAi<T>(r: AiResult<T>): AiResult<T> {
   const store = useAi.getState();
+  noteAiActivity();
   if (r.ok) store.setRemaining(r.remaining);
   else if (r.reason === 'quota') store.markOut();
+  else if (r.remaining !== undefined) store.setRemaining(r.remaining);
+  // A timeout or network error: the server may or may not have charged, so ask it.
+  else if (r.reason === 'error') void refreshAiQuota({ force: true });
   return r;
 }
 
@@ -148,6 +153,11 @@ export default function ChatScreen() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Show the server's real count when the chat opens.
+  useEffect(() => {
+    void refreshAiQuota();
+  }, []);
 
   const nextId = () => `m${idRef.current++}`;
   /** One new id per user message, shared by its understand and narrate calls. */

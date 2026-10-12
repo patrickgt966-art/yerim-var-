@@ -920,3 +920,236 @@ describe('assistant: chat bugs from the phone', () => {
     expect(r.reply.cards.every((c) => c.kind === 'restaurant')).toBe(true);
   });
 });
+
+describe('a district plus a word that is no dish, name or place', () => {
+  type Ai = NonNullable<AssistantDeps['ai']>;
+  const withAi = (ai: Partial<Ai>): AssistantDeps => ({
+    ...deps,
+    ai: {
+      understand: async () => ({ ok: false, reason: 'error' }),
+      narrate: async () => ({ ok: false, reason: 'error' }),
+      quotaNotice: () => false,
+      ...ai,
+    },
+  });
+  const search = (over: Record<string, unknown>) =>
+    ({
+      ok: true,
+      remaining: 4,
+      value: {
+        kind: 'search',
+        district: null,
+        cat: null,
+        dish: null,
+        place: null,
+        food: false,
+        requireParking: false,
+        appleQuery: null,
+        nearMe: false,
+        dishServes: null,
+        ...over,
+      },
+    }) as const;
+
+  it.each([
+    ['food', "Bornova'da zortlama", "Bornova'da", 'zortlama'],
+    ['park', "Bornova'da zortlama", "Bornova'da", 'zortlama'],
+    ['food', "Karşıyaka'da hışhış", "Karşıyaka'da", 'hışhış'],
+    ['food', "Konak'ta zortlama", "Konak'ta", 'zortlama'],
+    ['food', "Çiğli'de zortlama", "Çiğli'de", 'zortlama'],
+  ] as const)('says so, with no cards, for "%s" chat: %s', async (section, q, inD, word) => {
+    const r = await answer(q, emptyContext(section), deps);
+    expect(r.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(r.reply.text).toContain(JSON.stringify(inD).slice(1, -1));
+    expect(r.reply.text).toContain(`"q":"${word}"`);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.text).not.toContain('chat.foodFound');
+    expect(r.ctx).toEqual(emptyContext(section));
+    // Two ways on: look for it as a dish, or the district's restaurants.
+    expect(r.reply.actions.map((a) => a.label.split(' ')[0])).toEqual([
+      'chat.actAsDish',
+      'chat.actDistrictFood',
+    ]);
+  });
+
+  it('offers "as a dish": the district restaurants with the honest dish-unknown text', async () => {
+    const r = await answer("Bornova'da zortlama", emptyContext('food'), deps);
+    const [asDish, plainFood] = r.reply.actions;
+    expect(asDish).toMatchObject({ kind: 'refine' });
+    const dish = await refine(r.ctx, (asDish as { patch: Partial<typeof r.ctx> }).patch, deps);
+    expect(dish.ctx).toMatchObject({ section: 'food', cat: null, dish: 'zortlama' });
+    expect(dish.ctx.place?.label).toBe('Bornova');
+    expect(dish.reply.text).toContain('chat.dishUnknown');
+    expect(dish.reply.cards.length).toBeGreaterThan(0);
+    expect(plainFood).toMatchObject({ kind: 'refine' });
+    expect(JSON.stringify(plainFood)).toContain("Bornova'daki");
+    const food = await refine(r.ctx, (plainFood as { patch: Partial<typeof r.ctx> }).patch, deps);
+    expect(food.ctx).toMatchObject({ section: 'food', cat: null, dish: null });
+    expect(food.ctx.place?.label).toBe('Bornova');
+    expect(food.reply.text).toContain('chat.foodFound');
+    expect(food.reply.cards.length).toBeGreaterThan(0);
+  });
+
+  it('offers the map instead of "as a dish" for a street-like word', async () => {
+    const r = await answer("Bornova'da Zeybek Sokak", emptyContext('food'), deps);
+    expect(r.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.actions[0]).toMatchObject({ kind: 'open', pathname: '/konum-sec' });
+  });
+
+  it('keeps the known readings: a dish, a category, a restaurant name, a place', async () => {
+    const dish = await answer("Bornova'da kebap", emptyContext('food'), deps);
+    expect(dish.reply.text).not.toContain('chat.districtUnknownThing');
+    expect(dish.reply.cards.length).toBeGreaterThan(0);
+    const sushi = await answer("Bornova'da sushi", emptyContext('food'), deps);
+    expect(sushi.reply.text).not.toContain('chat.districtUnknownThing');
+    expect(sushi.reply.cards.length).toBeGreaterThan(0);
+    // A dish that is new to the dictionary is a dish now, not an unknown word.
+    for (const q of ["Bornova'da kibbe", "Bornova'da sirken", "Bornova'da şinitzel"]) {
+      const r = await answer(q, emptyContext('food'), deps);
+      expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    }
+    // One place's full name stays a place (the mall): the district is not searched on its own.
+    const mall = await answer("Bornova'da Forum", emptyContext('food'), deps);
+    expect(mall.ctx.place?.label).toBe('Forum Bornova');
+    expect(mall.reply.cards.length).toBeGreaterThan(0);
+  });
+
+  it('shows the restaurants named after the word, in or near the district', async () => {
+    for (const [q, name] of [
+      ["Bornova'da Mado", 'mado'],
+      ["Bornova'da Özsüt", 'ozsut'],
+      ["Bornova'da Sakura", 'sakura'],
+    ] as const) {
+      const r = await answer(q, emptyContext('food'), deps);
+      expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+      expect(r.reply.text).toContain('chat.dishNamed');
+      expect(r.ctx.place?.label).toBe('Bornova');
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      expect(fold(r.reply.cards[0]!.name)).toContain(name);
+    }
+  });
+
+  it.each([
+    'romantik',
+    'ucuz',
+    'ne yenir',
+    'güzel bir yer',
+    'en iyi',
+    'yemek',
+    'bir yer',
+    'akşam yemeği',
+    'öğle yemeği',
+    'aile',
+    'manzaralı',
+    'açık',
+  ])(
+    'answers the qualifier request "Bornova\'da %s" with the district food, not "not found"',
+    async (w) => {
+      for (const section of ['food', 'park'] as const) {
+        const r = await answer(`Bornova'da ${w}`, emptyContext(section), deps);
+        expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+        expect(r.reply.cards.length).toBeGreaterThan(0);
+      }
+      // With the AI layer on and unable to help, still the district answer.
+      const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+      const ai = await answer(`Bornova'da ${w}`, emptyContext('food'), withAi({ understand }));
+      expect(ai.reply.text).not.toContain('chat.districtUnknownThing');
+      expect(ai.reply.cards.length).toBeGreaterThan(0);
+    },
+  );
+
+  it('keeps a real unknown word next to a qualifier unknown', async () => {
+    const r = await answer("Bornova'da romantik zortlama", emptyContext('food'), deps);
+    expect(r.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(r.reply.text).toContain('"q":"zortlama"');
+  });
+
+  it('prefers a known place whose full name is the words over a partial restaurant name', async () => {
+    const uni = await answer("Bornova'da Ege Üniversitesi", emptyContext('food'), deps);
+    expect(uni.ctx.place?.label).toBe('Ege Üniversitesi');
+    expect(uni.reply.text).not.toContain('chat.dishNamed');
+    expect(uni.reply.cards.length).toBeGreaterThan(0);
+    // An exact restaurant name still wins.
+    const mado = await answer("Bornova'da Mado", emptyContext('food'), deps);
+    expect(mado.ctx.place?.label).toBe('Bornova');
+    expect(mado.reply.text).toContain('chat.dishNamed');
+    expect(fold(mado.reply.cards[0]!.name)).toBe('mado');
+  });
+
+  it('searches around a known place near the district', async () => {
+    const r = await answer("Bornova'da Erzene", emptyContext('food'), deps);
+    expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+    expect(r.ctx.place?.label).toBe('Erzene');
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+    const park = await answer("Bornova'da Erzene", emptyContext('park'), deps);
+    expect(park.ctx.place?.label).toBe('Erzene');
+  });
+
+  it('asks the AI first when it is available, and uses its answer', async () => {
+    const understand = jest.fn(async () =>
+      search({ cat: 'lokanta', dish: 'zortlama', dishServes: ['lokanta'], food: true }),
+    );
+    const r = await answer("Bornova'da zortlama", emptyContext('food'), withAi({ understand }));
+    expect(understand).toHaveBeenCalledTimes(1);
+    expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+    expect(r.ctx.place?.label).toBe('Bornova');
+    expect(r.ctx.dish).toBe('zortlama');
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to the honest reply when the AI cannot place the word either', async () => {
+    const nothing = jest.fn(async () => search({}));
+    const a = await answer(
+      "Bornova'da zortlama",
+      emptyContext('food'),
+      withAi({ understand: nothing }),
+    );
+    expect(nothing).toHaveBeenCalledTimes(1);
+    expect(a.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(a.reply.cards).toEqual([]);
+
+    const failing = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+    const b = await answer(
+      "Bornova'da zortlama",
+      emptyContext('food'),
+      withAi({ understand: failing }),
+    );
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(b.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(b.reply.cards).toEqual([]);
+  });
+
+  it('says so too, with the out-of-quota notice, when the daily AI uses are gone', async () => {
+    const r = await answer(
+      "Bornova'da zortlama",
+      emptyContext('food'),
+      withAi({
+        understand: async () => ({ ok: false, reason: 'quota' }),
+        quotaNotice: () => true,
+      }),
+    );
+    expect(r.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.notice).toBe('chat.sparkleOut');
+  });
+
+  it('does not spend an AI use on a word that names a restaurant or a place', async () => {
+    const boom = async () => {
+      throw new Error('ai must not be called');
+    };
+    const mado = await answer(
+      "Bornova'da Mado",
+      emptyContext('food'),
+      withAi({ understand: boom }),
+    );
+    expect(mado.reply.text).toContain('chat.dishNamed');
+    const erzene = await answer(
+      "Bornova'da Erzene",
+      emptyContext('food'),
+      withAi({ understand: boom }),
+    );
+    expect(erzene.ctx.place?.label).toBe('Erzene');
+  });
+});
