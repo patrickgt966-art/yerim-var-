@@ -3,13 +3,20 @@
 const mockParse = jest.fn();
 const mockCreate = jest.fn();
 
-jest.mock('@anthropic-ai/sdk', () => ({
-  __esModule: true,
-  default: class {
-    messages = { parse: mockParse, create: mockCreate };
-  },
-}));
-jest.mock('@anthropic-ai/sdk/helpers/zod', () => ({ zodOutputFormat: () => ({}) }));
+// Virtual: CI installs only the app's packages, so the worker's SDK may not be on disk.
+jest.mock(
+  '@anthropic-ai/sdk',
+  () => ({
+    __esModule: true,
+    default: class {
+      messages = { parse: mockParse, create: mockCreate };
+    },
+  }),
+  { virtual: true },
+);
+jest.mock('@anthropic-ai/sdk/helpers/zod', () => ({ zodOutputFormat: () => ({}) }), {
+  virtual: true,
+});
 
 import worker, { type Env } from '../index';
 
