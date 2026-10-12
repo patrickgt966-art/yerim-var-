@@ -87,7 +87,7 @@ export const IZMIR_DISTRICTS: District[] = [
 const words = (s: string) => new Set(s.split(' '));
 
 const GREETING = words(
-  'selam selamlar merhaba merhabalar mrb slm hey gunaydin naber nbr nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah aksamlar gunler geceler selamun selamin aleykum selamunaleykum selaminaleykum aleykumselam',
+  'selam selamlar merhaba merhabalar mrb slm hey gunaydin naber nbr nasilsin nasilsiniz iyiyim tesekkurler tesekkur ederim sagol sag ol eyvallah aksamlar gunler geceler selamun selamin aleykum selamunaleykum selaminaleykum aleykumselam hello helo hi hii heyy hola',
 );
 // Short greetings ("sa", "as" for "selamün aleyküm"): only when they are most of the text.
 const SOLO_GREETING = words('sa as');

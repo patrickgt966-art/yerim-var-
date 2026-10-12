@@ -77,6 +77,13 @@ describe('greeting replies match the greeting', () => {
     ['görüşürüz', 'chat.greet.bye_'],
     ['teşekkürler', 'chat.greet.thanks_'],
     ['sağ ol', 'chat.greet.thanks_'],
+    ['Hello', 'chat.hello_'],
+    ['hi', 'chat.hello_'],
+    ['hey', 'chat.hello_'],
+    ['good morning', 'chat.greet.morning_'],
+    ['thank you', 'chat.greet.thanks_'],
+    ['bye', 'chat.greet.bye_'],
+    ['kolay gelsin', 'chat.hello_'],
   ])('"%s" -> %s', async (q, prefix) => {
     const r = await answer(q, emptyContext('park'), keyDeps);
     expect(r.reply.text.startsWith(prefix)).toBe(true);

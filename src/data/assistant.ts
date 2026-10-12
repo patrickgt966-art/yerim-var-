@@ -520,7 +520,10 @@ const GREET_WORDS = new Set(
     'eyvallah mersi sagolun sag ol olun hosca kal kalin hoscakal gorusuruz bye bay sa as aleykum ' +
     'aleykumselam selamunaleykum selaminaleykum selamun selamin gunler aksamlar geceler gunaydin ' +
     'selam selamlar merhaba merhabalar mrb slm hey hosgeldin iyiyim ya hocam abi abla kanka dostum ' +
-    'canim kardesim kardes usta reis size de sen siz cok'
+    'canim kardesim kardes usta reis size de sen siz cok ' +
+    // English and other everyday greetings
+    'hello helo hi hii hey heyy yo hola good morning evening night thanks thank you thx ty ' +
+    'goodbye see kolay gelsin hayirli calismalar'
   ).split(' '),
 );
 
@@ -537,19 +540,44 @@ function greetKind(folded: string): GreetKind | null {
   ) {
     return 'fine';
   }
-  if (any('tesekkurler', 'tesekkur', 'sagol', 'saol', 'eyvallah', 'mersi', 'sagolun'))
+  if (
+    any(
+      'tesekkurler',
+      'tesekkur',
+      'sagol',
+      'saol',
+      'eyvallah',
+      'mersi',
+      'sagolun',
+      'thanks',
+      'thx',
+      'ty',
+    )
+  )
     return 'thanks';
+  if (has('thank')) return 'thanks';
   if (has('sag') && any('ol', 'olun')) return 'thanks';
-  if ((has('hosca') && any('kal', 'kalin')) || any('hoscakal', 'gorusuruz', 'bye')) return 'bye';
+  if (
+    (has('hosca') && any('kal', 'kalin')) ||
+    any('hoscakal', 'gorusuruz', 'bye', 'goodbye') ||
+    (has('see') && any('you', 'ya'))
+  )
+    return 'bye';
   if (has('bay') && toks.filter((w) => w === 'bay').length >= 2) return 'bye';
   if (any('sa', 'as', 'aleykum', 'aleykumselam', 'selamunaleykum', 'selaminaleykum'))
     return 'salam';
   if (has('gunler')) return 'day';
+  if (has('good') && has('morning')) return 'morning';
+  if (has('good') && has('evening')) return 'evening';
+  if (has('good') && has('night')) return 'night';
   if (has('aksamlar')) return 'evening';
   if (has('geceler')) return 'night';
   if (has('gunaydin')) return 'morning';
   if (
-    any('selam', 'selamlar', 'merhaba', 'merhabalar', 'mrb', 'slm', 'hey', 'hosgeldin', 'iyiyim')
+    any('selam', 'selamlar', 'merhaba', 'merhabalar', 'mrb', 'slm', 'hey', 'hosgeldin', 'iyiyim') ||
+    any('hello', 'helo', 'hi', 'hii', 'heyy', 'yo', 'hola') ||
+    (has('kolay') && has('gelsin')) ||
+    (has('iyi') && has('calismalar'))
   ) {
     return 'hello';
   }
