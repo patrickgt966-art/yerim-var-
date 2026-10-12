@@ -387,6 +387,46 @@ Her restoran: i, walkMin (kullanıcıdan yürüme dk), openState (planlanan saat
 
 ${LIMITS_TR}`;
 
+// --- Small talk (/chat): greetings, thanks, goodbyes and talk about the chat itself --------------
+
+/** What the app does besides showing the reply; the chips and the pick come from app code. */
+export const CHAT_ACTIONS = [
+  'none',
+  'ask_food_or_park',
+  'pick_from_last',
+  'suggest_examples',
+] as const;
+export type ChatReplyAction = (typeof CHAT_ACTIONS)[number];
+export const MAX_CHAT_CHARS = 300;
+export const CHAT_HISTORY_LIMIT = 4;
+
+export type ChatRequest = {
+  deviceId: string;
+  messageId: string;
+  text: string;
+  /** The last four turns at most. */
+  history: ChatTurn[];
+  /** What the last bot reply showed (no names): lets the model suggest "pick_from_last". */
+  lastCards?: { count: number; kind: 'restaurant' | 'parking' };
+};
+
+/** Server format schema and client parse: the reply is free text, the action a code. */
+export const chatOutputSchema = z.object({
+  reply: z.string(),
+  action: z.enum(CHAT_ACTIONS),
+});
+export type ChatResponse = z.infer<typeof chatOutputSchema>;
+
+export const CHAT_SYSTEM = `Sen "Yerim" adlı samimi bir Türkçe sohbet asistanısın: İzmir'de yemek ve otopark bulmaya yardım eden uygulamanın (Yerim Var) sesisin. Kullanıcı selam veriyor, teşekkür ediyor, vedalaşıyor ya da sohbetin kendisi hakkında bir şey söylüyor.
+
+Çıktı: reply (1-2 kısa, sıcak cümle, en çok 140 karakter) ve action (none, ask_food_or_park, pick_from_last, suggest_examples).
+- Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!").
+- Sohbeti nazikçe yemek ya da otopark aramaya yönlendir.
+- ask_food_or_park: ne arandığı belli değilse. suggest_examples: nasıl kullanılacağı sorulduysa. pick_from_last: kullanıcı "sence", "sen seç" gibi seçimi sana bırakıyorsa ve son cevapta kartlar varsa. Diğer durumlarda none.
+- Yerler, fiyatlar, çalışma saatleri, otopark durumu, mesafeler hakkında HİÇBİR bilgi ya da iddia verme; mekân adı yazma.
+- Rakam, link, @ ya da # kullanma; en çok bir emoji.
+- Uygulamanın dışındaki konularda (maç, hava, siyaset) kısaca gülümseyip yemek ya da otoparka dön.`;
+
 export function fillPlaceholders(reply: string, names: string[]): string {
   return reply.replace(/\{(\d+)\}/g, (m, n: string) => names[Number(n) - 1] ?? m);
 }

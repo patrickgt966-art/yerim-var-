@@ -1,12 +1,17 @@
 import Constants from 'expo-constants';
 
 import {
+  CHAT_HISTORY_LIMIT,
   HISTORY_LIMIT,
+  MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
   UnderstandingClientSchema,
+  chatOutputSchema,
   parkPickOutputSchema,
   pickOutputSchema,
   planOutputSchema,
+  type ChatRequest,
+  type ChatResponse,
   type NarrateRequest,
   type ParkPickRequest,
   type ParkPickResponse,
@@ -23,6 +28,7 @@ const UNDERSTAND_TIMEOUT_MS = 12000;
 const NARRATE_TIMEOUT_MS = 15000;
 const PICK_TIMEOUT_MS = 12000;
 const QUOTA_TIMEOUT_MS = 6000;
+const CHAT_TIMEOUT_MS = 8000;
 
 /** Server URL from app.json extra.aiUrl; null keeps the AI layer off. */
 export function aiBaseUrl(): string | null {
@@ -154,6 +160,27 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       const parsed = planOutputSchema(req.candidates.length, parks).safeParse(body?.plan);
       if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
       return { ok: true, value: parsed.data, remaining: body.remaining };
+    },
+
+    /**
+     * Small talk. Costs no ✨ and has no `remaining`; null on any failure (a limit, an error, a
+     * timeout, a reply that does not fit the schema), so the caller uses its own template.
+     */
+    async chat(req: ChatRequest): Promise<ChatResponse | null> {
+      const res = await post(
+        '/chat',
+        {
+          ...req,
+          text: req.text.slice(0, MAX_CHAT_CHARS),
+          history: req.history
+            .slice(-CHAT_HISTORY_LIMIT)
+            .map((h) => ({ role: h.role, text: h.text.slice(0, MAX_CHAT_CHARS) })),
+        },
+        CHAT_TIMEOUT_MS,
+      );
+      if ('failed' in res) return null;
+      const parsed = chatOutputSchema.safeParse(res.data);
+      return parsed.success ? parsed.data : null;
     },
 
     /** Server-side uses left today; null on any error (an older server has no /quota). */

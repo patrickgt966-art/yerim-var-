@@ -149,7 +149,7 @@ describe('assistant', () => {
 
   it('greets through address words', async () => {
     const r = await answer('selam dostum nasılsın', emptyContext('park'), deps);
-    expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+    expect(r.reply.text.startsWith('chat.greet.fine_')).toBe(true);
   });
 
   it('flags an unknown or named dish', async () => {
@@ -722,7 +722,7 @@ describe('assistant: chat bugs from the phone', () => {
 
     it.each(['Selamin aleykum', 'selamün aleyküm'])('greets back "%s"', async (q) => {
       const r = await answer(q, emptyContext(section), deps);
-      expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+      expect(r.reply.text.startsWith('chat.greet.salam_')).toBe(true);
       expect(r.reply.cards).toEqual([]);
     });
 
@@ -751,7 +751,7 @@ describe('assistant: chat bugs from the phone', () => {
         quotaNotice: () => false,
       },
     });
-    expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+    expect(r.reply.text.startsWith('chat.greet.salam_')).toBe(true);
     expect(understand).not.toHaveBeenCalled();
   });
 

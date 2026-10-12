@@ -323,3 +323,49 @@ describe('ai client pick / plan / understand extras', () => {
     expect(r).toEqual({ ok: false, reason: 'error' });
   });
 });
+
+describe('ai client chat', () => {
+  const chatReq = {
+    deviceId: 'd-test',
+    messageId: 'm1',
+    text: 'iyi günler',
+    history: [],
+  };
+
+  it('returns the reply and action', async () => {
+    const body = { reply: 'Size de iyi günler!', action: 'none' };
+    const f = fakeFetch(200, body);
+    const r = await createAiClient('https://ai.test', f).chat(chatReq);
+    expect(r).toEqual(body);
+    expect(f).toHaveBeenCalledWith(
+      'https://ai.test/chat',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('sends at most four turns and clips long texts', async () => {
+    const f = fakeFetch(200, { reply: 'Selam!', action: 'none' });
+    const turn = { role: 'user' as const, text: 'x'.repeat(400) };
+    await createAiClient('https://ai.test', f).chat({
+      ...chatReq,
+      text: 'y'.repeat(400),
+      history: Array(6).fill(turn),
+    });
+    const sent = JSON.parse((f as unknown as jest.Mock).mock.calls[0][1].body as string);
+    expect(sent.text).toHaveLength(300);
+    expect(sent.history).toHaveLength(4);
+    expect(sent.history[0].text).toHaveLength(300);
+  });
+
+  it('returns null on a limit, a server error, a bad shape or a network error', async () => {
+    const client = (f: typeof fetch) => createAiClient('https://ai.test', f);
+    expect(await client(fakeFetch(429, { reason: 'global' })).chat(chatReq)).toBeNull();
+    expect(await client(fakeFetch(502, { error: 'upstream' })).chat(chatReq)).toBeNull();
+    expect(await client(fakeFetch(200, { reply: 'x', action: 'dance' })).chat(chatReq)).toBeNull();
+    expect(await client(fakeFetch(200, { reply: 5, action: 'none' })).chat(chatReq)).toBeNull();
+    const down = jest.fn(async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    expect(await client(down).chat(chatReq)).toBeNull();
+  });
+});

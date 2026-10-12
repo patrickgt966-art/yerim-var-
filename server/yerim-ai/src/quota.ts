@@ -1,15 +1,18 @@
 // Pure logic: no Cloudflare or SDK imports, so it can be unit-tested with a fake KV.
 import {
+  CHAT_HISTORY_LIMIT,
   DISH_MATCHES,
   FREE_DAILY,
   HISTORY_LIMIT,
   MAX_CANDIDATES,
+  MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
   MAX_PLAN_PARKINGS,
   MAX_RESULTS,
   OPEN_STATES,
   PLAN_WHENS,
   todayIstanbul,
+  type ChatRequest,
   type ChatTurn,
   type DishMatch,
   type NarrateRequest,
@@ -101,6 +104,96 @@ export async function ipGuard(kv: KV, ip: string, now: Date, max = 100): Promise
   return true;
 }
 
+// --- /chat limits ---------------------------------------------------------------------------
+// Small talk costs real money but no ✨: it has its own counters, all read from wrangler.toml
+// [vars] (strings), so they change with a redeploy and without an app release.
+
+export type ChatLimits = {
+  /** Chat replies per device per day. */
+  perDevice: number;
+  /** Chat replies across all devices per day; at the cap nothing is sent to Anthropic. */
+  global: number;
+  /** Calls per IP per day, shared by every endpoint. */
+  perIp: number;
+  /** A device may call /chat at most once per this many milliseconds. */
+  minIntervalMs: number;
+};
+
+export const CHAT_DEFAULTS: ChatLimits = {
+  perDevice: 15,
+  global: 10000,
+  perIp: 100,
+  minIntervalMs: 1000,
+};
+
+type LimitVars = {
+  CHAT_DAILY_PER_DEVICE?: string;
+  CHAT_GLOBAL_DAILY?: string;
+  AI_DAILY_PER_IP?: string;
+  CHAT_MIN_INTERVAL_MS?: string;
+};
+
+function intVar(v: string | undefined, fallback: number): number {
+  if (v === undefined || v.trim() === '') return fallback;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
+}
+
+/** The limits from the worker's vars; unset or invalid values fall back to the defaults. */
+export function chatLimits(vars: LimitVars): ChatLimits {
+  return {
+    perDevice: intVar(vars.CHAT_DAILY_PER_DEVICE, CHAT_DEFAULTS.perDevice),
+    global: intVar(vars.CHAT_GLOBAL_DAILY, CHAT_DEFAULTS.global),
+    perIp: intVar(vars.AI_DAILY_PER_IP, CHAT_DEFAULTS.perIp),
+    minIntervalMs: intVar(vars.CHAT_MIN_INTERVAL_MS, CHAT_DEFAULTS.minIntervalMs),
+  };
+}
+
+export type ChatCharge = { ok: true } | { ok: false; reason: 'slow' | 'device' | 'global' };
+
+async function readCount(kv: KV, key: string): Promise<number> {
+  const n = Number((await kv.get(key)) ?? '0');
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Takes one chat reply from the device and the global counters, or says which limit stopped it.
+ * Checked in this order: too fast (a rejected call does not count), global cap, device cap.
+ */
+export async function chatCharge(
+  kv: KV,
+  deviceId: string,
+  now: Date,
+  limits: ChatLimits,
+): Promise<ChatCharge> {
+  const day = todayIstanbul(now);
+  const lastKey = `chat:last:${deviceId}`;
+  const last = Number((await kv.get(lastKey)) ?? '0');
+  if (Number.isFinite(last) && last > 0 && now.getTime() - last < limits.minIntervalMs) {
+    return { ok: false, reason: 'slow' };
+  }
+  const globalKey = `chat:global:${day}`;
+  const deviceKey = `chat:${day}:${deviceId}`;
+  const globalCount = await readCount(kv, globalKey);
+  if (globalCount >= limits.global) return { ok: false, reason: 'global' };
+  const deviceCount = await readCount(kv, deviceKey);
+  if (deviceCount >= limits.perDevice) return { ok: false, reason: 'device' };
+  await kv.put(globalKey, String(globalCount + 1), { expirationTtl: TTL_SECONDS });
+  await kv.put(deviceKey, String(deviceCount + 1), { expirationTtl: TTL_SECONDS });
+  // KV keeps a key for at least 60 s.
+  await kv.put(lastKey, String(now.getTime()), { expirationTtl: 60 });
+  return { ok: true };
+}
+
+/** Gives back what `chatCharge` took when Anthropic failed or refused; never below zero. */
+export async function chatRefund(kv: KV, deviceId: string, now: Date): Promise<void> {
+  const day = todayIstanbul(now);
+  for (const key of [`chat:global:${day}`, `chat:${day}:${deviceId}`]) {
+    const n = await readCount(kv, key);
+    await kv.put(key, String(Math.max(0, n - 1)), { expirationTtl: TTL_SECONDS });
+  }
+}
+
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -139,6 +232,31 @@ export function validUnderstand(body: unknown): UnderstandRequest | null {
     turns.push({ role: h.role, text: h.text });
   }
   return { deviceId, messageId, text, history: turns, section };
+}
+
+/** /chat: a short text, the last four turns at most, and what the last reply showed. */
+export function validChat(body: unknown): ChatRequest | null {
+  if (!isRecord(body)) return null;
+  const { deviceId, messageId, text, history, lastCards } = body;
+  if (!isId(deviceId) || !isId(messageId)) return null;
+  if (!isText(text, MAX_CHAT_CHARS)) return null;
+  if (!Array.isArray(history) || history.length > CHAT_HISTORY_LIMIT) return null;
+  const turns: ChatTurn[] = [];
+  for (const h of history) {
+    if (!isRecord(h)) return null;
+    if (h.role !== 'user' && h.role !== 'bot') return null;
+    if (typeof h.text !== 'string' || h.text.length > MAX_CHAT_CHARS) return null;
+    turns.push({ role: h.role, text: h.text });
+  }
+  const req: ChatRequest = { deviceId, messageId, text, history: turns };
+  if (lastCards !== undefined) {
+    if (!isRecord(lastCards)) return null;
+    if (!Number.isInteger(lastCards.count) || (lastCards.count as number) < 0) return null;
+    if ((lastCards.count as number) > MAX_RESULTS) return null;
+    if (lastCards.kind !== 'restaurant' && lastCards.kind !== 'parking') return null;
+    req.lastCards = { count: lastCards.count as number, kind: lastCards.kind };
+  }
+  return req;
 }
 
 export function validNarrate(body: unknown): NarrateRequest | null {

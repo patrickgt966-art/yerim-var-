@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import {
+  CHAT_SYSTEM,
   FREE_DAILY,
   NARRATE_SYSTEM,
   PARK_PICK_SYSTEM,
@@ -9,6 +10,7 @@ import {
   PLAN_SYSTEM,
   UNDERSTAND_SYSTEM,
   UnderstandingSchema,
+  chatOutputSchema,
   parkPickOutputSchema,
   pickOutputSchema,
   planOutputSchema,
@@ -16,10 +18,14 @@ import {
 } from '../../../src/lib/ai/protocol';
 import {
   charge,
+  chatCharge,
+  chatLimits,
+  chatRefund,
   ipGuard,
   peek,
   refund,
   toMessages,
+  validChat,
   validNarrate,
   validPick,
   validPlan,
@@ -30,6 +36,11 @@ import {
 export interface Env {
   QUOTA: KVNamespace;
   ANTHROPIC_API_KEY: string;
+  /** Limits from wrangler.toml [vars] (strings); see chatLimits for the defaults. */
+  CHAT_DAILY_PER_DEVICE?: string;
+  CHAT_GLOBAL_DAILY?: string;
+  AI_DAILY_PER_IP?: string;
+  CHAT_MIN_INTERVAL_MS?: string;
 }
 
 const MODEL = 'claude-haiku-5-5';
@@ -58,10 +69,67 @@ async function quotaRoute(req: Request, env: Env): Promise<Response> {
   return json({ remaining: await peek(env.QUOTA, parsed.deviceId, now) });
 }
 
+/**
+ * Small talk (greetings, thanks, goodbyes, talk about the chat). Costs no ✨, so it has its own
+ * limits: per IP (shared with the other calls), per device, global, and a minimum interval.
+ * Anthropic is only called after every limit passed; a failed call gives the counters back.
+ */
+async function chatRoute(req: Request, env: Env): Promise<Response> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const parsed = validChat(raw);
+  if (!parsed) return json({ error: 'bad_request' }, 400);
+
+  const limits = chatLimits(env);
+  const now = new Date();
+  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+  if (!(await ipGuard(env.QUOTA, ip, now, limits.perIp))) {
+    return json({ error: 'rate_limited', reason: 'ip' }, 429);
+  }
+  const taken = await chatCharge(env.QUOTA, parsed.deviceId, now, limits);
+  if (!taken.ok) return json({ error: 'rate_limited', reason: taken.reason }, 429);
+
+  const giveBack = async () => {
+    try {
+      await chatRefund(env.QUOTA, parsed.deviceId, now);
+    } catch {
+      // The counters stay one too high until tomorrow; the user still gets the template.
+    }
+  };
+  try {
+    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+    const cards = parsed.lastCards;
+    const system = cards
+      ? `${CHAT_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+      : CHAT_SYSTEM;
+    const response = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 200,
+      system,
+      output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
+      messages: toMessages(parsed.history, parsed.text),
+    });
+    if (response.stop_reason === 'refusal' || !response.parsed_output) {
+      await giveBack();
+      return json({ error: 'upstream' }, 502);
+    }
+    return json(response.parsed_output);
+  } catch (err) {
+    console.error('anthropic error', err instanceof Error ? err.message : 'unknown');
+    await giveBack();
+    return json({ error: 'upstream' }, 502);
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
+    if (req.method === 'POST' && path === '/chat') return chatRoute(req, env);
     if (req.method !== 'POST' || !['/understand', '/narrate', '/pick', '/plan'].includes(path)) {
       return json({ error: 'not_found' }, 404);
     }
@@ -82,7 +150,9 @@ export default {
 
     const now = new Date();
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-    if (!(await ipGuard(env.QUOTA, ip, now))) return json({ error: 'rate_limited' }, 429);
+    if (!(await ipGuard(env.QUOTA, ip, now, chatLimits(env).perIp))) {
+      return json({ error: 'rate_limited' }, 429);
+    }
 
     // TODO(subscriptions): check an entitlement here and raise the limit (SUB_DAILY) for subscribers.
     const limit = FREE_DAILY;
