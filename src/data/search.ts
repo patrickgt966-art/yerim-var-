@@ -329,6 +329,23 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
 }
 
 /**
+ * Place resolution for the chat. Like searchPlaces, but a lone short word (up to 6 letters) must
+ * be a whole word of the name (or a known alias): "sence" must not find "Sencer". Autocomplete
+ * keeps using searchPlaces, where a prefix is what the user wants.
+ */
+export function searchPlacesStrict(query: string, limit = 6): SearchHit[] {
+  const q = fold(query);
+  if (q.includes(' ') || q.length > 6) return searchPlaces(query, limit);
+  index ??= buildIndex();
+  if (QUERY_ALIAS[q] || ALIAS[q] || index.some((e) => e.aliases.includes(q))) {
+    return searchPlaces(query, limit);
+  }
+  return searchPlaces(query, 50)
+    .filter((h) => fold(h.name).split(' ').includes(q))
+    .slice(0, limit);
+}
+
+/**
  * The leftover text names a place when each word starts a word of a place name
  * (short words must be a whole word), not merely appears inside one.
  */

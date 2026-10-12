@@ -150,6 +150,15 @@ export default function ChatScreen() {
                 };
                 return trackAi(await aiClient.plan(req));
               },
+              // Small talk: no ✨ is used, so nothing is tracked.
+              chat: (text, lastCards) =>
+                aiClient.chat({
+                  deviceId: useAi.getState().deviceId,
+                  messageId: aiMsgRef.current.messageId,
+                  text,
+                  history: aiMsgRef.current.history,
+                  ...(lastCards ? { lastCards } : {}),
+                }),
               quotaNotice: () => useAi.getState().noticeOnce(),
             }
           : undefined,

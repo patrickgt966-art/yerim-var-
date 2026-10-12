@@ -144,3 +144,35 @@ describe('validateFreeText for the off-topic redirect', () => {
     expect(validateFreeText('tone', t)).toBeNull();
   });
 });
+
+describe('validateFreeText: chat zone (small talk)', () => {
+  it.each([
+    'Size de iyi günler! Park yeri mi, yemek mi?',
+    'Selam! Ben Yerim, yemek ya da otopark bulurum.',
+    'Rica ederim, ne demek 😄',
+    'Görüşürüz! İyi yolculuklar.',
+  ])('accepts "%s"', (text) => {
+    expect(validateFreeText('chat', text, ctx)).toBe(text);
+  });
+
+  it.each([
+    'Size de 2 iyi gün!',
+    'Yakında ucuz bir yer var.',
+    'Bu otopark şu an boş ve ücretsiz.',
+    'Konak Otopark güzel bir yer olabilir.',
+    "Bornova'da bir şey bulalım.",
+    'Selam! Nasılsın? Ne yapıyorsun? Ben iyiyim.',
+    'Selam! '.repeat(25),
+    'Detay için www.ornek.com adresine bak.',
+    'Selam 😄😄',
+    '',
+  ])('rejects "%s"', (text) => {
+    expect(validateFreeText('chat', text, ctx)).toBeNull();
+  });
+
+  it('allows parking words in a chat reply but not in the tone', () => {
+    const text = 'Park yeri mi arıyoruz?';
+    expect(validateFreeText('chat', text, ctx)).toBe(text);
+    expect(validateFreeText('tone', text, ctx)).toBeNull();
+  });
+});

@@ -3,7 +3,7 @@
 import { fold } from './protocol';
 
 /** Z1 = tone (pick / plan / understand), Z2 = clarify question, Z3 = note about a dish. */
-export type FreeTextZone = 'tone' | 'clarify' | 'dishNote' | 'offtopic';
+export type FreeTextZone = 'tone' | 'clarify' | 'dishNote' | 'offtopic' | 'chat';
 
 /** 'offtopic' is the chit-chat redirect of /understand: tone rules, a little more room. */
 const MAX_CHARS: Record<FreeTextZone, number> = {
@@ -11,6 +11,7 @@ const MAX_CHARS: Record<FreeTextZone, number> = {
   clarify: 80,
   dishNote: 140,
   offtopic: 120,
+  chat: 140,
 };
 const MAX_SENTENCES = 2;
 
@@ -58,7 +59,7 @@ export const BANNED_WORDS = [
   'yuksekl',
   'rezervasyon',
 ];
-/** Banned in the tone and the dish note; the clarify question may ask about parking. */
+/** Banned in the tone and the dish note; the clarify question and the chat reply may talk about parking. */
 export const BANNED_PARK_WORDS = ['otopark', 'park'];
 /** Claims about how a place feels: banned in the tone and the dish note. */
 export const BANNED_AMBIANCE_WORDS = ['sakin', 'romantik', 'manzara', 'cocuk dostu'];
@@ -106,6 +107,8 @@ const KNOWN_CAPITALISED = [
   'Avrupa',
   'Meksika',
   'Amerika',
+  // The assistant's own name, used in the chat reply ("Ben Yerim").
+  'Yerim',
 ].map((w) => fold(w));
 
 export type FreeTextContext = {
@@ -147,7 +150,11 @@ export function validateFreeText(
   const padded = ` ${fold(text)}`;
   const banned = [
     ...BANNED_WORDS,
-    ...(zone === 'clarify' ? [] : [...BANNED_PARK_WORDS, ...BANNED_AMBIANCE_WORDS]),
+    ...(zone === 'clarify'
+      ? []
+      : zone === 'chat'
+        ? BANNED_AMBIANCE_WORDS
+        : [...BANNED_PARK_WORDS, ...BANNED_AMBIANCE_WORDS]),
     ...(zone === 'dishNote' ? BANNED_DISH_NOTE_WORDS : []),
   ];
   if (banned.some((w) => hasWord(padded, w))) return null;

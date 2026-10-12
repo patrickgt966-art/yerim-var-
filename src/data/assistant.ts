@@ -50,7 +50,7 @@ import {
   type Restaurant,
   type RestaurantRow,
 } from '@/data/restaurants';
-import { fold, searchPlaces } from '@/data/search';
+import { fold, searchPlacesStrict } from '@/data/search';
 import type { Parking } from '@/data/types';
 import { closesLate, istanbulClock, openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
@@ -58,6 +58,10 @@ import { validateFreeText, type FreeTextContext } from '@/lib/ai/freeText';
 import {
   MAX_CANDIDATES,
   MAX_PLAN_PARKINGS,
+  MAX_REASONS,
+  PARK_REASONS,
+  PICK_REASONS,
+  type ChatResponse,
   type ClarifyAsk,
   type DishMatch,
   type ParkPickCandidate,
@@ -75,7 +79,14 @@ import {
   type Understanding,
   type Wish,
 } from '@/lib/ai/protocol';
-import { verifyParkPick, verifyPick, verifyPlan, walkMinFromMeters } from '@/lib/ai/verify';
+import {
+  parkReasonHolds,
+  pickReasonHolds,
+  verifyParkPick,
+  verifyPick,
+  verifyPlan,
+  walkMinFromMeters,
+} from '@/lib/ai/verify';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { tariffFor } from '@/data/tariffs';
@@ -109,6 +120,8 @@ export type ChatContext = {
   when?: PlanWhen;
   /** The user's words that made this list; the "✨ Yerim seçsin" chip sends them. */
   query?: string;
+  /** The cards of the last bot reply; "sence" / "sen seç" pick among them. */
+  lastCards?: ChatCard[];
 };
 
 export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
@@ -206,6 +219,14 @@ export type AssistantDeps = {
     pickPark?(
       req: Omit<ParkPickRequest, 'deviceId' | 'messageId'>,
     ): Promise<AiResult<ParkPickResponse>>;
+    /**
+     * Small talk (greeting, thanks, goodbye, talk about the chat): a short reply and a code, or
+     * null on any failure or limit. Costs no ✨. An AI layer without it uses the templates.
+     */
+    chat?(
+      text: string,
+      lastCards?: { count: number; kind: 'restaurant' | 'parking' },
+    ): Promise<ChatResponse | null>;
     /** True the first time per day, so the "out of quota" notice shows once. */
     quotaNotice(): boolean;
   };
@@ -303,7 +324,7 @@ function districtLeftover(it: QueryIntent, text: string): Leftover | null {
       );
   if (pq.length >= 3 && near.some(exact)) return { kind: 'name', x };
   // 2. A known place (university, mall, landmark) whose full name starts with the words.
-  const placeHits = searchPlaces(pq, 6).filter(
+  const placeHits = searchPlacesStrict(pq, 6).filter(
     (hit) => distanceMeters(centre, hit) <= DISTRICT_REACH_M,
   );
   const asPlace = (h: (typeof placeHits)[number]): Leftover => ({
@@ -485,7 +506,299 @@ type AnswerMeta = {
   planWhen: PlanWhen | null;
   /** The daily AI uses are gone: do not ask again for this message. */
   quotaOut: boolean;
+  /** The reply is complete as it is (small talk, a pick of the last cards): finishAnswer adds nothing. */
+  settled?: boolean;
 };
+
+type GreetKind =
+  'day' | 'evening' | 'night' | 'morning' | 'fine' | 'salam' | 'thanks' | 'bye' | 'hello';
+
+/** Words that may appear in a pure greeting; any other word makes the text a real request. */
+const GREET_WORDS = new Set(
+  (
+    'nasilsin nasilsiniz naber nbr ne haber iyi misin misiniz tesekkurler tesekkur ederim sagol saol ' +
+    'eyvallah mersi sagolun sag ol olun hosca kal kalin hoscakal gorusuruz bye bay sa as aleykum ' +
+    'aleykumselam selamunaleykum selaminaleykum selamun selamin gunler aksamlar geceler gunaydin ' +
+    'selam selamlar merhaba merhabalar mrb slm hey hosgeldin iyiyim ya hocam abi abla kanka dostum ' +
+    'canim kardesim kardes usta reis size de sen siz cok'
+  ).split(' '),
+);
+
+/** What a pure greeting is ("iyi günler", "naber", "sa"), so the answer fits it; null otherwise. */
+function greetKind(folded: string): GreetKind | null {
+  const toks = folded.split(' ').filter(Boolean);
+  if (toks.length === 0 || toks.length > 6 || !toks.every((w) => GREET_WORDS.has(w))) return null;
+  const has = (w: string) => toks.includes(w);
+  const any = (...w: string[]) => w.some(has);
+  if (
+    any('nasilsin', 'nasilsiniz', 'naber', 'nbr') ||
+    (has('ne') && has('haber')) ||
+    (has('iyi') && any('misin', 'misiniz'))
+  ) {
+    return 'fine';
+  }
+  if (any('tesekkurler', 'tesekkur', 'sagol', 'saol', 'eyvallah', 'mersi', 'sagolun'))
+    return 'thanks';
+  if (has('sag') && any('ol', 'olun')) return 'thanks';
+  if ((has('hosca') && any('kal', 'kalin')) || any('hoscakal', 'gorusuruz', 'bye')) return 'bye';
+  if (has('bay') && toks.filter((w) => w === 'bay').length >= 2) return 'bye';
+  if (any('sa', 'as', 'aleykum', 'aleykumselam', 'selamunaleykum', 'selaminaleykum'))
+    return 'salam';
+  if (has('gunler')) return 'day';
+  if (has('aksamlar')) return 'evening';
+  if (has('geceler')) return 'night';
+  if (has('gunaydin')) return 'morning';
+  if (
+    any('selam', 'selamlar', 'merhaba', 'merhabalar', 'mrb', 'slm', 'hey', 'hosgeldin', 'iyiyim')
+  ) {
+    return 'hello';
+  }
+  return null;
+}
+
+function greetReply(kind: GreetKind, text: string, t: AssistantDeps['t']): string {
+  return kind === 'hello'
+    ? variant(t, 'chat.hello', 4, text)
+    : variant(t, `chat.greet.${kind}`, 2, text);
+}
+
+/** "Sence", "sen seç", "fark etmez": the user hands the choice to the bot (folded phrases). */
+const REPLY_PHRASES = new Set([
+  'sence',
+  'sen sec',
+  'sen bil',
+  'fark etmez',
+  'farketmez',
+  'ne dersin',
+  'sen ne dersin',
+  'ne onerirsin',
+  'sen ne onerirsin',
+  'hangisi',
+  'hangisi iyi',
+  'hangisi daha iyi',
+  'sana kalmis',
+  'bilmiyorum',
+  'karar veremedim',
+]);
+const REPLY_FILLER = new Set([
+  'ya',
+  'peki',
+  'hocam',
+  'abi',
+  'abla',
+  'kanka',
+  'dostum',
+  'yani',
+  'canim',
+]);
+
+function isReplyWord(folded: string): boolean {
+  return REPLY_PHRASES.has(
+    folded
+      .split(' ')
+      .filter((w) => w && !REPLY_FILLER.has(w))
+      .join(' '),
+  );
+}
+
+/** Words that make a sentence talk about the conversation, not about a food or a place. */
+const CONVO_STRONG = new Set([
+  'yani',
+  'neden',
+  'niye',
+  'anlamadim',
+  'anlamiyorum',
+  'anlayamadim',
+  'ciddi',
+  'gercekten',
+]);
+const CONVO_WEAK = new Set([
+  'mi',
+  'mu',
+  'misin',
+  'musun',
+  'misiniz',
+  'emin',
+  'tamam',
+  'olur',
+  'evet',
+  'hayir',
+  'tmm',
+  'peki',
+]);
+/** Verb stems of "gireceğime", "gitmek", "bulamadım", "yapıyor", "dedin" (not "bulvar"). */
+const CONVO_VERB = /^(gir|git|gid|bul|yap|dedi|dedim|diyor|demek|anla)/;
+
+/** How a conversational sentence is answered when no AI reply is available. */
+type ConvoKind = 'doubt' | 'howto' | 'generic';
+
+function convoKind(folded: string): ConvoKind {
+  const toks = folded.split(' ');
+  if (toks.some((w) => ['emin', 'ciddi', 'gercekten'].includes(w))) return 'doubt';
+  if (
+    toks.some((w) => ['anlamadim', 'anlamiyorum', 'anlayamadim'].includes(w)) ||
+    (toks.includes('nasil') && toks.includes('yani'))
+  ) {
+    return 'howto';
+  }
+  return 'generic';
+}
+
+/**
+ * Conversational: no food, place or category was recognised and the words are about the chat
+ * itself ("emin misin", "nasıl yani", "bir yere gireceğime ..."). A restaurant or place that is
+ * really called that is no chit-chat, unless a strong word says so.
+ */
+function isConversational(text: string, it: QueryIntent, wishes: Wish[]): boolean {
+  if (it.kind !== 'search') return false;
+  if (it.cat || it.dish || it.food || it.district || it.nearMe || it.mentionsParking) return false;
+  if (wishes.length > 0 || !it.placeQuery) return false;
+  const toks = fold(text).split(' ').filter(Boolean);
+  const strong = toks.some(
+    (w) => CONVO_STRONG.has(w) || (CONVO_VERB.test(w) && !w.startsWith('bulvar')),
+  );
+  const weak = toks.filter((w) => CONVO_WEAK.has(w)).length;
+  if (!strong && weak === 0) return false;
+  if (strong || weak >= 2) return true;
+  // One weak word ("Mado var mı"): chit-chat only when nothing is called that.
+  const qWords = it.placeQuery.split(' ').filter(Boolean);
+  const hit = searchPlacesStrict(it.placeQuery, 1)[0];
+  if (hit && qWords.every((w) => hasWordStart(fold(hit.name), w))) return false;
+  return !allRestaurants().some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
+}
+
+/** Folded text of the pure "sen seç" family, and the rule or AI pick among the last cards. */
+async function answerReplyWord(ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
+  const { t } = deps;
+  const cards = ctx.lastCards ?? [];
+  if (cards.length < 2) {
+    return plain(
+      {
+        text: t('chat.askWhat'),
+        cards: [],
+        actions: [say(t, 'chat.exNear'), say(t, 'chat.exKofte'), say(t, 'chat.exAlsancak')],
+      },
+      ctx,
+    );
+  }
+  let notice: string | undefined;
+  if (deps.ai) {
+    const res = await pickFromCards(cards, ctx.query ?? '', ctx, deps);
+    if (res.reply.cards.length > 0) return res;
+    notice = res.reply.notice;
+  }
+  const reply = rulePick(cards, ctx, deps);
+  if (notice) reply.notice = notice;
+  return plain(reply, { ...ctx, lastCards: reply.cards });
+}
+
+/** The top-ranked card, with only the reasons our own data proves; says it is the rule choice. */
+function rulePick(cards: ChatCard[], ctx: ChatContext, deps: AssistantDeps): BotMessage {
+  const { t } = deps;
+  const food = cards.some((c) => c.kind === 'restaurant');
+  let name: string;
+  let reasons: string[];
+  if (food) {
+    const rest = cards.filter(
+      (c): c is Extract<ChatCard, { kind: 'restaurant' }> => c.kind === 'restaurant',
+    );
+    const cands = rest.slice(0, MAX_CANDIDATES).map(pickCandidate);
+    const top = cands[0]!;
+    name = rest[0]!.name;
+    const dish = ctx.dish ?? '';
+    reasons = PICK_REASONS.filter(
+      (c) => (c !== 'dish_named' || dish !== '') && pickReasonHolds(c, top, cands),
+    )
+      .slice(0, MAX_REASONS)
+      .map((c) => reasonText(c, top, dish, t));
+  } else {
+    const now = deps.now ?? new Date();
+    const rest: { card: Extract<ChatCard, { kind: 'parking' }>; p: Parking }[] = [];
+    for (const card of cards) {
+      if (card.kind !== 'parking' || rest.length >= MAX_CANDIDATES) continue;
+      const p = deps.parkings.find((x) => x.id === card.id);
+      if (p) rest.push({ card, p });
+    }
+    const cands: ParkPickCandidate[] = rest.map(({ card, p }, i) => ({
+      i,
+      kind: 'parking',
+      walkMin: walkMinFromMeters(card.distanceM),
+      openState: parkOpenAt(p, now, now),
+      nonstop: p.nonstop === true,
+      free: p.isPaid === null ? null : !p.isPaid,
+      tariffKnown: tariffFor(p.id) !== null,
+      covered: p.isIndoor,
+      freeSpots: freshFree(p, now),
+      nearRail: isNearRail(p),
+      capacity: p.capacity,
+    }));
+    const top = cands[0];
+    name = rest[0]?.card.name ?? cards[0]!.name;
+    reasons = top
+      ? PARK_REASONS.filter((c) => parkReasonHolds(c, top, cands))
+          .slice(0, MAX_REASONS)
+          .map((c) =>
+            t(`chat.whyPark.${c}`, {
+              count:
+                c === 'closest' ? top.walkMin : c === 'big_capacity' ? top.capacity : top.freeSpots,
+            }),
+          )
+      : [];
+  }
+  return {
+    text:
+      reasons.length > 0
+        ? t('chat.pickRule', { name, reasons: reasons.join(', ') })
+        : t('chat.pickRuleNone', { name }),
+    cards,
+    actions: [],
+  };
+}
+
+/**
+ * Small talk goes to /chat when the AI layer is on. The model's words are shown only when they
+ * pass validateFreeText (zone 'chat'); its action is a code that rule code carries out. Null on
+ * any failure, limit or invalid reply: the caller then uses its template.
+ */
+async function aiSmallTalk(
+  text: string,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+): Promise<Result | null> {
+  const chat = deps.ai?.chat;
+  if (!chat) return null;
+  const { t } = deps;
+  const cards = ctx.lastCards ?? [];
+  const kind = cards.some((c) => c.kind === 'restaurant') ? 'restaurant' : 'parking';
+  let res: ChatResponse | null;
+  try {
+    res = await chat(
+      text,
+      cards.length > 0 ? { count: Math.min(cards.length, MAX_CARDS), kind } : undefined,
+    );
+  } catch {
+    return null;
+  }
+  if (!res) return null;
+  const said = validateFreeText(
+    'chat',
+    res.reply,
+    textContext(deps, ctx.place ?? IZMIR_CENTER, cards),
+  );
+  if (!said) return null;
+  if (res.action === 'pick_from_last' && cards.length >= 2) {
+    const picked = await answerReplyWord(ctx, deps);
+    return {
+      reply: { ...picked.reply, text: `${said}\n${picked.reply.text}`, sparkle: true },
+      ctx: picked.ctx,
+    };
+  }
+  const actions =
+    res.action === 'ask_food_or_park' || res.action === 'pick_from_last'
+      ? [say(t, 'chat.exNear'), say(t, 'chat.exKofte'), say(t, 'chat.exAlsancak')]
+      : examples(ctx.section, t);
+  return plain({ text: said, cards: [], actions, sparkle: true }, ctx);
+}
 
 export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
   const meta: AnswerMeta = {
@@ -496,7 +809,15 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
     quotaOut: false,
   };
   const res = await answerText(text, ctx, deps, meta);
-  return finishAnswer(res, deps, meta);
+  return remember(await finishAnswer(res, deps, meta));
+}
+
+/** The reply's cards are what "sence" / "sen seç" refer to next. */
+function remember(r: Result): Result {
+  return {
+    reply: r.reply,
+    ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
+  };
 }
 
 async function answerText(
@@ -506,6 +827,22 @@ async function answerText(
   meta: AnswerMeta,
 ): Promise<Result> {
   const { t } = deps;
+  const foldedText = fold(text);
+  // A pure greeting, thanks or goodbye is answered in kind, never by the AI.
+  const greet = greetKind(foldedText);
+  if (greet) {
+    meta.settled = true;
+    return (
+      (await aiSmallTalk(text, ctx, deps)) ??
+      plain({ text: greetReply(greet, text, t), cards: [], actions: examples(ctx.section, t) }, ctx)
+    );
+  }
+  // "Sence", "sen seç": the user hands the choice over; no search, no place lookup.
+  if (isReplyWord(foldedText)) {
+    meta.settled = true;
+    return answerReplyWord(ctx, deps);
+  }
+
   meta.planWhen = planWhenIn(text) ?? (parkTripIn(text) ? 'now' : null);
   let it = parseQuery(meta.planWhen ? withoutPlanWords(text) || text : text);
   let notice: string | undefined;
@@ -548,11 +885,22 @@ async function answerText(
   const ruleIt = it;
   const ruleLeft = districtLeftover(it, text);
   const settled = ruleLeft !== null && ruleLeft.kind !== 'unknown';
+  // Talk about the conversation itself ("emin misin yani"): never a dish-or-place question.
+  const convo = !followUp && isConversational(text, it, meta.wishes);
+  // With /chat available the chit-chat goes there (no ✨); if that fails, the templates below answer.
+  const chatTried = convo && !!deps.ai?.chat;
+  if (chatTried) {
+    meta.settled = true;
+    const said = await aiSmallTalk(text, ctx, deps);
+    if (said) return said;
+  }
   if (
     deps.ai &&
     !followUp &&
+    !chatTried &&
     (it.kind === 'offtopic' ||
       it.kind === 'empty' ||
+      convo ||
       (it.kind === 'search' && it.uncertain && !settled) ||
       // A wish the rules cannot act on ("romantik", "çocuklarla"): the AI may map it to data we have.
       (it.kind === 'search' && meta.wishes.length > 0))
@@ -563,18 +911,21 @@ async function answerText(
       if (res.value.kind === 'offtopic') {
         // The model's words go through the same checks as the tone; otherwise the template answers.
         const said = validateFreeText('offtopic', res.value.reply, textContext(deps, IZMIR_CENTER));
-        return withNotice(
-          plain(
-            said
-              ? { text: said, cards: [], actions: offTopicActions(), sparkle: true }
-              : {
-                  text: variant(t, 'chat.offTopic', 2, text),
-                  cards: [],
-                  actions: offTopicActions(),
-                },
-            ctx,
-          ),
-        );
+        // An unusable model reply to chit-chat falls through to the honest templates below.
+        if (said || !convo) {
+          return withNotice(
+            plain(
+              said
+                ? { text: said, cards: [], actions: offTopicActions(), sparkle: true }
+                : {
+                    text: variant(t, 'chat.offTopic', 2, text),
+                    cards: [],
+                    actions: offTopicActions(),
+                  },
+              ctx,
+            ),
+          );
+        }
       }
       if (res.value.kind === 'search') {
         const fromAi = intentFromUnderstanding(res.value, text);
@@ -592,6 +943,36 @@ async function answerText(
     }
   }
 
+  const aiAdded =
+    !!meta.ai &&
+    !!(
+      meta.ai.cat ||
+      meta.ai.dish ||
+      meta.ai.district ||
+      meta.ai.place ||
+      meta.ai.food ||
+      meta.ai.nearMe ||
+      meta.ai.requireParking
+    );
+  if (convo && !aiAdded) {
+    const kind = convoKind(foldedText);
+    return withNotice(
+      plain(
+        {
+          text:
+            kind === 'doubt'
+              ? t('chat.convoDoubt')
+              : kind === 'howto'
+                ? t('chat.convoHowTo')
+                : variant(t, 'chat.offTopic', 2, text),
+          cards: [],
+          actions: kind === 'generic' ? offTopicActions() : examples(ctx.section, t),
+        },
+        ctx,
+      ),
+    );
+  }
+
   if (it.kind === 'offtopic') {
     return withNotice(
       plain(
@@ -605,7 +986,9 @@ async function answerText(
     );
   }
   if (it.kind === 'greeting') {
-    const msg = variant(t, 'chat.hello', 5, text);
+    const msg = variant(t, 'chat.hello', 4, text);
+    const said = await aiSmallTalk(text, ctx, deps);
+    if (said) return said;
     return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
   }
   if (it.kind === 'abuse') {
@@ -782,7 +1165,7 @@ async function answerText(
       qWords.length <= 3 &&
       it.placeQuery.length >= 4 &&
       !qWords.some((w) => PLACE_WORDS.some((p) => w.startsWith(p)));
-    const h = searchPlaces(it.placeQuery, 1)[0];
+    const h = searchPlacesStrict(it.placeQuery, 1)[0];
     // A place hit that does not carry the words in its name is only a fuzzy guess.
     const weakHit = !!h && !qWords.every((w) => hasWordStart(fold(h.name), w));
     if (maybeDish && (!h || weakHit)) {
@@ -999,7 +1382,7 @@ export async function refine(
   patch: Partial<ChatContext>,
   deps: AssistantDeps,
 ): Promise<Result> {
-  return run({ ...ctx, ...patch }, deps, JSON.stringify(patch), false);
+  return remember(await run({ ...ctx, ...patch }, deps, JSON.stringify(patch), false));
 }
 
 async function run(
@@ -2092,6 +2475,7 @@ function parkOnlyPlan(done: ParkPickDone, place: ChatPlace | null, deps: Assista
  * note (validated), and, when the AI understood the message, its pick or plan (verified).
  */
 async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta): Promise<Result> {
+  if (meta.settled) return res;
   const { t } = deps;
   const reply = res.reply;
   const restaurants = reply.cards.filter((c) => c.kind === 'restaurant');
@@ -2211,5 +2595,5 @@ export async function pickFromCards(
     sparkle: true,
   };
   noteQuota(reply, pick, deps);
-  return plain(reply, ctx);
+  return plain(reply, { ...ctx, lastCards: pick.cards });
 }
