@@ -195,4 +195,18 @@ describe('output schemas are bounded by what was sent', () => {
     );
     expect(UnderstandingSchema.safeParse({ ...search, partySize: 0 }).success).toBe(false);
   });
+
+  it('the router answers search, chat (with an action code) or unknown; "offtopic" is gone', () => {
+    expect(
+      UnderstandingSchema.safeParse({ kind: 'chat', reply: 'Selam!', action: 'none' }).success,
+    ).toBe(true);
+    expect(UnderstandingSchema.safeParse({ kind: 'unknown' }).success).toBe(true);
+    expect(
+      UnderstandingSchema.safeParse({ kind: 'chat', reply: 'Selam!', action: 'dance' }).success,
+    ).toBe(false);
+    expect(UnderstandingSchema.safeParse({ kind: 'chat', reply: 'Selam!' }).success).toBe(false);
+    expect(UnderstandingSchema.safeParse({ kind: 'offtopic', reply: 'Selam!' }).success).toBe(
+      false,
+    );
+  });
 });

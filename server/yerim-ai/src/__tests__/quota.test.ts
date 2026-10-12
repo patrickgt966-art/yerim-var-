@@ -5,6 +5,7 @@ import {
   peek,
   refund,
   toMessages,
+  validCancel,
   validNarrate,
   validQuota,
   validUnderstand,
@@ -189,6 +190,28 @@ describe('validUnderstand', () => {
   it('rejects more than the history limit', () => {
     const history = Array.from({ length: HISTORY_LIMIT + 1 }, () => ({ role: 'user', text: 'x' }));
     expect(validUnderstand({ ...ok, history })).toBeNull();
+  });
+
+  it('accepts optional lastCards and rejects bad ones', () => {
+    const lastCards = { count: 3, kind: 'restaurant' };
+    expect(validUnderstand({ ...ok, lastCards })).toMatchObject({ lastCards });
+    expect(validUnderstand(ok)).not.toHaveProperty('lastCards');
+    expect(validUnderstand({ ...ok, lastCards: { count: 3, kind: 'cafe' } })).toBeNull();
+    expect(validUnderstand({ ...ok, lastCards: { count: 50, kind: 'parking' } })).toBeNull();
+    expect(validUnderstand({ ...ok, lastCards: 'x' })).toBeNull();
+  });
+});
+
+describe('validCancel', () => {
+  it('accepts two sane ids only', () => {
+    expect(validCancel({ deviceId: 'dev-1', messageId: 'm_1' })).toEqual({
+      deviceId: 'dev-1',
+      messageId: 'm_1',
+    });
+    expect(validCancel({ deviceId: 'dev-1' })).toBeNull();
+    expect(validCancel({ deviceId: 'bad id!', messageId: 'm1' })).toBeNull();
+    expect(validCancel({ deviceId: 'dev-1', messageId: '' })).toBeNull();
+    expect(validCancel(null)).toBeNull();
   });
 });
 

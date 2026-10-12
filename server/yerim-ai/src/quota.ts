@@ -12,6 +12,7 @@ import {
   OPEN_STATES,
   PLAN_WHENS,
   todayIstanbul,
+  type CancelRequest,
   type ChatRequest,
   type ChatTurn,
   type DishMatch,
@@ -104,30 +105,30 @@ export async function ipGuard(kv: KV, ip: string, now: Date, max = 100): Promise
   return true;
 }
 
-// --- /chat limits ---------------------------------------------------------------------------
-// Small talk costs real money but no ✨: it has its own counters, all read from wrangler.toml
-// [vars] (strings), so they change with a redeploy and without an app release.
+// --- One counter for every AI endpoint ------------------------------------------------------
+// /understand, /pick, /plan, /narrate and /chat all charge the same per-device daily quota,
+// keyed by messageId (one user message = one use). On top of that: a global daily cap and a
+// minimum interval per device. Limits come from wrangler.toml [vars] (strings), so they change
+// with a redeploy and without an app release.
 
-export type ChatLimits = {
-  /** Chat replies per device per day. */
-  perDevice: number;
-  /** Chat replies across all devices per day; at the cap nothing is sent to Anthropic. */
+export type AiLimits = {
+  /** AI messages across all devices per day; at the cap nothing is sent to Anthropic. */
   global: number;
   /** Calls per IP per day, shared by every endpoint. */
   perIp: number;
-  /** A device may call /chat at most once per this many milliseconds. */
+  /** A device may start a new AI message at most once per this many milliseconds. */
   minIntervalMs: number;
 };
 
-export const CHAT_DEFAULTS: ChatLimits = {
-  perDevice: 15,
+export const AI_DEFAULTS: AiLimits = {
   global: 10000,
   perIp: 100,
   minIntervalMs: 1000,
 };
 
 type LimitVars = {
-  CHAT_DAILY_PER_DEVICE?: string;
+  AI_GLOBAL_DAILY?: string;
+  /** The former name of AI_GLOBAL_DAILY, read when the new one is not set. */
   CHAT_GLOBAL_DAILY?: string;
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
@@ -140,16 +141,21 @@ function intVar(v: string | undefined, fallback: number): number {
 }
 
 /** The limits from the worker's vars; unset or invalid values fall back to the defaults. */
-export function chatLimits(vars: LimitVars): ChatLimits {
+export function aiLimits(vars: LimitVars): AiLimits {
+  const blank = (v: string | undefined) => v === undefined || v.trim() === '';
   return {
-    perDevice: intVar(vars.CHAT_DAILY_PER_DEVICE, CHAT_DEFAULTS.perDevice),
-    global: intVar(vars.CHAT_GLOBAL_DAILY, CHAT_DEFAULTS.global),
-    perIp: intVar(vars.AI_DAILY_PER_IP, CHAT_DEFAULTS.perIp),
-    minIntervalMs: intVar(vars.CHAT_MIN_INTERVAL_MS, CHAT_DEFAULTS.minIntervalMs),
+    global: intVar(
+      blank(vars.AI_GLOBAL_DAILY) ? vars.CHAT_GLOBAL_DAILY : vars.AI_GLOBAL_DAILY,
+      AI_DEFAULTS.global,
+    ),
+    perIp: intVar(vars.AI_DAILY_PER_IP, AI_DEFAULTS.perIp),
+    minIntervalMs: intVar(vars.CHAT_MIN_INTERVAL_MS, AI_DEFAULTS.minIntervalMs),
   };
 }
 
-export type ChatCharge = { ok: true } | { ok: false; reason: 'slow' | 'device' | 'global' };
+export type UseTaken =
+  | { ok: true; remaining: number; added: boolean }
+  | { ok: false; reason: 'quota' | 'slow' | 'global'; remaining: number };
 
 async function readCount(kv: KV, key: string): Promise<number> {
   const n = Number((await kv.get(key)) ?? '0');
@@ -157,41 +163,106 @@ async function readCount(kv: KV, key: string): Promise<number> {
 }
 
 /**
- * Takes one chat reply from the device and the global counters, or says which limit stopped it.
- * Checked in this order: too fast (a rejected call does not count), global cap, device cap.
+ * Takes one use for a message, or says which limit stopped it. A messageId already charged today
+ * (the /pick or /plan after its /understand) passes for free and skips the interval and the
+ * global cap. For a new message, checked in this order: too fast (a rejected call does not
+ * count), global cap, the device's daily uses.
  */
-export async function chatCharge(
+export async function takeUse(
   kv: KV,
   deviceId: string,
+  messageId: string,
   now: Date,
-  limits: ChatLimits,
-): Promise<ChatCharge> {
+  limits: AiLimits,
+  limit = FREE_DAILY,
+): Promise<UseTaken> {
   const day = todayIstanbul(now);
-  const lastKey = `chat:last:${deviceId}`;
-  const last = Number((await kv.get(lastKey)) ?? '0');
-  if (Number.isFinite(last) && last > 0 && now.getTime() - last < limits.minIntervalMs) {
-    return { ok: false, reason: 'slow' };
+  const globalKey = `ai:global:${day}`;
+  const lastKey = `ai:last:${deviceId}`;
+  const known = parseIds(await kv.get(`q:${day}:${deviceId}`)).includes(messageId);
+  if (!known) {
+    const last = Number((await kv.get(lastKey)) ?? '0');
+    if (Number.isFinite(last) && last > 0 && now.getTime() - last < limits.minIntervalMs) {
+      return { ok: false, reason: 'slow', remaining: await peek(kv, deviceId, now, limit) };
+    }
+    if ((await readCount(kv, globalKey)) >= limits.global) {
+      return { ok: false, reason: 'global', remaining: await peek(kv, deviceId, now, limit) };
+    }
   }
-  const globalKey = `chat:global:${day}`;
-  const deviceKey = `chat:${day}:${deviceId}`;
-  const globalCount = await readCount(kv, globalKey);
-  if (globalCount >= limits.global) return { ok: false, reason: 'global' };
-  const deviceCount = await readCount(kv, deviceKey);
-  if (deviceCount >= limits.perDevice) return { ok: false, reason: 'device' };
-  await kv.put(globalKey, String(globalCount + 1), { expirationTtl: TTL_SECONDS });
-  await kv.put(deviceKey, String(deviceCount + 1), { expirationTtl: TTL_SECONDS });
-  // KV keeps a key for at least 60 s.
-  await kv.put(lastKey, String(now.getTime()), { expirationTtl: 60 });
-  return { ok: true };
+  const q = await charge(kv, deviceId, messageId, limit, now);
+  if (!q.allowed) return { ok: false, reason: 'quota', remaining: 0 };
+  if (q.added) {
+    await kv.put(globalKey, String((await readCount(kv, globalKey)) + 1), {
+      expirationTtl: TTL_SECONDS,
+    });
+    // KV keeps a key for at least 60 s.
+    await kv.put(lastKey, String(now.getTime()), { expirationTtl: 60 });
+  }
+  return { ok: true, remaining: q.remaining, added: q.added };
 }
 
-/** Gives back what `chatCharge` took when Anthropic failed or refused; never below zero. */
-export async function chatRefund(kv: KV, deviceId: string, now: Date): Promise<void> {
+/**
+ * Gives back the use of a message (device list and global counter) when Anthropic failed, or the
+ * client gave up. Idempotent: only the call that really removes the messageId lowers the global
+ * counter, and it never goes below zero.
+ */
+export async function releaseUse(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+  limit = FREE_DAILY,
+): Promise<{ removed: boolean; remaining: number }> {
   const day = todayIstanbul(now);
-  for (const key of [`chat:global:${day}`, `chat:${day}:${deviceId}`]) {
-    const n = await readCount(kv, key);
-    await kv.put(key, String(Math.max(0, n - 1)), { expirationTtl: TTL_SECONDS });
+  const ids = parseIds(await kv.get(`q:${day}:${deviceId}`));
+  if (!ids.includes(messageId)) {
+    return { removed: false, remaining: Math.max(0, limit - ids.length) };
   }
+  const remaining = await refund(kv, deviceId, messageId, now, limit);
+  const globalKey = `ai:global:${day}`;
+  const n = await readCount(kv, globalKey);
+  await kv.put(globalKey, String(Math.max(0, n - 1)), { expirationTtl: TTL_SECONDS });
+  return { removed: true, remaining };
+}
+
+/** A device may cancel this many messages per day; stops "ask, cancel, ask again" for free. */
+export const MAX_CANCELS_PER_DAY = 5;
+const CANCEL_MARK_TTL_SECONDS = 3600;
+
+/**
+ * The client gave up waiting for a message (timeout / abort). Gives its use back right away when
+ * it was charged, and marks the messageId cancelled so a handler that is still running (or one
+ * that has not charged yet) gives it back again, idempotently, when it finishes. Beyond
+ * MAX_CANCELS_PER_DAY nothing is refunded.
+ */
+export async function cancelUse(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+  limit = FREE_DAILY,
+): Promise<{ removed: boolean; remaining: number }> {
+  const day = todayIstanbul(now);
+  const countKey = `cancels:${day}:${deviceId}`;
+  const count = await readCount(kv, countKey);
+  if (count >= MAX_CANCELS_PER_DAY) {
+    return { removed: false, remaining: await peek(kv, deviceId, now, limit) };
+  }
+  await kv.put(countKey, String(count + 1), { expirationTtl: TTL_SECONDS });
+  await kv.put(`cancel:${day}:${deviceId}:${messageId}`, '1', {
+    expirationTtl: CANCEL_MARK_TTL_SECONDS,
+  });
+  return releaseUse(kv, deviceId, messageId, now, limit);
+}
+
+/** True when the client cancelled this message (see cancelUse). */
+export async function wasCancelled(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+): Promise<boolean> {
+  return (await kv.get(`cancel:${todayIstanbul(now)}:${deviceId}:${messageId}`)) !== null;
 }
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -217,9 +288,17 @@ export function validQuota(body: unknown): QuotaRequest | null {
   return isId(body.deviceId) ? { deviceId: body.deviceId } : null;
 }
 
+/** /cancel: which message the client gave up on. */
+export function validCancel(body: unknown): CancelRequest | null {
+  if (!isRecord(body)) return null;
+  return isId(body.deviceId) && isId(body.messageId)
+    ? { deviceId: body.deviceId, messageId: body.messageId }
+    : null;
+}
+
 export function validUnderstand(body: unknown): UnderstandRequest | null {
   if (!isRecord(body)) return null;
-  const { deviceId, messageId, text, history, section } = body;
+  const { deviceId, messageId, text, history, section, lastCards } = body;
   if (!isId(deviceId) || !isId(messageId)) return null;
   if (!isText(text, MAX_MESSAGE_CHARS)) return null;
   if (section !== 'park' && section !== 'food') return null;
@@ -231,7 +310,15 @@ export function validUnderstand(body: unknown): UnderstandRequest | null {
     if (typeof h.text !== 'string' || h.text.length > MAX_MESSAGE_CHARS) return null;
     turns.push({ role: h.role, text: h.text });
   }
-  return { deviceId, messageId, text, history: turns, section };
+  const req: UnderstandRequest = { deviceId, messageId, text, history: turns, section };
+  if (lastCards !== undefined) {
+    if (!isRecord(lastCards)) return null;
+    if (!Number.isInteger(lastCards.count) || (lastCards.count as number) < 0) return null;
+    if ((lastCards.count as number) > MAX_RESULTS) return null;
+    if (lastCards.kind !== 'restaurant' && lastCards.kind !== 'parking') return null;
+    req.lastCards = { count: lastCards.count as number, kind: lastCards.kind };
+  }
+  return req;
 }
 
 /** /chat: a short text, the last four turns at most, and what the last reply showed. */

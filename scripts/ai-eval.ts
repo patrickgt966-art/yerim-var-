@@ -46,7 +46,7 @@ const NOTHING_SET: Extract<QueryIntent, { kind: 'search' }> = {
  * Mirrors intentFromUnderstanding in src/data/assistant.ts.
  */
 function intentFromUnderstanding(u: Understanding, text: string): QueryIntent {
-  if (u.kind === 'offtopic') return { kind: 'offtopic' };
+  if (u.kind === 'chat') return { kind: 'offtopic' };
   if (u.kind === 'unknown') return { ...NOTHING_SET, text: fold(text) };
   const district = u.district
     ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)

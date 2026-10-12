@@ -463,6 +463,8 @@ const tr = {
     placeholder: "Yerim'e yaz…",
     send: 'Gönder',
     typing: 'Yerim yazıyor',
+    thinking: 'Yerim düşünüyor…',
+    thinkingLong: 'Biraz daha düşünüyorum…',
     status: 'yemek + park asistanın',
     avatarLabel: 'Yerim',
     today: 'Bugün {{time}}',

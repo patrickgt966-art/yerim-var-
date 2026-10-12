@@ -17,27 +17,29 @@ import {
   type Understanding,
 } from '../../../src/lib/ai/protocol';
 import {
-  charge,
-  chatCharge,
-  chatLimits,
-  chatRefund,
+  aiLimits,
+  cancelUse,
   ipGuard,
   peek,
-  refund,
+  releaseUse,
+  takeUse,
   toMessages,
+  validCancel,
   validChat,
   validNarrate,
   validPick,
   validPlan,
   validQuota,
   validUnderstand,
+  wasCancelled,
 } from './quota';
 
 export interface Env {
   QUOTA: KVNamespace;
   ANTHROPIC_API_KEY: string;
-  /** Limits from wrangler.toml [vars] (strings); see chatLimits for the defaults. */
-  CHAT_DAILY_PER_DEVICE?: string;
+  /** Limits from wrangler.toml [vars] (strings); see aiLimits for the defaults. */
+  AI_GLOBAL_DAILY?: string;
+  /** The former name of AI_GLOBAL_DAILY; read when that one is not set. */
   CHAT_GLOBAL_DAILY?: string;
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
@@ -70,67 +72,38 @@ async function quotaRoute(req: Request, env: Env): Promise<Response> {
 }
 
 /**
- * Small talk (greetings, thanks, goodbyes, talk about the chat). Costs no ✨, so it has its own
- * limits: per IP (shared with the other calls), per device, global, and a minimum interval.
- * Anthropic is only called after every limit passed; a failed call gives the counters back.
+ * The client gave up waiting for a message (timeout): give its use back. Safe to repeat, and safe
+ * to arrive before or after the AI call finished (see cancelUse). Never calls Anthropic.
  */
-async function chatRoute(req: Request, env: Env): Promise<Response> {
+async function cancelRoute(req: Request, env: Env): Promise<Response> {
   let raw: unknown;
   try {
     raw = await req.json();
   } catch {
     return json({ error: 'bad_request' }, 400);
   }
-  const parsed = validChat(raw);
+  const parsed = validCancel(raw);
   if (!parsed) return json({ error: 'bad_request' }, 400);
-
-  const limits = chatLimits(env);
   const now = new Date();
   const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (!(await ipGuard(env.QUOTA, ip, now, limits.perIp))) {
-    return json({ error: 'rate_limited', reason: 'ip' }, 429);
+  if (!(await ipGuard(env.QUOTA, `cancel:${ip}`, now, 500))) {
+    return json({ error: 'rate_limited' }, 429);
   }
-  const taken = await chatCharge(env.QUOTA, parsed.deviceId, now, limits);
-  if (!taken.ok) return json({ error: 'rate_limited', reason: taken.reason }, 429);
-
-  const giveBack = async () => {
-    try {
-      await chatRefund(env.QUOTA, parsed.deviceId, now);
-    } catch {
-      // The counters stay one too high until tomorrow; the user still gets the template.
-    }
-  };
-  try {
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-    const cards = parsed.lastCards;
-    const system = cards
-      ? `${CHAT_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-      : CHAT_SYSTEM;
-    const response = await client.messages.parse({
-      model: MODEL,
-      max_tokens: 200,
-      system,
-      output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
-      messages: toMessages(parsed.history, parsed.text),
-    });
-    if (response.stop_reason === 'refusal' || !response.parsed_output) {
-      await giveBack();
-      return json({ error: 'upstream' }, 502);
-    }
-    return json(response.parsed_output);
-  } catch (err) {
-    console.error('anthropic error', err instanceof Error ? err.message : 'unknown');
-    await giveBack();
-    return json({ error: 'upstream' }, 502);
-  }
+  const { remaining } = await cancelUse(env.QUOTA, parsed.deviceId, parsed.messageId, now);
+  return json({ remaining });
 }
+
+type Outcome = 'ok' | 'refusal' | 'error';
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
-    if (req.method === 'POST' && path === '/chat') return chatRoute(req, env);
-    if (req.method !== 'POST' || !['/understand', '/narrate', '/pick', '/plan'].includes(path)) {
+    if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
+    if (
+      req.method !== 'POST' ||
+      !['/understand', '/narrate', '/pick', '/plan', '/chat'].includes(path)
+    ) {
       return json({ error: 'not_found' }, 404);
     }
 
@@ -145,49 +118,110 @@ export default {
     const narrateReq = path === '/narrate' ? validNarrate(raw) : null;
     const pickReq = path === '/pick' ? validPick(raw) : null;
     const planReq = path === '/plan' ? validPlan(raw) : null;
-    const parsed = understandReq ?? narrateReq ?? pickReq ?? planReq;
+    // /chat is kept for older app versions; it charges the same counter as everything else.
+    const chatReq = path === '/chat' ? validChat(raw) : null;
+    const parsed = understandReq ?? narrateReq ?? pickReq ?? planReq ?? chatReq;
     if (!parsed) return json({ error: 'bad_request' }, 400);
+    const { deviceId, messageId } = parsed;
 
     const now = new Date();
+    const limits = aiLimits(env);
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-    if (!(await ipGuard(env.QUOTA, ip, now, chatLimits(env).perIp))) {
+    if (!(await ipGuard(env.QUOTA, ip, now, limits.perIp))) {
       return json({ error: 'rate_limited' }, 429);
     }
 
     // TODO(subscriptions): check an entitlement here and raise the limit (SUB_DAILY) for subscribers.
-    const limit = FREE_DAILY;
-    const q = await charge(env.QUOTA, parsed.deviceId, parsed.messageId, limit, now);
-    if (!q.allowed) return json({ remaining: 0 }, 429);
+    const q = await takeUse(env.QUOTA, deviceId, messageId, now, limits, FREE_DAILY);
+    if (!q.ok) {
+      return json(
+        q.reason === 'quota'
+          ? { remaining: 0 }
+          : { error: 'rate_limited', reason: q.reason, remaining: q.remaining },
+        429,
+      );
+    }
 
     // The use is only kept when the user got an answer: give it back on any failure.
     const giveBack = async (): Promise<number> => {
       if (!q.added) return q.remaining;
       try {
-        return await refund(env.QUOTA, parsed.deviceId, parsed.messageId, now);
+        return (await releaseUse(env.QUOTA, deviceId, messageId, now)).remaining;
       } catch {
         return q.remaining;
       }
     };
-    const upstreamFail = async () => json({ error: 'upstream', remaining: await giveBack() }, 502);
+
+    // One log line per AI call (visible with `npx wrangler tail`): endpoint, duration, outcome,
+    // uses left. Never the user's text or the device id.
+    const started = Date.now();
+    const respond = async (outcome: Outcome, body: unknown, status = 200): Promise<Response> => {
+      let logged: Outcome | 'timeout-cancelled' = outcome;
+      let remaining = q.remaining;
+      if (body !== null && typeof body === 'object' && 'remaining' in body) {
+        remaining = Number((body as { remaining: unknown }).remaining);
+      }
+      try {
+        // The client gave up on this message while we were working: it does not keep the use.
+        if (await wasCancelled(env.QUOTA, deviceId, messageId, now)) {
+          logged = 'timeout-cancelled';
+          remaining = (await releaseUse(env.QUOTA, deviceId, messageId, now)).remaining;
+          if (body !== null && typeof body === 'object' && 'remaining' in body) {
+            body = { ...body, remaining };
+          }
+        }
+      } catch {
+        // The use stays charged; the user still gets the answer.
+      }
+      console.log(
+        JSON.stringify({ endpoint: path, ms: Date.now() - started, outcome: logged, remaining }),
+      );
+      return json(body, status);
+    };
+    const upstreamFail = async (outcome: Outcome = 'error') =>
+      respond(outcome, { error: 'upstream', remaining: await giveBack() }, 502);
 
     try {
       const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
       if (understandReq) {
+        const cards = understandReq.lastCards;
+        const system = cards
+          ? `${UNDERSTAND_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+          : UNDERSTAND_SYSTEM;
         const response = await client.messages.parse({
           model: MODEL,
           max_tokens: 2048,
-          system: UNDERSTAND_SYSTEM,
+          system,
           output_config: { effort: 'low', format: zodOutputFormat(UnderstandingSchema) },
           messages: toMessages(understandReq.history, understandReq.text),
         });
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
-          return json({
+          return respond(response.stop_reason === 'refusal' ? 'refusal' : 'error', {
             understanding: { kind: 'unknown' } satisfies Understanding,
             remaining: await giveBack(),
           });
         }
-        return json({ understanding: response.parsed_output, remaining: q.remaining });
+        return respond('ok', { understanding: response.parsed_output, remaining: q.remaining });
+      }
+
+      if (chatReq) {
+        const cards = chatReq.lastCards;
+        const system = cards
+          ? `${CHAT_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+          : CHAT_SYSTEM;
+        const response = await client.messages.parse({
+          model: MODEL,
+          max_tokens: 200,
+          system,
+          output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
+          messages: toMessages(chatReq.history, chatReq.text),
+        });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+        }
+        // Older apps read the bare reply; they never see the count.
+        return respond('ok', response.parsed_output);
       }
 
       // Candidates carry facts only (no names); the output schemas bound every index.
@@ -209,8 +243,10 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal' || !response.parsed_output) return upstreamFail();
-        return json({ pick: response.parsed_output, remaining: q.remaining });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+        }
+        return respond('ok', { pick: response.parsed_output, remaining: q.remaining });
       }
 
       if (planReq) {
@@ -234,8 +270,10 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal' || !response.parsed_output) return upstreamFail();
-        return json({ plan: response.parsed_output, remaining: q.remaining });
+        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+        }
+        return respond('ok', { plan: response.parsed_output, remaining: q.remaining });
       }
 
       if (narrateReq) {
@@ -252,14 +290,14 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal') return upstreamFail();
+        if (response.stop_reason === 'refusal') return upstreamFail('refusal');
         let reply = '';
         for (const block of response.content) {
           if (block.type === 'text') reply += block.text;
         }
         reply = reply.trim();
         if (!reply) return upstreamFail();
-        return json({ reply, remaining: q.remaining });
+        return respond('ok', { reply, remaining: q.remaining });
       }
 
       return json({ error: 'not_found' }, 404);

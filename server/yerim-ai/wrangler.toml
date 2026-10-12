@@ -14,15 +14,20 @@ id = "b430e064b7f14fca89aed460e56dbf5e"
 # Sınırlar (metin olarak yazılır). Değeri değiştirip `npx wrangler deploy` yapmak yeter;
 # uygulama güncellemesi gerekmez. Boş bırakılırsa varsayılan değer kullanılır.
 [vars]
-# /chat (selam, teşekkür, veda): bir cihazın günde alabileceği sohbet cevabı sayısı. ✨ hakkından düşmez.
-# Chat replies per device per day (does not use the daily ✨ uses). Default 15.
-CHAT_DAILY_PER_DEVICE = "15"
-# Tüm cihazlar için günlük toplam /chat cevabı; dolunca Anthropic'e hiç istek gitmez (429, reason "global").
-# Chat replies per day across all devices; at the cap Anthropic is not called. Default 10000.
-CHAT_GLOBAL_DAILY = "10000"
-# IP başına günlük toplam AI çağrısı (/understand, /pick, /plan, /narrate ve /chat birlikte). Varsayılan 100.
-# Calls per IP per day over all AI endpoints, /chat included. Default 100.
+# Tek sayaç: cihaz başına günde 10 yapay zekâ mesajı (kod içinde, FREE_DAILY). /understand, /pick, /plan,
+# /narrate ve eski uygulamalar için /chat aynı sayaçtan düşer; aynı mesajın çağrıları tek hak sayılır.
+# One counter: 10 AI messages per device per day (FREE_DAILY in code). Every AI endpoint charges it.
+
+# Tüm cihazlar için günlük toplam AI mesajı (tüm uç noktalar birlikte); dolunca Anthropic'e hiç istek
+# gitmez (429, reason "global"). Eski adı CHAT_GLOBAL_DAILY, bu boşsa okunur. Varsayılan 10000.
+# AI messages per day across all devices and endpoints; at the cap Anthropic is not called.
+# CHAT_GLOBAL_DAILY (the old name) is read when this one is empty. Default 10000.
+AI_GLOBAL_DAILY = "10000"
+# IP başına günlük toplam AI çağrısı (tüm uç noktalar birlikte). Varsayılan 100.
+# Calls per IP per day over all AI endpoints. Default 100.
 AI_DAILY_PER_IP = "100"
-# Aynı cihazdan iki /chat çağrısı arasındaki en kısa süre, milisaniye (429, reason "slow"). Varsayılan 1000.
-# Minimum time between two /chat calls of one device, in milliseconds. Default 1000.
+# Aynı cihazdan iki yeni AI mesajı arasındaki en kısa süre, milisaniye (tüm uç noktalar; 429, reason "slow").
+# Aynı mesajın /pick ve /plan çağrıları buna takılmaz. Varsayılan 1000.
+# Minimum time between two new AI messages of one device, in milliseconds (all endpoints).
+# Follow-up calls of an already counted message are exempt. Default 1000.
 CHAT_MIN_INTERVAL_MS = "1000"
