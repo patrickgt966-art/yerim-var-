@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -10,6 +11,7 @@ import { TypingDots } from '@/components/chat/TypingDots';
 import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
 import type { ChatAction, ChatCard, ChatContext, PlanData } from '@/data/assistant';
+import { useAnnounce } from '@/lib/a11y';
 import { brand, fonts, useColors } from '@/theme';
 
 export type ChatMessage = {
@@ -63,24 +65,53 @@ const botCorners = {
   borderBottomLeftRadius: 20,
 } as const;
 
-export function TypingBubble() {
+/** After this long the waiting text changes, so a slow answer does not look frozen. */
+const THINKING_LONG_MS = 2500;
+
+/** `thinking`: the reply waits for the AI, so a short text sits next to the dots. */
+export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
   const { t } = useTranslation();
   const c = useColors();
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    if (!thinking) return;
+    const id = setTimeout(() => setLong(true), THINKING_LONG_MS);
+    return () => clearTimeout(id);
+  }, [thinking]);
+  // Spoken once, when the wait starts; the later text change is not announced again.
+  useAnnounce(thinking ? t('chat.thinking') : null);
+  const label = thinking ? t(long ? 'chat.thinkingLong' : 'chat.thinking') : t('chat.typing');
   return (
     <View
       accessible
-      accessibilityLabel={t('chat.typing')}
+      accessibilityLabel={label}
       style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
     >
       <YAvatar />
       <View
         style={[
           botCorners,
-          { paddingVertical: 14, paddingHorizontal: 14, backgroundColor: c.card },
+          {
+            paddingVertical: 14,
+            paddingHorizontal: 14,
+            backgroundColor: c.card,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          },
           softShadow(),
         ]}
       >
         <TypingDots />
+        {thinking ? (
+          <Txt
+            color={c.textSecondary}
+            accessible={false}
+            style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
+          >
+            {label}
+          </Txt>
+        ) : null}
       </View>
     </View>
   );

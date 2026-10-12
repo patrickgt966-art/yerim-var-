@@ -61,7 +61,8 @@ import {
   MAX_REASONS,
   PARK_REASONS,
   PICK_REASONS,
-  type ChatResponse,
+  ROUTER_TIMEOUT_MS,
+  type ChatReplyAction,
   type ClarifyAsk,
   type DishMatch,
   type ParkPickCandidate,
@@ -212,21 +213,22 @@ export type AssistantDeps = {
   now?: Date;
   /** Optional AI layer; the screen binds deviceId / messageId / text / history. */
   ai?: {
-    understand(text: string): Promise<AiResult<Understanding>>;
+    /**
+     * The router: every new user message goes here first (one daily use). It answers with a search
+     * (the rules run it), a chat reply, or unknown. `lastCards` says what the last reply showed.
+     */
+    understand(
+      text: string,
+      lastCards?: { count: number; kind: 'restaurant' | 'parking' },
+    ): Promise<AiResult<Understanding>>;
+    /** Uses left today. At 0 the router is not called at all; leave it out and the AI is always tried. */
+    usesLeft?(): number;
     /** Jobs 2 and 4; an AI layer without them simply never picks or plans. */
     pick?(req: Omit<PickRequest, 'deviceId' | 'messageId'>): Promise<AiResult<PickResponse>>;
     plan?(req: Omit<PlanRequest, 'deviceId' | 'messageId'>): Promise<AiResult<PlanResponse>>;
     pickPark?(
       req: Omit<ParkPickRequest, 'deviceId' | 'messageId'>,
     ): Promise<AiResult<ParkPickResponse>>;
-    /**
-     * Small talk (greeting, thanks, goodbye, talk about the chat): a short reply and a code, or
-     * null on any failure or limit. Costs no ✨. An AI layer without it uses the templates.
-     */
-    chat?(
-      text: string,
-      lastCards?: { count: number; kind: 'restaurant' | 'parking' },
-    ): Promise<ChatResponse | null>;
     /** True the first time per day, so the "out of quota" notice shows once. */
     quotaNotice(): boolean;
   };
@@ -414,7 +416,16 @@ function intentFromUnderstanding(
 
 type SearchIntent = Extract<QueryIntent, { kind: 'search' }>;
 
-/** Rule intent + AI intent: AI fills what the rules left empty; rule-found values stay. */
+/** A place in our data carries every word of the query in its name. */
+function knownPlace(query: string): boolean {
+  const hit = searchPlacesStrict(query, 1)[0];
+  return !!hit && query.split(' ').every((w) => hasWordStart(fold(hit.name), w));
+}
+
+/**
+ * Rule intent + AI intent: the AI fills what the rules left empty and decides intent and wishes;
+ * a district or a place name that exists in our data stays as the rules read it.
+ */
 function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
   const cat = rule.cat ?? ai.cat;
   const food = rule.food || ai.food || cat !== null || !!ai.dish;
@@ -425,8 +436,10 @@ function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
     dish: rule.cat ? rule.dish : ai.dish,
     dishServes: rule.cat ? null : ai.dishServes,
     district: rule.district ?? ai.district,
-    // The rules' leftover words are the ones they could not place; the AI decides what they meant.
-    placeQuery: ai.placeQuery,
+    // A place name our data knows stays as the rules read it. Leftover words the rules could not
+    // place are what the AI decides: it knows what they meant.
+    placeQuery:
+      rule.placeQuery !== '' && knownPlace(rule.placeQuery) ? rule.placeQuery : ai.placeQuery,
     requireParking,
     uncertain: false,
     food,
@@ -504,7 +517,10 @@ type AnswerMeta = {
   /** The AI's understanding when it returned a search. */
   ai: Extract<Understanding, { kind: 'search' }> | null;
   planWhen: PlanWhen | null;
-  /** The daily AI uses are gone: do not ask again for this message. */
+  /**
+   * Do not ask the AI again for this message: the daily uses are gone, or the router already ran
+   * and gave no search (chat, unknown, a timeout, an error). Only a search keeps pick / plan on.
+   */
   quotaOut: boolean;
   /** The reply is complete as it is (small talk, a pick of the last cards): finishAnswer adds nothing. */
   settled?: boolean;
@@ -520,7 +536,10 @@ const GREET_WORDS = new Set(
     'eyvallah mersi sagolun sag ol olun hosca kal kalin hoscakal gorusuruz bye bay sa as aleykum ' +
     'aleykumselam selamunaleykum selaminaleykum selamun selamin gunler aksamlar geceler gunaydin ' +
     'selam selamlar merhaba merhabalar mrb slm hey hosgeldin iyiyim ya hocam abi abla kanka dostum ' +
-    'canim kardesim kardes usta reis size de sen siz cok'
+    'canim kardesim kardes usta reis size de sen siz cok ' +
+    // English and other everyday greetings
+    'hello helo hi hii hey heyy yo hola good morning evening night thanks thank you thx ty ' +
+    'goodbye see kolay gelsin hayirli calismalar'
   ).split(' '),
 );
 
@@ -537,19 +556,44 @@ function greetKind(folded: string): GreetKind | null {
   ) {
     return 'fine';
   }
-  if (any('tesekkurler', 'tesekkur', 'sagol', 'saol', 'eyvallah', 'mersi', 'sagolun'))
+  if (
+    any(
+      'tesekkurler',
+      'tesekkur',
+      'sagol',
+      'saol',
+      'eyvallah',
+      'mersi',
+      'sagolun',
+      'thanks',
+      'thx',
+      'ty',
+    )
+  )
     return 'thanks';
+  if (has('thank')) return 'thanks';
   if (has('sag') && any('ol', 'olun')) return 'thanks';
-  if ((has('hosca') && any('kal', 'kalin')) || any('hoscakal', 'gorusuruz', 'bye')) return 'bye';
+  if (
+    (has('hosca') && any('kal', 'kalin')) ||
+    any('hoscakal', 'gorusuruz', 'bye', 'goodbye') ||
+    (has('see') && any('you', 'ya'))
+  )
+    return 'bye';
   if (has('bay') && toks.filter((w) => w === 'bay').length >= 2) return 'bye';
   if (any('sa', 'as', 'aleykum', 'aleykumselam', 'selamunaleykum', 'selaminaleykum'))
     return 'salam';
   if (has('gunler')) return 'day';
+  if (has('good') && has('morning')) return 'morning';
+  if (has('good') && has('evening')) return 'evening';
+  if (has('good') && has('night')) return 'night';
   if (has('aksamlar')) return 'evening';
   if (has('geceler')) return 'night';
   if (has('gunaydin')) return 'morning';
   if (
-    any('selam', 'selamlar', 'merhaba', 'merhabalar', 'mrb', 'slm', 'hey', 'hosgeldin', 'iyiyim')
+    any('selam', 'selamlar', 'merhaba', 'merhabalar', 'mrb', 'slm', 'hey', 'hosgeldin', 'iyiyim') ||
+    any('hello', 'helo', 'hi', 'hii', 'heyy', 'yo', 'hola') ||
+    (has('kolay') && has('gelsin')) ||
+    (has('iyi') && has('calismalar'))
   ) {
     return 'hello';
   }
@@ -668,7 +712,11 @@ function isConversational(text: string, it: QueryIntent, wishes: Wish[]): boolea
 }
 
 /** Folded text of the pure "sen seç" family, and the rule or AI pick among the last cards. */
-async function answerReplyWord(ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
+async function answerReplyWord(
+  ctx: ChatContext,
+  deps: AssistantDeps,
+  useAi = true,
+): Promise<Result> {
   const { t } = deps;
   const cards = ctx.lastCards ?? [];
   if (cards.length < 2) {
@@ -682,7 +730,7 @@ async function answerReplyWord(ctx: ChatContext, deps: AssistantDeps): Promise<R
     );
   }
   let notice: string | undefined;
-  if (deps.ai) {
+  if (deps.ai && useAi) {
     const res = await pickFromCards(cards, ctx.query ?? '', ctx, deps);
     if (res.reply.cards.length > 0) return res;
     notice = res.reply.notice;
@@ -756,30 +804,17 @@ function rulePick(cards: ChatCard[], ctx: ChatContext, deps: AssistantDeps): Bot
 }
 
 /**
- * Small talk goes to /chat when the AI layer is on. The model's words are shown only when they
- * pass validateFreeText (zone 'chat'); its action is a code that rule code carries out. Null on
- * any failure, limit or invalid reply: the caller then uses its template.
+ * The router said "chat": its words are shown only when they pass validateFreeText (zone 'chat');
+ * its action is a code that rule code carries out. Null when the reply is not valid: the caller
+ * then uses its own template.
  */
-async function aiSmallTalk(
-  text: string,
+async function chatFromRouter(
+  res: { reply: string; action: ChatReplyAction },
   ctx: ChatContext,
   deps: AssistantDeps,
 ): Promise<Result | null> {
-  const chat = deps.ai?.chat;
-  if (!chat) return null;
   const { t } = deps;
   const cards = ctx.lastCards ?? [];
-  const kind = cards.some((c) => c.kind === 'restaurant') ? 'restaurant' : 'parking';
-  let res: ChatResponse | null;
-  try {
-    res = await chat(
-      text,
-      cards.length > 0 ? { count: Math.min(cards.length, MAX_CARDS), kind } : undefined,
-    );
-  } catch {
-    return null;
-  }
-  if (!res) return null;
   const said = validateFreeText(
     'chat',
     res.reply,
@@ -787,6 +822,7 @@ async function aiSmallTalk(
   );
   if (!said) return null;
   if (res.action === 'pick_from_last' && cards.length >= 2) {
+    // Same message id as the router call: the pick costs no further use.
     const picked = await answerReplyWord(ctx, deps);
     return {
       reply: { ...picked.reply, text: `${said}\n${picked.reply.text}`, sparkle: true },
@@ -798,6 +834,66 @@ async function aiSmallTalk(
       ? [say(t, 'chat.exNear'), say(t, 'chat.exKofte'), say(t, 'chat.exAlsancak')]
       : examples(ctx.section, t);
   return plain({ text: said, cards: [], actions, sparkle: true }, ctx);
+}
+
+/** The promise's value, or null when it fails or takes longer than `ms`. */
+async function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  try {
+    return await Promise.race([p.catch(() => null), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+type Routed =
+  | { kind: 'search'; value: Extract<Understanding, { kind: 'search' }> }
+  | { kind: 'chat'; value: { reply: string; action: ChatReplyAction } }
+  | { kind: 'none' };
+
+/**
+ * The router. With the AI layer on and uses left, every new message is sent to Haiku first (one
+ * call, a ROUTER_TIMEOUT_MS wait at most). 'none' means the rules answer: unknown, a timeout, an
+ * error, no uses left, or no AI layer. A notice is set when the daily uses are (about to be) gone.
+ */
+async function route(
+  text: string,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+): Promise<{ out: Routed; notice?: string }> {
+  const ai = deps.ai;
+  const none: Routed = { kind: 'none' };
+  if (!ai) return { out: none };
+  const { t } = deps;
+  if ((ai.usesLeft?.() ?? 1) <= 0) {
+    return { out: none, ...(ai.quotaNotice() ? { notice: t('chat.sparkleOut') } : {}) };
+  }
+  const cards = ctx.lastCards ?? [];
+  const kind = cards.some((c) => c.kind === 'restaurant') ? 'restaurant' : 'parking';
+  const res = await within(
+    Promise.resolve().then(() =>
+      ai.understand(
+        text,
+        cards.length > 0 ? { count: Math.min(cards.length, MAX_CARDS), kind } : undefined,
+      ),
+    ),
+    ROUTER_TIMEOUT_MS,
+  );
+  if (!res) return { out: none };
+  if (!res.ok) {
+    return {
+      out: none,
+      ...(res.reason === 'quota' && ai.quotaNotice() ? { notice: t('chat.sparkleOut') } : {}),
+    };
+  }
+  const notice = res.remaining === 0 && ai.quotaNotice() ? { notice: t('chat.sparkleLast') } : {};
+  const v = res.value;
+  if (v.kind === 'search') return { out: { kind: 'search', value: v }, ...notice };
+  if (v.kind === 'chat') return { out: { kind: 'chat', value: v }, ...notice };
+  return { out: none, ...notice };
 }
 
 export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
@@ -828,24 +924,10 @@ async function answerText(
 ): Promise<Result> {
   const { t } = deps;
   const foldedText = fold(text);
-  // A pure greeting, thanks or goodbye is answered in kind, never by the AI.
-  const greet = greetKind(foldedText);
-  if (greet) {
-    meta.settled = true;
-    return (
-      (await aiSmallTalk(text, ctx, deps)) ??
-      plain({ text: greetReply(greet, text, t), cards: [], actions: examples(ctx.section, t) }, ctx)
-    );
-  }
-  // "Sence", "sen seç": the user hands the choice over; no search, no place lookup.
-  if (isReplyWord(foldedText)) {
-    meta.settled = true;
-    return answerReplyWord(ctx, deps);
-  }
-
-  meta.planWhen = planWhenIn(text) ?? (parkTripIn(text) ? 'now' : null);
-  let it = parseQuery(meta.planWhen ? withoutPlanWords(text) || text : text);
-  let notice: string | undefined;
+  // With AI uses left, every new message goes to Haiku first (the router). It answers with a
+  // search (the rules run it below), a chat reply, or unknown; anything else is the rule path.
+  const routed = await route(text, ctx, deps);
+  let notice = routed.notice;
   const withNotice = (r: Result): Result =>
     notice && !r.reply.notice ? { ...r, reply: { ...r.reply, notice } } : r;
   const offTopicActions = () => [
@@ -853,6 +935,38 @@ async function answerText(
     say(t, 'chat.exNear'),
     say(t, 'chat.exKofte'),
   ];
+  // The router ran or was not available: no second AI call for this message, except the pick /
+  // plan of a search, which share the router call's message id.
+  if (routed.out.kind !== 'search') meta.quotaOut = true;
+  let chatInvalid = false;
+  if (routed.out.kind === 'chat') {
+    const said = await chatFromRouter(routed.out.value, ctx, deps);
+    if (said) {
+      meta.settled = true;
+      return withNotice(said);
+    }
+    // An unusable reply: the templates below answer.
+    chatInvalid = true;
+  }
+  // A pure greeting, thanks or goodbye is answered in kind.
+  const greet = greetKind(foldedText);
+  if (greet) {
+    meta.settled = true;
+    return withNotice(
+      plain(
+        { text: greetReply(greet, text, t), cards: [], actions: examples(ctx.section, t) },
+        ctx,
+      ),
+    );
+  }
+  // "Sence", "sen seç": the user hands the choice over; no search, no place lookup.
+  if (isReplyWord(foldedText)) {
+    meta.settled = true;
+    return withNotice(await answerReplyWord(ctx, deps, !meta.quotaOut));
+  }
+
+  meta.planWhen = planWhenIn(text) ?? (parkTripIn(text) ? 'now' : null);
+  let it = parseQuery(meta.planWhen ? withoutPlanWords(text) || text : text);
 
   // Follow-ups only make sense after a previous search.
   let followUp: FollowUp | null = null;
@@ -881,66 +995,36 @@ async function answerText(
     }
   }
 
-  // A district with a word that is a restaurant's or a place's name needs no AI to be understood.
   const ruleIt = it;
   const ruleLeft = districtLeftover(it, text);
-  const settled = ruleLeft !== null && ruleLeft.kind !== 'unknown';
   // Talk about the conversation itself ("emin misin yani"): never a dish-or-place question.
   const convo = !followUp && isConversational(text, it, meta.wishes);
-  // With /chat available the chit-chat goes there (no ✨); if that fails, the templates below answer.
-  const chatTried = convo && !!deps.ai?.chat;
-  if (chatTried) {
-    meta.settled = true;
-    const said = await aiSmallTalk(text, ctx, deps);
-    if (said) return said;
+  // The router called it chat but its reply did not pass: the honest template, not a search.
+  if (chatInvalid && !convo && it.kind !== 'abuse' && it.kind !== 'greeting') {
+    return withNotice(
+      plain(
+        { text: variant(t, 'chat.offTopic', 2, text), cards: [], actions: offTopicActions() },
+        ctx,
+      ),
+    );
   }
-  if (
-    deps.ai &&
-    !followUp &&
-    !chatTried &&
-    (it.kind === 'offtopic' ||
-      it.kind === 'empty' ||
-      convo ||
-      (it.kind === 'search' && it.uncertain && !settled) ||
-      // A wish the rules cannot act on ("romantik", "çocuklarla"): the AI may map it to data we have.
-      (it.kind === 'search' && meta.wishes.length > 0))
-  ) {
-    const res = await deps.ai.understand(text);
-    if (res.ok) {
-      if (res.remaining === 0 && deps.ai.quotaNotice()) notice = t('chat.sparkleLast');
-      if (res.value.kind === 'offtopic') {
-        // The model's words go through the same checks as the tone; otherwise the template answers.
-        const said = validateFreeText('offtopic', res.value.reply, textContext(deps, IZMIR_CENTER));
-        // An unusable model reply to chit-chat falls through to the honest templates below.
-        if (said || !convo) {
-          return withNotice(
-            plain(
-              said
-                ? { text: said, cards: [], actions: offTopicActions(), sparkle: true }
-                : {
-                    text: variant(t, 'chat.offTopic', 2, text),
-                    cards: [],
-                    actions: offTopicActions(),
-                  },
-              ctx,
-            ),
-          );
-        }
-      }
-      if (res.value.kind === 'search') {
-        const fromAi = intentFromUnderstanding(res.value, text);
-        it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
-        meta.ai = res.value;
-        meta.wishes = [...new Set([...meta.wishes, ...(res.value.wishes ?? [])])];
-        if ((res.value.partySize ?? 0) >= 3 && !meta.wishes.includes('group')) {
-          meta.wishes.push('group');
-        }
-        meta.planWhen = res.value.plan?.when ?? meta.planWhen;
-      }
-    } else {
-      if (res.reason === 'quota') meta.quotaOut = true;
-      if (res.reason === 'quota' && deps.ai.quotaNotice()) notice = t('chat.sparkleOut');
+  // The router said search: the AI fills what the rules did not get and decides intent and
+  // wishes; a district or place name from our data stays as the rules read it. Follow-ups, abuse
+  // and gibberish stay with the rules.
+  if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse' && it.kind !== 'gibberish') {
+    const found = routed.out.value;
+    // A district with a word that is a restaurant's or a place's name: the rules read it fully.
+    const ruleSettled = ruleLeft !== null && ruleLeft.kind !== 'unknown';
+    if (!ruleSettled) {
+      const fromAi = intentFromUnderstanding(found, text);
+      it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
     }
+    meta.ai = found;
+    meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];
+    if ((found.partySize ?? 0) >= 3 && !meta.wishes.includes('group')) {
+      meta.wishes.push('group');
+    }
+    meta.planWhen = found.plan?.when ?? meta.planWhen;
   }
 
   const aiAdded =
@@ -986,10 +1070,12 @@ async function answerText(
     );
   }
   if (it.kind === 'greeting') {
-    const msg = variant(t, 'chat.hello', 4, text);
-    const said = await aiSmallTalk(text, ctx, deps);
-    if (said) return said;
-    return plain({ text: msg, cards: [], actions: examples(ctx.section, t) }, ctx);
+    return withNotice(
+      plain(
+        { text: variant(t, 'chat.hello', 4, text), cards: [], actions: examples(ctx.section, t) },
+        ctx,
+      ),
+    );
   }
   if (it.kind === 'abuse') {
     return plain({ text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) }, ctx);

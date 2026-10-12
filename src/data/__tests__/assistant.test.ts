@@ -421,7 +421,7 @@ describe('assistant', () => {
         aiDeps({
           understand: async () => ({
             ok: true,
-            value: { kind: 'offtopic', reply: 'Maçı izleyemedim 😄' },
+            value: { kind: 'chat', reply: 'Maçı izleyemedim 😄', action: 'none' },
             remaining: 4,
           }),
         }),
@@ -450,7 +450,7 @@ describe('assistant', () => {
         aiDeps({
           understand: async () => ({
             ok: true,
-            value: { kind: 'offtopic', reply: 'Maçı izleyemedim 😄' },
+            value: { kind: 'chat', reply: 'Maçı izleyemedim 😄', action: 'none' },
             remaining: 0,
           }),
           quotaNotice: () => true,
@@ -521,37 +521,47 @@ describe('assistant', () => {
       expect(r.ctx.requireParking).toBe(true);
     });
 
-    it('does not call the AI when the rules understood everything', async () => {
-      const boom = async () => {
-        throw new Error('ai must not be called');
-      };
-      const r = await answer(
-        'bornovada köfteci',
-        emptyContext('food'),
-        aiDeps({ understand: boom }),
-      );
+    it('asks the router once even when the rules understood everything; a failed router leaves the rule answer', async () => {
+      const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+      const r = await answer('bornovada köfteci', emptyContext('food'), aiDeps({ understand }));
+      expect(understand).toHaveBeenCalledTimes(1);
       expect(r.ctx.cat).toBe('meat');
       expect(r.reply.cards.length).toBeGreaterThan(0);
     });
 
-    it('does not call the AI for a follow-up a rule handled', async () => {
-      const boom = async () => {
-        throw new Error('ai must not be called');
-      };
+    it('a follow-up a rule handled still asks the router, but the rule answer stands', async () => {
+      const understand = jest.fn(async () => ({
+        ok: true as const,
+        remaining: 5,
+        value: {
+          kind: 'search' as const,
+          district: 'Konak',
+          cat: 'cafe' as const,
+          dish: null,
+          place: null,
+          food: true,
+          requireParking: false,
+          appleQuery: null,
+          nearMe: false,
+          dishServes: null,
+        },
+      }));
       const c1 = await answer('bornovadaki balıkçılar', emptyContext('food'), deps);
-      const d = aiDeps({ understand: boom });
+      const d = aiDeps({ understand });
       const r = await answer('daha yakın', c1.ctx, d);
       expect(r.ctx.sort).toBe('distance');
+      expect(r.ctx.cat).toBe('fish');
       const r2 = await answer('başka var mı', c1.ctx, d);
       expect(r2.ctx.wide).toBe(true);
+      expect(r2.ctx.cat).toBe('fish');
+      expect(understand).toHaveBeenCalledTimes(2);
     });
 
-    it('never calls the AI for a greeting', async () => {
-      const boom = async () => {
-        throw new Error('ai must not be called');
-      };
-      const r = await answer('selam', emptyContext('food'), aiDeps({ understand: boom }));
+    it('a greeting asks the router once; when it fails the greeting template answers', async () => {
+      const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+      const r = await answer('selam', emptyContext('food'), aiDeps({ understand }));
       expect(r.reply.text.startsWith('chat.hello_')).toBe(true);
+      expect(understand).toHaveBeenCalledTimes(1);
     });
 
     it('searches an unknown dish through the names the AI says serve it', async () => {
@@ -727,7 +737,7 @@ describe('assistant: chat bugs from the phone', () => {
     });
 
     it.each(['Oo', 'aa', 'xd', 'hmm'])(
-      'answers "%s" with the guide, no search, no AI',
+      'answers "%s" with the guide and no search; the router is asked once and the rules answer',
       async (q) => {
         const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
         const r = await answer(q, emptyContext(section), {
@@ -737,12 +747,13 @@ describe('assistant: chat bugs from the phone', () => {
         expect(r.reply.text.startsWith('chat.unknown_')).toBe(true);
         expect(r.reply.cards).toEqual([]);
         expect(r.ctx).toEqual(emptyContext(section));
-        expect(understand).not.toHaveBeenCalled();
+        // Every message goes to the router first (one call); its failure leaves the rules.
+        expect(understand).toHaveBeenCalledTimes(1);
       },
     );
   });
 
-  it('never calls the AI for a greeting', async () => {
+  it('a greeting asks the router once; when it fails the greeting template answers', async () => {
     const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
     const r = await answer('selamın aleyküm', emptyContext('park'), {
       ...deps,
@@ -752,7 +763,7 @@ describe('assistant: chat bugs from the phone', () => {
       },
     });
     expect(r.reply.text.startsWith('chat.greet.salam_')).toBe(true);
-    expect(understand).not.toHaveBeenCalled();
+    expect(understand).toHaveBeenCalledTimes(1);
   });
 
   it('asks dish-or-place in the park section for a text that is not place-like', async () => {
@@ -1003,21 +1014,17 @@ describe('a district plus a word that is no dish, name or place', () => {
     expect(r.reply.notice).toBe('chat.sparkleOut');
   });
 
-  it('does not spend an AI use on a word that names a restaurant or a place', async () => {
-    const boom = async () => {
-      throw new Error('ai must not be called');
-    };
-    const mado = await answer(
-      "Bornova'da Mado",
-      emptyContext('food'),
-      withAi({ understand: boom }),
+  it('a word that names a restaurant or a place stays as the rules read it, whatever the router says', async () => {
+    // The router is asked once per message; its search (district + a category) does not
+    // override the rules' reading of a restaurant or place name.
+    const understand = jest.fn(async () =>
+      search({ district: 'Bornova', cat: 'fish', food: true, nearMe: true }),
     );
+    const mado = await answer("Bornova'da Mado", emptyContext('food'), withAi({ understand }));
+    expect(understand).toHaveBeenCalledTimes(1);
     expect(mado.reply.text).toContain('chat.dishNamed');
-    const erzene = await answer(
-      "Bornova'da Erzene",
-      emptyContext('food'),
-      withAi({ understand: boom }),
-    );
+    const erzene = await answer("Bornova'da Erzene", emptyContext('food'), withAi({ understand }));
+    expect(understand).toHaveBeenCalledTimes(2);
     expect(erzene.ctx.place?.label).toBe('Erzene');
   });
 });

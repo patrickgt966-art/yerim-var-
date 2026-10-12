@@ -8,6 +8,11 @@ export const SUB_DAILY = 200;
 export const MAX_MESSAGE_CHARS = 200;
 export const HISTORY_LIMIT = 6;
 export const MAX_RESULTS = 5;
+/**
+ * How long the app waits for the router (/understand) before it answers with its own rules.
+ * Haiku with structured output is usually faster; a longer wait feels like a hang.
+ */
+export const ROUTER_TIMEOUT_MS = 6000;
 /** /pick and /plan: candidate restaurants per request, and car parks per restaurant (plan). */
 export const MAX_CANDIDATES = 5;
 export const MAX_PLAN_PARKINGS = 3;
@@ -20,9 +25,14 @@ export type UnderstandRequest = {
   text: string;
   history: ChatTurn[];
   section: 'park' | 'food';
+  /** What the last bot reply showed (no names): lets the model answer "pick_from_last". */
+  lastCards?: { count: number; kind: 'restaurant' | 'parking' };
 };
 
 export type QuotaRequest = { deviceId: string };
+
+/** The client gave up waiting for this message: the server gives its use back. */
+export type CancelRequest = { deviceId: string; messageId: string };
 
 // Same literals as FOOD_CATEGORIES in data/restaurants.ts.
 const FOOD_CATEGORY_VALUES = [
@@ -65,6 +75,15 @@ export const WISHES = [
 ] as const;
 export type Wish = (typeof WISHES)[number];
 
+/** What the app does besides showing the reply; the chips and the pick come from app code. */
+export const CHAT_ACTIONS = [
+  'none',
+  'ask_food_or_park',
+  'pick_from_last',
+  'suggest_examples',
+] as const;
+export type ChatReplyAction = (typeof CHAT_ACTIONS)[number];
+
 /** What the bot may ask back. The question's chips always come from the app. */
 export const CLARIFY_ASKS = ['district', 'dish', 'party', 'time', 'duration'] as const;
 export type ClarifyAsk = (typeof CLARIFY_ASKS)[number];
@@ -104,12 +123,12 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
     dishServes: z.array(z.string()).max(5).nullable(),
     ...searchExtras,
   }),
-  z.object({ kind: z.literal('offtopic'), reply: z.string() }),
+  z.object({ kind: z.literal('chat'), reply: z.string(), action: z.enum(CHAT_ACTIONS) }),
   z.object({ kind: z.literal('unknown') }),
 ]);
 
 /** Client parse: an older deployed server answers without the newer fields. */
-export const UnderstandingClientSchema = z.discriminatedUnion('kind', [
+const ClientUnderstandingKinds = z.discriminatedUnion('kind', [
   z.object({
     ...searchFields,
     nearMe: z.boolean().optional().default(false),
@@ -121,9 +140,18 @@ export const UnderstandingClientSchema = z.discriminatedUnion('kind', [
     tone: searchExtras.tone.optional().default(null),
     dishNote: searchExtras.dishNote.optional().default(null),
   }),
-  z.object({ kind: z.literal('offtopic'), reply: z.string() }),
+  z.object({
+    kind: z.literal('chat'),
+    reply: z.string(),
+    action: z.enum(CHAT_ACTIONS).optional().default('none'),
+  }),
   z.object({ kind: z.literal('unknown') }),
 ]);
+/** An older server still answers small talk as 'offtopic': read it as chat without an action. */
+const OldOfftopic = z
+  .object({ kind: z.literal('offtopic'), reply: z.string() })
+  .transform((o) => ({ kind: 'chat' as const, reply: o.reply, action: 'none' as const }));
+export const UnderstandingClientSchema = z.union([ClientUnderstandingKinds, OldOfftopic]);
 type ServerUnderstanding = z.infer<typeof UnderstandingSchema>;
 type ServerSearch = Extract<ServerUnderstanding, { kind: 'search' }>;
 type SearchExtras = Pick<ServerSearch, keyof typeof searchExtras>;
@@ -157,22 +185,26 @@ export type NarrateRequest = {
   }[];
 };
 
-export const UNDERSTAND_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulamasının (Yerim Var) mesaj çevirmenisin. Kullanıcının Türkçe mesajını (yazım hataları, ek ve argo olabilir) verilen şemaya çevirirsin.
+export const UNDERSTAND_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "Alsancak" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
+
+Karar (kind):
+- "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "Alsancak"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.
+- "chat": selam, teşekkür, veda, uygulamanın kendisi ya da sohbet hakkında laf, "sence / sen seç" gibi seçimi sana bırakma, spor, haber, hava durumu gibi konu dışı sohbet. Hiçbir arama isteği yoksa.
+- "unknown": ne istediği anlaşılmıyorsa.
 
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
-- Kullanıcı bir yer, otopark ya da yemek arıyorsa kind "search" döndür: district (İzmir ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- search: district (İzmir ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
 - Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes null olsun.
-- "yakınımda", "en yakın", "buralarda", "etrafta" gibi ifadelerde nearMe true olsun, yoksa false.
+- "yakınımda", "en yakın", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
 - wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy, tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (metro/İZBAN yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
 - partySize: kaç kişi olduklarını söylediyse sayı, yoksa null.
 - clarify: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa {ask, text} döndür; aksi halde null. ask sadece district, dish, party, time ya da duration olabilir.
 - plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa {when} (now, tonight, lunch, dinner, later_today), değilse null.
-- Sohbet, spor, haber, hava durumu gibi konularda kind "offtopic" döndür ve reply alanına kısa, sıcak, esprili, en çok 2 cümlelik ve en çok 120 karakterlik bir Türkçe cevap yaz. Bu cevap HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok), rakam, mekân adı, fiyat, "ücretsiz", otopark ya da açık/kapalı iddiası içermesin ve konuyu yemeğe çevirsin; uygulama bu cevabı denetler ve kurala uymayanı atar.
-- Ne istediği anlaşılmıyorsa kind "unknown" döndür.
+- chat: reply (1-2 kısa, sıcak, hafif esprili cümle, en çok 140 karakter) ve action (none, ask_food_or_park, suggest_examples, pick_from_last). Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!"); konu dışı laflara kısaca gülümseyip yemek ya da otoparka dön. ask_food_or_park: ne arandığı belli değilse. suggest_examples: nasıl kullanılacağı sorulduysa. pick_from_last: kullanıcı seçimi sana bırakıyorsa VE aşağıda son cevapta kart olduğu yazıyorsa. Diğer durumlarda none. reply HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok); rakam, mekân adı, fiyat, "ücretsiz", otopark, mesafe, açık/kapalı iddiası, link, @, # içermesin, en çok bir emoji olsun, cümle ortasında büyük harfle başlayan sözcük (özel ad) olmasın; uygulama bu cevabı denetler ve kurala uymayanı atar.
 - Sadece şemaya uygun JSON döndür.
 
-SERBEST METİN: sadece şu üç alanda kendi cümleni yazabilirsin, hepsi null olabilir. Başka hiçbir alana metin yazma.
+SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin, hepsi null olabilir. Başka hiçbir alana metin yazma (chat reply yukarıdaki kurallara tabidir).
 - tone (en çok 90 karakter, tek kısa samimi cümle): kullanıcının durumuna ya da dileğine sıcak bir karşılık, örneğin "Yıldönümünüz kutlu olsun!".
 - clarify.text (en çok 80 karakter): sorunun cümlesi, örneğin "Hangi semtte yemek istersiniz?".
 - dishNote (en çok 140 karakter): yemek bizim için bilinmiyorsa ya da egzotikse yemeğin KENDİSİ hakkında genel bilgi, örneğin "Kibbe, bulgur ve kıymayla yapılan, içli köfteye benzeyen bir Orta Doğu yemeğidir." Asla belirli bir mekân hakkında değil.
@@ -389,14 +421,6 @@ ${LIMITS_TR}`;
 
 // --- Small talk (/chat): greetings, thanks, goodbyes and talk about the chat itself --------------
 
-/** What the app does besides showing the reply; the chips and the pick come from app code. */
-export const CHAT_ACTIONS = [
-  'none',
-  'ask_food_or_park',
-  'pick_from_last',
-  'suggest_examples',
-] as const;
-export type ChatReplyAction = (typeof CHAT_ACTIONS)[number];
 export const MAX_CHAT_CHARS = 300;
 export const CHAT_HISTORY_LIMIT = 4;
 

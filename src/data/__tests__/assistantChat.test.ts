@@ -2,7 +2,12 @@ import '@/i18n';
 import i18n from 'i18next';
 
 import type { AiResult } from '@/lib/ai/client';
-import type { ChatResponse, PickCandidate, Understanding } from '@/lib/ai/protocol';
+import {
+  UnderstandingClientSchema,
+  type ChatResponse,
+  type PickCandidate,
+  type Understanding,
+} from '@/lib/ai/protocol';
 
 import { walkMinFromMeters } from '@/lib/ai/verify';
 
@@ -22,18 +27,21 @@ const keyDeps: AssistantDeps = {
 // eslint-disable-next-line import/no-named-as-default-member
 const realDeps: AssistantDeps = { ...keyDeps, t: (k, o) => i18n.t(k, o) };
 
-const offtopic = (reply: string): AiResult<Understanding> => ({
+/** The router answers "chat": small talk, a validated reply and an action code. */
+const chatU = (
+  reply: string,
+  action: ChatResponse['action'] = 'none',
+): AiResult<Understanding> => ({
   ok: true,
-  value: { kind: 'offtopic', reply },
+  value: { kind: 'chat', reply, action },
   remaining: 8,
 });
 
-/** A mocked AI layer; `chat` is only present when given. */
+/** A mocked AI layer; every call is recorded. */
 function mockAi(
   fns: {
-    understand?: () => unknown;
+    understand?: (...args: unknown[]) => unknown;
     pick?: (req: { candidates: PickCandidate[] }) => unknown;
-    chat?: () => unknown;
   } = {},
 ) {
   const fail = async () => ({ ok: false, reason: 'error' });
@@ -42,13 +50,12 @@ function mockAi(
     pick: jest.fn(fns.pick ?? fail),
     plan: jest.fn(fail),
     pickPark: jest.fn(fail),
-    ...(fns.chat ? { chat: jest.fn(fns.chat) } : {}),
   };
   const deps: AssistantDeps = {
     ...keyDeps,
     ai: { ...ai, quotaNotice: () => true } as unknown as NonNullable<AssistantDeps['ai']>,
   };
-  return { ai: ai as typeof ai & { chat: jest.Mock }, deps };
+  return { ai, deps };
 }
 
 const closest = async (req: { candidates: PickCandidate[] }) => {
@@ -77,6 +84,13 @@ describe('greeting replies match the greeting', () => {
     ['görüşürüz', 'chat.greet.bye_'],
     ['teşekkürler', 'chat.greet.thanks_'],
     ['sağ ol', 'chat.greet.thanks_'],
+    ['Hello', 'chat.hello_'],
+    ['hi', 'chat.hello_'],
+    ['hey', 'chat.hello_'],
+    ['good morning', 'chat.greet.morning_'],
+    ['thank you', 'chat.greet.thanks_'],
+    ['bye', 'chat.greet.bye_'],
+    ['kolay gelsin', 'chat.hello_'],
   ])('"%s" -> %s', async (q, prefix) => {
     const r = await answer(q, emptyContext('park'), keyDeps);
     expect(r.reply.text.startsWith(prefix)).toBe(true);
@@ -139,17 +153,17 @@ describe('transcript: "Bir yere gireceğime emin misin yani"', () => {
     expect(r.reply.actions.length).toBeGreaterThan(0);
   });
 
-  it('AI on (no /chat): /understand is called once and its valid offtopic reply is used', async () => {
-    const { ai, deps } = mockAi({ understand: async () => offtopic('Emin olmaya çalışıyorum 😄') });
+  it('AI on: the router is called once and its valid chat reply is used', async () => {
+    const { ai, deps } = mockAi({ understand: async () => chatU('Emin olmaya çalışıyorum 😄') });
     const r = await answer(q, emptyContext('food'), deps);
     expect(ai.understand).toHaveBeenCalledTimes(1);
     expect(r.reply.text).toBe('Emin olmaya çalışıyorum 😄');
     expect(r.reply.sparkle).toBe(true);
   });
 
-  it('AI on: an invalid offtopic reply, an error or a quota stop falls back to the doubt template', async () => {
+  it('AI on: an invalid chat reply, an error or a quota stop falls back to the doubt template', async () => {
     for (const understand of [
-      async () => offtopic('Bu yer 3 dakika uzakta, kesin açık.'),
+      async () => chatU('Bu yer 3 dakika uzakta, kesin açık.'),
       async () => ({ ok: false, reason: 'error' }),
       async () => ({ ok: false, reason: 'quota' }),
     ]) {
@@ -183,8 +197,8 @@ describe('transcript: "Bir yere gireceğime emin misin yani"', () => {
     expect(r.reply.text).toBe('chat.convoDoubt');
   });
 
-  it('an unrecognised multi-word sentence reaches /understand once; a valid offtopic reply is used', async () => {
-    const { ai, deps } = mockAi({ understand: async () => offtopic('Buna yetişemedim 😄') });
+  it('an unrecognised multi-word sentence reaches the router once; a valid chat reply is used', async () => {
+    const { ai, deps } = mockAi({ understand: async () => chatU('Buna yetişemedim 😄') });
     const r = await answer('zırtapoz kuruntu falan filan', emptyContext('food'), deps);
     expect(ai.understand).toHaveBeenCalledTimes(1);
     expect(r.reply.text).toBe('Buna yetişemedim 😄');
@@ -260,24 +274,40 @@ describe('transcript: "Sence"', () => {
     }
   });
 
-  it('AI on: runs the existing pick path on the last cards (one pick call)', async () => {
-    const { ai, deps } = mockAi({ pick: closest });
+  it('AI on: the router answers "pick_from_last" and the pick path runs on the last cards (one pick call)', async () => {
+    const { ai, deps } = mockAi({
+      pick: closest,
+      understand: async (text: unknown) =>
+        text === 'sence' ? chatU('Ben seçeyim!', 'pick_from_last') : { ok: false, reason: 'error' },
+    });
     const list = await answer('lahmacun', emptyContext('food'), deps);
     const r = await answer('sence', list.ctx, deps);
     expect(ai.pick).toHaveBeenCalledTimes(1);
-    expect(ai.understand).not.toHaveBeenCalled();
+    expect(ai.understand).toHaveBeenCalledTimes(2);
     expect(r.reply.text).toContain('chat.pickLine');
     expect(r.reply.sparkle).toBe(true);
     expect(r.reply.cards[0]).toMatchObject({ picked: true });
   });
 
   it('AI on but the pick fails or the quota is gone: the rule choice answers', async () => {
-    const failing = mockAi({ pick: async () => ({ ok: false, reason: 'quota' }) });
+    const failing = mockAi({
+      pick: async () => ({ ok: false, reason: 'quota' }),
+      understand: async (text: unknown) =>
+        text === 'sence' ? chatU('Ben seçeyim!', 'pick_from_last') : { ok: false, reason: 'error' },
+    });
     const list = await answer('lahmacun', emptyContext('food'), failing.deps);
     const r = await answer('sence', list.ctx, failing.deps);
-    expect(r.reply.text.startsWith('chat.pickRule')).toBe(true);
-    expect(r.reply.sparkle).toBeFalsy();
+    // The router's friendly line, then the rule choice (the pick was refused).
+    expect(r.reply.text.startsWith('Ben seçeyim!\nchat.pickRule')).toBe(true);
     expect(r.reply.notice).toBe('chat.sparkleOut');
+  });
+
+  it('AI on but the router failed for "sence": the rule choice answers and no pick is asked', async () => {
+    const { ai, deps } = mockAi({ pick: closest });
+    const list = await answer('lahmacun', emptyContext('food'), deps);
+    const r = await answer('sence', list.ctx, deps);
+    expect(ai.pick).not.toHaveBeenCalled();
+    expect(r.reply.text.startsWith('chat.pickRule')).toBe(true);
   });
 
   it('after a reply without cards "sence" asks again', async () => {
@@ -307,103 +337,113 @@ describe('chat place resolution does not prefix-match short common words', () =>
   });
 });
 
-describe('small talk through /chat', () => {
+describe('small talk through the router', () => {
   const said =
     (reply: string, action: ChatResponse['action'] = 'none') =>
-    async () => ({
-      reply,
-      action,
-    });
+    async () =>
+      chatU(reply, action);
 
-  it('a greeting calls /chat once and shows its valid reply (marked AI, no /understand)', async () => {
-    const { ai, deps } = mockAi({ chat: said('Size de iyi günler! Ne arıyoruz?') });
+  it('a greeting calls the router once and shows its valid reply (marked AI)', async () => {
+    const { ai, deps } = mockAi({ understand: said('Size de iyi günler! Ne arıyoruz?') });
     const r = await answer('İyi günler', emptyContext('park'), deps);
-    expect(ai.chat).toHaveBeenCalledTimes(1);
-    expect((ai.chat.mock.calls[0] as unknown[])[0]).toBe('İyi günler');
-    expect(ai.understand).not.toHaveBeenCalled();
+    expect(ai.understand).toHaveBeenCalledTimes(1);
+    expect((ai.understand.mock.calls[0] as unknown[])[0]).toBe('İyi günler');
     expect(r.reply.text).toBe('Size de iyi günler! Ne arıyoruz?');
     expect(r.reply.sparkle).toBe(true);
     expect(r.reply.cards).toEqual([]);
   });
 
-  it('thanks, goodbye and conversational talk go to /chat too', async () => {
+  it('thanks, goodbye and conversational talk go through the router too', async () => {
     for (const q of ['teşekkürler', 'hoşça kal', 'Bir yere gireceğime emin misin yani']) {
-      const { ai, deps } = mockAi({ chat: said('Ne demek, buradayım!') });
+      const { ai, deps } = mockAi({ understand: said('Ne demek, buradayım!') });
       const r = await answer(q, emptyContext('park'), deps);
-      expect(ai.chat).toHaveBeenCalledTimes(1);
-      expect(ai.understand).not.toHaveBeenCalled();
+      expect(ai.understand).toHaveBeenCalledTimes(1);
       expect(r.reply.text).toBe('Ne demek, buradayım!');
     }
   });
 
-  it('food and place searches never call /chat', async () => {
+  it('the router is asked once for every kind of message, including plain searches', async () => {
     for (const [q, section] of [
       ['lahmacun', 'food'],
       ['Konak otopark', 'park'],
       ["Bornova'da köfteci", 'food'],
+      ['selam', 'park'],
     ] as const) {
-      const { ai, deps } = mockAi({ chat: said('Selam!') });
+      const { ai, deps } = mockAi();
       await answer(q, emptyContext(section), deps);
-      expect(ai.chat).not.toHaveBeenCalled();
+      expect(ai.understand).toHaveBeenCalledTimes(1);
     }
   });
 
-  it('"sence" is a rule pick and does not call /chat', async () => {
-    const { ai, deps } = mockAi({ chat: said('Selam!'), pick: closest });
-    const list = await answer('lahmacun', emptyContext('food'), deps);
-    await answer('sence', list.ctx, deps);
-    expect(ai.chat).not.toHaveBeenCalled();
-  });
-
   it.each([
-    ['a reply with digits', async () => ({ reply: 'Size de 2 iyi gün!', action: 'none' })],
+    ['a reply with digits', async () => chatU('Size de 2 iyi gün!')],
     ['a reply with a banned claim', said('Yakında ucuz bir yer var!')],
     ['a reply that is too long', said('Selam! '.repeat(30))],
-    ['a null (limit or error)', async () => null],
+    ['an error', async () => ({ ok: false, reason: 'error' })],
+    ['unknown', async () => ({ ok: true, value: { kind: 'unknown' }, remaining: 8 })],
     [
       'a thrown error',
       async () => {
         throw new Error('boom');
       },
     ],
-  ])('%s -> the greeting template', async (_name, chat) => {
-    const { ai, deps } = mockAi({ chat });
+  ])('%s -> the greeting template, with no second AI call', async (_name, understand) => {
+    const { ai, deps } = mockAi({ understand });
     const r = await answer('İyi günler', emptyContext('park'), deps);
-    expect(ai.chat).toHaveBeenCalledTimes(1);
+    expect(ai.understand).toHaveBeenCalledTimes(1);
+    expect(ai.pick).not.toHaveBeenCalled();
     expect(r.reply.text.startsWith('chat.greet.day_')).toBe(true);
     expect(r.reply.sparkle).toBeFalsy();
   });
 
-  it('a failed /chat on conversational talk uses the honest template and does not spend /understand', async () => {
-    const { ai, deps } = mockAi({ chat: async () => null });
+  it('a failed router on conversational talk uses the honest template', async () => {
+    const { ai, deps } = mockAi();
     const r = await answer('Bir yere gireceğime emin misin yani', emptyContext('park'), deps);
-    expect(ai.understand).not.toHaveBeenCalled();
+    expect(ai.understand).toHaveBeenCalledTimes(1);
     expect(r.reply.text).toBe('chat.convoDoubt');
   });
 
+  it('an invalid chat reply to off-topic talk gets the off-topic template, never a search', async () => {
+    const { ai, deps } = mockAi({ understand: said('Skor 3-1 bitti!') });
+    const r = await answer('galatasaray nasıl kazandı', emptyContext('park'), deps);
+    expect(ai.understand).toHaveBeenCalledTimes(1);
+    expect(r.reply.text.startsWith('chat.offTopic_')).toBe(true);
+    expect(r.reply.cards).toEqual([]);
+  });
+
+  it('an old server that still answers "offtopic" is read as chat by the client schema', () => {
+    const parsed = UnderstandingClientSchema.parse({ kind: 'offtopic', reply: 'Selam!' });
+    expect(parsed).toEqual({ kind: 'chat', reply: 'Selam!', action: 'none' });
+  });
+
   it('ask_food_or_park and suggest_examples bring chips from our own data', async () => {
-    const ask = mockAi({ chat: said('Selam! Ne arıyoruz?', 'ask_food_or_park') });
+    const ask = mockAi({ understand: said('Selam! Ne arıyoruz?', 'ask_food_or_park') });
     const a = await answer('selam', emptyContext('park'), ask.deps);
     expect(a.reply.actions.map((x) => x.label)).toEqual([
       'chat.exNear',
       'chat.exKofte',
       'chat.exAlsancak',
     ]);
-    const ex = mockAi({ chat: said('Selam! Şunları yazabilirsin.', 'suggest_examples') });
+    const ex = mockAi({ understand: said('Selam! Şunları yazabilirsin.', 'suggest_examples') });
     const e = await answer('selam', emptyContext('food'), ex.deps);
     expect(e.reply.actions.length).toBeGreaterThan(0);
   });
 
   it('pick_from_last runs the pick path on the last cards', async () => {
     const { ai, deps } = mockAi({
-      chat: said('Rica ederim, ben seçeyim!', 'pick_from_last'),
+      understand: async (text: unknown) =>
+        text === 'teşekkürler'
+          ? chatU('Rica ederim, ben seçeyim!', 'pick_from_last')
+          : { ok: false, reason: 'error' },
       pick: closest,
     });
     const list = await answer('lahmacun', emptyContext('food'), deps);
     const r = await answer('teşekkürler', list.ctx, deps);
-    expect(ai.chat).toHaveBeenCalledTimes(1);
-    const chatArgs = ai.chat.mock.calls[0] as unknown as [string, { count: number; kind: string }];
-    expect(chatArgs[1]).toMatchObject({ kind: 'restaurant' });
+    const args = ai.understand.mock.calls[1] as unknown as [
+      string,
+      { count: number; kind: string },
+    ];
+    expect(args[1]).toMatchObject({ kind: 'restaurant' });
     expect(ai.pick).toHaveBeenCalledTimes(1);
     expect(r.reply.text.startsWith('Rica ederim, ben seçeyim!\n')).toBe(true);
     expect(r.reply.text).toContain('chat.pickLine');
@@ -411,7 +451,7 @@ describe('small talk through /chat', () => {
   });
 
   it('pick_from_last without cards falls back to the food-or-park chips', async () => {
-    const { ai, deps } = mockAi({ chat: said('Hangisini istersin?', 'pick_from_last') });
+    const { ai, deps } = mockAi({ understand: said('Hangisini istersin?', 'pick_from_last') });
     const r = await answer('selam', emptyContext('park'), deps);
     expect(ai.pick).not.toHaveBeenCalled();
     expect(r.reply.actions.length).toBe(3);

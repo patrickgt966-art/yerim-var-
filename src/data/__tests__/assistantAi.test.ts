@@ -137,13 +137,27 @@ describe('wish and plan words', () => {
   });
 });
 
-describe('plain searches never use the AI', () => {
-  it.each(['lahmacun', "Bornova'da köfteci", 'Konak otopark'])('"%s"', async (q) => {
-    const { ai, deps } = mockAi();
-    const r = await answer(q, emptyContext(q.includes('otopark') ? 'park' : 'food'), deps);
-    expect(r.reply.cards.length).toBeGreaterThan(0);
-    for (const fn of Object.values(ai)) expect(fn).not.toHaveBeenCalled();
-  });
+describe('plain searches: the router first, the rules when it gives nothing', () => {
+  it.each(['lahmacun', "Bornova'da köfteci", 'Konak otopark'])(
+    '"%s" asks the router once; a failed router leaves the rule results and asks nothing more',
+    async (q) => {
+      const { ai, deps } = mockAi();
+      const r = await answer(q, emptyContext(q.includes('otopark') ? 'park' : 'food'), deps);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      expect(ai.understand).toHaveBeenCalledTimes(1);
+      expect(ai.pick).not.toHaveBeenCalled();
+      expect(ai.plan).not.toHaveBeenCalled();
+      expect(ai.pickPark).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['lahmacun', "Bornova'da köfteci", 'Konak otopark'])(
+    '"%s" never calls the AI without the AI layer',
+    async (q) => {
+      const r = await answer(q, emptyContext(q.includes('otopark') ? 'park' : 'food'), baseDeps);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    },
+  );
 
   it('offers the pick chip under a list with two or more cards, only with the AI layer', async () => {
     const { deps } = mockAi();
@@ -156,12 +170,12 @@ describe('plain searches never use the AI', () => {
   });
 
   it('does not use the removed automatic narrate (a pick/plan-less layer is fine)', async () => {
-    const understand = jest.fn();
+    const understand = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));
     const r = await answer('lahmacun', emptyContext('food'), {
       ...baseDeps,
       ai: { understand, quotaNotice: () => true },
     });
-    expect(understand).not.toHaveBeenCalled();
+    expect(understand).toHaveBeenCalledTimes(1);
     expect(r.reply.sparkle).toBeFalsy();
     expect(r.reply.actions.some((a) => a.kind === 'pick')).toBe(false);
   });
@@ -460,8 +474,11 @@ describe('plan (job 4)', () => {
     };
   };
 
+  // The plan needs the router to have answered with a search (same message id, one use).
+  const routerSearch = async () => okU(search());
+
   it('renders the steps from our data and asks the plan once', async () => {
-    const { ai, deps } = mockAi({ plan: bestPlan });
+    const { ai, deps } = mockAi({ understand: routerSearch, plan: bestPlan });
     const r = await answer(text, emptyContext('food'), deps);
     expect(ai.plan).toHaveBeenCalledTimes(1);
     const req = ai.plan.mock.calls[0]![0] as { when: string; candidates: PlanCandidate[] };
@@ -483,6 +500,7 @@ describe('plan (job 4)', () => {
 
   it('shows no plan when the car park does not belong to the restaurant', async () => {
     const { deps } = mockAi({
+      understand: routerSearch,
       plan: async (req: { candidates: PlanCandidate[] }) => {
         const a = req.candidates[0]!;
         const other = req.candidates[1]!;
@@ -522,7 +540,7 @@ describe('plan (job 4)', () => {
       }),
       async () => ({ ok: false, reason: 'error' }),
     ]) {
-      const { deps } = mockAi({ plan });
+      const { deps } = mockAi({ understand: routerSearch, plan });
       const r = await answer(text, emptyContext('food'), deps);
       expect(r.reply.plan).toBeUndefined();
       expect(r.reply.cards.length).toBeGreaterThan(0);
@@ -532,7 +550,7 @@ describe('plan (job 4)', () => {
   });
 
   it('a later time uses the opening hours at that time and sends no free-space counts', async () => {
-    const { ai, deps } = mockAi({ plan: bestPlan });
+    const { ai, deps } = mockAi({ understand: routerSearch, plan: bestPlan });
     await answer("Bornova'da akşam 8'de yemek", emptyContext('food'), {
       ...deps,
       now: new Date('2026-10-12T09:00:00Z'),
@@ -546,7 +564,10 @@ describe('plan (job 4)', () => {
   });
 
   it('with the daily uses gone: the notice and the normal results', async () => {
-    const { deps } = mockAi({ plan: async () => ({ ok: false, reason: 'quota' }) });
+    const { deps } = mockAi({
+      understand: routerSearch,
+      plan: async () => ({ ok: false, reason: 'quota' }),
+    });
     const r = await answer(text, emptyContext('food'), deps);
     expect(r.reply.notice).toBe('chat.sparkleOut');
     expect(r.reply.plan).toBeUndefined();
@@ -722,9 +743,9 @@ describe('car parks', () => {
   });
 });
 
-describe('the off-topic redirect is checked like the tone', () => {
+describe('the chat redirect of the router is checked like the tone', () => {
   const off = (reply: string) =>
-    mockAi({ understand: async () => okU({ kind: 'offtopic', reply }) }).deps;
+    mockAi({ understand: async () => okU({ kind: 'chat', reply, action: 'none' }) }).deps;
 
   it('shows a short friendly redirect', async () => {
     const r = await answer(
@@ -740,7 +761,7 @@ describe('the off-topic redirect is checked like the tone', () => {
     'Skor 3-1 bitti, ne yersin?',
     'Bornova tarafında yiyelim',
     'Ücretsiz bir yemek bulalım',
-    'a'.repeat(121),
+    'a'.repeat(141),
   ])('uses the template instead of "%s"', async (reply) => {
     const r = await answer('galatasaray nasıl kazandı', emptyContext('park'), off(reply));
     expect(r.reply.text.startsWith('chat.offTopic_')).toBe(true);

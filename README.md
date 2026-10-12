@@ -71,9 +71,15 @@ design/           Referans ekranlar (PNG + HTML)
 - **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 30 sn zaman aşımı, 2 yeniden deneme. Bozuk kayıtlar Zod ile atılır.
 - **Tarifeler:** `data/tariffs.json`. Her kayıtta `validFrom`, `source` ve `verifiedAt` var. Şu an hiçbiri doğrulanmadığı için hepsi "Tahmini" görünür. Resmî kaynaktan doğrulanmadan "Resmi tarife" yazılmaz.
 
+## Yapay zekâ (isteğe bağlı)
+
+Kullanıcı onay verdiyse her sohbet mesajı önce bir Cloudflare Worker üzerinden Claude Haiku'ya gider (`server/yerim-ai`); Haiku mesajı uygulamanın kendi verisiyle (kurallar + veri) mi çözeceğine yoksa kendisi mi cevaplayacağına karar verir. Cevaplardaki bilgi yalnızca uygulamanın verisinden gelir; modelin serbest metni denetlenir, geçmeyen atılır. Tek sayaç: cihaz başına günde 10 yapay zekâ mesajı (ilk mesaj dahil). Hak bitince, 6 sn içinde cevap gelmezse ya da sunucu kapalıysa uygulama kendi kurallarıyla cevap verir.
+
+Sınırları değiştirmek için `server/yerim-ai/wrangler.toml` içindeki `[vars]` değerini düzenle ve `cd server/yerim-ai && npx wrangler deploy` çalıştır; uygulama sürümü çıkarmak gerekmez. Ayrıntılar, kurulum ve günlük izleme (`npx wrangler tail`): [`server/yerim-ai/README.md`](server/yerim-ai/README.md).
+
 ## Gizlilik
 
-Hesap, sunucu, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Ağ istekleri: belediyenin doluluk API'si ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
+Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Tek sunucumuz isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare): kullanıcı onay verirse sohbet mesajı ve son birkaç mesaj yapay zekâya gider; sunucu metni kaydetmez, günlük hak sayımı için yalnızca rastgele bir cihaz kimliği tutar. Diğer ağ istekleri: belediyenin doluluk API'si ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
 
 ## Tasarımı olmayan ekranlar
 

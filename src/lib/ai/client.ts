@@ -5,6 +5,7 @@ import {
   HISTORY_LIMIT,
   MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
+  ROUTER_TIMEOUT_MS,
   UnderstandingClientSchema,
   chatOutputSchema,
   parkPickOutputSchema,
@@ -23,8 +24,9 @@ import {
   type UnderstandRequest,
 } from './protocol';
 
-// Haiku with structured output can take well over 6 s; understand is the shorter call.
-const UNDERSTAND_TIMEOUT_MS = 12000;
+// The router (/understand) answers every message, so it must not hang: after this long the app
+// gives up, answers with its own rules and tells the server to cancel (the use is given back).
+const UNDERSTAND_TIMEOUT_MS = ROUTER_TIMEOUT_MS;
 const NARRATE_TIMEOUT_MS = 15000;
 const PICK_TIMEOUT_MS = 12000;
 const QUOTA_TIMEOUT_MS = 6000;
@@ -41,7 +43,7 @@ export type AiResult<T> =
   /** `remaining` is the server's count after a failure (an older server omits it). */
   | { ok: false; reason: 'off' | 'quota' | 'error'; remaining?: number };
 
-type Failure = { failed: 'quota' | 'error'; remaining?: number };
+type Failure = { failed: 'quota' | 'error'; remaining?: number; timedOut?: boolean };
 
 const fail = (
   reason: 'quota' | 'error',
@@ -62,7 +64,11 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     timeoutMs: number,
   ): Promise<{ data: unknown } | Failure> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
     try {
       const res = await fetchImpl(`${root}${path}`, {
         method: 'POST',
@@ -71,9 +77,11 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         signal: controller.signal,
       });
       if (!res.ok) {
-        const failed = res.status === 429 ? 'quota' : 'error';
+        let failed: 'quota' | 'error' = res.status === 429 ? 'quota' : 'error';
         try {
-          const err = (await res.json()) as { remaining?: unknown } | null;
+          const err = (await res.json()) as { remaining?: unknown; reason?: unknown } | null;
+          // Too fast or a busy server is no empty quota: the uses left are still there.
+          if (err?.reason === 'slow' || err?.reason === 'global') failed = 'error';
           return { failed, remaining: num(err?.remaining) };
         } catch {
           return { failed };
@@ -81,10 +89,15 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       }
       return { data: await res.json() };
     } catch {
-      return { failed: 'error' };
+      return { failed: 'error', ...(timedOut ? { timedOut: true } : {}) };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Fire and forget: the server gives the message's use back. Never throws, never awaited. */
+  function cancel(deviceId: string, messageId: string): void {
+    void post('/cancel', { deviceId, messageId }, QUOTA_TIMEOUT_MS);
   }
 
   return {
@@ -98,7 +111,11 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         },
         UNDERSTAND_TIMEOUT_MS,
       );
-      if ('failed' in res) return fail(res.failed, res.remaining);
+      if ('failed' in res) {
+        // Gave up waiting: the server may still be working (or have charged); take the use back.
+        if (res.timedOut) cancel(req.deviceId, req.messageId);
+        return fail(res.failed, res.remaining);
+      }
       const body = res.data as { understanding?: unknown; remaining?: unknown } | null;
       const parsed = UnderstandingClientSchema.safeParse(body?.understanding);
       if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');

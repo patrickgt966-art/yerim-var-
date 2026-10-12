@@ -55,8 +55,9 @@ function trackAi<T>(r: AiResult<T>): AiResult<T> {
   if (r.ok) store.setRemaining(r.remaining);
   else if (r.reason === 'quota') store.markOut();
   else if (r.remaining !== undefined) store.setRemaining(r.remaining);
-  // A timeout or network error: the server may or may not have charged, so ask it.
-  else if (r.reason === 'error') void refreshAiQuota({ force: true });
+  // A timeout or network error: the server may or may not have charged (a timed-out message is
+  // cancelled and refunded in the background), so ask it a moment later.
+  else if (r.reason === 'error') setTimeout(() => void refreshAiQuota({ force: true }), 1500);
   return r;
 }
 
@@ -116,15 +117,18 @@ export default function ChatScreen() {
       ai:
         aiClient && aiOn
           ? {
-              understand: async () => {
+              // The router: every new message, first (one use; pick and plan share its message id).
+              understand: async (_text, lastCards) => {
                 const bound = aiMsgRef.current;
                 const req = {
                   ...bound,
                   deviceId: useAi.getState().deviceId,
                   section: ctxRef.current.section,
+                  ...(lastCards ? { lastCards } : {}),
                 };
                 return trackAi(await aiClient.understand(req));
               },
+              usesLeft: () => useAi.getState().remaining(),
               // One id per user message: understand, pick and plan share one daily use.
               pick: async (rest) => {
                 const req = {
@@ -150,15 +154,6 @@ export default function ChatScreen() {
                 };
                 return trackAi(await aiClient.plan(req));
               },
-              // Small talk: no ✨ is used, so nothing is tracked.
-              chat: (text, lastCards) =>
-                aiClient.chat({
-                  deviceId: useAi.getState().deviceId,
-                  messageId: aiMsgRef.current.messageId,
-                  text,
-                  history: aiMsgRef.current.history,
-                  ...(lastCards ? { lastCards } : {}),
-                }),
               quotaNotice: () => useAi.getState().noticeOnce(),
             }
           : undefined,
@@ -168,6 +163,8 @@ export default function ChatScreen() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typing, setTyping] = useState(false);
+  /** The reply waits for the AI: the typing bubble says so. */
+  const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState('');
   const [ctx, setCtx] = useState<ChatContext>(() => emptyContext(section));
   const ctxRef = useRef(ctx);
@@ -217,9 +214,13 @@ export default function ChatScreen() {
     AccessibilityInfo.announceForAccessibility(reply.text);
   };
 
-  const reply = async (produce: () => Promise<{ reply: BotMessage; ctx: ChatContext }>) => {
+  const reply = async (
+    produce: () => Promise<{ reply: BotMessage; ctx: ChatContext }>,
+    usesAi = true,
+  ) => {
     typingRef.current = true;
     setTyping(true);
+    setThinking(usesAi && aiOn && useAi.getState().remaining() > 0);
     try {
       const [res] = await Promise.all([produce(), wait(reduce ? 0 : 450)]);
       ctxRef.current = res.ctx;
@@ -230,6 +231,7 @@ export default function ChatScreen() {
     } finally {
       typingRef.current = false;
       setTyping(false);
+      setThinking(false);
     }
   };
 
@@ -253,7 +255,8 @@ export default function ChatScreen() {
       void reply(() => pickFromCards(a.cards, a.query, ctxRef.current, deps));
       return;
     }
-    void reply(() => refine(ctxRef.current, a.patch, deps));
+    // A filter chip never calls the AI.
+    void reply(() => refine(ctxRef.current, a.patch, deps), false);
   };
 
   const onPlanDirections = (dest: PlanData['dest']) => {
@@ -367,7 +370,7 @@ export default function ChatScreen() {
             />
           )
         }
-        ListFooterComponent={typing ? <TypingBubble /> : null}
+        ListFooterComponent={typing ? <TypingBubble thinking={thinking} /> : null}
       />
       <Composer
         value={input}

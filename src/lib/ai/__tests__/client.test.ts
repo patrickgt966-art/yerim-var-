@@ -1,5 +1,5 @@
 import { createAiClient } from '../client';
-import type { NarrateRequest, UnderstandRequest } from '../protocol';
+import { ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
 
 const understandReq: UnderstandRequest = {
   deviceId: 'd-test',
@@ -39,7 +39,7 @@ const fakeFetch = (status: number, body: unknown) =>
 
 describe('ai client', () => {
   it('returns the understanding and remaining count', async () => {
-    const understanding = { kind: 'offtopic', reply: 'Selam!' };
+    const understanding = { kind: 'chat', reply: 'Selam!', action: 'none' };
     const f = fakeFetch(200, { understanding, remaining: 4 });
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
     expect(r).toEqual({ ok: true, value: understanding, remaining: 4 });
@@ -47,6 +47,98 @@ describe('ai client', () => {
       'https://ai.test/understand',
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('reads the old server\'s "offtopic" as chat without an action', async () => {
+    const f = fakeFetch(200, {
+      understanding: { kind: 'offtopic', reply: 'Selam!' },
+      remaining: 4,
+    });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toEqual({
+      ok: true,
+      value: { kind: 'chat', reply: 'Selam!', action: 'none' },
+      remaining: 4,
+    });
+  });
+
+  it('a chat answer without an action gets "none"', async () => {
+    const f = fakeFetch(200, { understanding: { kind: 'chat', reply: 'Selam!' }, remaining: 4 });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toMatchObject({ ok: true, value: { kind: 'chat', action: 'none' } });
+  });
+
+  it('sends lastCards to the router when given', async () => {
+    const f = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 4 });
+    await createAiClient('https://ai.test', f).understand({
+      ...understandReq,
+      lastCards: { count: 3, kind: 'restaurant' },
+    });
+    const body = JSON.parse((f as unknown as jest.Mock).mock.calls[0]![1].body as string);
+    expect(body.lastCards).toEqual({ count: 3, kind: 'restaurant' });
+  });
+
+  it('a 429 for being too fast or a busy server is no empty quota', async () => {
+    for (const reason of ['slow', 'global']) {
+      const f = fakeFetch(429, { error: 'rate_limited', reason, remaining: 6 });
+      const r = await createAiClient('https://ai.test', f).understand(understandReq);
+      expect(r).toEqual({ ok: false, reason: 'error', remaining: 6 });
+    }
+  });
+
+  describe('router timeout', () => {
+    const hang = () =>
+      jest.fn((url: string, init?: RequestInit) =>
+        url.endsWith('/cancel')
+          ? Promise.resolve({ ok: true, status: 200, json: async () => ({ remaining: 8 }) })
+          : new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+            }),
+      ) as unknown as typeof fetch;
+
+    afterEach(() => jest.useRealTimers());
+
+    it('gives up after ROUTER_TIMEOUT_MS (6 s) and tells the server to cancel the message', async () => {
+      jest.useFakeTimers();
+      const f = hang();
+      const p = createAiClient('https://ai.test', f).understand(understandReq);
+      await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS - 100);
+      let settled = false;
+      void p.then(() => (settled = true));
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      await jest.advanceTimersByTimeAsync(200);
+      expect(await p).toEqual({ ok: false, reason: 'error' });
+      const calls = (f as unknown as jest.Mock).mock.calls;
+      const cancel = calls.find((c) => String(c[0]).endsWith('/cancel'));
+      expect(cancel).toBeDefined();
+      expect(JSON.parse(cancel![1].body as string)).toEqual({
+        deviceId: 'd-test',
+        messageId: 'm1',
+      });
+    });
+
+    it('does not cancel on an ordinary error or a quota stop', async () => {
+      for (const status of [500, 429]) {
+        const f = fakeFetch(status, {});
+        await createAiClient('https://ai.test', f).understand(understandReq);
+        expect((f as unknown as jest.Mock).mock.calls).toHaveLength(1);
+      }
+    });
+
+    it('a failing cancel never throws', async () => {
+      jest.useFakeTimers();
+      const f = jest.fn((url: string, init?: RequestInit) =>
+        url.endsWith('/cancel')
+          ? Promise.reject(new Error('offline'))
+          : new Promise((_r, reject) => {
+              init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+            }),
+      ) as unknown as typeof fetch;
+      const p = createAiClient('https://ai.test', f).understand(understandReq);
+      await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS + 100);
+      expect(await p).toEqual({ ok: false, reason: 'error' });
+    });
   });
 
   it('accepts an old-shape search understanding (no nearMe / dishServes)', async () => {

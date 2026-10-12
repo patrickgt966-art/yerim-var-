@@ -12,14 +12,27 @@ Yerim ✨ için Cloudflare Worker. Henüz yayınlanmadı; aşağıdaki adımlarl
 
 ## Limitler
 
-- Cihaz başına günde 10 ✨ (aynı mesajın /understand + /pick ya da /plan çağrıları tek ✨ sayılır; /narrate eski sürümler için duruyor, yeni uygulama kullanmıyor).
-- IP başına günde 100 çağrı (`AI_DAILY_PER_IP`; `/chat` de bu sayaca girer).
-- `/chat` (selam, teşekkür, veda, sohbetle ilgili laflar; Haiku, kısa cevap): ✨ hakkından düşmez, kendi sınırları vardır. Cihaz başına günde 15 cevap (`CHAT_DAILY_PER_DEVICE`), tüm cihazlar için günde 10000 (`CHAT_GLOBAL_DAILY`; dolunca Anthropic'e istek gitmez, 429 `reason: "global"`), aynı cihazdan iki çağrı arası en az 1000 ms (`CHAT_MIN_INTERVAL_MS`, 429 `reason: "slow"`). Anthropic hata verirse ya da cevap vermezse cihaz ve genel sayaç geri verilir. Sınır dolunca uygulama kendi hazır cevaplarına döner.
+Tek sayaç: her mesaj önce Haiku'ya gider (`/understand`, yönlendirici); Haiku mesajı uygulamanın kendi verisiyle mi çözeceğine yoksa kendisi mi cevaplayacağına karar verir.
+
+- Cihaz başına günde 10 yapay zekâ mesajı, ilk mesaj dahil (`FREE_DAILY`, `src/lib/ai/protocol.ts`; ayrı bir sohbet hakkı yok). `/understand`, `/pick`, `/plan`, `/narrate` ve eski uygulamalar için duran `/chat` aynı sayaçtan düşer. Aynı mesajın (aynı `messageId`) birden çok çağrısı tek hak sayılır.
+- Tüm cihazlar için günde 10000 mesaj (`AI_GLOBAL_DAILY`; eski adı `CHAT_GLOBAL_DAILY` yeni ad boşsa okunur). Dolunca Anthropic'e istek gitmez, 429 `reason: "global"`.
+- IP başına günde 100 çağrı (`AI_DAILY_PER_IP`, tüm uç noktalar).
+- Aynı cihazdan iki yeni mesaj arası en az 1000 ms (`CHAT_MIN_INTERVAL_MS`, 429 `reason: "slow"`); aynı mesajın `/pick` ve `/plan` çağrıları buna takılmaz.
+- Anthropic hata verirse ya da cevap vermezse hak (cihaz ve genel sayaç) geri verilir.
+- Uygulama yönlendiriciyi 6 sn içinde alamazsa bekleyişten vazgeçer ve `POST /cancel { deviceId, messageId }` gönderir; sunucu o mesajın hakkını geri verir (çağrı sürüyorsa bitince verir; tekrar çağrılması zarar vermez). Cihaz başına günde en fazla 5 iptal geri ödenir.
 - Günlük sıfırlama İstanbul saatine göredir.
 
 ## Sınırları değiştirmek
 
-Sınırlar `wrangler.toml` içindeki `[vars]` bölümünde durur (`CHAT_DAILY_PER_DEVICE`, `CHAT_GLOBAL_DAILY`, `AI_DAILY_PER_IP`, `CHAT_MIN_INTERVAL_MS`). Değeri değiştir, sonra `npx wrangler deploy` çalıştır; kod değişikliği ve uygulama güncellemesi gerekmez. Değer yoksa ya da geçersizse varsayılan kullanılır.
+Sınırlar `wrangler.toml` içindeki `[vars]` bölümünde durur (`AI_GLOBAL_DAILY`, `AI_DAILY_PER_IP`, `CHAT_MIN_INTERVAL_MS`). Değeri değiştir, sonra `cd server/yerim-ai && npx wrangler deploy` çalıştır; uygulama güncellemesi (App Store sürümü) gerekmez. Değer yoksa ya da geçersizse varsayılan kullanılır. Cihaz başına günlük hak (10) kod içindedir ve uygulamanın göstergesiyle aynı olmalıdır: değiştirmek hem sunucuyu hem uygulamayı etkiler.
+
+## Günlük (gecikme)
+
+Her yapay zekâ çağrısı için tek satır JSON yazılır: `{"endpoint":"/understand","ms":812,"outcome":"ok","remaining":7}`. `outcome`: `ok`, `refusal`, `error` ya da `timeout-cancelled` (uygulama vazgeçti ve hak geri verildi). Mesaj metni ve cihaz kimliği asla yazılmaz. Canlı izlemek için:
+
+```bash
+cd server/yerim-ai && npx wrangler tail --format pretty
+```
 
 ## Gizlilik
 
