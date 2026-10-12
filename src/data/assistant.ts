@@ -7,7 +7,13 @@ import {
   typicalFirst,
   type DishProfile,
 } from '@/data/dishes';
-import { GENERIC_NAME_WORDS, MEAL_WORDS, MODIFIERS } from '@/data/foodLexicon';
+import {
+  CITY_STYLES,
+  GENERIC_NAME_WORDS,
+  MEAL_WORDS,
+  MODIFIERS,
+  ORDER_SINGLE_WORDS,
+} from '@/data/foodLexicon';
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
@@ -752,7 +758,7 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
         }
 
         // 1. A dish or cuisine the user named: show restaurants matching it.
-        const hasAll = (hay: string) => qWords.every((w) => hay.includes(w));
+        const hasAll = (hay: string) => qWords.every((w) => hasWordStart(hay, w));
         const named = allRestaurants().filter(
           (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
         );
@@ -1026,7 +1032,12 @@ type DishHit = { tier: 1 | 2; byName: boolean };
  */
 function nameWords(stem: string): string[] {
   if (hasExactDish(stem)) return stem.split(' ');
-  const words = stem.split(' ').filter((w) => !GENERIC_NAME_WORDS.has(w));
+  // How much or how it is ordered ("kilo", "yarım") names no place; nor does a city next to a dish word.
+  const plain = stem
+    .split(' ')
+    .filter((w) => !GENERIC_NAME_WORDS.has(w) && !ORDER_SINGLE_WORDS.has(w));
+  const styled = plain.filter((w) => !CITY_STYLES.has(w));
+  const words = styled.length > 0 ? styled : plain;
   if (hasExactDish(words.join(' '))) return words;
   const content = words.filter((w) => !MODIFIERS.has(w));
   if (content.length > 0 || MEAL_WORDS.some((m) => stem.split(' ').includes(m))) return content;

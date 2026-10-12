@@ -2,9 +2,12 @@ import '@/i18n';
 
 import { answer, emptyContext, type AssistantDeps } from '../assistant';
 import { dishProfile, GENERIC_DISH_STEMS, likelyServes, typicalMatch } from '../dishes';
-import { parseQuery } from '../intent';
+import { CITY_STYLES, ORDER_WORDS } from '../foodLexicon';
+import { distanceMeters } from '../geo';
+import { IZMIR_DISTRICTS, parseQuery } from '../intent';
+import { isInIzmirArea } from '../places';
 import { dishStem, getRestaurant, type FoodCategory } from '../restaurants';
-import { fold } from '../search';
+import { fold, searchPlaces } from '../search';
 import { staticParkings } from '../staticParkings';
 
 // AI off, plain keys as text: the reply must be a food answer with cards, never a "what is this?" reply.
@@ -733,5 +736,263 @@ describe('round 5: missing dishes, district-named dishes, a leading dish with "d
     // Said with a case suffix, the town is where the köfte is wanted.
     expect(read("tire'de köfte")).toMatchObject({ cat: 'meat', dish: 'köfte', district: 'Tire' });
     expect(read('tire')).toMatchObject({ cat: null, district: 'Tire' });
+  });
+});
+
+// Round 6: order and quantity words ("kilo", "yarım", "tabağı") are no dish and no name, a city after a dish is its style.
+const ROUND6_ORDER: [q: string, cat: FoodCategory, dish: string, avoid: RegExp][] = [
+  ['baklava kilo', 'dessert', 'baklava', /kilo/],
+  ['fıstıklı baklava kilo', 'dessert', 'fıstıklı baklava', /kilo/],
+  ['maraş dondurma kilo', 'dessert', 'maraş dondurma', /kilo/],
+  ['dondurma kase', 'dessert', 'dondurma', /kase/],
+  ['çay bardak', 'cafe', 'çay', /bardak/],
+  ['şekerli kahve', 'cafe', 'kahve', /sekerli/],
+  ['iskender yarım', 'meat', 'iskender', /yarim|diyarim/],
+  ['pide yarım', 'fast', 'pide', /yarim|diyarim/],
+  ['kuzu tandır yarım', 'meat', 'kuzu tandır', /yarim|diyarim/],
+  ['döner yarım ekmek', 'fast', 'döner', /yarim/],
+  ['yarım ekmek döner', 'fast', 'döner', /yarim/],
+  ['tavuk şiş porsiyon', 'meat', 'tavuk şiş', /porsiyon|kanat/],
+  ['somon tabağı', 'fish', 'somon', /tabag/],
+  ['et döner pilav üstü', 'fast', 'et döner', /ustu|ayak/],
+  ['pilav üstü döner', 'fast', 'döner', /ustu/],
+  ['piyaz antalya', 'meat', 'piyaz', /antalya|borekci/],
+  // Number words, "<n> lı" counts and promotions are order words as well.
+  ['midye on tane', 'fish', 'midye', /oncu|\bon\b/],
+  ['nugget 6 lı', 'fast', 'nugget', /life|\blik?\b/],
+  ['kanat 8 li', 'meat', 'kanat', /life|\blik?\b/],
+  ["nugget 6'lı", 'fast', 'nugget', /life|\blik?\b/],
+  ['pizza 2 al 1 öde', 'fast', 'pizza', /ode/],
+  ['pizza 1 alana 1 bedava', 'fast', 'pizza', /bedava|alana/],
+];
+
+// Dishes and drinks a holdout found as hard failures (a "what is this?" reply or an unrelated place).
+const ROUND6_NEW: [q: string, cat: FoodCategory][] = [
+  ['gavurdağı porsiyon', 'meyhane'],
+  ['gavurdağı', 'meyhane'],
+  ['tarator', 'meyhane'],
+  ['eli böğründe', 'lokanta'],
+  ['fettucine alfredo', 'world'],
+  ['fettuccine alfredo', 'world'],
+  ['alfredo', 'world'],
+  ['arabiata', 'world'],
+  ['arrabbiata', 'world'],
+  ['bolonez', 'world'],
+  ['carbonara', 'world'],
+  ['kola', 'cafe'],
+  ['soda', 'cafe'],
+  ['gazoz', 'cafe'],
+  ['maden suyu', 'cafe'],
+];
+// Plain water is a drink only when it is the whole text.
+const ROUND6_WATER = ['su', 'su istiyorum', 'bir su', 'su küçük'];
+
+describe('round 6: order words, city styles, new dishes and drinks, famous streets', () => {
+  const read = (q: string) => {
+    const it = parseQuery(q);
+    return it.kind === 'search'
+      ? {
+          cat: it.cat,
+          dish: it.dish,
+          placeQuery: it.placeQuery,
+          district: it.district?.name ?? null,
+        }
+      : { kind: it.kind };
+  };
+  const first = async (q: string, count = 1) => {
+    const { reply } = await answer(q, emptyContext('food'), deps);
+    return { reply, cards: reply.cards.slice(0, count) };
+  };
+
+  it('has no duplicate phrases', () => {
+    const all = [...ROUND6_ORDER.map((x) => x[0]), ...ROUND6_NEW.map((x) => x[0]), ...ROUND6_WATER];
+    expect(all.length - new Set(all).size).toBe(0);
+  });
+
+  it('keeps the order words out of the dish and the place', () => {
+    for (const [q, cat, dish] of ROUND6_ORDER) {
+      expect(read(q)).toEqual({ cat, dish, placeQuery: '', district: null });
+      expect(read(`Bornova'da ${q}`)).toEqual({ cat, dish, placeQuery: '', district: 'Bornova' });
+    }
+  });
+
+  it('never answers an order word with a place named after it', async () => {
+    for (const [q, , dish, avoid] of ROUND6_ORDER) {
+      for (const p of [q, `Bornova'da ${q}`]) {
+        const { reply, cards } = await first(p, 3);
+        expect(BAD_TEXT.filter((w) => reply.text.includes(w))).toEqual([]);
+        expect(cards.length).toBeGreaterThan(0);
+        for (const c of cards) expect(fold(c.name)).not.toMatch(avoid);
+        const top = cards[0]!;
+        expect(top.kind === 'restaurant' && topCardFits(dish, top.id, top.name)).toBe(true);
+      }
+    }
+  });
+
+  it('puts the places that fit first: a dönerci for döner, a fish place for somon', async () => {
+    for (const q of ['döner yarım ekmek', 'yarım ekmek döner', 'et döner pilav üstü']) {
+      const top = (await first(q)).cards[0];
+      const place = top?.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
+      expect(place).toBeDefined();
+      expect(likelyServes(dishProfile('doner')!, fold(top!.name), place!.cuisines)).toBe(true);
+    }
+    const fish = (await first('somon tabağı')).cards[0];
+    expect(fish?.kind === 'restaurant' && typicalMatch(getRestaurant(fish.id)!, 'fish')).toBe(true);
+  });
+
+  it('keeps the phrases that are dishes of their own, and the names that hold an order word', async () => {
+    expect(read('kahvaltı tabağı')).toMatchObject({ cat: 'breakfast', dish: 'kahvaltı tabağı' });
+    expect(read('tam buğday ekmeği')).toMatchObject({
+      cat: 'breakfast',
+      dish: 'tam buğday ekmeği',
+    });
+    expect(read('porsiyon döner')).toMatchObject({ cat: 'fast', dish: 'porsiyon döner' });
+    expect(read('pilav üstü')).toMatchObject({ cat: 'lokanta', dish: 'pilav üstü' });
+    expect(read('ekmek arası')).toMatchObject({ cat: 'fast', dish: 'ekmek arası' });
+    expect(read('meze tabağı')).toMatchObject({ cat: 'meyhane', dish: 'meze tabağı' });
+    // The exact name of a place, alone, is that place.
+    expect(read('Yarım Ekmek')).toMatchObject({ cat: null, placeQuery: 'yarim ekmek' });
+    expect(read('Büyük Efes')).toMatchObject({ cat: null, placeQuery: 'buyuk efes' });
+    const { reply, cards } = await first('Yarım Ekmek');
+    expect(reply.text).toContain('chat.foundName');
+    expect(cards[0]?.name).toBe('Yarım Ekmek');
+  });
+
+  it('answers a counted or promoted dish like the dish itself', async () => {
+    for (const [plain, counted] of [
+      ['nugget', 'nugget 6 lı'],
+      ['pizza', 'pizza 2 al 1 öde'],
+      ['midye', 'midye on tane'],
+    ] as const) {
+      expect((await first(counted)).cards[0]?.name).toBe((await first(plain)).cards[0]?.name);
+    }
+  });
+
+  it('reads the town with only order words as the dessert, the town alone as the district', () => {
+    expect(read('kemalpaşa iki tane')).toMatchObject({
+      cat: 'dessert',
+      dish: 'kemalpaşa tatlısı',
+      placeQuery: '',
+      district: null,
+    });
+    expect(read('kemalpaşa')).toMatchObject({ cat: null, district: 'Kemalpaşa' });
+    expect(read("Kemalpaşa'da iki tane")).toMatchObject({ cat: null, district: 'Kemalpaşa' });
+  });
+
+  it('lists the order words folded', () => {
+    for (const w of ORDER_WORDS) expect(fold(w)).toBe(w);
+    for (const w of [
+      'yarim',
+      'kilo',
+      'kase',
+      'bardak',
+      'tabagi',
+      'sekerli',
+      'porsiyon',
+      'bir bucuk',
+    ]) {
+      expect(ORDER_WORDS.has(w)).toBe(true);
+    }
+  });
+
+  it('matches a name by word starts: "yarım" is no "Peynir diyarim"', async () => {
+    const { reply } = await answer('yarım', emptyContext('park'), deps);
+    expect(reply.cards.length).toBeGreaterThan(0);
+    for (const c of reply.cards) expect(fold(c.name)).not.toContain('diyarim');
+  });
+
+  it('reads a city after a dish as its style, but not a district or a city in front', () => {
+    expect(read('piyaz antalya')).toMatchObject({ dish: 'piyaz', placeQuery: '', district: null });
+    expect(read("Tire'de piyaz antalya")).toMatchObject({ dish: 'piyaz', district: 'Tire' });
+    for (const town of CITY_STYLES) {
+      expect(IZMIR_DISTRICTS.some((d) => fold(d.name) === town)).toBe(false);
+    }
+    // "Bursa'da": the case ending says where the dish is wanted, as before.
+    expect(read("Bursa'da piyaz")).toMatchObject({ dish: 'piyaz', placeQuery: 'bursa' });
+    expect(read('Urfa kebap')).toMatchObject({ cat: 'meat', dish: 'urfa kebap', placeQuery: '' });
+    expect(read('bursa')).toMatchObject({ cat: null, placeQuery: 'bursa' });
+  });
+
+  it('answers the new dishes and drinks with a food reply and a typical top card', async () => {
+    for (const [q, cat] of ROUND6_NEW) {
+      for (const p of [q, `Bornova'da ${q}`]) {
+        expect(read(p)).toMatchObject({ cat, placeQuery: '' });
+        const { reply, cards } = await first(p);
+        // "no place is sure to make it" is the honest answer for a drink only the lexicon knows.
+        expect(BAD_TEXT.filter((w) => w !== 'dishUnknown' && reply.text.includes(w))).toEqual([]);
+        const top = cards[0];
+        const place = top?.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
+        expect(place).toBeDefined();
+        expect(topCardFits(q, top!.id, top!.name) || typicalMatch(place!, cat)).toBe(true);
+      }
+    }
+    const tarator = (await first('tarator')).cards[0]!;
+    const place = getRestaurant((tarator as { id: string }).id)!;
+    expect(likelyServes(dishProfile('tarator')!, fold(tarator.name), place.cuisines)).toBe(true);
+    expect(dishProfile('tarator')?.serves).toEqual(
+      expect.arrayContaining(['midye', 'meyhane', 'balik']),
+    );
+    expect(dishProfile('eli bogrunde')?.cat).toBe('lokanta');
+    expect(dishProfile('fettucine alfredo')?.cat).toBe('world');
+  });
+
+  it('reads "su" as a drink only when it is the whole text', async () => {
+    for (const q of ROUND6_WATER) {
+      expect(read(q)).toEqual({ cat: 'cafe', dish: 'su', placeQuery: '', district: null });
+      const { reply, cards } = await first(q);
+      expect(BAD_TEXT.filter((w) => reply.text.includes(w))).toEqual([]);
+      const top = cards[0];
+      const place = top?.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
+      expect(place && typicalMatch(place, 'cafe')).toBe(true);
+    }
+    // Never a name word: a lone "su" does not list the places called "Su ...".
+    expect(dishStem('su')).toBe('su');
+    expect(GENERIC_DISH_STEMS.has('su')).toBe(true);
+    // Beside other words it stays what it was.
+    expect(read('su böreği')).toMatchObject({ cat: 'breakfast', dish: 'su böreği' });
+    expect(read('su mantısı')).toMatchObject({ cat: 'lokanta', dish: 'su mantısı' });
+    expect(read('meyve suyu')).toMatchObject({ cat: 'cafe', dish: 'meyve suyu' });
+    expect(read('su kemeri')).toMatchObject({ cat: null, placeQuery: 'su kemeri' });
+    expect(read('bostanlı su')).toMatchObject({ cat: null, placeQuery: 'bostanli su' });
+  });
+
+  it('resolves the streets and squares people name as places', async () => {
+    const known: [q: string, name: string][] = [
+      ['kıbrıs şehitleri', 'Kıbrıs Şehitleri Caddesi'],
+      ['kibris sehitleri caddesi', 'Kıbrıs Şehitleri Caddesi'],
+      ['alsancak kıbrıs şehitleri', 'Kıbrıs Şehitleri Caddesi'],
+      ['kordon', 'Kordon'],
+      ['gündoğdu', 'Gündoğdu Meydanı'],
+      ['kemeraltı', 'Kemeraltı'],
+      ['bostanlı', 'Bostanlı'],
+      ['pasaport', 'Pasaport'],
+      ['konak meydanı', 'Konak Meydanı'],
+      ['mavişehir', 'Mavişehir'],
+      ['alsancak garı', 'Alsancak Gar'],
+    ];
+    for (const [q, name] of known) {
+      const hit = searchPlaces(q, 1)[0];
+      expect(hit?.name).toBe(name);
+      expect(hit?.kind).not.toBe('parking');
+      expect(isInIzmirArea(hit!)).toBe(true);
+      // The bare street name is also a fast-food shop's exact name ("Kıbrıs Şehitleri"): that shop answers.
+      if (q === 'kıbrıs şehitleri') continue;
+      const { ctx } = await answer(q, emptyContext('food'), deps);
+      expect(ctx.place?.label).toBe(name);
+    }
+    // The street lies in Alsancak, beside its park and the Kordon.
+    const street = searchPlaces('kıbrıs şehitleri', 1)[0]!;
+    const park = searchPlaces('kıbrıs şehitleri parkı', 1)[0]!;
+    expect(park.name).toBe('Kıbrıs Şehitleri Parkı');
+    expect(distanceMeters(street, park)).toBeLessThan(400);
+    expect(distanceMeters(street, searchPlaces('kordon', 1)[0]!)).toBeLessThan(1000);
+  });
+
+  it('answers "Alsancak\'ta Kıbrıs Şehitleri" with the places on that street', async () => {
+    const { ctx, reply } = await answer("Alsancak'ta Kıbrıs Şehitleri", emptyContext('food'), deps);
+    expect(ctx.place?.label).toBe('Kıbrıs Şehitleri Caddesi');
+    expect(BAD_TEXT.filter((w) => reply.text.includes(w))).toEqual([]);
+    expect(reply.cards.length).toBeGreaterThan(0);
+    for (const c of reply.cards) expect(c.distanceM).toBeLessThan(800);
   });
 });
