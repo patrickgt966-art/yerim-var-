@@ -1,4 +1,13 @@
-import { dishProfile, GENERIC_DISH_STEMS, likelyServes, type DishProfile } from '@/data/dishes';
+import {
+  dishProfile,
+  GENERIC_DISH_STEMS,
+  hasExactDish,
+  likelyFirst,
+  likelyServes,
+  typicalFirst,
+  type DishProfile,
+} from '@/data/dishes';
+import { GENERIC_NAME_WORDS, MEAL_WORDS, MODIFIERS } from '@/data/foodLexicon';
 import { IZMIR_CENTER } from '@/data/places';
 import { visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
@@ -614,6 +623,33 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
           );
         }
 
+        // 1b. The words name a category (a food word plus something unknown): never answer a
+        // food question with nothing; say honestly nothing is known and show that category.
+        if (it.cat) {
+          const dishFirst =
+            !!it.dish && folded.indexOf(fold(it.dish)) < folded.indexOf(it.placeQuery);
+          const label = (dishFirst ? [it.dish, typedRaw] : [typedRaw, it.dish])
+            .filter(Boolean)
+            .join(' ');
+          const fresh = ctx.cat !== next.cat;
+          return withNotice(
+            await run(
+              {
+                ...next,
+                dish: label,
+                dishServes: null,
+                dishExact: false,
+                ...(fresh
+                  ? { parkM: 300, wide: false, sort: 'parkEase' as const, freeParking: false }
+                  : {}),
+              },
+              deps,
+              text,
+              it.quality,
+            ),
+          );
+        }
+
         // 2. Looks like food: say no place makes it, offer nearby restaurants.
         if (it.food || it.nearMe || ctx.section === 'food') {
           return withNotice(
@@ -808,14 +844,43 @@ function adHocProfile(
 /** How a place fits a searched dish: 1 = the name or cuisine says it, 2 = it very likely serves it. */
 type DishHit = { tier: 1 | 2; byName: boolean };
 
-function dishClassifier(stem: string, profile: DishProfile | null, exact = false) {
-  const stemWords = stem.split(' ');
+/**
+ * The words of a dish that a place's name must carry to be "named after it". A modifier
+ * ("taze", "sebzeli", "sıcak") and a generic meal word ("yemeği") never count: "taze meyve
+ * suyu" is not "Taze Balıkçılık". A phrase that is a dish of its own ("kıymalı pide", "etli
+ * ekmek") keeps its words. Empty for a meal phrase with nothing else ("sebze yemeği": only the
+ * category speaks); a lone modifier-like word ("bezelye") is still matched as it was typed.
+ */
+function nameWords(stem: string): string[] {
+  if (hasExactDish(stem)) return stem.split(' ');
+  const words = stem.split(' ').filter((w) => !GENERIC_NAME_WORDS.has(w));
+  if (hasExactDish(words.join(' '))) return words;
+  const content = words.filter((w) => !MODIFIERS.has(w));
+  if (content.length > 0 || MEAL_WORDS.some((m) => stem.split(' ').includes(m))) return content;
+  return words;
+}
+
+function dishClassifier(
+  stem: string,
+  profile: DishProfile | null,
+  exact = false,
+  words: string[] = stem.split(' '),
+) {
   const kebab = (x: string) => x.replace(/kebap/g, 'kebab');
-  const stemKebab = kebab(stem);
+  const stemKebab = kebab(words.join(' '));
   return (r: Restaurant): DishHit | null => {
     const n = fold(r.name);
-    const byName = stemWords.every((w) => (exact ? hasExactNameWord(n, w) : hasWordForm(n, w)));
-    if (byName || r.cuisines.some((c) => kebab(fold(c.replace(/_/g, ' '))).includes(stemKebab))) {
+    // A word under 4 letters ("bal") only counts as a whole name word: not "Balcı", "Ballı".
+    const hasWord = (w: string) =>
+      w.length < 4 ? n.split(' ').includes(w) : exact ? hasExactNameWord(n, w) : hasWordForm(n, w);
+    const byName = words.length > 0 && words.every(hasWord);
+    const byCuisine =
+      words.length > 0 &&
+      r.cuisines.some((c) => {
+        const tag = fold(c.replace(/_/g, ' '));
+        return !profile?.notCuisines?.includes(tag) && kebab(tag).includes(stemKebab);
+      });
+    if (byName || byCuisine) {
       return { tier: 1, byName };
     }
     return profile && likelyServes(profile, n, r.cuisines) ? { tier: 2, byName: false } : null;
@@ -858,15 +923,26 @@ function runFood(
     ctx.cat ?? undefined,
   );
   // Dish-first: rows named after the dish, then places that very likely serve it; no padding.
-  let ordered = rows;
+  // The places typical for the category come first, unless the user asked for the nearest.
+  let ordered = ctx.sort === 'distance' ? rows : typicalFirst(rows, ctx.cat, ctx.dish ?? '');
   let dishPrefix = '';
   const hits = new Map<string, DishHit>();
   let profile: DishProfile | null = null;
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
   const dishName = ctx.dish ? shownDish(ctx.dish, stem) : '';
-  if (ctx.dish && stem && !GENERIC_DISH_STEMS.has(stem)) {
-    profile = dishProfile(stem) ?? adHocProfile(ctx.dishServes, ctx.cat);
-    const classify = dishClassifier(stem, profile, ctx.dishExact);
+  const words = stem ? nameWords(stem) : [];
+  // "sebze yemeği", "taze balık": only generic words, so the category alone answers.
+  const generic = !stem || GENERIC_DISH_STEMS.has(stem) || GENERIC_DISH_STEMS.has(words.join(' '));
+  if (ctx.dish && stem && !generic) {
+    // The AI's name words for an unknown dish come before reading it by its head noun
+    // (and when the AI named only generic words it has no opinion to override).
+    profile =
+      dishProfile(stem, false) ??
+      adHocProfile(ctx.dishServes, ctx.cat) ??
+      (ctx.dishServes?.length ? null : dishProfile(stem));
+  }
+  if (ctx.dish && stem && !generic && (words.length > 0 || profile)) {
+    const classify = dishClassifier(stem, profile, ctx.dishExact, words);
     // Both tiers come from every meal place around, not only the dish's own category:
     // a lahmacun can be at a kebab house (meat), an iskender at a döner shop (fast).
     const tiered = (radius: number) => {
@@ -879,12 +955,14 @@ function runFood(
         ctx.cat ?? undefined,
       );
       const t1: RestaurantRow[] = [];
-      const t2: RestaurantRow[] = [];
+      let t2: RestaurantRow[] = [];
       for (const row of ranked) {
         const hit = classify(row.r)!;
         hits.set(row.r.id, hit);
         (hit.tier === 1 ? t1 : t2).push(row);
       }
+      // The places that only very likely serve it: the typical ones for the dish first.
+      if (profile && ctx.sort !== 'distance') t2 = likelyFirst(t2, profile);
       return { t1, t2 };
     };
     let { t1, t2 } = tiered(searchRadiusM);
@@ -916,6 +994,31 @@ function runFood(
         ' ';
     } else {
       dishPrefix = t('chat.dishUnknown', { dish: dishName }) + ' ';
+      // Only the category is known: a place that is typical for it (by name, cuisine, kind) comes first,
+      // not just the best-ranked one ("Kasap Fuat" for a kızartma, a juice bar for meyve suyu).
+      ordered = typicalFirst(ordered, ctx.cat, stem);
+      // Nothing of the category within reach of this place: look wider rather than answer with nothing.
+      if (ordered.length === 0 && !ctx.wide) {
+        const wideItems = ctx.cat
+          ? restaurantsInCategory(target, ctx.cat, undefined, WIDE_RADII_M).items
+          : restaurantsNear(target, WIDE_RADII_M[WIDE_RADII_M.length - 1]!, 600);
+        ordered = typicalFirst(
+          rankRestaurants(
+            buildRestaurantRows(
+              notCat ? wideItems.filter((r) => !matchesCategory(r, notCat)) : wideItems,
+              deps.parkings,
+              target,
+              now,
+            ),
+            ctx.sort,
+            ctx.cat ?? undefined,
+          ),
+          ctx.cat,
+          stem,
+        );
+        if (ordered.length > 0)
+          dishPrefix = t('chat.dishWider', { dish: dishName }) + ' ' + dishPrefix;
+      }
     }
   }
   const withPark = withParkingWithin(ordered, ctx.parkM);

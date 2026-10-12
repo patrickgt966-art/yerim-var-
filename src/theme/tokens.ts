@@ -141,6 +141,6 @@ export function asym(r: number, tight = Math.max(2, Math.round(r * 0.27))) {
 export const HIT = 44;
 
 /** Floating tab bar: bar height, how far the raised "Yerim" button rises above it, gap below. */
-export const TAB_BAR_HEIGHT = 68;
-export const TAB_BAR_OVERHANG = 11;
+export const TAB_BAR_HEIGHT = 76;
+export const TAB_BAR_OVERHANG = 12;
 export const TAB_BAR_GAP = 8;

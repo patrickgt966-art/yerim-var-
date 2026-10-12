@@ -52,7 +52,8 @@ export function HomeHeader() {
         backgroundColor: c.hero,
         paddingTop: insets.top + 10,
         paddingHorizontal: 16,
-        paddingBottom: 56,
+        // Room for the İzmir skyline between the title and the search card.
+        paddingBottom: 104,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
         overflow: 'hidden',
@@ -88,6 +89,14 @@ export function HomeHeader() {
         style={{ marginTop: 10, fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
         accessibilityRole="header"
       >
+        {t('home.title0')}
+        <Txt
+          variant="display"
+          color={brand.orangeLight}
+          style={{ fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
+        >
+          {t('home.titleEat')}
+        </Txt>
         {t('home.title1')}
         <Txt
           variant="display"

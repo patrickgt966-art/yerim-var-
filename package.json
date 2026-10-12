@@ -54,6 +54,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:dishes": "DISH_AUDIT=full jest src/data/__tests__/turkishDishes.test.ts",
     "build-icons": "node scripts/build-icons.mjs",
     "doctor": "expo-doctor"
   },
