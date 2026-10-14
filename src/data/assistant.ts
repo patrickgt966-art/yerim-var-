@@ -14,7 +14,7 @@ import {
   MODIFIERS,
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
-import { activeCity, CITIES } from '@/data/cities';
+import { activeCity, CITIES, cityExamples } from '@/data/cities';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
@@ -375,8 +375,11 @@ function variant(
   return t(`${prefix}_${hash(seed) % n}`, opts);
 }
 
+/** Example chips that name a place of the active city. */
+const PLACE_EXAMPLES = new Set(['chat.exAlsancak', 'chat.exKonak', 'chat.exBreakfast', 'chat.exFish']);
+
 function say(t: AssistantDeps['t'], key: string): ChatAction {
-  const text = t(key);
+  const text = PLACE_EXAMPLES.has(key) ? t(key, cityExamples()) : t(key);
   return { kind: 'say', label: text, text };
 }
 
@@ -614,7 +617,7 @@ function greetKind(folded: string): GreetKind | null {
 
 function greetReply(kind: GreetKind, text: string, t: AssistantDeps['t']): string {
   return kind === 'hello'
-    ? variant(t, 'chat.hello', 4, text)
+    ? variant(t, 'chat.hello', 4, text, cityExamples())
     : variant(t, `chat.greet.${kind}`, 2, text);
 }
 
@@ -1059,7 +1062,7 @@ async function answerText(
             kind === 'doubt'
               ? t('chat.convoDoubt')
               : kind === 'howto'
-                ? t('chat.convoHowTo')
+                ? t('chat.convoHowTo', cityExamples())
                 : variant(t, 'chat.offTopic', 2, text),
           cards: [],
           actions: kind === 'generic' ? offTopicActions() : examples(ctx.section, t),
@@ -1084,7 +1087,7 @@ async function answerText(
   if (it.kind === 'greeting') {
     return withNotice(
       plain(
-        { text: variant(t, 'chat.hello', 4, text), cards: [], actions: examples(ctx.section, t) },
+        { text: variant(t, 'chat.hello', 4, text, cityExamples()), cards: [], actions: examples(ctx.section, t) },
         ctx,
       ),
     );
@@ -1097,7 +1100,7 @@ async function answerText(
     return withNotice(
       plain(
         {
-          text: variant(t, 'chat.unknown', 2, text),
+          text: variant(t, 'chat.unknown', 2, text, cityExamples()),
           cards: [],
           actions: [pickOnMap(text, t), ...examples(ctx.section, t)],
         },
@@ -1894,7 +1897,7 @@ function runFood(
     actions.push({
       kind: 'say',
       label: t('chat.actOther'),
-      text: t(ctx.cat !== 'breakfast' ? 'chat.exBreakfast' : 'chat.exFish'),
+      text: t(ctx.cat !== 'breakfast' ? 'chat.exBreakfast' : 'chat.exFish', cityExamples()),
     });
     return { text, cards, actions };
   }

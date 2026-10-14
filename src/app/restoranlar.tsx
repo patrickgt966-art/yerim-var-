@@ -13,6 +13,7 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
+import { cityById } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 import {
   FOOD_CATEGORIES,
@@ -29,6 +30,7 @@ import { firstParam, parseLatLng } from '@/lib/params';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
+import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
 type Filter = 'all' | FoodCategory;
@@ -76,6 +78,13 @@ function RemovableChip({ label, onPress }: { label: string; onPress: () => void 
 }
 
 export default function RestaurantsScreen() {
+  // A new city starts the list over: its target and filters belong to the old one.
+  const city = useApp((s) => s.city);
+  return <Restaurants key={city} />;
+}
+
+function Restaurants() {
+  const cityName = cityById(useApp((s) => s.city)).name;
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -161,7 +170,7 @@ export default function RestaurantsScreen() {
   );
   const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
 
-  const place = firstParam(params.label) || t('common.izmir');
+  const place = firstParam(params.label) || cityName;
   const topEasy = sort === 'parkEase' && visible[0] ? isBest(visible[0].parking) : false;
 
   // The whole header scrolls with the list, so large text never squeezes the rows.

@@ -18,6 +18,7 @@ import { CarMark } from '@/components/CarMark';
 import { Icon } from '@/components/Icon';
 import { OnboardingBackdrop } from '@/components/OnboardingBackdrop';
 import { Txt } from '@/components/Txt';
+import { cityById } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
 import { asym, brand, fonts, HIT } from '@/theme';
@@ -133,6 +134,7 @@ export default function Onboarding() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const setOnboarded = useApp((s) => s.setOnboarded);
+  const liveSource = cityById(useApp((s) => s.city)).parkingSource;
   const [page, setPage] = useState(0);
   // After "Devam" VoiceOver focus would stay on the old button: move it to the new heading.
   const headerRef = useRef<Text>(null);
@@ -252,7 +254,7 @@ export default function Onboarding() {
                 {t('onboarding.howTitle')}
               </Txt>
               <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
-                {t('onboarding.howBody')}
+                {t(liveSource === 'ispark' ? 'onboarding.howBodyIspark' : 'onboarding.howBody')}
               </Txt>
             </ScrollView>
           </Animated.View>

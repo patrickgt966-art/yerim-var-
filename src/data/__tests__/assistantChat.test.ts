@@ -142,7 +142,8 @@ describe('transcript: "Bir yere gireceğime emin misin yani"', () => {
 
   it.each(['anlamadım', 'nasıl yani'])('"%s" gets the how-to with example chips', async (t) => {
     const r = await answer(t, emptyContext('food'), keyDeps);
-    expect(r.reply.text).toBe('chat.convoHowTo');
+    // The template names places of the active city, so the key comes with its options.
+    expect(r.reply.text.startsWith('chat.convoHowTo')).toBe(true);
     expect(r.reply.actions.every((a) => a.kind === 'say')).toBe(true);
     expect(r.reply.actions.length).toBeGreaterThan(0);
   });
@@ -419,11 +420,11 @@ describe('small talk through the router', () => {
   it('ask_food_or_park and suggest_examples bring chips from our own data', async () => {
     const ask = mockAi({ understand: said('Selam! Ne arıyoruz?', 'ask_food_or_park') });
     const a = await answer('selam', emptyContext('park'), ask.deps);
-    expect(a.reply.actions.map((x) => x.label)).toEqual([
-      'chat.exNear',
-      'chat.exKofte',
-      'chat.exAlsancak',
-    ]);
+    const labels = a.reply.actions.map((x) => x.label);
+    expect(labels.slice(0, 2)).toEqual(['chat.exNear', 'chat.exKofte']);
+    // The place chip comes with the active city's examples.
+    expect(labels[2]?.startsWith('chat.exAlsancak')).toBe(true);
+    expect(labels).toHaveLength(3);
     const ex = mockAi({ understand: said('Selam! Şunları yazabilirsin.', 'suggest_examples') });
     const e = await answer('selam', emptyContext('food'), ex.deps);
     expect(e.reply.actions.length).toBeGreaterThan(0);

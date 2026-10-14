@@ -1,5 +1,7 @@
 import Constants from 'expo-constants';
 
+import { activeCity } from '@/data/cities';
+
 import {
   CHAT_HISTORY_LIMIT,
   HISTORY_LIMIT,
@@ -54,6 +56,12 @@ const fail = (
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 
+/** The request for the selected city. A worker that predates the field ignores it. */
+const forCity = <T extends { city?: string }>(req: T): T => ({
+  ...req,
+  city: req.city ?? activeCity().id,
+});
+
 export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch) {
   const root = baseUrl.replace(/\/+$/, '');
 
@@ -105,7 +113,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       const res = await post(
         '/understand',
         {
-          ...req,
+          ...forCity(req),
           text: req.text.slice(0, MAX_MESSAGE_CHARS),
           history: req.history.slice(-HISTORY_LIMIT),
         },
@@ -125,7 +133,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async narrate(req: NarrateRequest): Promise<AiResult<string>> {
       const res = await post(
         '/narrate',
-        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
         NARRATE_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
@@ -140,7 +148,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async pick(req: PickRequest): Promise<AiResult<PickResponse>> {
       const res = await post(
         '/pick',
-        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
@@ -154,7 +162,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async pickPark(req: ParkPickRequest): Promise<AiResult<ParkPickResponse>> {
       const res = await post(
         '/pick',
-        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
@@ -168,7 +176,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async plan(req: PlanRequest): Promise<AiResult<PlanResponse>> {
       const res = await post(
         '/plan',
-        { ...req, text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
@@ -187,7 +195,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       const res = await post(
         '/chat',
         {
-          ...req,
+          ...forCity(req),
           text: req.text.slice(0, MAX_CHAT_CHARS),
           history: req.history
             .slice(-CHAT_HISTORY_LIMIT)

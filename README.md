@@ -46,6 +46,7 @@ design/           Referans ekranlar (PNG + HTML)
 
 - **Kaynak:** İzmir Büyükşehir Belediyesi Açık Veri Portalı, "Otopark Doluluk ve Lokasyon Bilgileri" ([acikveri.bizizmir.com](https://acikveri.bizizmir.com/dataset/otopark-doluluk-ve-lokasyon-bilgileri)). Uç nokta: `GET https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar`.
 - **Lisans ve atıf:** CC BY 4.0 uyumlu İzmir Açık Veri Lisansı (üçüncü taraf kaynaklara göre; portaldan doğrulanmalı). Atıf Profil ekranında ve burada yer alır.
+- **İstanbul:** İBB Açık Veri / İSPARK otopark doluluğu (`GET https://api.ibb.gov.tr/ispark/Park`); İstanbul seçildiğinde boş yer sayıları buradan gelir. Şema açık kaynak istemcilerden alındı, henüz canlı yanıtla doğrulanmadı.
 - **Şema canlı yanıtla doğrulandı (2026-10-07).** Ayrıntılar, alan tipleri ve ham örnek: [`docs/data-source.md`](docs/data-source.md).
   - Anonim, JSON dizi, sayfalama yok.
   - Kayıtlarda **ölçüm zaman damgası yok**; kapasite `free + occupied` toplamından türetilir.
@@ -79,7 +80,7 @@ Sınırları değiştirmek için `server/yerim-ai/wrangler.toml` içindeki `[var
 
 ## Gizlilik
 
-Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Tek sunucumuz isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare): kullanıcı onay verirse sohbet mesajı ve son birkaç mesaj yapay zekâya gider; sunucu metni kaydetmez, günlük hak sayımı için yalnızca rastgele bir cihaz kimliği tutar. Diğer ağ istekleri: belediyenin doluluk API'si ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
+Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Tek sunucumuz isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare): kullanıcı onay verirse sohbet mesajı ve son birkaç mesaj yapay zekâya gider; sunucu metni kaydetmez, günlük hak sayımı için yalnızca rastgele bir cihaz kimliği tutar. Diğer ağ istekleri: seçili şehrin belediye doluluk API'si (İzmir Büyükşehir Belediyesi ya da İstanbul için İBB / İSPARK) ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
 
 ## Tasarımı olmayan ekranlar
 
@@ -122,4 +123,4 @@ Bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUC
 - Fontlar: Bricolage Grotesque ve Plus Jakarta Sans, SIL Open Font License 1.1 (bkz. [`licenses/`](licenses/)).
 - Veri lisansları: [`licenses/DATA.md`](licenses/DATA.md).
 - "Yerim Var" adı, logo ve ikon MIT kapsamı dışındadır; fork'lar farklı ad ve ikon kullanmalıdır (bkz. [`TRADEMARKS.md`](TRADEMARKS.md)).
-- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com); otopark konumlarının bir kısmı © OpenStreetMap katkıcıları (ODbL).
+- Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com); İstanbul için İBB Açık Veri / İSPARK; otopark konumlarının bir kısmı © OpenStreetMap katkıcıları (ODbL).

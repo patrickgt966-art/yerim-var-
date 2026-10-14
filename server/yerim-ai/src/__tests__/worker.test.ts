@@ -274,3 +274,35 @@ describe('the log line', () => {
     expect(all).not.toContain('gizli');
   });
 });
+
+describe('city', () => {
+  const systemOfLastCall = () => (mockParse.mock.calls.at(-1)![0] as { system: string }).system;
+
+  it('a request with city istanbul gets the İstanbul prompt; without a city it is İzmir', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: searchOut });
+    await post(env, '/understand', { ...understandBody('m1'), city: 'istanbul' });
+    expect(systemOfLastCall()).toContain('İstanbul için');
+    expect(systemOfLastCall()).not.toContain('İzmir');
+    await post(env, '/understand', understandBody('m2'));
+    expect(systemOfLastCall()).toContain('İzmir için');
+    expect(systemOfLastCall()).not.toContain('İstanbul');
+  });
+
+  it('pick and plan follow the city too', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: pickOut });
+    await post(env, '/pick', { ...pickBody('m1'), city: 'istanbul' });
+    expect(systemOfLastCall()).toContain('İstanbul için');
+    await post(env, '/pick', pickBody('m2'));
+    expect(systemOfLastCall()).toContain('İzmir için');
+  });
+
+  it('an unknown city is a bad request and costs nothing', async () => {
+    const kv = fakeKV();
+    const res = await post(envOf(kv), '/understand', { ...understandBody('m1'), city: 'atlantis' });
+    expect(res.status).toBe(400);
+    expect(mockParse).not.toHaveBeenCalled();
+    expect(await remainingOf(kv)).toBe(10);
+  });
+});

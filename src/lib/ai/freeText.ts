@@ -1,5 +1,6 @@
 // The only places the model may write its own words. Everything else it sends is a code or an
 // index. A text that fails here is dropped and the app's template is used instead.
+import { activeCity, CITIES } from '../../data/cities';
 import { fold } from './protocol';
 
 /** Z1 = tone (pick / plan / understand), Z2 = clarify question, Z3 = note about a dish. */
@@ -70,10 +71,8 @@ const DISH_NOTE_PLACE_TOKENS = /^yer(i|ler|leri|de|lerde|e|in)?$/;
 
 /** Capitalised words allowed in the middle of a clarify question / dish note (regions, cities, cuisines). */
 const KNOWN_CAPITALISED = [
-  'İzmir',
-  'İstanbul',
-  'Ankara',
-  'Bursa',
+  // Every city of data/cities.ts, open or not.
+  ...CITIES.map((c) => c.name),
   'Adana',
   'Antep',
   'Gaziantep',
@@ -114,7 +113,7 @@ const KNOWN_CAPITALISED = [
 export type FreeTextContext = {
   /** Names the text must not repeat: result cards, plan places, restaurants and car parks nearby. */
   names?: string[];
-  /** İzmir district names: fine in the clarify question, never elsewhere. */
+  /** District names (default: the active city's): fine in the clarify question, never elsewhere. */
   districts?: string[];
 };
 
@@ -147,6 +146,7 @@ export function validateFreeText(
   const sentences = text.split(/[.!?…]+/).filter((s) => s.trim() !== '');
   if (sentences.length === 0 || sentences.length > MAX_SENTENCES) return null;
 
+  const districts = ctx.districts ?? activeCity().districts;
   const padded = ` ${fold(text)}`;
   const banned = [
     ...BANNED_WORDS,
@@ -183,7 +183,7 @@ export function validateFreeText(
         zone !== 'tone' &&
         zone !== 'offtopic' &&
         (KNOWN_CAPITALISED.includes(f) ||
-          (zone === 'clarify' && (ctx.districts ?? []).some((d) => fold(d) === f)));
+          (zone === 'clarify' && districts.some((d) => fold(d) === f)));
       if (!known) return null;
     }
     // A sentence ends at . ! ? … or at an emoji that closes it ("Selam 😄 Ama …").
@@ -199,7 +199,7 @@ export function validateFreeText(
     if (n.includes(' ') ? spaced.includes(` ${n} `) : firstSingles.has(n)) return null;
   }
   if (zone !== 'clarify') {
-    for (const d of ctx.districts ?? []) {
+    for (const d of districts) {
       const n = fold(d);
       if (n && spaced.includes(` ${n} `)) return null;
     }

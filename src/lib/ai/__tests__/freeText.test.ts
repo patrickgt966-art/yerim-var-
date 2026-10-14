@@ -1,3 +1,5 @@
+import { setActiveCity } from '@/data/cities';
+
 import { BANNED_WORDS, validateFreeText } from '../freeText';
 
 const ctx = {
@@ -174,5 +176,25 @@ describe('validateFreeText: chat zone (small talk)', () => {
     const text = 'Park yeri mi arıyoruz?';
     expect(validateFreeText('chat', text, ctx)).toBe(text);
     expect(validateFreeText('tone', text, ctx)).toBeNull();
+  });
+});
+
+describe('validateFreeText and the city', () => {
+  afterEach(() => setActiveCity('izmir'));
+
+  it('lets a clarify question name a district of the active city only', () => {
+    expect(validateFreeText('clarify', 'Kadıköy mü Beşiktaş mı?')).toBeNull();
+    setActiveCity('istanbul');
+    expect(validateFreeText('clarify', 'Kadıköy mü Beşiktaş mı?')).toBe('Kadıköy mü Beşiktaş mı?');
+    expect(validateFreeText('clarify', 'Bornova mı Konak mı?')).toBeNull();
+  });
+
+  it('keeps the active city district out of a dish note', () => {
+    setActiveCity('istanbul');
+    expect(validateFreeText('dishNote', 'Kadıköy usulü bir tatlıdır')).toBeNull();
+  });
+
+  it('accepts any city name in a clarify question', () => {
+    expect(validateFreeText('clarify', 'İstanbul mu İzmir mi?')).toBe('İstanbul mu İzmir mi?');
   });
 });

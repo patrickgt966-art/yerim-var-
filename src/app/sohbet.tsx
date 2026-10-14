@@ -31,8 +31,8 @@ import {
   type ChatContext,
   type PlanData,
 } from '@/data/assistant';
+import { activeCity, isInCityArea } from '@/data/cities';
 import { appleMapsUrl } from '@/data/geo';
-import { isInIzmirArea } from '@/data/places';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
@@ -43,6 +43,7 @@ import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
 import { resolvePlace } from '@/lib/usePlaceSearch';
 import { useAi } from '@/store/ai';
+import { useApp } from '@/store/app';
 import { fonts, useColors } from '@/theme';
 
 /** Same quick location wait as the food home. */
@@ -70,6 +71,14 @@ const clock = (ms: number) => {
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export default function ChatScreen() {
+  // The thread holds cards and places of one city: another city starts it over (empty, and the
+  // opening question is not asked again).
+  const city = useApp((s) => s.city);
+  const [openedIn] = useState(city);
+  return <Chat key={city} first={city === openedIn} />;
+}
+
+function Chat({ first }: { first: boolean }) {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -106,14 +115,15 @@ export default function ChatScreen() {
     () => ({
       here: async () => {
         const loc = await currentLocation(false, LOCATION_TIMEOUT_MS);
-        return loc && isInIzmirArea(loc) ? loc : null;
+        return loc && isInCityArea(loc) ? loc : null;
       },
       geocode: async (query) => {
         const r = await resolvePlace(query);
         return r.point ?? (r.hit ? { lat: r.hit.lat, lng: r.hit.lng } : null);
       },
       parkings,
-      t: (key, opts) => t(key, opts),
+      // `{{city}}` in a text is the active city unless the caller sets it.
+      t: (key, opts) => t(key, { city: activeCity().name, ...opts }),
       ai:
         aiClient && aiOn
           ? {
@@ -282,7 +292,7 @@ export default function ChatScreen() {
   };
 
   useEffect(() => {
-    if (started.current || !q) return;
+    if (started.current || !q || !first) return;
     started.current = true;
     void send(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps

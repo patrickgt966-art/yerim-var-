@@ -4,6 +4,8 @@ import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { cityExamples } from '@/data/cities';
+import { useApp } from '@/store/app';
 import { brand, fonts, HIT, useColors } from '@/theme';
 
 const EXAMPLES = ['home.example1', 'home.example2', 'home.example3'] as const;
@@ -21,6 +23,9 @@ export function openChat(q: string) {
 export function SearchCard() {
   const c = useColors();
   const { t } = useTranslation();
+  // Re-render on a city switch: the example places follow the active city.
+  useApp((s) => s.city);
+  const examples = cityExamples();
   return (
     <View
       style={{
@@ -85,7 +90,7 @@ export function SearchCard() {
         }}
       >
         {EXAMPLES.map((key, i) => {
-          const text = t(key);
+          const text = t(key, examples);
           return (
             <Pressable
               key={key}

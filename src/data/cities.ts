@@ -6,9 +6,28 @@ export type District = { name: string; lat: number; lng: number };
 
 export type CityBounds = { minLat: number; maxLat: number; minLng: number; maxLng: number };
 
+/**
+ * Example places for hints, chips and suggestions. `x` is the bare name, `xLoc` the name with its
+ * locative suffix ("Bornova'da"): Turkish suffixes follow vowel harmony, so they are data.
+ */
+export type CityExamples = {
+  a: string;
+  aLoc: string;
+  b: string;
+  bLoc: string;
+  c: string;
+  cLoc: string;
+  d: string;
+  dLoc: string;
+};
+
 export type City = {
   id: string;
   name: string;
+  /** Name with the locative suffix ("İzmir'de"): Turkish suffixes follow vowel harmony, so they are data. */
+  locative: string;
+  /** Places named in example texts; absent while the city is not open (İzmir's are used then). */
+  examples?: CityExamples;
   /** Only cities with a working data source can be selected. */
   available: boolean;
   center: LatLng;
@@ -115,6 +134,17 @@ export const CITIES: City[] = [
   {
     id: 'izmir',
     name: 'İzmir',
+    locative: "İzmir'de",
+    examples: {
+      a: 'Alsancak',
+      aLoc: "Alsancak'ta",
+      b: 'Konak',
+      bLoc: "Konak'ta",
+      c: 'Bornova',
+      cLoc: "Bornova'da",
+      d: 'Karşıyaka',
+      dLoc: "Karşıyaka'da",
+    },
     available: true,
     center: IZMIR_CENTER,
     bounds: { minLat: 37.8, maxLat: 39.4, minLng: 26.2, maxLng: 28.5 },
@@ -135,6 +165,17 @@ export const CITIES: City[] = [
   {
     id: 'istanbul',
     name: 'İstanbul',
+    locative: "İstanbul'da",
+    examples: {
+      a: 'Kadıköy',
+      aLoc: "Kadıköy'de",
+      b: 'Beşiktaş',
+      bLoc: "Beşiktaş'ta",
+      c: 'Taksim',
+      cLoc: "Taksim'de",
+      d: 'Üsküdar',
+      dLoc: "Üsküdar'da",
+    },
     available: true,
     center: { lat: 41.0082, lng: 28.9784 },
     bounds: { minLat: 40.8, maxLat: 41.6, minLng: 27.95, maxLng: 29.95 },
@@ -147,6 +188,7 @@ export const CITIES: City[] = [
   {
     id: 'ankara',
     name: 'Ankara',
+    locative: "Ankara'da",
     available: false,
     center: { lat: 39.9334, lng: 32.8597 },
     bounds: { minLat: 39.3, maxLat: 40.5, minLng: 32.0, maxLng: 33.7 },
@@ -159,6 +201,7 @@ export const CITIES: City[] = [
   {
     id: 'antalya',
     name: 'Antalya',
+    locative: "Antalya'da",
     available: false,
     center: { lat: 36.8969, lng: 30.7133 },
     bounds: { minLat: 36.2, maxLat: 37.4, minLng: 29.9, maxLng: 31.6 },
@@ -171,6 +214,7 @@ export const CITIES: City[] = [
   {
     id: 'bursa',
     name: 'Bursa',
+    locative: "Bursa'da",
     available: false,
     center: { lat: 40.1885, lng: 29.061 },
     bounds: { minLat: 39.7, maxLat: 40.6, minLng: 28.3, maxLng: 29.8 },
@@ -200,6 +244,10 @@ export function setActiveCity(id: string): void {
 /** The selected city. Data modules read it at use time, never at import time. */
 export const activeCity = (): City => cityById(active);
 
+/** The example places of a city (default: the active one), as interpolation values for `t(key, cityExamples())`. */
+export const cityExamples = (city: City = activeCity()): CityExamples =>
+  city.examples ?? cityById(DEFAULT_CITY).examples!;
+
 /**
  * Rough province outline of a city: inside its box, within `radiusKm` of its
  * centre and (where set) east of the west coast. A location outside is not a
@@ -219,3 +267,7 @@ export function isInCityArea(p: LatLng, city: City = activeCity()): boolean {
   const band = city.westLimits.find(([minLat]) => p.lat >= minLat);
   return !!band && p.lng >= band[1];
 }
+
+/** The open city whose area holds `p`, if any (cities do not overlap). */
+export const cityAt = (p: LatLng): City | undefined =>
+  CITIES.find((c) => c.available && isInCityArea(p, c));

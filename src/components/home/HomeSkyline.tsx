@@ -1,16 +1,17 @@
 import { useWindowDimensions } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
+import { useApp } from '@/store/app';
 import { brand } from '@/theme';
 
 /**
- * İzmir silhouette along the bottom of the home hero (design B3): Kadifekale
- * hills, the Saat Kulesi, Kordon palms, the Asansör, a ferry on the bay and
- * the Bayraklı towers.
+ * Silhouette along the bottom of the home hero (design B3), drawn for the
+ * selected city; an unknown city gets İzmir's.
  */
 export function HomeSkyline() {
   // Full width at the drawing's own proportions, so no landmark is cropped.
   const { width } = useWindowDimensions();
+  const city = useApp((s) => s.city);
   return (
     <Svg
       width="100%"
@@ -22,52 +23,111 @@ export function HomeSkyline() {
       // Ends just above the search card, which overlaps the hero by 34.
       style={{ position: 'absolute', left: 0, right: 0, bottom: 30 }}
     >
-      <G fill={brand.white} fillOpacity={0.32}>
-        {/* Kadifekale hills behind everything */}
-        <Path
-          d="M0 92V62c30-12 60-18 92-14s52 10 80 6 40-12 64-10 34 10 54 12v30z"
-          fillOpacity={0.12}
-        />
-        {/* Saat Kulesi, in orange so the city reads at a glance */}
-        <G fill={brand.orangeLight} fillOpacity={0.85}>
-          <Rect x={60} y={74} width={20} height={18} />
-          <Rect x={63} y={58} width={14} height={16} />
-          <Rect x={61} y={56} width={18} height={3} />
-          <Rect x={65} y={44} width={10} height={12} />
-          <Rect x={63.5} y={42} width={13} height={3} />
-          <Rect x={66.5} y={33} width={7} height={9} />
-          <Circle cx={70} cy={31} r={4.5} />
-          <Rect x={69.3} y={20} width={1.4} height={8} />
-        </G>
-        {/* Kordon palms */}
-        <G fill={brand.mint} fillOpacity={0.45}>
-          <Path d="M30 92c1-12 3-22 6-30h2c-2 8-4 18-4 30z" />
-          <Path d="M37 62c-6-4-13-4-18 0 6-1 11 0 15 3zM37 62c5-5 12-6 18-3-6 0-11 2-15 5zM37 62c-2-6-7-9-12-9 4 2 7 5 9 10zM37 62c3-5 8-7 13-6-5 1-8 4-10 8z" />
-          <Path d="M104 92c0-10 2-18 5-25h2c-2 7-3 15-3 25z" />
-          <Path d="M110 67c-5-3-11-3-15 0 5-1 9 0 12 2zM110 67c4-4 10-5 15-2-5 0-9 1-12 4zM110 67c-2-5-6-7-10-7 3 1 6 4 7 8z" />
-        </G>
-        {/* Asansör */}
-        <Rect x={146} y={40} width={9} height={52} />
-        <Rect x={141} y={33} width={19} height={8} />
-        <Path d="M139 33l11.5-6 11.5 6z" />
-        {/* Ferry on the bay */}
-        <Path d="M188 86h40l-5 6h-31z" />
-        <Rect x={195} y={79} width={24} height={7} rx={2} />
-        <Rect x={203} y={73} width={6} height={6} />
-        {/* Bayraklı towers */}
-        <Path d="M262 92V50h12v42z" />
-        <Path d="M280 92V22l6-6 6 6v70z" />
-        <Path d="M296 92V30l6-6 6 6v62z" />
-        <Path d="M314 92V10c4-4 10-4 14 0v82z" />
-        <Path d="M334 92V40h12v52z" />
-        <Path d="M350 92V56h10v36z" />
-        <Path d="M364 92V46l8-4 8 4v46z" />
-        {/* Waves of the bay */}
-        <Path
-          d="M0 90c8-3 16-3 24 0s16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0v2H0z"
-          fillOpacity={0.3}
-        />
-      </G>
+      {city === 'istanbul' ? <IstanbulSkyline /> : <IzmirSkyline />}
     </Svg>
+  );
+}
+
+/**
+ * İzmir: Kadifekale hills, the Saat Kulesi, Kordon palms, the Asansör, a ferry
+ * on the bay and the Bayraklı towers.
+ */
+function IzmirSkyline() {
+  return (
+    <G testID="skyline-izmir" fill={brand.white} fillOpacity={0.32}>
+      {/* Kadifekale hills behind everything */}
+      <Path
+        d="M0 92V62c30-12 60-18 92-14s52 10 80 6 40-12 64-10 34 10 54 12v30z"
+        fillOpacity={0.12}
+      />
+      {/* Saat Kulesi, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Rect x={60} y={74} width={20} height={18} />
+        <Rect x={63} y={58} width={14} height={16} />
+        <Rect x={61} y={56} width={18} height={3} />
+        <Rect x={65} y={44} width={10} height={12} />
+        <Rect x={63.5} y={42} width={13} height={3} />
+        <Rect x={66.5} y={33} width={7} height={9} />
+        <Circle cx={70} cy={31} r={4.5} />
+        <Rect x={69.3} y={20} width={1.4} height={8} />
+      </G>
+      {/* Kordon palms */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M30 92c1-12 3-22 6-30h2c-2 8-4 18-4 30z" />
+        <Path d="M37 62c-6-4-13-4-18 0 6-1 11 0 15 3zM37 62c5-5 12-6 18-3-6 0-11 2-15 5zM37 62c-2-6-7-9-12-9 4 2 7 5 9 10zM37 62c3-5 8-7 13-6-5 1-8 4-10 8z" />
+        <Path d="M104 92c0-10 2-18 5-25h2c-2 7-3 15-3 25z" />
+        <Path d="M110 67c-5-3-11-3-15 0 5-1 9 0 12 2zM110 67c4-4 10-5 15-2-5 0-9 1-12 4zM110 67c-2-5-6-7-10-7 3 1 6 4 7 8z" />
+      </G>
+      {/* Asansör */}
+      <Rect x={146} y={40} width={9} height={52} />
+      <Rect x={141} y={33} width={19} height={8} />
+      <Path d="M139 33l11.5-6 11.5 6z" />
+      {/* Ferry on the bay */}
+      <Path d="M188 86h40l-5 6h-31z" />
+      <Rect x={195} y={79} width={24} height={7} rx={2} />
+      <Rect x={203} y={73} width={6} height={6} />
+      {/* Bayraklı towers */}
+      <Path d="M262 92V50h12v42z" />
+      <Path d="M280 92V22l6-6 6 6v70z" />
+      <Path d="M296 92V30l6-6 6 6v62z" />
+      <Path d="M314 92V10c4-4 10-4 14 0v82z" />
+      <Path d="M334 92V40h12v52z" />
+      <Path d="M350 92V56h10v36z" />
+      <Path d="M364 92V46l8-4 8 4v46z" />
+      {/* Waves of the bay */}
+      <Path
+        d="M0 90c8-3 16-3 24 0s16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
+  );
+}
+
+/**
+ * İstanbul: the Boğaz bridge, Galata Kulesi (the orange accent), a mosque with
+ * dome and minarets, Kız Kulesi on its rock and a vapur on the water. Shapes that
+ * overlap share one path so the translucent fill does not double up.
+ */
+function IstanbulSkyline() {
+  return (
+    <G testID="skyline-istanbul" fill={brand.white} fillOpacity={0.32}>
+      {/* Hills behind everything */}
+      <Path
+        d="M110 92V66c24-10 48-16 78-12s46 10 76 7 52-10 80-6 46 8 46 8V92z"
+        fillOpacity={0.12}
+      />
+      {/* Boğaz bridge: towers and deck, then the main cable with its hangers */}
+      <Path d="M13.5 92V22h5v70zM95.5 92V22h5v70zM0 67v-2.5h118V67zM11 34h10v2.5H11zM93 34h10v2.5H93z" />
+      <Path
+        d="M0 62L16 24Q57 72 98 24L114 62M24.2 32.6V65M32.4 39.4V65M40.6 44.2V65M48.8 47V65M57 48V65M65.2 47V65M73.4 44.2V65M81.6 39.4V65M89.8 32.6V65"
+        fill="none"
+        stroke={brand.white}
+        strokeOpacity={0.32}
+        strokeWidth={0.9}
+      />
+      {/* Galata Kulesi, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M130 92V44H150V92zM127 44V38H153V44zM131 38V28H149V38zM128 29L140 8L152 29zM139.3 8V2H140.7V8z" />
+      </G>
+      {/* Cypress trees */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M168 92c-3-8-3-16 0-26 3 10 3 18 0 26zM258 92c-3-8-3-16 0-26 3 10 3 18 0 26z" />
+      </G>
+      {/* Mosque: courtyard body, central dome, two half domes and two minarets */}
+      <Path d="M186 92V68H242V92zM197 68A17 17 0 0 1 231 68zM213.3 51V40H214.7V51zM186 68A8 8 0 0 1 202 68zM226 68A8 8 0 0 1 242 68zM182 92V30H186V92zM179.5 44V41H188.5V44zM181.5 30L184 14L186.5 30zM242 92V30H246V92zM239.5 44V41H248.5V44zM241.5 30L244 14L246.5 30z" />
+      {/* Kız Kulesi on its rock */}
+      <Path d="M286 92C289 84 294 80 300 80S311 84 314 92zM295 80V64H305V80zM293.5 64V61.5H306.5V64zM297 61.5V54H303V61.5zM296.5 54A3.5 3.5 0 0 1 303.5 54zM299.4 50.5V44H300.6V50.5zM289 80V74H294.5V80z" />
+      {/* Sea around the rock */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M272 89c4-2 8-2 12 0s8 2 12 0v2c-4 2-8 2-12 0s-8-2-12 0zM304 89c4-2 8-2 12 0s8 2 12 0v2c-4 2-8 2-12 0s-8-2-12 0z" />
+      </G>
+      {/* Vapur: hull, two decks, funnel */}
+      <Path d="M336 85H380L374 92H340zM342 85V79H374V85zM349 79V74H368V79zM355 74V64H361V74zM354 64V62H362V64z" />
+      {/* Waves of the Boğaz */}
+      <Path
+        d="M0 90c8-3 16-3 24 0s16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
   );
 }

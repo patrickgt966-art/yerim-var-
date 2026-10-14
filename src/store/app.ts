@@ -79,10 +79,12 @@ export const useApp = create<State>()(
         set((s) => ({ recentSearches: addRecentSearch(s.recentSearches, q) })),
       clearRecentSearches: () => set({ recentSearches: [] }),
       // Unavailable or unknown cities are ignored. The data layer follows the store.
+      // Recent searches name places of the old city, so a real switch drops them; favorites,
+      // Ev/İş and a running park are the user's own and stay.
       setCity: (id) => {
         if (!isAvailableCity(id)) return;
         setActiveCity(id);
-        set({ city: id });
+        set((s) => (s.city === id ? s : { city: id, recentSearches: [] }));
       },
       setOnboarded: (onboarded) => set({ onboarded }),
       setHome: (home) => set({ home }),

@@ -1,6 +1,7 @@
 // Shared by the app and the Cloudflare Worker: keep this file free of React / RN imports.
 import { z } from 'zod';
 
+import { cityById, cityExamples, CITIES, DEFAULT_CITY, isAvailableCity } from '../../data/cities';
 import type { FoodCategory } from '../../data/restaurants';
 
 export const FREE_DAILY = 10;
@@ -19,6 +20,20 @@ export const MAX_PLAN_PARKINGS = 3;
 
 export type ChatTurn = { role: 'user' | 'bot'; text: string };
 
+/**
+ * The city a request is about (the open cities of data/cities.ts). Optional everywhere: an app
+ * or a worker that predates the field leaves it out or ignores it, and the prompts then say İzmir.
+ */
+export const CitySchema = z.enum(
+  CITIES.filter((c) => c.available).map((c) => c.id) as [string, ...string[]],
+);
+export type AiCityId = z.infer<typeof CitySchema>;
+
+/** The city of a request for the prompts: an unknown or missing id means İzmir. */
+function promptCity(city: string | undefined) {
+  return cityById(isAvailableCity(city) ? city : DEFAULT_CITY);
+}
+
 export type UnderstandRequest = {
   deviceId: string;
   messageId: string;
@@ -27,6 +42,7 @@ export type UnderstandRequest = {
   section: 'park' | 'food';
   /** What the last bot reply showed (no names): lets the model answer "pick_from_last". */
   lastCards?: { count: number; kind: 'restaurant' | 'parking' };
+  city?: AiCityId;
 };
 
 export type QuotaRequest = { deviceId: string };
@@ -164,6 +180,7 @@ export type Understanding =
 export type NarrateRequest = {
   deviceId: string;
   messageId: string;
+  city?: AiCityId;
   text: string;
   where: string;
   what: string;
@@ -185,19 +202,22 @@ export type NarrateRequest = {
   }[];
 };
 
-export const UNDERSTAND_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "Alsancak" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
+export function understandSystem(city?: string): string {
+  const c = promptCity(city);
+  const place = cityExamples(c).a;
+  return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "${place}" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
 
 Karar (kind):
-- "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "Alsancak"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.
+- "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "${place}"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.
 - "chat": selam, teşekkür, veda, uygulamanın kendisi ya da sohbet hakkında laf, "sence / sen seç" gibi seçimi sana bırakma, spor, haber, hava durumu gibi konu dışı sohbet. Hiçbir arama isteği yoksa.
 - "unknown": ne istediği anlaşılmıyorsa.
 
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
-- search: district (İzmir ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- search: district (şehrin ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
 - Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes null olsun.
 - "yakınımda", "en yakın", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
-- wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy, tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (metro/İZBAN yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
+- wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy, tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (raylı sistem/metro yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
 - partySize: kaç kişi olduklarını söylediyse sayı, yoksa null.
 - clarify: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa {ask, text} döndür; aksi halde null. ask sadece district, dish, party, time ya da duration olabilir.
 - plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa {when} (now, tonight, lunch, dinner, later_today), değilse null.
@@ -209,8 +229,14 @@ SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin,
 - clarify.text (en çok 80 karakter): sorunun cümlesi, örneğin "Hangi semtte yemek istersiniz?".
 - dishNote (en çok 140 karakter): yemek bizim için bilinmiyorsa ya da egzotikse yemeğin KENDİSİ hakkında genel bilgi, örneğin "Kibbe, bulgur ve kıymayla yapılan, içli köfteye benzeyen bir Orta Doğu yemeğidir." Asla belirli bir mekân hakkında değil.
 Bu üç alanda: rakam, saat, fiyat, mesafe, dakika, açık/kapalı, otopark, boş yer, "en iyi/lezzetli/meşhur", puan, yorum, menü, güvenlik, kamera, yükseklik, rezervasyon, mekân adı, link, @ ya da # yazma; yer hakkında hiçbir iddiada bulunma (sakin, romantik, manzaralı, ucuz, güvenli, yakın gibi). (clarify.text otopark kelimesini kullanabilir.) Bu alanlar uygulamada denetlenir ve kurala uymayan atılır.`;
+}
 
-export const NARRATE_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulamasının (Yerim Var) sesisin. Verilen sonuçları tanıtan 1-2 kısa, samimi Türkçe cümle yaz (İzmir ağzı olabilir, "hocam" diyebilirsin).
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const UNDERSTAND_SYSTEM = understandSystem('izmir');
+
+export function narrateSystem(city?: string): string {
+  const c = promptCity(city);
+  return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) sesisin. Verilen sonuçları tanıtan 1-2 kısa, samimi Türkçe cümle yaz (${c.name} ağzı olabilir, "hocam" diyebilirsin).
 
 Kurallar:
 - Yerlerden SADECE {1}..{5} yer tutucularıyla söz et; isim uydurma.
@@ -220,6 +246,10 @@ Kurallar:
 - Fiyat, puan ve saat uydurma.
 - Her yer için en fazla bir ya da iki bilgi ver (örneğin kategori, açık mı, otopark ücretli mi, boş yer sayısı).
 - Cevap 1-2 cümle olsun.`;
+}
+
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const NARRATE_SYSTEM = narrateSystem('izmir');
 
 export const OPEN_STATES = ['open', 'closed', 'unknown'] as const;
 export type OpenStateCode = (typeof OPEN_STATES)[number];
@@ -262,6 +292,7 @@ export type PickCandidate = {
 export type PickRequest = {
   deviceId: string;
   messageId: string;
+  city?: AiCityId;
   text: string;
   candidates: PickCandidate[];
 };
@@ -320,6 +351,7 @@ export type ParkPickCandidate = {
 export type ParkPickRequest = {
   deviceId: string;
   messageId: string;
+  city?: AiCityId;
   text: string;
   candidates: ParkPickCandidate[];
 };
@@ -366,6 +398,7 @@ export type PlanCandidate = {
 export type PlanRequest = {
   deviceId: string;
   messageId: string;
+  city?: AiCityId;
   text: string;
   when: PlanWhen;
   candidates: PlanCandidate[];
@@ -397,27 +430,45 @@ const LIMITS_TR = `Sınırlar (uygulama bunları ayrıca denetler, uymayan sonu�
 - Fiyat, ortam, gürültü, yorum, menü, çocuk olanakları hakkında hiçbir verimiz yok; bunlara dayanarak seçim yapma ve bunlar hakkında bir şey söyleme.
 - tone serbest metindir (en çok 90 karakter, tek kısa samimi cümle) ya da null: rakam, saat, fiyat, mesafe, açık/kapalı, otopark, boş yer, mekân adı, "en iyi/lezzetli", puan, yorum, link ve yer hakkında hiçbir iddia içermesin; sadece kullanıcının durumuna sıcak bir karşılık olsun (örneğin "Kalabalık bir grup için rahat bir seçim yapalım."). Başka hiçbir alana metin yazma.`;
 
-export const PICK_SYSTEM = `Sen İzmir için bir restoran ve otopark uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve adayların verilerine bakıp en uygun adayı seçersin.
+export function pickSystem(city?: string): string {
+  const c = promptCity(city);
+  return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve adayların verilerine bakıp en uygun adayı seçersin.
 
 Her aday: i (indeks), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
 Çıktı: pick (seçtiğin aday), reasons (en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor), runnerUp (ikinci tercih ya da null), runnerUpWhy (tek kod ya da null), tone.
 
 ${LIMITS_TR}`;
+}
 
-export const PARK_PICK_SYSTEM = `Sen İzmir için bir otopark ve restoran uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve otoparkların verilerine bakıp en uygun otoparkı seçersin.
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const PICK_SYSTEM = pickSystem('izmir');
+
+export function parkPickSystem(city?: string): string {
+  const c = promptCity(city);
+  return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve otoparkların verilerine bakıp en uygun otoparkı seçersin.
 
 Her aday: i (indeks), walkMin (hedefe yürüme dk), openState (open/closed/unknown), nonstop (24 saat), free (ücretsiz mi), tariffKnown, covered (kapalı/katlı mı), freeSpots (güncel boş yer), nearRail (raylı sisteme yakın mı), capacity.
 Çıktı: pick (seçtiğin aday), reasons (en çok 3 kod: closest, free, nonstop, open_now, most_free_spots, near_rail, covered, big_capacity), runnerUp (ikinci tercih ya da null), runnerUpWhy (tek kod ya da null), tone.
 
 ${LIMITS_TR}
 - Güvenlik, kamera, araç yüksekliği, motosiklet ya da rezervasyon hakkında hiçbir verimiz yok; bunlara dayanarak seçim yapma ve bunlar hakkında bir şey söyleme.`;
+}
 
-export const PLAN_SYSTEM = `Sen İzmir için bir restoran ve otopark uygulamasının (Yerim Var) planlayıcısısın. Kullanıcı bir saatte arabayı bırakıp yemek yemek istiyor. Verilen restoranlardan ve her birinin otopark seçeneklerinden birer tane seçersin.
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const PARK_PICK_SYSTEM = parkPickSystem('izmir');
+
+export function planSystem(city?: string): string {
+  const c = promptCity(city);
+  return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) planlayıcısısın. Kullanıcı bir saatte arabayı bırakıp yemek yemek istiyor. Verilen restoranlardan ve her birinin otopark seçeneklerinden birer tane seçersin.
 
 Her restoran: i, walkMin (kullanıcıdan yürüme dk), openState (planlanan saatte), closesLate, dishMatch, outdoor, parkings (p: otopark indeksi, walkMin: otoparktan restorana yürüme dk, parkingFree, freeSpots, openState).
 Çıktı: restaurant (restoran indeksi i), parking (o restoranın kendi otoparklarından birinin p değeri; başka restoranın otoparkını seçme), reasons (en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor), tone.
 
 ${LIMITS_TR}`;
+}
+
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const PLAN_SYSTEM = planSystem('izmir');
 
 // --- Small talk (/chat): greetings, thanks, goodbyes and talk about the chat itself --------------
 
@@ -427,6 +478,7 @@ export const CHAT_HISTORY_LIMIT = 4;
 export type ChatRequest = {
   deviceId: string;
   messageId: string;
+  city?: AiCityId;
   text: string;
   /** The last four turns at most. */
   history: ChatTurn[];
@@ -441,7 +493,9 @@ export const chatOutputSchema = z.object({
 });
 export type ChatResponse = z.infer<typeof chatOutputSchema>;
 
-export const CHAT_SYSTEM = `Sen "Yerim" adlı samimi bir Türkçe sohbet asistanısın: İzmir'de yemek ve otopark bulmaya yardım eden uygulamanın (Yerim Var) sesisin. Kullanıcı selam veriyor, teşekkür ediyor, vedalaşıyor ya da sohbetin kendisi hakkında bir şey söylüyor.
+export function chatSystem(city?: string): string {
+  const c = promptCity(city);
+  return `Sen "Yerim" adlı samimi bir Türkçe sohbet asistanısın: ${c.locative} yemek ve otopark bulmaya yardım eden uygulamanın (Yerim Var) sesisin. Kullanıcı selam veriyor, teşekkür ediyor, vedalaşıyor ya da sohbetin kendisi hakkında bir şey söylüyor.
 
 Çıktı: reply (1-2 kısa, sıcak cümle, en çok 140 karakter) ve action (none, ask_food_or_park, pick_from_last, suggest_examples).
 - Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!").
@@ -450,6 +504,10 @@ export const CHAT_SYSTEM = `Sen "Yerim" adlı samimi bir Türkçe sohbet asistan
 - Yerler, fiyatlar, çalışma saatleri, otopark durumu, mesafeler hakkında HİÇBİR bilgi ya da iddia verme; mekân adı yazma.
 - Rakam, link, @ ya da # kullanma; en çok bir emoji.
 - Uygulamanın dışındaki konularda (maç, hava, siyaset) kısaca gülümseyip yemek ya da otoparka dön.`;
+}
+
+/** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
+export const CHAT_SYSTEM = chatSystem('izmir');
 
 export function fillPlaceholders(reply: string, names: string[]): string {
   return reply.replace(/\{(\d+)\}/g, (m, n: string) => names[Number(n) - 1] ?? m);
