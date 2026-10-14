@@ -3,16 +3,22 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import {
   FREE_DAILY,
+  UnderstandingModelSchema,
   UnderstandingSchema,
+  capReasons,
   chatOutputSchema,
   chatSystem,
   narrateSystem,
+  parkPickModelSchema,
   parkPickOutputSchema,
   parkPickSystem,
+  pickModelSchema,
   pickOutputSchema,
   pickSystem,
+  planModelSchema,
   planOutputSchema,
   planSystem,
+  toUnderstanding,
   understandSystem,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
@@ -46,6 +52,29 @@ export interface Env {
 }
 
 const MODEL = 'claude-haiku-5-5';
+
+/** A short code that is safe to return and log: letters, digits and underscores only. */
+const safeCode = (v: unknown): string =>
+  typeof v === 'string' ? v.replace(/[^A-Za-z0-9_]/g, '_').slice(0, 60) : '';
+
+/**
+ * Why a call to Anthropic threw, without the error message (it can echo keys or text): the SDK's
+ * APIError carries a status and the API's error type ("anthropic_401_authentication_error");
+ * anything else gives its name.
+ */
+function errorDetail(err: unknown): string {
+  if (typeof err !== 'object' || err === null) return 'unknown';
+  const e = err as {
+    status?: unknown;
+    error?: { error?: { type?: unknown }; type?: unknown };
+    name?: unknown;
+  };
+  if (typeof e.status === 'number') {
+    const type = safeCode(e.error?.error?.type) || safeCode(e.error?.type) || 'unknown';
+    return `anthropic_${e.status}_${type}`;
+  }
+  return safeCode(e.name) || 'unknown';
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -178,8 +207,11 @@ export default {
       );
       return json(body, status);
     };
-    const upstreamFail = async (outcome: Outcome = 'error') =>
-      respond(outcome, { error: 'upstream', remaining: await giveBack() }, 502);
+    const upstreamFail = async (outcome: Outcome = 'error', detail = 'unknown') => {
+      console.error('upstream failed', detail);
+      return respond(outcome, { error: 'upstream', remaining: await giveBack(), detail }, 502);
+    };
+    const noOutput = (stopReason: unknown) => `no_output_${safeCode(stopReason) || 'unknown'}`;
 
     try {
       const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
@@ -193,7 +225,7 @@ export default {
           model: MODEL,
           max_tokens: 2048,
           system,
-          output_config: { effort: 'low', format: zodOutputFormat(UnderstandingSchema) },
+          output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
           messages: toMessages(understandReq.history, understandReq.text),
         });
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
@@ -202,7 +234,17 @@ export default {
             remaining: await giveBack(),
           });
         }
-        return respond('ok', { understanding: response.parsed_output, remaining: q.remaining });
+        // The model answers one flat object; the app reads the union it always read.
+        const understanding = UnderstandingSchema.safeParse(
+          toUnderstanding(response.parsed_output),
+        );
+        if (!understanding.success) {
+          return respond('error', {
+            understanding: { kind: 'unknown' } satisfies Understanding,
+            remaining: await giveBack(),
+          });
+        }
+        return respond('ok', { understanding: understanding.data, remaining: q.remaining });
       }
 
       if (chatReq) {
@@ -218,7 +260,10 @@ export default {
           messages: toMessages(chatReq.history, chatReq.text),
         });
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
-          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+          return upstreamFail(
+            response.stop_reason === 'refusal' ? 'refusal' : 'error',
+            noOutput(response.stop_reason),
+          );
         }
         // Older apps read the bare reply; they never see the count.
         return respond('ok', response.parsed_output);
@@ -234,7 +279,7 @@ export default {
           system: park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
           output_config: {
             effort: 'low',
-            format: zodOutputFormat(park ? parkPickOutputSchema(n) : pickOutputSchema(n)),
+            format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
           },
           messages: [
             {
@@ -244,9 +289,16 @@ export default {
           ],
         });
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
-          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+          return upstreamFail(
+            response.stop_reason === 'refusal' ? 'refusal' : 'error',
+            noOutput(response.stop_reason),
+          );
         }
-        return respond('ok', { pick: response.parsed_output, remaining: q.remaining });
+        const out = park
+          ? parkPickOutputSchema(n).safeParse(capReasons(response.parsed_output))
+          : pickOutputSchema(n).safeParse(capReasons(response.parsed_output));
+        if (!out.success) return upstreamFail('error', 'invalid_output');
+        return respond('ok', { pick: out.data, remaining: q.remaining });
       }
 
       if (planReq) {
@@ -257,7 +309,7 @@ export default {
           system: planSystem(planReq.city),
           output_config: {
             effort: 'low',
-            format: zodOutputFormat(planOutputSchema(planReq.candidates.length, total)),
+            format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
           },
           messages: [
             {
@@ -271,9 +323,16 @@ export default {
           ],
         });
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
-          return upstreamFail(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+          return upstreamFail(
+            response.stop_reason === 'refusal' ? 'refusal' : 'error',
+            noOutput(response.stop_reason),
+          );
         }
-        return respond('ok', { plan: response.parsed_output, remaining: q.remaining });
+        const out = planOutputSchema(planReq.candidates.length, total).safeParse(
+          capReasons(response.parsed_output),
+        );
+        if (!out.success) return upstreamFail('error', 'invalid_output');
+        return respond('ok', { plan: out.data, remaining: q.remaining });
       }
 
       if (narrateReq) {
@@ -290,21 +349,20 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal') return upstreamFail('refusal');
+        if (response.stop_reason === 'refusal') return upstreamFail('refusal', noOutput('refusal'));
         let reply = '';
         for (const block of response.content) {
           if (block.type === 'text') reply += block.text;
         }
         reply = reply.trim();
-        if (!reply) return upstreamFail();
+        if (!reply) return upstreamFail('error', 'empty_reply');
         return respond('ok', { reply, remaining: q.remaining });
       }
 
       return json({ error: 'not_found' }, 404);
     } catch (err) {
-      // Never log the user's text; only the error name/message from the SDK.
-      console.error('anthropic error', err instanceof Error ? err.message : 'unknown');
-      return upstreamFail();
+      // Never the user's text, a key or the SDK's message: only the status and error type.
+      return upstreamFail('error', errorDetail(err));
     }
   },
 };

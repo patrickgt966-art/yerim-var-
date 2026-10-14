@@ -143,6 +143,75 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('unknown') }),
 ]);
 
+/**
+ * What the model is asked to produce for /understand: ONE flat object. Structured outputs reject a
+ * `$defs` / `$ref` (a reused sub-schema, or any array with a `.max()`) next to an `anyOf`, and a
+ * discriminated union is an `anyOf` of objects, so the model never sees `UnderstandingSchema`.
+ * Every property is required; a field that does not apply to the `kind` is null (wishes: []).
+ * Limits that JSON schema cannot carry are applied by `toUnderstanding`.
+ * Keep every sub-schema inline and separate: do not reuse one instance twice.
+ */
+export const UnderstandingModelSchema = z.object({
+  kind: z.enum(['search', 'chat', 'unknown']),
+  district: z.string().nullable(),
+  cat: z.enum(FOOD_CATEGORY_VALUES).nullable(),
+  dish: z.string().nullable(),
+  place: z.string().nullable(),
+  food: z.boolean().nullable(),
+  requireParking: z.boolean().nullable(),
+  appleQuery: z.string().nullable(),
+  nearMe: z.boolean().nullable(),
+  dishServes: z.array(z.string()).nullable(),
+  wishes: z.array(z.enum(WISHES)),
+  partySize: z.number().int().nullable(),
+  clarify: z.object({ ask: z.enum(CLARIFY_ASKS), text: z.string().nullable() }).nullable(),
+  plan: z.object({ when: z.enum(PLAN_WHENS) }).nullable(),
+  tone: z.string().nullable(),
+  dishNote: z.string().nullable(),
+  reply: z.string().nullable(),
+  action: z.enum(CHAT_ACTIONS).nullable(),
+});
+export type UnderstandingModel = z.infer<typeof UnderstandingModelSchema>;
+
+/**
+ * The flat model output as the `Understanding` the app (and every deployed app) reads: the worker
+ * sends this shape, as before. Tolerant: a missing or null field gets its default, the caps the
+ * schema cannot express are applied, and a chat without a reply is "unknown". Input that is already
+ * shaped like the union (search / chat / unknown) passes through unchanged.
+ */
+export function toUnderstanding(raw: unknown): Understanding {
+  if (typeof raw !== 'object' || raw === null) return { kind: 'unknown' };
+  const m = raw as Partial<UnderstandingModel>;
+  if (m.kind === 'chat') {
+    return typeof m.reply === 'string' && m.reply !== ''
+      ? { kind: 'chat', reply: m.reply, action: m.action ?? 'none' }
+      : { kind: 'unknown' };
+  }
+  if (m.kind !== 'search') return { kind: 'unknown' };
+  const party = m.partySize;
+  return {
+    kind: 'search',
+    district: m.district ?? null,
+    cat: m.cat ?? null,
+    dish: m.dish ?? null,
+    place: m.place ?? null,
+    food: m.food ?? false,
+    requireParking: m.requireParking ?? false,
+    appleQuery: m.appleQuery ?? null,
+    nearMe: m.nearMe ?? false,
+    dishServes: Array.isArray(m.dishServes) ? m.dishServes.slice(0, 5) : null,
+    wishes: (Array.isArray(m.wishes) ? m.wishes : []).slice(0, 6),
+    partySize:
+      typeof party === 'number' && Number.isInteger(party) && party >= 1 && party <= 99
+        ? party
+        : null,
+    clarify: m.clarify ?? null,
+    plan: m.plan ?? null,
+    tone: m.tone ?? null,
+    dishNote: m.dishNote ?? null,
+  };
+}
+
 /** Client parse: an older deployed server answers without the newer fields. */
 const ClientUnderstandingKinds = z.discriminatedUnion('kind', [
   z.object({
@@ -222,6 +291,7 @@ Kurallar:
 - clarify: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa {ask, text} döndür; aksi halde null. ask sadece district, dish, party, time ya da duration olabilir.
 - plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa {when} (now, tonight, lunch, dinner, later_today), değilse null.
 - chat: reply (1-2 kısa, sıcak, hafif esprili cümle, en çok 140 karakter) ve action (none, ask_food_or_park, suggest_examples, pick_from_last). Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!"); konu dışı laflara kısaca gülümseyip yemek ya da otoparka dön. ask_food_or_park: ne arandığı belli değilse. suggest_examples: nasıl kullanılacağı sorulduysa. pick_from_last: kullanıcı seçimi sana bırakıyorsa VE aşağıda son cevapta kart olduğu yazıyorsa. Diğer durumlarda none. reply HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok); rakam, mekân adı, fiyat, "ücretsiz", otopark, mesafe, açık/kapalı iddiası, link, @, # içermesin, en çok bir emoji olsun, cümle ortasında büyük harfle başlayan sözcük (özel ad) olmasın; uygulama bu cevabı denetler ve kurala uymayanı atar.
+- Şema tek düzdür: kind her zaman yazılır; o kind'a ait olmayan alanlar null olur (wishes için boş dizi). chat için reply ve action, search için diğer alanlar doldurulur.
 - Sadece şemaya uygun JSON döndür.
 
 SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin, hepsi null olabilir. Başka hiçbir alana metin yazma (chat reply yukarıdaki kurallara tabidir).
@@ -315,6 +385,29 @@ export function pickOutputSchema(n: number) {
 }
 export type PickResponse = z.infer<ReturnType<typeof pickOutputSchema>>;
 
+/**
+ * What the model is asked for in /pick (restaurants): the same fields without the array cap and
+ * with a separate index schema per field, so the generated JSON schema has no `$defs` (see
+ * UnderstandingModelSchema). The worker caps `reasons` and then checks pickOutputSchema.
+ */
+export function pickModelSchema(n: number) {
+  const max = Math.max(0, n - 1);
+  return z.object({
+    pick: z.number().int().min(0).max(max),
+    reasons: z.array(z.enum(PICK_REASONS)),
+    runnerUp: z.number().int().min(0).max(max).nullable(),
+    runnerUpWhy: z.enum(PICK_REASONS).nullable(),
+    tone: z.string().nullable(),
+  });
+}
+
+/** The model output with its reason list cut to MAX_REASONS, ready for the strict output schema. */
+export function capReasons<T>(out: T): T {
+  if (typeof out !== 'object' || out === null) return out;
+  const o = out as { reasons?: unknown };
+  return Array.isArray(o.reasons) ? { ...out, reasons: o.reasons.slice(0, MAX_REASONS) } : out;
+}
+
 /** Car park picks (park section): same job, different facts and reason codes. */
 export const PARK_REASONS = [
   'closest',
@@ -372,6 +465,18 @@ export function parkPickOutputSchema(n: number) {
 }
 export type ParkPickResponse = z.infer<ReturnType<typeof parkPickOutputSchema>>;
 
+/** What the model is asked for in /pick (car parks); see pickModelSchema. */
+export function parkPickModelSchema(n: number) {
+  const max = Math.max(0, n - 1);
+  return z.object({
+    pick: z.number().int().min(0).max(max),
+    reasons: z.array(z.enum(PARK_REASONS)),
+    runnerUp: z.number().int().min(0).max(max).nullable(),
+    runnerUpWhy: z.enum(PARK_REASONS).nullable(),
+    tone: z.string().nullable(),
+  });
+}
+
 /** Job 4. A car park option of one restaurant; `p` is unique across the whole request. */
 export type PlanParking = {
   p: number;
@@ -423,6 +528,24 @@ export function planOutputSchema(restaurants: number, parkings: number) {
   });
 }
 export type PlanResponse = z.infer<ReturnType<typeof planOutputSchema>>;
+
+/** What the model is asked for in /plan; see pickModelSchema. */
+export function planModelSchema(restaurants: number, parkings: number) {
+  return z.object({
+    restaurant: z
+      .number()
+      .int()
+      .min(0)
+      .max(Math.max(0, restaurants - 1)),
+    parking: z
+      .number()
+      .int()
+      .min(0)
+      .max(Math.max(0, parkings - 1)),
+    reasons: z.array(z.enum(PICK_REASONS)),
+    tone: z.string().nullable(),
+  });
+}
 
 const LIMITS_TR = `Sınırlar (uygulama bunları ayrıca denetler, uymayan sonuç atılır):
 - Sadece verilen indekslerden birini seç; yeni indeks ya da isim uydurma.

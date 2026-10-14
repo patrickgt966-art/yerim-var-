@@ -19,7 +19,12 @@ import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
 import { scoreCase } from '@/data/eval/score';
 import { IZMIR_DISTRICTS, type QueryIntent } from '@/data/intent';
 import { fold } from '@/data/search';
-import { UNDERSTAND_SYSTEM, UnderstandingSchema, type Understanding } from '@/lib/ai/protocol';
+import {
+  UNDERSTAND_SYSTEM,
+  UnderstandingModelSchema,
+  toUnderstanding,
+  type Understanding,
+} from '@/lib/ai/protocol';
 
 // Keep in sync with MODEL in server/yerim-ai/src/index.ts.
 const MODEL = 'claude-haiku-5-5';
@@ -89,7 +94,7 @@ async function main(): Promise<void> {
         model: MODEL,
         max_tokens: 2048,
         system: UNDERSTAND_SYSTEM,
-        output_config: { effort: 'low', format: zodOutputFormat(UnderstandingSchema) },
+        output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
         messages: [{ role: 'user', content: c.text }],
       });
       inputTokens += response.usage.input_tokens;
@@ -97,7 +102,7 @@ async function main(): Promise<void> {
       const understanding: Understanding =
         response.stop_reason === 'refusal' || !response.parsed_output
           ? { kind: 'unknown' }
-          : response.parsed_output;
+          : toUnderstanding(response.parsed_output);
       rows.push({ c, ...scoreCase(c, intentFromUnderstanding(understanding, c.text)) });
     } catch (e) {
       // Message only: never echo request headers / the key.

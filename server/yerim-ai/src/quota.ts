@@ -294,6 +294,26 @@ function readCity(body: Record<string, unknown>): string | undefined | null {
   return parsed.success ? parsed.data : null;
 }
 
+/**
+ * The `history` of a request, made to fit: only the last `maxTurns` turns are kept, each text is
+ * clipped to `maxChars` (the start stays) and a turn left without text is dropped. Old and new
+ * apps both send long bot replies, and one of them must not cost the whole request. A history
+ * that is not an array, or a turn with a wrong shape or role, is still malformed (null).
+ */
+function readHistory(raw: unknown, maxTurns: number, maxChars: number): ChatTurn[] | null {
+  if (!Array.isArray(raw)) return null;
+  const turns: ChatTurn[] = [];
+  for (const h of raw.slice(-maxTurns) as unknown[]) {
+    if (!isRecord(h)) return null;
+    if (h.role !== 'user' && h.role !== 'bot') return null;
+    if (typeof h.text !== 'string') return null;
+    const text = h.text.slice(0, maxChars);
+    if (text.trim() === '') continue;
+    turns.push({ role: h.role, text });
+  }
+  return turns;
+}
+
 export function validQuota(body: unknown): QuotaRequest | null {
   if (!isRecord(body)) return null;
   return isId(body.deviceId) ? { deviceId: body.deviceId } : null;
@@ -313,14 +333,8 @@ export function validUnderstand(body: unknown): UnderstandRequest | null {
   if (!isId(deviceId) || !isId(messageId)) return null;
   if (!isText(text, MAX_MESSAGE_CHARS)) return null;
   if (section !== 'park' && section !== 'food') return null;
-  if (!Array.isArray(history) || history.length > HISTORY_LIMIT) return null;
-  const turns: ChatTurn[] = [];
-  for (const h of history) {
-    if (!isRecord(h)) return null;
-    if (h.role !== 'user' && h.role !== 'bot') return null;
-    if (typeof h.text !== 'string' || h.text.length > MAX_MESSAGE_CHARS) return null;
-    turns.push({ role: h.role, text: h.text });
-  }
+  const turns = readHistory(history, HISTORY_LIMIT, MAX_MESSAGE_CHARS);
+  if (!turns) return null;
   const city = readCity(body);
   if (city === null) return null;
   const req: UnderstandRequest = { deviceId, messageId, text, history: turns, section };
@@ -341,14 +355,8 @@ export function validChat(body: unknown): ChatRequest | null {
   const { deviceId, messageId, text, history, lastCards } = body;
   if (!isId(deviceId) || !isId(messageId)) return null;
   if (!isText(text, MAX_CHAT_CHARS)) return null;
-  if (!Array.isArray(history) || history.length > CHAT_HISTORY_LIMIT) return null;
-  const turns: ChatTurn[] = [];
-  for (const h of history) {
-    if (!isRecord(h)) return null;
-    if (h.role !== 'user' && h.role !== 'bot') return null;
-    if (typeof h.text !== 'string' || h.text.length > MAX_CHAT_CHARS) return null;
-    turns.push({ role: h.role, text: h.text });
-  }
+  const turns = readHistory(history, CHAT_HISTORY_LIMIT, MAX_CHAT_CHARS);
+  if (!turns) return null;
   const city = readCity(body);
   if (city === null) return null;
   const req: ChatRequest = { deviceId, messageId, text, history: turns };

@@ -296,6 +296,37 @@ describe('ai client', () => {
   });
 });
 
+describe('ai client history', () => {
+  it('understand sends at most six turns, each clipped to 200 characters, without empty ones', async () => {
+    const f = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 4 });
+    const history = [
+      { role: 'user' as const, text: 'eski' },
+      ...Array.from({ length: 5 }, (_, i) => ({
+        role: i % 2 ? ('user' as const) : ('bot' as const),
+        text: `${i}`.repeat(600),
+      })),
+      { role: 'bot' as const, text: '  ' },
+    ];
+    await createAiClient('https://ai.test', f).understand({ ...understandReq, history });
+    const sent = JSON.parse((f as unknown as jest.Mock).mock.calls[0][1].body as string);
+    expect(sent.history).toHaveLength(5);
+    expect(sent.history[0].text).toBe('0'.repeat(200));
+    for (const h of sent.history) expect(h.text.length).toBeLessThanOrEqual(200);
+  });
+});
+
+describe('ai client upstream detail', () => {
+  it('ignores the diagnostic field of a 502 and keeps the remaining count', async () => {
+    const f = fakeFetch(502, {
+      error: 'upstream',
+      remaining: 10,
+      detail: 'anthropic_401_authentication_error',
+    });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toEqual({ ok: false, reason: 'error', remaining: 10, detail: 'http' });
+  });
+});
+
 describe('ai client quota', () => {
   it('returns the remaining count', async () => {
     const f = fakeFetch(200, { remaining: 3 });
