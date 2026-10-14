@@ -49,10 +49,14 @@ import { fonts, useColors } from '@/theme';
 /** Same quick location wait as the food home. */
 const LOCATION_TIMEOUT_MS = 5000;
 
+/** Router failures in a row; the "AI did not answer" notice shows on the 1st, 4th, 7th ... */
+let aiFailRun = 0;
+
 /** The server is authoritative for the daily quota: mirror it into the store. */
 function trackAi<T>(r: AiResult<T>): AiResult<T> {
   const store = useAi.getState();
   noteAiActivity();
+  if (r.ok) aiFailRun = 0;
   if (r.ok) store.setRemaining(r.remaining);
   else if (r.reason === 'quota') store.markOut();
   else if (r.remaining !== undefined) store.setRemaining(r.remaining);
@@ -165,6 +169,7 @@ function Chat({ first }: { first: boolean }) {
                 return trackAi(await aiClient.plan(req));
               },
               quotaNotice: () => useAi.getState().noticeOnce(),
+              failNotice: () => aiFailRun++ % 3 === 0,
             }
           : undefined,
     }),

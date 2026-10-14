@@ -570,6 +570,9 @@ const tr = {
       'Bugünkü ✨ hakların bitti. Yarın yenilenir. Ben buradayım, aramaya devam edebiliriz!',
     sparkleLast: 'Bu, bugünkü son ✨ hakkındı. Yarın yenilenir; ben yine buradayım.',
     sparkle: '✨ Akıllı yardım',
+    aiAnswer: 'Yapay zeka cevabı',
+    aiLate: 'Yapay zeka geç kaldı; kendi bilgimle cevapladım.',
+    aiDown: 'Yapay zekaya ulaşılamadı; kendi bilgimle cevapladım.',
     aiConsentTitle: '✨ Akıllı yardım',
     aiConsentBody:
       "Açarsan sohbete yazdığın mesajlar, cevap için Anthropic'in Claude yapay zekâsına gönderilir. Konumun gönderilmez. Günde 10 mesaj ücretsiz.",

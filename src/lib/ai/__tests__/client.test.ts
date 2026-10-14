@@ -3,6 +3,14 @@ import { setActiveCity } from '@/data/cities';
 import { createAiClient } from '../client';
 import { ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
 
+// The client warns about failures in dev; the tests that expect them look at the spy themselves.
+beforeEach(() => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+});
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 const understandReq: UnderstandRequest = {
   deviceId: 'd-test',
   messageId: 'm1',
@@ -84,7 +92,7 @@ describe('ai client', () => {
     for (const reason of ['slow', 'global']) {
       const f = fakeFetch(429, { error: 'rate_limited', reason, remaining: 6 });
       const r = await createAiClient('https://ai.test', f).understand(understandReq);
-      expect(r).toEqual({ ok: false, reason: 'error', remaining: 6 });
+      expect(r).toEqual({ ok: false, reason: 'error', remaining: 6, detail: 'http' });
     }
   });
 
@@ -110,7 +118,7 @@ describe('ai client', () => {
       await Promise.resolve();
       expect(settled).toBe(false);
       await jest.advanceTimersByTimeAsync(200);
-      expect(await p).toEqual({ ok: false, reason: 'error' });
+      expect(await p).toEqual({ ok: false, reason: 'error', detail: 'timeout' });
       const calls = (f as unknown as jest.Mock).mock.calls;
       const cancel = calls.find((c) => String(c[0]).endsWith('/cancel'));
       expect(cancel).toBeDefined();
@@ -139,7 +147,7 @@ describe('ai client', () => {
       ) as unknown as typeof fetch;
       const p = createAiClient('https://ai.test', f).understand(understandReq);
       await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS + 100);
-      expect(await p).toEqual({ ok: false, reason: 'error' });
+      expect(await p).toEqual({ ok: false, reason: 'error', detail: 'timeout' });
     });
   });
 
@@ -189,18 +197,45 @@ describe('ai client', () => {
 
   it('maps 429 to quota', async () => {
     const r = await createAiClient('https://ai.test', fakeFetch(429, {})).understand(understandReq);
-    expect(r).toEqual({ ok: false, reason: 'quota' });
+    expect(r).toEqual({ ok: false, reason: 'quota', detail: 'http' });
   });
 
   it('maps a server error to error', async () => {
     const r = await createAiClient('https://ai.test', fakeFetch(500, {})).understand(understandReq);
-    expect(r).toEqual({ ok: false, reason: 'error' });
+    expect(r).toEqual({ ok: false, reason: 'error', detail: 'http' });
   });
 
   it('maps an invalid body to error', async () => {
     const f = fakeFetch(200, { understanding: { kind: 'nope' }, remaining: 4 });
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
-    expect(r).toEqual({ ok: false, reason: 'error' });
+    expect(r).toEqual({ ok: false, reason: 'error', detail: 'schema' });
+  });
+
+  it('understand: a network failure says network; the dev warning has the detail, never the text', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const f = jest.fn(async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toEqual({ ok: false, reason: 'error', detail: 'network' });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]![0])).toContain('network');
+    expect(String(warn.mock.calls[0]![0])).not.toContain(understandReq.text);
+    warn.mockRestore();
+  });
+
+  it('understand: dev warning names the HTTP status and the first schema issue path', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await createAiClient('https://ai.test', fakeFetch(503, {})).understand(understandReq);
+    expect(String(warn.mock.calls[0]![0])).toContain('HTTP 503');
+    warn.mockClear();
+    const bad = fakeFetch(200, { understanding: { kind: 'search', wishes: ['nope'] }, remaining: 4 });
+    const r = await createAiClient('https://ai.test', bad).understand(understandReq);
+    expect(r).toEqual({ ok: false, reason: 'error', detail: 'schema' });
+    expect(String(warn.mock.calls[0]![0])).toContain('schema');
+    expect(String(warn.mock.calls[0]![0])).toContain('first issue at');
+    expect(String(warn.mock.calls[0]![0])).not.toContain(understandReq.text);
+    warn.mockRestore();
   });
 
   it('maps a network failure to error', async () => {
@@ -220,13 +255,13 @@ describe('ai client', () => {
   it('returns remaining from a 429 body', async () => {
     const f = fakeFetch(429, { remaining: 0 });
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
-    expect(r).toEqual({ ok: false, reason: 'quota', remaining: 0 });
+    expect(r).toEqual({ ok: false, reason: 'quota', remaining: 0, detail: 'http' });
   });
 
   it('ignores a non-numeric remaining or a non-JSON error body', async () => {
     const bad = fakeFetch(502, { remaining: 'x' });
     const r1 = await createAiClient('https://ai.test', bad).understand(understandReq);
-    expect(r1).toEqual({ ok: false, reason: 'error' });
+    expect(r1).toEqual({ ok: false, reason: 'error', detail: 'http' });
     const nonJson = jest.fn(async () => ({
       status: 502,
       ok: false,
@@ -414,7 +449,7 @@ describe('ai client pick / plan / understand extras', () => {
       'https://ai.test',
       fakeFetch(200, { understanding: u, remaining: 3 }),
     ).understand(understandReq);
-    expect(r).toEqual({ ok: false, reason: 'error' });
+    expect(r).toEqual({ ok: false, reason: 'error', detail: 'schema' });
   });
 });
 

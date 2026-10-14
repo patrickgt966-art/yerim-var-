@@ -162,6 +162,83 @@ describe('the router: every message goes to Haiku first', () => {
     });
   });
 
+  describe('the router failed: an honest notice, the rules answer', () => {
+    const failWith = (reason: 'error' | 'quota' | 'off', detail?: string) => async () => ({
+      ok: false as const,
+      reason,
+      ...(detail ? { detail } : {}),
+    });
+
+    it.each([
+      ['timeout', 'chat.aiLate'],
+      ['http', 'chat.aiDown'],
+      ['network', 'chat.aiDown'],
+      ['schema', 'chat.aiDown'],
+    ] as const)('a %s failure says %s', async (detail, key) => {
+      const { deps } = mockAi(failWith('error', detail));
+      const r = await answer('lahmacun', emptyContext('food'), deps);
+      expect(r.reply.notice).toBe(key);
+      expect(r.reply.sparkle).toBeFalsy();
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    });
+
+    it('a router that never answers says it was late', async () => {
+      jest.useFakeTimers();
+      try {
+        const { deps } = mockAi(() => new Promise(() => {}));
+        const p = answer('lahmacun', emptyContext('food'), deps);
+        await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS + 1);
+        expect((await p).reply.notice).toBe('chat.aiLate');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('a quota failure keeps the quota notice, not the failure one', async () => {
+      const { deps } = mockAi(failWith('quota'));
+      const r = await answer('lahmacun', emptyContext('food'), deps);
+      expect(r.reply.notice).toBe('chat.sparkleOut');
+    });
+
+    it('failNotice false: no notice (not on every message)', async () => {
+      const { deps } = mockAi(failWith('error', 'http'));
+      const calm: AssistantDeps = {
+        ...deps,
+        ai: { ...deps.ai!, failNotice: () => false },
+      };
+      const r = await answer('lahmacun', emptyContext('food'), calm);
+      expect(r.reply.notice).toBeUndefined();
+    });
+
+    it('AI layer off: no notice', async () => {
+      const r = await answer('lahmacun', emptyContext('food'), baseDeps);
+      expect(r.reply.notice).toBeUndefined();
+      expect(r.reply.sparkle).toBeFalsy();
+    });
+
+    it("an 'off' result from the client: no notice", async () => {
+      const { deps } = mockAi(failWith('off'));
+      const r = await answer('lahmacun', emptyContext('food'), deps);
+      expect(r.reply.notice).toBeUndefined();
+    });
+  });
+
+  describe('the AI marker (sparkle flag)', () => {
+    it('an AI chat reply carries it', async () => {
+      const { deps } = mockAi(async () => chatU('Size de iyi günler! Ne arıyoruz?'));
+      const r = await answer('İyi günler', emptyContext('park'), deps);
+      expect(r.reply.sparkle).toBe(true);
+    });
+
+    it('a search the AI understood carries it, a rule-only search does not', async () => {
+      const { deps } = mockAi(async () => searchU());
+      const r = await answer('lahmacun', emptyContext('food'), deps);
+      expect(r.reply.sparkle).toBe(true);
+      const off = await answer('lahmacun', emptyContext('food'), baseDeps);
+      expect(off.reply.sparkle).toBeFalsy();
+    });
+  });
+
   describe('no uses left', () => {
     it('0 left in the store: no AI call at all, the rule results and the honest notice', async () => {
       const { ai, deps } = mockAi(async () => searchU(), { usesLeft: () => 0 });

@@ -231,6 +231,11 @@ export type AssistantDeps = {
     ): Promise<AiResult<ParkPickResponse>>;
     /** True the first time per day, so the "out of quota" notice shows once. */
     quotaNotice(): boolean;
+    /**
+     * Asked once per failed router call: true when the "AI did not answer" notice may show (the
+     * first failure in a row, then every 3rd). Left out, the notice always shows.
+     */
+    failNotice?(): boolean;
   };
 };
 
@@ -897,12 +902,18 @@ async function route(
     ),
     ROUTER_TIMEOUT_MS,
   );
-  if (!res) return { out: none };
+  // The router was tried and failed: say so, honestly and not on every message.
+  const failed = (key: 'chat.aiLate' | 'chat.aiDown') => ({
+    out: none,
+    ...((ai.failNotice?.() ?? true) ? { notice: t(key) } : {}),
+  });
+  if (!res) return failed('chat.aiLate');
   if (!res.ok) {
-    return {
-      out: none,
-      ...(res.reason === 'quota' && ai.quotaNotice() ? { notice: t('chat.sparkleOut') } : {}),
-    };
+    if (res.reason === 'quota') {
+      return { out: none, ...(ai.quotaNotice() ? { notice: t('chat.sparkleOut') } : {}) };
+    }
+    if (res.reason === 'off') return { out: none };
+    return failed(res.detail === 'timeout' ? 'chat.aiLate' : 'chat.aiDown');
   }
   const notice = res.remaining === 0 && ai.quotaNotice() ? { notice: t('chat.sparkleLast') } : {};
   const v = res.value;
@@ -2579,6 +2590,8 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
   if (meta.settled) return res;
   const { t } = deps;
   const reply = res.reply;
+  // The AI understood this message as a search: mark the reply even when it has no cards.
+  if (meta.ai) reply.sparkle = true;
   const restaurants = reply.cards.filter((c) => c.kind === 'restaurant');
   const parkings = reply.cards.filter((c) => c.kind === 'parking');
   if (restaurants.length === 0 && parkings.length === 0) return res;

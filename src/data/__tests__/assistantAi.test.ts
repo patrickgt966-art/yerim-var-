@@ -232,7 +232,8 @@ describe('a wish the rules cannot use: understand, then pick', () => {
     // No AI claim, so the note says how the app ordered, not how the AI chose.
     expect(r.reply.text).toContain('chat.noInfoRule');
     expect(r.reply.text).not.toContain('chat.noInfoAi');
-    expect(r.reply.sparkle).toBeFalsy();
+    // The AI understood the search (the marker), even though its pick was not used.
+    expect(r.reply.sparkle).toBe(true);
   });
 
   it('ignores a pick that is out of range or a failure', async () => {
