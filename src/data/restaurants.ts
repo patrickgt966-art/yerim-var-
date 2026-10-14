@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 
-import raw from '../../data/food-izmir.json';
-import overtureRaw from '../../data/food-overture-izmir.json';
+import { activeCity } from './cities';
+import { foodFile, foodOvertureFile } from './cityData';
 import { getFreshness } from './freshness';
 import { BREAD_MODIFIER_WORDS, FOOD_LEXICON, MODIFIERS } from './foodLexicon';
 import { distanceMeters, type LatLng } from './geo';
@@ -14,7 +14,7 @@ import type { Parking } from './types';
  * refreshed by scripts/fetch-sources.mjs. The value is the parking next to
  * them; we hold no ratings, prices or photos and never show any.
  */
-type FoodRecord = {
+export type FoodRecord = {
   id: string;
   n: string;
   a: number;
@@ -31,8 +31,6 @@ type FoodRecord = {
   res?: boolean;
   v?: number;
 };
-
-type FoodFile = { generatedAt: string; items: FoodRecord[] };
 
 export type RestaurantKind =
   | 'restaurant'
@@ -93,21 +91,32 @@ export function toRestaurant(r: FoodRecord): Restaurant {
   };
 }
 
-let cache: Restaurant[] | null = null;
-let byId: Map<string, Restaurant> | null = null;
+// Both keyed by city id: switching city must never serve another city's restaurants.
+const caches = new Map<string, Restaurant[]>();
+const byIds = new Map<string, Map<string, Restaurant>>();
 
+/** The active city's restaurants; empty while its data files are placeholders. */
 export function allRestaurants(): Restaurant[] {
-  if (!cache)
-    cache = [
-      ...(raw as FoodFile).items.map(toRestaurant),
-      ...(overtureRaw as { items: FoodRecord[] }).items.map(toRestaurant),
+  const id = activeCity().id;
+  let list = caches.get(id);
+  if (!list) {
+    list = [
+      ...(foodFile(id).items ?? []).map(toRestaurant),
+      ...(foodOvertureFile(id).items ?? []).map(toRestaurant),
     ];
-  return cache;
+    caches.set(id, list);
+  }
+  return list;
 }
 
 export function getRestaurant(id: string): Restaurant | null {
-  if (!byId) byId = new Map(allRestaurants().map((r) => [r.id, r]));
-  return byId.get(id) ?? null;
+  const city = activeCity().id;
+  let map = byIds.get(city);
+  if (!map) {
+    map = new Map(allRestaurants().map((r) => [r.id, r]));
+    byIds.set(city, map);
+  }
+  return map.get(id) ?? null;
 }
 
 /** Nearest first, within radiusM metres of the target. */

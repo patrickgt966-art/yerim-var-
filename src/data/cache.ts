@@ -1,13 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { activeCity, DEFAULT_CITY } from './cities';
 import type { Parking, ParkingResult } from './types';
 
 const KEY = 'parkings-cache-v1';
 
-/** Stores the last real (non-mock) result on the device only. */
+/** One entry per city, so İzmir's car parks never show in İstanbul. İzmir keeps the original key. */
+const keyFor = (cityId: string) => (cityId === DEFAULT_CITY ? KEY : `${KEY}-${cityId}`);
+
+/**
+ * Stores the last real (non-mock) result on the device only, per city
+ * (`cityId` defaults to the active one).
+ */
 export interface ParkingCache {
-  load(): Promise<ParkingResult | null>;
-  save(result: ParkingResult): Promise<void>;
+  load(cityId?: string): Promise<ParkingResult | null>;
+  save(result: ParkingResult, cityId?: string): Promise<void>;
 }
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -59,9 +66,9 @@ function validResult(v: unknown): ParkingResult | null {
 }
 
 export const deviceCache: ParkingCache = {
-  async load() {
+  async load(cityId = activeCity().id) {
     try {
-      const raw = await AsyncStorage.getItem(KEY);
+      const raw = await AsyncStorage.getItem(keyFor(cityId));
       if (!raw) return null;
       const parsed: unknown = JSON.parse(raw);
       return validResult(parsed);
@@ -69,11 +76,11 @@ export const deviceCache: ParkingCache = {
       return null;
     }
   },
-  async save(result) {
+  async save(result, cityId = activeCity().id) {
     if (result.source === 'mock' || result.source === 'static-only') return;
     const { offline: _offline, fallbackReason: _reason, ...clean } = result;
     try {
-      await AsyncStorage.setItem(KEY, JSON.stringify(clean));
+      await AsyncStorage.setItem(keyFor(cityId), JSON.stringify(clean));
     } catch {
       // A full disk must not break loading; the cache is best effort.
     }

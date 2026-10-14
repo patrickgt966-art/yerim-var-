@@ -1,3 +1,5 @@
+import { activeCity } from './cities';
+
 /**
  * Display-name cleaner for place names loaded from bundled data (OSM, Overture,
  * İzelman): repairs mojibake, drops ad text and emoji, fixes casing and a
@@ -41,6 +43,7 @@ const TR_WORDS: Record<string, string> = {
   guzelbahce: 'güzelbahçe',
   bayrakli: 'bayraklı',
   izmir: 'izmir',
+  istanbul: 'istanbul',
   karabaglar: 'karabağlar',
   torbali: 'torbalı',
   odemis: 'ödemiş',
@@ -131,6 +134,7 @@ function turkishWord(word: string): string {
     word.charAt(0) === word.charAt(0).toUpperCase() &&
     word.slice(1) === word.slice(1).toLowerCase();
   if (target === 'izmir') return isUpper ? 'İZMİR' : 'İzmir';
+  if (target === 'istanbul') return isUpper ? 'İSTANBUL' : 'İstanbul';
   if (isUpper) return upper(target);
   if (isLower) return target;
   if (isTitle) return capitalize(target);
@@ -190,17 +194,38 @@ const asciiFold = (w: string) =>
     .toLocaleLowerCase('tr')
     .replace(/[çğıöşü]/g, (ch) => ({ ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u' })[ch] ?? ch);
 
+// Per city id: the tail pattern and the folded district names.
+const cityTails = new Map<string, { tail: RegExp; districts: Set<string> }>();
+
+function cityTail(): { tail: RegExp; districts: Set<string> } {
+  const { id, name, districts } = activeCity();
+  let t = cityTails.get(id);
+  if (!t) {
+    const ascii = name.replace('İ', 'I');
+    const forms = [name, ascii, ascii.toUpperCase(), ascii.toLowerCase()];
+    t = {
+      tail: new RegExp(`^(.*?)([,\\s-]+)(${forms.join('|')})\\s*$`, 'u'),
+      districts: new Set(districts.map(asciiFold)),
+    };
+    cityTails.set(id, t);
+  }
+  return t;
+}
+
 /**
- * Drops a trailing "İzmir" only where it is clearly an address tail: after a
- * comma or dash ("Pişiricisi, Bostanlı-İzmir") or after a district ("Bergama
- * izmir"). "Sarraf İzmir" or "Look Mey Izmir" keep it: it is part of the brand.
+ * Drops a trailing active-city name ("İzmir", "İstanbul") only where it is
+ * clearly an address tail: after a comma or dash ("Pişiricisi, Bostanlı-İzmir")
+ * or after a district ("Bergama izmir"). "Sarraf İzmir" or "Look Mey Izmir"
+ * keep it: it is part of the brand.
  */
 function stripCitySuffix(s: string): string {
-  const m = /^(.*?)([,\s-]+)(İzmir|Izmir|IZMIR|izmir)\s*$/u.exec(s);
+  const { tail, districts } = cityTail();
+  const m = tail.exec(s);
   if (!m || m[1]!.trim() === '') return s;
   const before = m[1]!;
   const lastWord = before.split(/[\s,-]+/).pop() ?? '';
-  return /[,-]/.test(m[2]!) || AREAS.has(asciiFold(lastWord)) ? before : s;
+  const area = asciiFold(lastWord);
+  return /[,-]/.test(m[2]!) || AREAS.has(area) || districts.has(area) ? before : s;
 }
 
 export function cleanName(raw: string): string {

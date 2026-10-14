@@ -266,7 +266,9 @@ export default function ParkingDetail() {
                   ? t('detail.sourceIzelman')
                   : p.source === 'apple'
                     ? t('detail.sourceApple')
-                    : t('detail.sourceIzmir')}
+                    : p.source === 'ispark'
+                      ? t('detail.sourceIspark')
+                      : t('detail.sourceIzmir')}
           </Txt>
         </Section>
 

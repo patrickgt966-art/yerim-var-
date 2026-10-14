@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { openFoodNearMe } from '@/components/FoodHome';
 import { Icon, type IconName } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { cityById, cityExamples } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
-import { POPULAR_PLACES } from '@/data/places';
+import { popularPlaces } from '@/data/places';
 import { pickerParams } from '@/lib/pickPlace';
 import { useApp } from '@/store/app';
 import { fonts, HIT, useColors } from '@/theme';
@@ -99,6 +100,10 @@ export function EmptyState({ section, onAsk, onPlace }: SearchProps) {
   const { t } = useTranslation();
   const recent = useApp((s) => s.recentSearches);
   const clearRecent = useApp((s) => s.clearRecentSearches);
+  // Re-read on a city switch (the places follow the active city).
+  const city = useApp((s) => s.city);
+  const popular = useMemo(() => popularPlaces(), [city]); // eslint-disable-line react-hooks/exhaustive-deps
+  const examples = cityExamples(); // follows `city` above: the store sets the active city first
   const [locating, setLocating] = useState(false);
 
   const nearMe = async () => {
@@ -198,24 +203,30 @@ export function EmptyState({ section, onAsk, onPlace }: SearchProps) {
         {EXAMPLE_KEYS.map((key, i) => (
           <SuggestionChip
             key={key}
-            label={t(`ara.${key}`)}
+            label={t(`ara.${key}`, examples)}
             bg={i % 2 === 0 ? c.badgeNearBg : c.badgeFreshBg}
-            onPress={() => onAsk(t(`ara.${key}`))}
+            onPress={() => onAsk(t(`ara.${key}`, examples))}
           />
         ))}
       </ChipWrap>
 
-      <SectionTitle text={t('ara.popular')} />
-      <ChipWrap>
-        {POPULAR_PLACES.map((p) => (
-          <SuggestionChip
-            key={p.id}
-            label={p.name}
-            bg={c.card}
-            onPress={() => onPlace(p, p.name)}
+      {popular.length > 0 && (
+        <>
+          <SectionTitle
+            text={t('ara.popular', { cityLoc: cityById(city).locative.toLocaleUpperCase('tr') })}
           />
-        ))}
-      </ChipWrap>
+          <ChipWrap>
+            {popular.map((p) => (
+              <SuggestionChip
+                key={p.id}
+                label={p.name}
+                bg={c.card}
+                onPress={() => onPlace(p, p.name)}
+              />
+            ))}
+          </ChipWrap>
+        </>
+      )}
     </>
   );
 }

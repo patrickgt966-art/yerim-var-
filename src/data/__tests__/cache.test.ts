@@ -3,7 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { deviceCache } from '../cache';
 import type { Parking, ParkingResult } from '../types';
-import { PARKINGS_QUERY_KEY, primeParkingsFromCache, warmUpParkings } from '../useParkings';
+import { parkingsQueryKey, primeParkingsFromCache, warmUpParkings } from '../useParkings';
 
 import live from './fixtures/izmir-live-2026-10-07.json';
 
@@ -90,7 +90,7 @@ describe('primeParkingsFromCache', () => {
     await deviceCache.save(result);
     const client = new QueryClient();
     await primeParkingsFromCache(client);
-    const state = client.getQueryState(PARKINGS_QUERY_KEY);
+    const state = client.getQueryState(parkingsQueryKey());
     expect(state?.data).toEqual(result);
     // updatedAt 0 marks it stale, so the first screen still fetches.
     expect(state?.dataUpdatedAt).toBe(0);
@@ -101,9 +101,9 @@ describe('primeParkingsFromCache', () => {
     await deviceCache.save(result);
     const client = new QueryClient();
     const fresh = { ...result, fetchedAt: '2026-10-07T11:00:00.000Z' };
-    client.setQueryData(PARKINGS_QUERY_KEY, fresh);
+    client.setQueryData(parkingsQueryKey(), fresh);
     await primeParkingsFromCache(client);
-    expect(client.getQueryData(PARKINGS_QUERY_KEY)).toEqual(fresh);
+    expect(client.getQueryData(parkingsQueryKey())).toEqual(fresh);
     client.clear();
   });
 });
@@ -123,7 +123,7 @@ describe('warmUpParkings', () => {
     })) as unknown as typeof fetch;
     const client = new QueryClient();
     await warmUpParkings(client);
-    const data = client.getQueryData<ParkingResult>(PARKINGS_QUERY_KEY);
+    const data = client.getQueryData<ParkingResult>(parkingsQueryKey());
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     expect(data?.source).toBe('izmir-open-data');
     expect(data?.parkings).toHaveLength(live.length);

@@ -140,7 +140,7 @@ describe('parkings query', () => {
       status: 200,
       json: async () => live,
     })) as unknown as typeof fetch;
-    const fn = parkingsQuery.queryFn as unknown as (ctx: object) => Promise<unknown>;
+    const fn = parkingsQuery().queryFn as unknown as (ctx: object) => Promise<unknown>;
     let signalRead = false;
     const ctx = {};
     Object.defineProperty(ctx, 'signal', {

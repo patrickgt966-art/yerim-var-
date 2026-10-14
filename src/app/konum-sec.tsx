@@ -8,8 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { cityById, isInCityArea } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
-import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { currentLocation, reverseStreet } from '@/lib/location';
 import { firstParam, parseLatLng } from '@/lib/params';
@@ -22,6 +22,13 @@ const DELTA = 0.008;
 
 /** Full-screen map with a fixed centre pin: the map moves under it. */
 export default function PickLocationScreen() {
+  // A new city starts the picker over: its pin belongs to the old one.
+  const city = useApp((s) => s.city);
+  return <PickLocation key={city} />;
+}
+
+function PickLocation() {
+  const city = cityById(useApp((s) => s.city));
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -36,7 +43,7 @@ export default function PickLocationScreen() {
   const setWork = useApp((s) => s.setWork);
 
   const given = parseLatLng(params.lat, params.lng);
-  const [start] = useState<LatLng>(given ?? IZMIR_CENTER);
+  const [start] = useState<LatLng>(given ?? city.center);
   const [center, setCenter] = useState<LatLng>(start);
   const [street, setStreet] = useState<string | null>(null);
   const mapRef = useRef<MapView>(null);
@@ -63,7 +70,7 @@ export default function PickLocationScreen() {
     // Without a given point, start at the user if permission is already granted.
     if (!given) {
       void currentLocation(false, 3000).then((loc) => {
-        if (!alive || !loc || !isInIzmirArea(loc)) return;
+        if (!alive || !loc || !isInCityArea(loc, city)) return;
         mapRef.current?.animateToRegion(
           { latitude: loc.lat, longitude: loc.lng, latitudeDelta: DELTA, longitudeDelta: DELTA },
           0,
@@ -89,7 +96,7 @@ export default function PickLocationScreen() {
     lookup(p);
   };
 
-  const outside = !isInIzmirArea(center);
+  const outside = !isInCityArea(center, city);
   const title =
     firstParam(params.title) ??
     t(
@@ -217,7 +224,7 @@ export default function PickLocationScreen() {
         </Txt>
         {outside && (
           <Txt variant="caption" secondary>
-            {t('picker.outside')}
+            {t('picker.outside', { city: city.name })}
           </Txt>
         )}
         {screenReader && (

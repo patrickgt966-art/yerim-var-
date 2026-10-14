@@ -1,6 +1,7 @@
 import { t } from 'i18next';
 
-import raw from '../../data/parkings-static.json';
+import { activeCity } from './cities';
+import { staticParkingsFile } from './cityData';
 import { gridIndex, near } from './geo';
 import { cleanName } from './names';
 import type { Parking, StaticSource } from './types';
@@ -11,7 +12,7 @@ import type { Parking, StaticSource } from './types';
  * widen coverage to the whole province; their free-space count always reads
  * "Doluluk bilgisi yok".
  */
-type StaticRecord = {
+export type StaticRecord = {
   id: string;
   name: string | null;
   lat: number;
@@ -32,8 +33,6 @@ type StaticRecord = {
   /** OSM wheelchair tag, when tagged. */
   wheelchair?: 'yes' | 'limited' | 'no';
 };
-
-type StaticFile = { generatedAt: string; parkings: StaticRecord[] };
 
 /** A static record this close to a live one is the same car park. */
 export const DUPLICATE_RADIUS_M = 80;
@@ -79,15 +78,20 @@ export function toParking(r: StaticRecord, generatedAt: string): Parking {
   };
 }
 
-let cache: Parking[] | null = null;
+// Keyed by city id: switching city must never serve another city's car parks.
+const caches = new Map<string, Parking[]>();
 
-/** Converted lazily so i18n is ready and startup stays fast. */
+/** Converted lazily so i18n is ready and startup stays fast. Empty for a placeholder file. */
 export function staticParkings(): Parking[] {
-  if (!cache) {
-    const file = raw as StaticFile;
-    cache = file.parkings.map((r) => toParking(r, file.generatedAt));
+  const id = activeCity().id;
+  let list = caches.get(id);
+  if (!list) {
+    const file = staticParkingsFile(id);
+    const generatedAt = file.generatedAt ?? new Date(0).toISOString();
+    list = (file.parkings ?? []).map((r) => toParking(r, generatedAt));
+    caches.set(id, list);
   }
-  return cache;
+  return list;
 }
 
 /** Live records first; static ones are added unless they duplicate a live one. */

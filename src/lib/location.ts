@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 
+import { activeCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 
 /**
@@ -33,13 +34,16 @@ export async function currentLocation(ask = true, timeoutMs?: number): Promise<L
   }
 }
 
-/** On-device geocoding (Apple on iOS). Biased to İzmir by appending the city. */
+/** On-device geocoding (Apple on iOS). Biased to the active city by appending its name. */
 export async function geocode(query: string, timeoutMs?: number): Promise<LatLng | null> {
   const q = query.trim();
   if (!q) return null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const withCity = /izmir|i̇zmir/i.test(q) ? q : `${q}, İzmir`;
+    const city = activeCity().name;
+    // Matches "Izmir", "İzmir" and "i̇zmir" alike.
+    const plain = (x: string) => x.toLocaleLowerCase('tr').replace(/ı/g, 'i').replace(/̇/g, '');
+    const withCity = plain(q).includes(plain(city)) ? q : `${q}, ${city}`;
     const lookup = Location.geocodeAsync(withCity);
     const [hit] = timeoutMs
       ? await Promise.race([

@@ -1,3 +1,5 @@
+import { setActiveCity } from '@/data/cities';
+
 import { createAiClient } from '../client';
 import { ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
 
@@ -459,5 +461,32 @@ describe('ai client chat', () => {
       throw new Error('offline');
     }) as unknown as typeof fetch;
     expect(await client(down).chat(chatReq)).toBeNull();
+  });
+});
+
+describe('ai client city', () => {
+  afterEach(() => setActiveCity('izmir'));
+
+  const sentBody = (f: typeof fetch) => {
+    const init = (f as unknown as jest.Mock).mock.calls[0]![1] as { body: string };
+    return JSON.parse(init.body) as Record<string, unknown>;
+  };
+
+  it('sends the selected city with every request', async () => {
+    const f = fakeFetch(200, { reply: 'Selam', remaining: 3 });
+    await createAiClient('https://ai.test', f).narrate(narrateReq);
+    expect(sentBody(f).city).toBe('izmir');
+
+    setActiveCity('istanbul');
+    const g = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 3 });
+    await createAiClient('https://ai.test', g).understand(understandReq);
+    expect(sentBody(g).city).toBe('istanbul');
+  });
+
+  it('keeps a city the caller set', async () => {
+    setActiveCity('istanbul');
+    const f = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 3 });
+    await createAiClient('https://ai.test', f).understand({ ...understandReq, city: 'izmir' });
+    expect(sentBody(f).city).toBe('izmir');
   });
 });

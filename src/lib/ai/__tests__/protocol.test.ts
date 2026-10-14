@@ -1,4 +1,19 @@
-import { fillPlaceholders, isGroundedReply, todayIstanbul } from '../protocol';
+import { CITIES } from '@/data/cities';
+
+import {
+  chatSystem,
+  CitySchema,
+  CHAT_SYSTEM,
+  fillPlaceholders,
+  isGroundedReply,
+  narrateSystem,
+  parkPickSystem,
+  pickSystem,
+  planSystem,
+  todayIstanbul,
+  understandSystem,
+  UNDERSTAND_SYSTEM,
+} from '../protocol';
 
 describe('fillPlaceholders', () => {
   it('replaces {n} with the n-th name', () => {
@@ -68,5 +83,40 @@ describe('todayIstanbul', () => {
   it('uses UTC+3', () => {
     expect(todayIstanbul('2026-10-09T22:30:00Z')).toBe('2026-10-10');
     expect(todayIstanbul(new Date('2026-10-09T20:59:00Z'))).toBe('2026-10-09');
+  });
+});
+
+describe('city in the system prompts', () => {
+  const all = [understandSystem, narrateSystem, pickSystem, parkPickSystem, planSystem, chatSystem];
+
+  it('names İstanbul for istanbul and never İzmir', () => {
+    for (const make of all) {
+      const text = make('istanbul');
+      expect(text).toContain('İstanbul');
+      expect(text).not.toContain('İzmir');
+    }
+    expect(chatSystem('istanbul')).toContain("İstanbul'da yemek");
+  });
+
+  it('says İzmir for izmir, for no city and for an unknown one', () => {
+    for (const make of all) {
+      expect(make('izmir')).toContain('İzmir');
+      expect(make()).toBe(make('izmir'));
+      expect(make('nowhere')).toBe(make('izmir'));
+      expect(make('ankara')).toBe(make('izmir'));
+    }
+    expect(UNDERSTAND_SYSTEM).toBe(understandSystem('izmir'));
+    expect(CHAT_SYSTEM).toContain("İzmir'de yemek");
+  });
+
+  it('does not call the district an İzmir district', () => {
+    expect(understandSystem('istanbul')).toContain('şehrin ilçesi');
+  });
+});
+
+describe('CitySchema', () => {
+  it('accepts exactly the open cities', () => {
+    for (const c of CITIES) expect(CitySchema.safeParse(c.id).success).toBe(c.available);
+    expect(CitySchema.safeParse('atlantis').success).toBe(false);
   });
 });

@@ -9,10 +9,16 @@ import {
   respellAlias,
 } from './foodLexicon';
 import type { PlanWhen, Wish } from '../lib/ai/protocol';
+import { activeCity, type District } from './cities';
 import { fold, searchPlaces } from './search';
 
-/** An official İzmir district with its centre. */
-export type District = { name: string; lat: number; lng: number };
+export { IZMIR_DISTRICTS } from './cities';
+export type { District };
+
+/** The active city's districts with their centres. */
+const districtsOfCity = (): readonly District[] => activeCity().districtCenters;
+/** The folded token is the name of a district of the active city. */
+const isDistrictName = (t: string) => districtsOfCity().some((d) => fold(d.name) === t);
 
 /** What a free-text query means: chit-chat, or a search with its parts split out. */
 export type QueryIntent =
@@ -33,7 +39,7 @@ export type QueryIntent =
       dish: string | null;
       /** AI only: short words that appear in the names of places serving an unknown dish. */
       dishServes?: string[] | null;
-      /** Official İzmir district named by any place word (that word is not in placeQuery). */
+      /** Official district of the active city named by any place word (that word is not in placeQuery). */
       district: District | null;
       /** Place words left after cleaning (folded), or '' */
       placeQuery: string;
@@ -49,40 +55,6 @@ export type QueryIntent =
       /** The text contains a car-park word. */
       mentionsParking: boolean;
     };
-
-/** The 30 districts of İzmir. */
-export const IZMIR_DISTRICTS: District[] = [
-  { name: 'Aliağa', lat: 38.7996, lng: 26.9707 },
-  { name: 'Balçova', lat: 38.3889, lng: 27.05 },
-  { name: 'Bayındır', lat: 38.2178, lng: 27.6478 },
-  { name: 'Bayraklı', lat: 38.4622, lng: 27.1667 },
-  { name: 'Bergama', lat: 39.1214, lng: 27.1799 },
-  { name: 'Beydağ', lat: 38.0847, lng: 28.2108 },
-  { name: 'Bornova', lat: 38.4697, lng: 27.2211 },
-  { name: 'Buca', lat: 38.3886, lng: 27.175 },
-  { name: 'Çeşme', lat: 38.3236, lng: 26.3031 },
-  { name: 'Çiğli', lat: 38.495, lng: 27.07 },
-  { name: 'Dikili', lat: 39.0717, lng: 26.8886 },
-  { name: 'Foça', lat: 38.6703, lng: 26.7572 },
-  { name: 'Gaziemir', lat: 38.3203, lng: 27.1311 },
-  { name: 'Güzelbahçe', lat: 38.37, lng: 26.8911 },
-  { name: 'Karabağlar', lat: 38.3758, lng: 27.13 },
-  { name: 'Karaburun', lat: 38.6386, lng: 26.5122 },
-  { name: 'Karşıyaka', lat: 38.4594, lng: 27.1153 },
-  { name: 'Kemalpaşa', lat: 38.4269, lng: 27.4172 },
-  { name: 'Kınık', lat: 39.0872, lng: 27.3828 },
-  { name: 'Kiraz', lat: 38.2306, lng: 28.2047 },
-  { name: 'Konak', lat: 38.4189, lng: 27.1287 },
-  { name: 'Menderes', lat: 38.2552, lng: 27.1381 },
-  { name: 'Menemen', lat: 38.6075, lng: 27.0697 },
-  { name: 'Narlıdere', lat: 38.395, lng: 26.997 },
-  { name: 'Ödemiş', lat: 38.2289, lng: 27.97 },
-  { name: 'Seferihisar', lat: 38.1972, lng: 26.8383 },
-  { name: 'Selçuk', lat: 37.9508, lng: 27.3681 },
-  { name: 'Tire', lat: 38.0886, lng: 27.735 },
-  { name: 'Torbalı', lat: 38.15, lng: 27.3616 },
-  { name: 'Urla', lat: 38.3228, lng: 26.7647 },
-];
 
 const words = (s: string) => new Set(s.split(' '));
 
@@ -241,11 +213,12 @@ function withinOneEdit(a: string, b: string): boolean {
   return long.slice(i + 1) === short.slice(i);
 }
 
-/** Folded district name within one typo of the word, or null. */
+/** Folded district name equal to the word (within one typo in İzmir only), or null. */
 function nearDistrict(word: string): string | null {
-  for (const d of IZMIR_DISTRICTS) {
+  const typos = activeCity().id === 'izmir';
+  for (const d of districtsOfCity()) {
     const name = fold(d.name);
-    if (withinOneEdit(word, name)) return name;
+    if (typos ? withinOneEdit(word, name) : word === name) return name;
   }
   return null;
 }
@@ -253,7 +226,7 @@ function nearDistrict(word: string): string | null {
 /** "bornavadaki" -> "bornova": typo-tolerant district match on the token or its stems. */
 function fixDistrictTypo(original: string, token: string): string {
   if (token.length < 5) return token;
-  if (IZMIR_DISTRICTS.some((d) => fold(d.name) === token) || namesToken(token)) return token;
+  if (isDistrictName(token) || namesToken(token)) return token;
   const direct = nearDistrict(token);
   if (direct) return direct;
   for (const suf of PLACE_SUFFIXES_SHORT_FIRST) {
@@ -291,17 +264,15 @@ export function looksLikePlace(text: string): boolean {
   return !tokens.some((t) => QUESTION.has(t) || (hasVerbSuffix(t) && !isPlaceToken(t)));
 }
 
-/** The token is an İzmir district (also with a typo or case suffix) or starts a place name. */
+/** The token is a district (also with a typo or case suffix) or starts a place name. */
 function isPlaceToken(tok: string): boolean {
   if (namesToken(tok)) return true;
-  const fixed = fixDistrictTypo(tok, placeStem(tok));
-  return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
+  return isDistrictName(fixDistrictTypo(tok, placeStem(tok)));
 }
 
-/** The token is an official İzmir district (also with a case suffix or a typo). */
+/** The token is an official district (also with a case suffix or a typo). */
 function isDistrictToken(tok: string): boolean {
-  const fixed = fixDistrictTypo(tok, placeStem(tok));
-  return IZMIR_DISTRICTS.some((d) => fold(d.name) === fixed);
+  return isDistrictName(fixDistrictTypo(tok, placeStem(tok)));
 }
 
 /**
@@ -318,7 +289,7 @@ const COMPOUND_HEADS = /^(?:kebabi|tatlisi|boregi|corbasi|pilavi|koftesi|salatas
 
 /**
  * "ali paşa kebabı", "hasan paşa köftesi": a compound head with words before it is a dish, even
- * when those words are also a person's or a place's name; only an İzmir district ("Bornova
+ * when those words are also a person's or a place's name; only a district ("Bornova
  * köftesi") still reads as a place plus a dish.
  */
 function compoundDish(words: string[]): boolean {
@@ -338,6 +309,8 @@ const SWEET_SIDES = words('dondurmali kaymakli');
  * "kemalpaşa'da dondurmalı" (a case suffix between) stays a place plus a food word.
  */
 function townDish(ws: string[], raws: string[] | null): { words: string[]; raws: string[] | null } {
+  // The dishes are named after İzmir towns.
+  if (activeCity().id !== 'izmir') return { words: ws, raws };
   const outW: string[] = [];
   const outR: string[] = [];
   // Words of how much ("iki tane") say nothing: the town with only those is the dessert too.
@@ -698,7 +671,7 @@ export function parseQuery(raw: string): QueryIntent {
     !cat &&
     !food &&
     !hasPark &&
-    !all.some((t) => IZMIR_DISTRICTS.some((d) => fold(d.name) === t)) &&
+    !all.some(isDistrictName) &&
     !rest.some(
       (t) =>
         t.length >= 3 && !TOPIC.has(t) && !QUESTION.has(t) && !hasVerbSuffix(t) && isPlaceToken(t),
@@ -715,12 +688,10 @@ export function parseQuery(raw: string): QueryIntent {
   const fullPlace = tokens.join(' ');
 
   // Any place word that is a district sets it; but not inside one place's full name.
-  const districtAt = isOnePlaceName(tokens)
-    ? -1
-    : tokens.findIndex((t) => IZMIR_DISTRICTS.some((d) => fold(d.name) === t));
+  const districtAt = isOnePlaceName(tokens) ? -1 : tokens.findIndex(isDistrictName);
   const district =
     districtAt >= 0
-      ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === tokens[districtAt]) ?? null)
+      ? (districtsOfCity().find((d) => fold(d.name) === tokens[districtAt]) ?? null)
       : null;
   if (district) {
     tokens = tokens.filter((_, i) => i !== districtAt).filter((t) => !COND_FILLER.has(t));

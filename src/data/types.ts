@@ -4,7 +4,7 @@ export type PriceKind = 'official' | 'estimated';
  * Records without occupancy: bundled 'izelman' (municipal inventory, 2022)
  * and 'osm' (OpenStreetMap), and 'apple' (Apple Maps search on the device).
  */
-export type DataSource = 'izmir-open-data' | 'mock' | 'izelman' | 'osm' | 'apple';
+export type DataSource = 'izmir-open-data' | 'ispark' | 'mock' | 'izelman' | 'osm' | 'apple';
 /**
  * Where a whole result comes from. 'static-only' is the bundled car parks
  * alone, shown while the first download runs or when no real data exists.

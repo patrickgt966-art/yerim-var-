@@ -1,4 +1,5 @@
 import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
+import { cityExamples } from '@/data/cities';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -188,7 +189,8 @@ export function suggestions(ctx: ChatContext, t: T): string[] {
   if (ctx.sort !== 'distance') out.push(t('chat.sugNearer'));
   if (!ctx.freeParking) out.push(t('chat.sugFreePark'));
   out.push(t('chat.sugOther'));
-  const inKarsiyaka = (ctx.place?.label ?? '').toLocaleLowerCase('tr').includes('karşıyaka');
-  out.push(t(inKarsiyaka ? 'chat.sugElsewhere_1' : 'chat.sugElsewhere_0'));
+  const ex = cityExamples();
+  const inD = (ctx.place?.label ?? '').toLocaleLowerCase('tr').includes(ex.d.toLocaleLowerCase('tr'));
+  out.push(t(inD ? 'chat.sugElsewhere_1' : 'chat.sugElsewhere_0', ex));
   return out;
 }

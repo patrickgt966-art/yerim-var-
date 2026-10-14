@@ -22,9 +22,9 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
+import { cityById, isInCityArea } from '@/data/cities';
 import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
-import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/restaurants';
 import { promoteFree, useRanked, type RankedParking } from '@/data/useParkings';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
@@ -34,6 +34,7 @@ import { isClosedNow } from '@/lib/openNow';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
+import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
 
 type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled' | 'free' | 'nonstop' | 'rail';
@@ -45,6 +46,13 @@ const LOCATION_TIMEOUT_MS = 6000;
 const TOP_BAR_SPACE = 68;
 
 export default function ResultsScreen() {
+  // A new city starts the screen over: its target, label and filters belong to the old one.
+  const city = useApp((s) => s.city);
+  return <Results key={city} />;
+}
+
+function Results() {
+  const city = cityById(useApp((s) => s.city));
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -57,16 +65,16 @@ export default function ResultsScreen() {
   }>();
   const mapRef = useRef<MapView>(null);
 
-  // Any target (typed, saved Ev/İş, params) outside İzmir falls back to the city centre.
+  // Any target (typed, saved Ev/İş, params) outside the city falls back to its centre.
   const [initial] = useState(() => {
     const parsed = parseLatLng(params.lat, params.lng);
-    return { parsed, outside: !!parsed && !isInIzmirArea(parsed) };
+    return { parsed, outside: !!parsed && !isInCityArea(parsed, city) };
   });
   const [target, setTarget] = useState<LatLng | null>(() =>
-    initial.outside ? IZMIR_CENTER : initial.parsed,
+    initial.outside ? city.center : initial.parsed,
   );
   const [label, setLabel] = useState(() =>
-    initial.outside ? t('common.izmir') : (firstParam(params.label) ?? ''),
+    initial.outside ? city.name : (firstParam(params.label) ?? ''),
   );
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -88,15 +96,15 @@ export default function ResultsScreen() {
         }
       }
       if (cancelled) return;
-      const inside = !!loc && isInIzmirArea(loc);
-      setTarget(inside ? loc : IZMIR_CENTER);
-      setLabel(inside ? t('results.myLocation') : t('common.izmir'));
+      const inside = !!loc && isInCityArea(loc, city);
+      setTarget(inside ? loc : city.center);
+      setLabel(inside ? t('results.myLocation') : city.name);
       setNotice(inside ? null : loc ? 'outside' : denied ? 'denied' : 'failed');
     })();
     return () => {
       cancelled = true;
     };
-  }, [target, t]);
+  }, [target, t, city]);
 
   const nearMode = firstParam(params.near) === '1';
   const { ranked, data, isLoading, isPlaceholderData, isError, isFetching, refetch, widenedKm } =
@@ -175,7 +183,7 @@ export default function ResultsScreen() {
   useAnnounce(
     resultsReady
       ? t('a11y.resultsSummary', {
-          place: label || t('common.izmir'),
+          place: label || city.name,
           summary: [
             t('results.summaryUnknown', { count: filtered.length }),
             widenedKm != null ? t('results.widened', { km: widenedKm }) : null,
@@ -188,7 +196,11 @@ export default function ResultsScreen() {
   );
   useAnnounce(liveIncoming ? t('results.liveIncoming') : null);
   useAnnounce(
-    notice ? t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed') : null,
+    notice
+      ? t(notice === 'outside' ? 'results.outsideCity' : 'results.locationFailed', {
+          city: city.name,
+        })
+      : null,
   );
 
   const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
@@ -294,7 +306,9 @@ export default function ResultsScreen() {
       {notice && (
         <View style={{ gap: 8 }}>
           <Txt variant="caption" secondary>
-            {t(notice === 'outside' ? 'results.outsideIzmir' : 'results.locationFailed')}
+            {t(notice === 'outside' ? 'results.outsideCity' : 'results.locationFailed', {
+              city: city.name,
+            })}
           </Txt>
           {notice === 'denied' && (
             <Button
@@ -482,7 +496,7 @@ export default function ResultsScreen() {
           style={{ flex: 1, fontFamily: fonts.display, fontSize: 17 }}
           numberOfLines={1}
         >
-          {label || t('common.izmir')}
+          {label || city.name}
         </Txt>
       </View>
     </View>

@@ -26,16 +26,13 @@
 - OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
 - Adsız otoparklardan yakın yer adı bulunan: 685.
 - data/parkings-static.json: 1489 otopark.
-- data/places-izmir.json: 3504 yer (arama için).
+- data/places-izmir.json: 3509 yer (arama için).
 - data/rail-izmir.json: 165 istasyon.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
-- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
-- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
-- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 85, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
-- data/food-izmir.json: 2435 yer.
+- Overpass alınamadı (yeme-içme; tüm sunucular ve denemeler).
+- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
@@ -45,18 +42,54 @@
 - "turizm": Bademsu Fabrikası Üretim Verileri · Günübirlik Gezi Tekneleri Bilgileri · Halk Ekmek Büfeleri Satış Noktaları · Halk Ekmek Fabrikası Üretim Verileri · Halkın Bakkalı Siparişi Alınan Paket Tür ve Miktarları · İlçelerde Yaşayan T.C. Vatandaşı ve Yabancı Uyruklu Nüfus  Bilgileri · İzmir İli Müze ve Ören Yerleri Ziyaret Saatleri · İzmir Su Fabrikası Üretim Verileri · Kamu Kurum ve Kuruluşları · Kruvaziyer Gemi Bilgileri · Müze Ziyaretçi İstatistikleri · Ören Yerleri İstatikleri · Turizm Amaçlı Sportif Faaliyetler · Turizm Bilgilendirme Ofisleri Konum Verisi · Turizm Tesisleri · Turuncu Çember Sertifikası Alan İşletmeler Listesi · Yiyecek, İçecek Büfeleri
 - "işletme": 1.Sınıf Gayri Müessese Kapsamındaki İşletme Sayısı İle Akaryakıt Ve/Veya Otogaz Satış İstasyonu Sayısı · Günübirlik Gezi Tekneleri Bilgileri · Tesisler ve Atıksu Miktarları · Turizm Amaçlı Sportif Faaliyetler · Turizm Tesisleri
 
+## İstanbul · OpenStreetMap (ODbL)
+
+- Ham öğe: 5615, herkese açık: 5151, çiftler ayıklanınca: 4523
+- Adı olan: 574, kapasitesi olan: 157, ücretli işaretli: 459
+- Giriş noktasından türeyen: 398, bina olarak işaretli: 0
+
+- Overpass alınamadı (İstanbul: yer adları 2/4; tüm sunucular ve denemeler).
+- Uyarı: yedek yer listesi okunamadı (ENOENT: no such file or directory, open '/home/runner/work/yerim-var-/yerim-var-/data/places-istanbul.json'); adsız otoparklar adlandırılmadı.
+## İstanbul · Sonuç
+
+- Adsız otoparklardan yakın yer adı bulunan: 0.
+- data/parkings-static-istanbul.json: 4523 otopark.
+- Yer listesi alınamadı; data/places-istanbul.json değiştirilmedi.
+- data/rail-istanbul.json: 296 istasyon.
+
+## İstanbul · Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
+
+- Overpass alınamadı (İstanbul: yeme-içme 1/3; tüm sunucular ve denemeler).
+- Yeme-içme listesi alınamadı; data/food-istanbul.json değiştirilmedi.
+
 ## Overture Maps (CDLA-Permissive-2.0)
 
-- Release: 2026-09-23.1 (2026-10-10)
-- Izmir province polygon: found
+- Release: 2026-09-23.1 (2026-10-14)
+- İzmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
 - Kept (confidence >= 0.6): 15730
 - Removed as OSM duplicates: 1099
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
-- Web sitesi kontrolü: 4099 kontrol edildi, 2245 açık, 1689 açılmıyor, 165 belirsiz
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1113
+- Web sitesi kontrolü: 3000 kontrol edildi, 1482 açık, 1385 açılmıyor, 133 belirsiz
 - Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
 - data/food-overture-izmir.json: 2.21 MB
+
+## Overture Maps (CDLA-Permissive-2.0) · İstanbul
+
+- Release: 2026-09-23.1 (2026-10-14)
+- İstanbul province polygon: found
+- Raw candidates (food kinds inside the polygon): 57906
+- Kept (confidence >= 0.9): 13842
+- Removed as OSM duplicates: 0
+- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 13794
+- Ad süzgeciyle atılan: 343 (en sık 10 eşleşen kelime: market 82, catering 76, dernegi 64, organizasyon 23, malzemeleri 23, lokali 21, toptan 10, dugun salonu 10, bakkal 7, makinalari 6)
+- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 0
+- Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 48
+- Web sitesi kontrolü: 3000 kontrol edildi, 1739 açık, 1120 açılmıyor, 141 belirsiz
+- Önceki çalıştırmaya göre: +13842 yeni, −0 kaybolan
+- Per kind: bar 636, cafe 3645, fast_food 771, restaurant 8790
+- data/food-overture-istanbul.json: 2.46 MB

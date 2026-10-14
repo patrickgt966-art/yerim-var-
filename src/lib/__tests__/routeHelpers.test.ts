@@ -197,9 +197,12 @@ describe('city', () => {
   it('keeps an available city', () => {
     expect(city('izmir')).toBe('izmir');
   });
+  it('keeps istanbul, which is available now', () => {
+    expect(city('istanbul')).toBe('istanbul');
+  });
   it('falls back to izmir for unknown, unavailable or non-string cities', () => {
     expect(city('atlantis')).toBe('izmir');
-    expect(city('istanbul')).toBe('izmir');
+    expect(city('ankara')).toBe('izmir');
     expect(city(5)).toBe('izmir');
     expect(city(null)).toBe('izmir');
   });

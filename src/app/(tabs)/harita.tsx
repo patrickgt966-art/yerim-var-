@@ -8,9 +8,9 @@ import { PBadge } from '@/components/PBadge';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
+import { cityAt, cityById, isInCityArea, type City } from '@/data/cities';
 import { formatClock } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import { isInIzmirArea, IZMIR_CENTER } from '@/data/places';
 import {
   cuisineLabels,
   kindLabel,
@@ -23,6 +23,7 @@ import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { currentLocation } from '@/lib/location';
 import { parseLatLng } from '@/lib/params';
+import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,6 +35,8 @@ export default function MapTab() {
   const insets = useSafeAreaInsets();
   // Overlays at the bottom must clear the floating tab bar.
   const tabSpace = useTabBarSpace(12);
+  const city = cityById(useApp((s) => s.city));
+  const setCity = useApp((s) => s.setCity);
   const { data } = useParkings();
   const { fontScale } = useWindowDimensions();
   const screenReader = useScreenReader();
@@ -48,7 +51,18 @@ export default function MapTab() {
   const [selected, setSelected] = useState<Restaurant | null>(null);
 
   const [outside, setOutside] = useState(false);
+  /** Another open city the device is in while this one is selected. */
+  const [elsewhere, setElsewhere] = useState<City | undefined>(undefined);
   const wasInside = useRef<boolean | null>(null);
+  // Another city: the centre, the open card and the outside notice belonged to the old one.
+  const [seenCity, setSeenCity] = useState(city.id);
+  if (seenCity !== city.id) {
+    setSeenCity(city.id);
+    setCenter(null);
+    setSelected(null);
+    setOutside(false);
+    setElsewhere(undefined);
+  }
 
   // Re-check on every visit (permission or position may have changed). Do not
   // prompt here; onboarding asks once.
@@ -57,22 +71,23 @@ export default function MapTab() {
       let cancelled = false;
       void currentLocation(false).then((loc) => {
         if (cancelled) return;
-        const inside = !!loc && isInIzmirArea(loc);
+        const inside = !!loc && isInCityArea(loc, city);
         setOutside(!!loc && !inside);
+        setElsewhere(loc && !inside ? cityAt(loc) : undefined);
         // Keep the same object when the fix is unchanged so the map is not rebuilt.
-        // Only move the map for a real change (> 300 m, or inside/outside İzmir),
+        // Only move the map for a real change (> 300 m, or inside/outside the city),
         // so a remount does not drop the user's pan.
         const switched = wasInside.current !== inside;
         wasInside.current = inside;
         setCenter((prev) => {
-          const next = inside ? loc : IZMIR_CENTER;
+          const next = inside ? loc : city.center;
           return prev && !switched && distanceMeters(prev, next) <= 300 ? prev : next;
         });
       });
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [city]),
   );
 
   // Params from "Haritada gör" override the centre and mode; `ts` makes a repeat visit count.
@@ -102,7 +117,13 @@ export default function MapTab() {
     [mode, mapCenter],
   );
 
-  useAnnounce(outside && !paramCenter ? t('map.outsideIzmir') : null);
+  useAnnounce(
+    outside && !paramCenter
+      ? elsewhere
+        ? t('map.inOtherCity', { here: elsewhere.name, city: city.name })
+        : t('map.outsideCity', { city: city.name })
+      : null,
+  );
 
   if (!mapCenter) return <View style={{ flex: 1 }} />;
 
@@ -196,7 +217,19 @@ export default function MapTab() {
                   },
                 ]}
               >
-                <Txt variant="caption">{t('map.outsideIzmir')}</Txt>
+                <Txt variant="caption">
+                  {elsewhere
+                    ? t('map.inOtherCity', { here: elsewhere.name, city: city.name })
+                    : t('map.outsideCity', { city: city.name })}
+                </Txt>
+                {elsewhere && (
+                  <Button
+                    kind="secondary"
+                    label={t('map.switchCity', { here: elsewhere.name })}
+                    onPress={() => setCity(elsewhere.id)}
+                    style={{ marginTop: 8 }}
+                  />
+                )}
               </View>
             )}
             {showBanner && <SampleBanner result={data} />}

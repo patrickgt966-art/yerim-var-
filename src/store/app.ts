@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { DEFAULT_CITY, isAvailableCity } from '@/data/cities';
+import { DEFAULT_CITY, isAvailableCity, setActiveCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 
 import { migrateAppState, persistedData } from './migrate';
@@ -78,8 +78,14 @@ export const useApp = create<State>()(
       addRecentSearch: (q) =>
         set((s) => ({ recentSearches: addRecentSearch(s.recentSearches, q) })),
       clearRecentSearches: () => set({ recentSearches: [] }),
-      // Unavailable or unknown cities are ignored.
-      setCity: (id) => set((s) => (isAvailableCity(id) ? { city: id } : s)),
+      // Unavailable or unknown cities are ignored. The data layer follows the store.
+      // Recent searches name places of the old city, so a real switch drops them; favorites,
+      // Ev/İş and a running park are the user's own and stay.
+      setCity: (id) => {
+        if (!isAvailableCity(id)) return;
+        setActiveCity(id);
+        set((s) => (s.city === id ? s : { city: id, recentSearches: [] }));
+      },
       setOnboarded: (onboarded) => set({ onboarded }),
       setHome: (home) => set({ home }),
       setWork: (work) => set({ work }),
@@ -118,7 +124,12 @@ export const useApp = create<State>()(
       version: 3,
       migrate: migrateAppState as never,
       // Same-version corrupt data never goes through migrate, so sanitise on every rehydrate.
-      merge: (persisted, current) => ({ ...current, ...persistedData(persisted) }),
+      // The data layer must know the stored city before the first screen reads it.
+      merge: (persisted, current) => {
+        const merged = { ...current, ...persistedData(persisted) };
+        setActiveCity(merged.city);
+        return merged;
+      },
       storage: createJSONStorage(() => AsyncStorage),
       partialize: ({
         onboarded,

@@ -1,7 +1,8 @@
-import raw from '../../data/places-izmir.json';
+import { activeCity, CITIES, isInCityArea } from './cities';
+import { placesFile, type PlaceRow } from './cityData';
 import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
-import { CURATED_PLACES, IZMIR_CENTER, isInIzmirArea, POPULAR_PLACES } from './places';
+import { curatedPlaces, popularPlaces } from './places';
 import { categoryForQuery, type FoodCategory } from './restaurants';
 import { staticParkings } from './staticParkings';
 
@@ -27,17 +28,16 @@ export type SearchHit = {
   subtitle?: string;
   /** Nearest district / town name, shown after the kind. */
   district?: string;
-  /** Outside the İzmir province box (see isInIzmirArea). */
+  /** Outside the active city's province box (see isInCityArea). */
   far?: boolean;
 } & LatLng;
 
-type RawPlace = {
-  n: string;
-  a: number;
-  o: number;
+type RawPlace = Omit<PlaceRow, 'k'> & {
   /** 'rail' (railway stations) is searched as a 'station'. */
   k: Exclude<PlaceKind, 'popular' | 'parking' | 'apple'> | 'rail';
 };
+
+const rawPlaces = () => (placesFile().items ?? []) as RawPlace[];
 
 /** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
 export function fold(s: string): string {
@@ -66,7 +66,7 @@ type Entry = SearchHit & {
   hay: string;
   /** Folded alternative names that count as an exact match. */
   aliases: string[];
-  /** Metres from IZMIR_CENTER. */
+  /** Metres from the active city's centre. */
   d: number;
 };
 
@@ -91,9 +91,10 @@ const NEAR_CITY_M = 6_000;
 const PENALTY_FROM_M = 15_000;
 const FAR_M = 30_000;
 
-// Words that add no meaning to a place search ("alsancak otopark", "izmir otogar").
+// Words that add no meaning to a place search ("alsancak otopark", "izmir otogar"),
+// including every city name.
 const FILLER = new Set([
-  'izmir',
+  ...CITIES.map((c) => fold(c.name)),
   'otopark',
   'otoparki',
   'park',
@@ -135,7 +136,21 @@ const QUERY_ALIAS: Record<string, string> = {
 // Queries that name a university or hospital even without the word for it.
 const INSTITUTION_QUERIES = new Set(['deu', 'ege tip', 'dokuz eylul']);
 
-let index: Entry[] | null = null;
+// Keyed by city id: switching city must never serve another city's places.
+const indexes = new Map<string, Entry[]>();
+
+function cityIndex(): Entry[] {
+  const id = activeCity().id;
+  let list = indexes.get(id);
+  if (!list) {
+    list = buildIndex();
+    indexes.set(id, list);
+  }
+  return list;
+}
+
+/** The abbreviations and generic nouns above are İzmir places. */
+const izmirOnly = () => activeCity().id === 'izmir';
 
 function entry(hit: SearchHit, aliases: string[] = []): Entry {
   const key = fold(hit.name);
@@ -148,22 +163,22 @@ function entry(hit: SearchHit, aliases: string[] = []): Entry {
     aliases,
     words: key.split(' '),
     districtWords: hit.district ? fold(hit.district).split(' ') : [],
-    d: distanceMeters(hit, IZMIR_CENTER),
+    d: distanceMeters(hit, activeCity().center),
   };
 }
 
 function buildIndex(): Entry[] {
-  const places = (raw as { items: RawPlace[] }).items.map((p) =>
+  const places = rawPlaces().map((p) =>
     entry({ name: cleanName(p.n), lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
   );
-  const popular = POPULAR_PLACES.map((p) =>
+  const popular = popularPlaces().map((p) =>
     entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'popular', district: p.district }),
   );
   // Named car parks are useful targets too ("Konak Katlı").
   const parkings = staticParkings()
     .filter((p) => !p.genericName)
     .map((p) => entry({ name: p.name, lat: p.lat, lng: p.lng, kind: 'parking' }));
-  const curated = CURATED_PLACES.map((p) =>
+  const curated = curatedPlaces().map((p) =>
     entry({ name: p.name, lat: p.lat, lng: p.lng, kind: p.kind, district: p.district }, p.aliases),
   );
   // A curated place stands for any other entry within 300 m that has its name
@@ -180,12 +195,17 @@ function buildIndex(): Entry[] {
   ];
 }
 
-let towns: (LatLng & { name: string })[] | null = null;
+const townLists = new Map<string, (LatLng & { name: string })[]>();
 
 function nearestTown(p: LatLng): string | undefined {
-  towns ??= (raw as { items: RawPlace[] }).items
-    .filter((t) => t.k === 'town')
-    .map((t) => ({ name: cleanName(t.n), lat: t.a, lng: t.o }));
+  const id = activeCity().id;
+  let towns = townLists.get(id);
+  if (!towns) {
+    towns = rawPlaces()
+      .filter((t) => t.k === 'town')
+      .map((t) => ({ name: cleanName(t.n), lat: t.a, lng: t.o }));
+    townLists.set(id, towns);
+  }
   let best: string | undefined;
   let bestD = Infinity;
   for (const t of towns) {
@@ -248,7 +268,7 @@ function tokenScore(e: Entry, tokens: { vs: string[]; optional: boolean }[]): nu
 }
 
 /**
- * Searches bundled İzmir places (OpenStreetMap) and car park names on the
+ * Searches bundled places of the active city (OpenStreetMap) and car park names on the
  * device. Matches ignore case, Turkish letters and spaces ("istinyepark",
  * "İstinye Park" and "istinye" all find "İstinyePark İzmir"). Several words
  * ("kordon alsancak") must each start a word of the name. Places far from the
@@ -258,12 +278,12 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
   let q = fold(query);
   // Under 3 letters nothing is a real name: fuzzy matching would map "oo" to "Buca Koop".
   if (q.replace(/ /g, '').length < 3) return [];
-  const wantsInstitution = INSTITUTION_QUERIES.has(q);
-  q = QUERY_ALIAS[q] ?? q;
-  const alias = aliasFor(contentTokens(q));
+  const wantsInstitution = izmirOnly() && INSTITUTION_QUERIES.has(q);
+  q = (izmirOnly() ? QUERY_ALIAS[q] : undefined) ?? q;
+  const alias = izmirOnly() ? aliasFor(contentTokens(q)) : undefined;
   if (alias) q = alias;
   const qc = q.replace(/ /g, '');
-  index ??= buildIndex();
+  const index = cityIndex();
   const words = contentTokens(q);
   const allOptional = words.length > 0 && words.every((w) => OPTIONAL.has(w));
   const tokens = words.map((w) => ({
@@ -321,7 +341,7 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
       lat: e.lat,
       lng: e.lng,
       ...(e.kind === 'town' ? {} : { district: e.district ?? nearestTown(e) }),
-      ...(isInIzmirArea(e) ? {} : { far: true }),
+      ...(isInCityArea(e) ? {} : { far: true }),
     });
     if (out.length >= limit) break;
   }
@@ -336,8 +356,10 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
 export function searchPlacesStrict(query: string, limit = 6): SearchHit[] {
   const q = fold(query);
   if (q.includes(' ') || q.length > 6) return searchPlaces(query, limit);
-  index ??= buildIndex();
-  if (QUERY_ALIAS[q] || ALIAS[q] || index.some((e) => e.aliases.includes(q))) {
+  if (
+    (izmirOnly() && (QUERY_ALIAS[q] || ALIAS[q])) ||
+    cityIndex().some((e) => e.aliases.includes(q))
+  ) {
     return searchPlaces(query, limit);
   }
   return searchPlaces(query, 50)
@@ -383,5 +405,6 @@ export function splitPlaceAndCategory(
 
 /** For tests: rebuild with the current data. */
 export function resetSearchIndex() {
-  index = null;
+  indexes.clear();
+  townLists.clear();
 }

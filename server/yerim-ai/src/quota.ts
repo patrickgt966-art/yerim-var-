@@ -11,6 +11,7 @@ import {
   MAX_RESULTS,
   OPEN_STATES,
   PLAN_WHENS,
+  CitySchema,
   todayIstanbul,
   type CancelRequest,
   type ChatRequest,
@@ -283,6 +284,16 @@ function isNum(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
+/**
+ * The optional `city` of a request: undefined when absent (an older app, which then gets the
+ * İzmir prompts), null when it is not an open city.
+ */
+function readCity(body: Record<string, unknown>): string | undefined | null {
+  if (body.city === undefined) return undefined;
+  const parsed = CitySchema.safeParse(body.city);
+  return parsed.success ? parsed.data : null;
+}
+
 export function validQuota(body: unknown): QuotaRequest | null {
   if (!isRecord(body)) return null;
   return isId(body.deviceId) ? { deviceId: body.deviceId } : null;
@@ -310,7 +321,10 @@ export function validUnderstand(body: unknown): UnderstandRequest | null {
     if (typeof h.text !== 'string' || h.text.length > MAX_MESSAGE_CHARS) return null;
     turns.push({ role: h.role, text: h.text });
   }
+  const city = readCity(body);
+  if (city === null) return null;
   const req: UnderstandRequest = { deviceId, messageId, text, history: turns, section };
+  if (city) req.city = city;
   if (lastCards !== undefined) {
     if (!isRecord(lastCards)) return null;
     if (!Number.isInteger(lastCards.count) || (lastCards.count as number) < 0) return null;
@@ -335,7 +349,10 @@ export function validChat(body: unknown): ChatRequest | null {
     if (typeof h.text !== 'string' || h.text.length > MAX_CHAT_CHARS) return null;
     turns.push({ role: h.role, text: h.text });
   }
+  const city = readCity(body);
+  if (city === null) return null;
   const req: ChatRequest = { deviceId, messageId, text, history: turns };
+  if (city) req.city = city;
   if (lastCards !== undefined) {
     if (!isRecord(lastCards)) return null;
     if (!Number.isInteger(lastCards.count) || (lastCards.count as number) < 0) return null;
@@ -390,7 +407,19 @@ export function validNarrate(body: unknown): NarrateRequest | null {
     }
     out.push(item);
   }
-  return { deviceId, messageId, text, where, what, total, withParking, results: out };
+  const city = readCity(body);
+  if (city === null) return null;
+  return {
+    deviceId,
+    messageId,
+    ...(city ? { city } : {}),
+    text,
+    where,
+    what,
+    total,
+    withParking,
+    results: out,
+  };
 }
 
 const isCount = (v: unknown): v is number =>
@@ -422,7 +451,9 @@ function validIds(body: Record<string, unknown>) {
   const { deviceId, messageId, text } = body;
   if (!isId(deviceId) || !isId(messageId)) return null;
   if (!isText(text, MAX_MESSAGE_CHARS)) return null;
-  return { deviceId, messageId, text };
+  const city = readCity(body);
+  if (city === null) return null;
+  return { deviceId, messageId, text, ...(city ? { city } : {}) };
 }
 
 /**

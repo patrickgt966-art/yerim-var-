@@ -3,8 +3,10 @@ import { useMemo } from 'react';
 
 import { isClosedNow } from '@/lib/openNow';
 import { useNow } from '@/lib/useNow';
+import { useApp } from '@/store/app';
 import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
+import { activeCity } from './cities';
 import { visibleFree } from './freshness';
 import { distanceMeters, walkMinutes, type LatLng } from './geo';
 import { isNearPier, isNearRail } from './places';
@@ -12,23 +14,29 @@ import { loadParkings } from './repository';
 import { withStatic } from './staticParkings';
 import type { Parking, ParkingResult } from './types';
 
+/** Prefix of every city's parkings query (for invalidating all of them). */
 export const PARKINGS_QUERY_KEY = ['parkings'] as const;
 
-export const parkingsQuery = queryOptions({
-  queryKey: PARKINGS_QUERY_KEY,
-  // No `signal`: TanStack cancels a query whose signal was read when its last
-  // screen unmounts, which would throw away a ~15 s download. Let it finish
-  // so the result is cached for the next screen.
-  queryFn: () => loadParkings(),
-  staleTime: 60_000,
-  // Refetch only while the app is in the foreground (see focusManager in _layout).
-  refetchInterval: 120_000,
-  refetchIntervalInBackground: false,
-  // loadParkings retries and falls back itself, so the query never fails.
-  retry: false,
-  // Keep the last result for the whole session so screens never wait twice.
-  gcTime: Infinity,
-});
+/** One query per city: the result of one city is never shown for another. */
+export const parkingsQueryKey = (cityId: string = activeCity().id) =>
+  [...PARKINGS_QUERY_KEY, cityId] as const;
+
+export const parkingsQuery = (cityId: string = activeCity().id) =>
+  queryOptions({
+    queryKey: parkingsQueryKey(cityId),
+    // No `signal`: TanStack cancels a query whose signal was read when its last
+    // screen unmounts, which would throw away a ~15 s download. Let it finish
+    // so the result is cached for the next screen.
+    queryFn: () => loadParkings(undefined, undefined, { cityId }),
+    staleTime: 60_000,
+    // Refetch only while the app is in the foreground (see focusManager in _layout).
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
+    // loadParkings retries and falls back itself, so the query never fails.
+    retry: false,
+    // Keep the last result for the whole session so screens never wait twice.
+    gcTime: Infinity,
+  });
 
 /**
  * Shown until the first download (or a saved result) arrives: no live
@@ -41,8 +49,9 @@ export const STATIC_ONLY_PLACEHOLDER: ParkingResult = {
   fetchedAt: new Date(0).toISOString(),
 };
 
-// One merge per result object, shared by every screen that observes the query.
-const merged = new WeakMap<ParkingResult, ParkingResult>();
+// One merge per result object and city, shared by every screen that observes the query.
+// The shared placeholder is the same object for every city, hence the city check.
+const merged = new WeakMap<ParkingResult, { city: string; out: ParkingResult }>();
 
 /**
  * Adds bundled OpenStreetMap/İzelman car parks to real data. Sample data is
@@ -50,8 +59,9 @@ const merged = new WeakMap<ParkingResult, ParkingResult>();
  * 'static-only' (the fallbackReason is kept), so no fake counts or pins show.
  */
 export function addStatic(result: ParkingResult): ParkingResult {
+  const city = activeCity().id;
   const hit = merged.get(result);
-  if (hit) return hit;
+  if (hit && hit.city === city) return hit.out;
   let out: ParkingResult;
   if (result.source === 'mock') {
     const statics = withStatic([]);
@@ -59,13 +69,15 @@ export function addStatic(result: ParkingResult): ParkingResult {
   } else {
     out = { ...result, parkings: withStatic(result.parkings) };
   }
-  merged.set(result, out);
+  merged.set(result, { city, out });
   return out;
 }
 
 export function useParkings() {
+  // Follows the selected city: a new key means a new download, never the old city's list.
+  const city = useApp((s) => s.city);
   return useQuery({
-    ...parkingsQuery,
+    ...parkingsQuery(city),
     select: addStatic,
     placeholderData: STATIC_ONLY_PLACEHOLDER,
   });
@@ -76,12 +88,13 @@ export function useParkings() {
  * runs. It keeps its original fetchedAt, so the 15 minute rule still hides
  * old counts, and it is marked stale so the download is not skipped.
  */
-export async function primeParkingsFromCache(client: QueryClient) {
+export async function primeParkingsFromCache(client: QueryClient, cityId = activeCity().id) {
   // Primed data has no observer yet; keep it until the results screen opens.
   client.setQueryDefaults(PARKINGS_QUERY_KEY, { gcTime: Infinity });
-  const cached = await deviceCache.load();
-  if (!cached || client.getQueryData(PARKINGS_QUERY_KEY)) return;
-  client.setQueryData(PARKINGS_QUERY_KEY, cached, { updatedAt: 0 });
+  const cached = await deviceCache.load(cityId);
+  const key = parkingsQueryKey(cityId);
+  if (!cached || client.getQueryData(key)) return;
+  client.setQueryData(key, cached, { updatedAt: 0 });
 }
 
 /**
@@ -89,9 +102,9 @@ export async function primeParkingsFromCache(client: QueryClient) {
  * screen opens, so it usually finishes while the user is still typing.
  * Saved data is shown first; the download replaces it when it arrives.
  */
-export async function warmUpParkings(client: QueryClient) {
-  await primeParkingsFromCache(client);
-  await client.prefetchQuery(parkingsQuery);
+export async function warmUpParkings(client: QueryClient, cityId = activeCity().id) {
+  await primeParkingsFromCache(client, cityId);
+  await client.prefetchQuery(parkingsQuery(cityId));
 }
 
 export const MAX_STATIC_RESULTS = 60;
@@ -120,7 +133,11 @@ export function rankByDistance(
   for (const { p, distance } of sorted) {
     const isStatic = p.source === 'osm' || p.source === 'izelman' || p.source === 'apple';
     if (isStatic && ++statics > MAX_STATIC_RESULTS) continue;
-    out.push({ ...p, distance, walk: walkMinutes(target, p), nearPier: isNearPier(p),
+    out.push({
+      ...p,
+      distance,
+      walk: walkMinutes(target, p),
+      nearPier: isNearPier(p),
       nearRail: isNearRail(p),
     });
   }

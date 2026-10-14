@@ -1,13 +1,14 @@
-// Collects static parking data for İzmir province from open sources and
-// writes data/parkings-static.json plus data/sources-report.md.
+// Collects static parking, place, rail and food data for İzmir and İstanbul
+// provinces from open sources and writes data/parkings-static[-istanbul].json,
+// places-/rail-/food-<city>.json plus data/sources-report.md.
 //
 // Runs in GitHub Actions (.github/workflows/data-refresh.yml); the app never
 // calls these services itself. Sources:
-// - OpenStreetMap via Overpass (ODbL): amenity=parking in İzmir province.
-// - İzmir open data portal (CKAN, CC BY 4.0): every dataset matching
+// - OpenStreetMap via Overpass (ODbL): every city.
+// - İzmir open data portal (CKAN, CC BY 4.0), İzmir only: every dataset matching
 //   "otopark" is downloaded to data/raw/ for review; known ones are merged.
 //
-// Usage: node scripts/fetch-sources.mjs
+// Usage: node scripts/fetch-sources.mjs [izmir|istanbul]   (or YERIM_CITIES=istanbul)
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -39,74 +40,117 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-const IZMIR_AREA = 'area["boundary"="administrative"]["admin_level"="4"]["name"="İzmir"]->.izmir;';
+// Provinces (Overpass admin_level 4 areas); everything below runs once per city.
+// YERIM_CITIES=istanbul (or `node scripts/fetch-sources.mjs istanbul`) limits the
+// run to those ids; unset means all. Queries, output files and the Overpass time
+// budget are per city, and one city failing never touches the other's files.
+// split: İstanbul is ~5x larger, so its queries run as several smaller requests
+// (one failed part fails the whole query and the old file is kept).
+const CITIES = [
+  {
+    id: 'izmir',
+    name: 'İzmir',
+    budgetMin: 20,
+    split: false,
+    queryTimeout: 240,
+    railTimeout: 120,
+    httpMs: 180_000,
+    railTypes: 'subway|light_rail|train|tram',
+  },
+  {
+    id: 'istanbul',
+    name: 'İstanbul',
+    budgetMin: 30,
+    split: true,
+    queryTimeout: 300,
+    railTimeout: 180,
+    httpMs: 330_000,
+    // + funicular (Tünel, Kabataş–Taksim); Marmaray and metro are train/subway.
+    railTypes: 'subway|light_rail|train|tram|funicular',
+  },
+];
 
-const PARKING_QUERY = `
-[out:json][timeout:240];
-${IZMIR_AREA}
+const wantedCities = (process.env.YERIM_CITIES ?? process.argv.slice(2).join(','))
+  .split(/[\s,]+/)
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+const unknownCities = wantedCities.filter((id) => !CITIES.some((c) => c.id === id));
+if (unknownCities.length) {
+  console.error(`Bilinmeyen şehir: ${unknownCities.join(', ')} (geçerli: ${CITIES.map((c) => c.id).join(', ')})`);
+  process.exit(1);
+}
+const cities = wantedCities.length ? CITIES.filter((c) => wantedCities.includes(c.id)) : CITIES;
+
+const areaOf = (city) =>
+  `area["boundary"="administrative"]["admin_level"="4"]["name"="${city.name}"]->.city;`;
+
+const buildQuery = (city, statements, timeout) => `
+[out:json][timeout:${timeout}];
+${areaOf(city)}
 (
-  nwr["amenity"="parking"](area.izmir);
-  // Mall / hospital garages are often mapped only as an entrance or a building.
-  nwr["amenity"="parking_entrance"](area.izmir);
-  nwr["building"="parking"](area.izmir);
+${statements}
 );
 out center tags;
 `;
+
+// A query is `many` (statement groups, run one request each when the city is
+// split) and `one` (all of them in a single request, the İzmir way).
+const queryDef = (many, one = many.join('\n')) => ({ one, many });
+
+const PARKING_QUERY = queryDef([
+  `  nwr["amenity"="parking"](area.city);`,
+  `  // Mall / hospital garages are often mapped only as an entrance or a building.
+  nwr["amenity"="parking_entrance"](area.city);`,
+  `  nwr["building"="parking"](area.city);`,
+]);
 
 // Named places people type into search: districts, neighbourhoods, malls,
 // hospitals, universities, piers, stations, landmarks. Apple's on-device
 // geocoder only knows addresses, so "İstinye" alone finds nothing.
-const PLACES_QUERY = `
-[out:json][timeout:240];
-${IZMIR_AREA}
-(
-  node["place"~"^(city|town|suburb|quarter|neighbourhood|village)$"]["name"](area.izmir);
-  nwr["shop"="mall"]["name"](area.izmir);
-  nwr["amenity"~"^(hospital|university|college|ferry_terminal|bus_station|marketplace|theatre|townhall|courthouse)$"]["name"](area.izmir);
-  nwr["tourism"~"^(attraction|museum|theme_park|zoo|hotel)$"]["name"](area.izmir);
-  nwr["railway"~"^(station|halt)$"]["name"](area.izmir);
-  nwr["leisure"~"^(stadium|park|marina|beach_resort)$"]["name"](area.izmir);
-  nwr["historic"]["name"](area.izmir);
-  // Office towers, business centres and iş hanları people navigate to
+const PLACES_QUERY = queryDef([
+  `  node["place"~"^(city|town|suburb|quarter|neighbourhood|village)$"]["name"](area.city);
+  nwr["shop"="mall"]["name"](area.city);
+  nwr["amenity"~"^(hospital|university|college|ferry_terminal|bus_station|marketplace|theatre|townhall|courthouse)$"]["name"](area.city);`,
+  `  nwr["tourism"~"^(attraction|museum|theme_park|zoo|hotel)$"]["name"](area.city);
+  nwr["railway"~"^(station|halt)$"]["name"](area.city);
+  nwr["leisure"~"^(stadium|park|marina|beach_resort)$"]["name"](area.city);`,
+  `  nwr["historic"]["name"](area.city);`,
+  `  // Office towers, business centres and iş hanları people navigate to
   // (Folkart, Megapol, Ege Perla, "Sevil 2 İş Hanı"…); apartments stay out.
-  nwr["building"]["name"~"(tower|towers|kule|kuleleri|plaza|perla|megapol|iş merkezi|is merkezi|iş hanı|is hani|işhanı|ishani|business center)",i](area.izmir);
-  nwr["office"]["name"~"(tower|towers|kule|plaza|iş merkezi|iş hanı)",i](area.izmir);
-);
-out center tags;
-`;
+  nwr["building"]["name"~"(tower|towers|kule|kuleleri|plaza|perla|megapol|iş merkezi|is merkezi|iş hanı|is hani|işhanı|ishani|business center)",i](area.city);
+  nwr["office"]["name"~"(tower|towers|kule|plaza|iş merkezi|iş hanı)",i](area.city);`,
+]);
 
 // Railway stations only: a small query of its own so it still succeeds on days
 // the big places query times out. Feeds the "Raylı sisteme yakın" filter.
-const RAIL_QUERY = `
-[out:json][timeout:120];
-${IZMIR_AREA}
-(
-  nwr["railway"~"^(station|halt|tram_stop)$"]["name"](area.izmir);
-  nwr["public_transport"="station"]["station"~"^(subway|light_rail|train|tram)$"]["name"](area.izmir);
-);
-out center tags;
-`;
+// Ferry piers are not in here (they are kind "pier" in the places file).
+const railQuery = (city) =>
+  queryDef([
+    `  nwr["railway"~"^(station|halt|tram_stop)$"]["name"](area.city);
+  nwr["public_transport"="station"]["station"~"^(${city.railTypes})$"]["name"](area.city);`,
+  ]);
 
 // Places to eat and drink, for the "Restoran + park" idea (docs/ROADMAP.md).
-// Collected for review only; the app does not use this file yet.
-const FOOD_QUERY = `
-[out:json][timeout:240];
-${IZMIR_AREA}
-(
-  nwr["amenity"~"^(restaurant|cafe|fast_food|bar|pub|ice_cream|food_court|biergarten)$"]["name"](area.izmir);
-  nwr["shop"~"^(bakery|pastry|confectionery)$"]["name"](area.izmir);
+const FOOD_QUERY = queryDef(
+  [
+    `  nwr["amenity"="restaurant"]["name"](area.city);`,
+    `  nwr["amenity"~"^(cafe|fast_food)$"]["name"](area.city);`,
+    `  nwr["amenity"~"^(bar|pub|ice_cream|food_court|biergarten)$"]["name"](area.city);
+  nwr["shop"~"^(bakery|pastry|confectionery)$"]["name"](area.city);`,
+  ],
+  `  nwr["amenity"~"^(restaurant|cafe|fast_food|bar|pub|ice_cream|food_court|biergarten)$"]["name"](area.city);
+  nwr["shop"~"^(bakery|pastry|confectionery)$"]["name"](area.city);`,
 );
-out center tags;
-`;
 
-// One shared budget for every Overpass query so a slow day cannot run past
-// the workflow's timeout; later queries simply fail and keep their old file.
-const OVERPASS_DEADLINE = Date.now() + 20 * 60_000;
+// Each city gets its own budget for all of its Overpass queries (set in
+// runCity) so a slow day cannot run past the workflow's timeout; later queries
+// simply fail and keep their old file.
+let overpassDeadline = 0;
 
-async function overpass(query, label) {
+async function overpass(query, label, httpMs = 180_000) {
   // Public Overpass servers are often busy (HTTP 429/5xx); retry with a pause.
   const outOfTime = () => {
-    if (Date.now() <= OVERPASS_DEADLINE) return false;
+    if (Date.now() <= overpassDeadline) return false;
     console.warn(`Overpass süre bütçesi doldu (${label}).`);
     return true;
   };
@@ -122,7 +166,7 @@ async function overpass(query, label) {
             'User-Agent': 'yerim-var data refresh (github.com/patrickgt966-art/yerim-var-)',
           },
           body: `data=${encodeURIComponent(query)}`,
-        });
+        }, httpMs);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = await res.json();
         // Overpass reports timeouts/out-of-memory as HTTP 200 + a remark
@@ -137,6 +181,21 @@ async function overpass(query, label) {
   }
   log(`- Overpass alınamadı (${label}; tüm sunucular ve denemeler).`);
   return null;
+}
+
+// Runs a query definition: one request, or one per group for a split city
+// (null if any part failed: a partial list must not replace the old file).
+async function overpassParts(city, def, label, timeout) {
+  const groups = city.split ? def.many : [def.one];
+  const merged = new Map();
+  for (const [i, statements] of groups.entries()) {
+    const part = groups.length > 1 ? `${label} ${i + 1}/${groups.length}` : label;
+    const els = await overpass(buildQuery(city, statements, timeout), part, city.httpMs);
+    if (!els) return null;
+    if (groups.length === 1) return els;
+    for (const el of els) merged.set(`${el.type}/${el.id}`, el);
+  }
+  return [...merged.values()];
 }
 
 const int = (v) => {
@@ -460,128 +519,6 @@ await mkdir(out('data/raw'), { recursive: true });
 log(`# Veri kaynakları raporu`);
 log('');
 
-const elements = await overpass(PARKING_QUERY, 'otoparklar');
-const originOf = new Map();
-const osmAll = [];
-for (const el of elements ?? []) {
-  const rec = fromOsm(el);
-  if (!rec) continue;
-  osmAll.push(rec);
-  originOf.set(rec.id, osmOrigin(el.tags ?? {}));
-}
-// The same car park is often mapped twice (a node and an area).
-// An entrance never wins over a car park or garage building here.
-const isEntrance = (p) => originOf.get(p.id) === 'entrance';
-const osmDeduped = dedupe(
-  osmAll,
-  30,
-  (p) => (isEntrance(p) ? -10 : 0) + (p.name ? 2 : 0) + (p.capacity ? 1 : 0),
-);
-// Entrance nodes: skip those next to a mapped car park, one per garage otherwise.
-const osmSolid = osmDeduped.filter((p) => !isEntrance(p));
-// A parking area duplicating a garage building: drop it if either is unnamed or the names match.
-const osmBuildings = osmSolid.filter((p) => originOf.get(p.id) === 'building');
-const buildingGain = new Map();
-const osmAreas = osmSolid.filter((p) => {
-  if (originOf.get(p.id) !== 'parking') return true;
-  const b = osmBuildings.find(
-    (q) => meters(p, q) <= 80 && (!p.name || !q.name || foldTr(p.name) === foldTr(q.name)),
-  );
-  if (!b) return true;
-  // An unnamed building takes the dropped area's name (and capacity if it has none).
-  if (!b.name && p.name && !buildingGain.has(b.id)) {
-    buildingGain.set(b.id, { name: p.name, ...(b.capacity || !p.capacity ? {} : { capacity: p.capacity }) });
-  }
-  return false;
-});
-const osmEntrances = dedupe(
-  osmDeduped.filter((p) => isEntrance(p) && !osmSolid.some((s) => meters(p, s) <= 80)),
-  80,
-  (p) => (p.name ? 100 : 0) + Object.values(p).filter((v) => v != null).length,
-);
-const osm = [...osmAreas.map((p) => ({ ...p, ...buildingGain.get(p.id) })), ...osmEntrances];
-log('## OpenStreetMap (ODbL)');
-log('');
-if (elements) {
-  log(
-    `- Ham öğe: ${elements.length}, herkese açık: ${osmAll.length}, çiftler ayıklanınca: ${osm.length}`,
-  );
-  log(
-    `- Adı olan: ${osm.filter((p) => p.name).length}, kapasitesi olan: ${osm.filter((p) => p.capacity).length}, ücretli işaretli: ${osm.filter((p) => p.isPaid === true).length}`,
-  );
-  log(
-    `- Giriş noktasından türeyen: ${osm.filter(isEntrance).length}, bina olarak işaretli: ${osm.filter((p) => originOf.get(p.id) === 'building').length}`,
-  );
-}
-log('');
-
-const ckanFound = await portal();
-log('## İzmir açık veri portalı ("otopark" araması)');
-log('');
-// Sorted so the report does not change with the portal's result order.
-for (const r of [...(ckanFound ?? [])].sort((a, b) => a.resource.localeCompare(b.resource))) {
-  log(
-    `- **${r.title}** / ${r.resourceName} (${r.format}, ${r.license ?? 'lisans?'}, güncelleme: ${r.lastModified ?? '?'})` +
-      (r.records != null ? ` — ${r.records} kayıt; alanlar: ${r.fields.join(', ')}` : '') +
-      (r.error ? ` — hata: ${r.error}` : ''),
-  );
-}
-log('');
-
-log('## Canlı doluluk API erişimi (GitHub sunucusundan)');
-log('');
-log(`- ${await liveApi()}`);
-log('');
-
-// Rail stations first: the query is small, so run it while the Overpass budget is fresh.
-const railEls = await overpass(RAIL_QUERY, 'raylı sistem istasyonları');
-let railItems = [];
-if (railEls && railEls.length > 0) {
-  const all = railEls
-    .map((el) => {
-      const t = el.tags ?? {};
-      const name = t['name:tr'] ?? t.name;
-      const lat = el.lat ?? el.center?.lat;
-      const lng = el.lon ?? el.center?.lon;
-      if (!name || typeof lat !== 'number' || typeof lng !== 'number') return null;
-      return { n: name, a: Math.round(lat * 1e5) / 1e5, o: Math.round(lng * 1e5) / 1e5 };
-    })
-    .filter(Boolean);
-  // One entry per name within 300 m (platform nodes, station building, stop position).
-  const seen = new Map();
-  for (const p of all.sort((x, y) => x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o)) {
-    const prev = seen.get(p.n) ?? [];
-    if (prev.some((q) => meters({ lat: q.a, lng: q.o }, { lat: p.a, lng: p.o }) <= 300)) continue;
-    seen.set(p.n, [...prev, p]);
-    railItems.push(p);
-  }
-}
-
-// Places first: they also name unnamed car parks ("Otopark · Bostanlı yakını").
-const placeEls = await overpass(PLACES_QUERY, 'yer adları');
-let places = null;
-if (placeEls && placeEls.length > 0) {
-  const all = placeEls.map(fromPlace).filter(Boolean);
-  // One entry per name within 300 m (e.g. a mall's node and building).
-  const seen = new Map();
-  places = [];
-  for (const p of all.sort((a, b) => a.n.localeCompare(b.n, 'tr') || a.a - b.a || a.o - b.o)) {
-    const prev = seen.get(p.n) ?? [];
-    if (prev.some((q) => meters({ lat: q.a, lng: q.o }, { lat: p.a, lng: p.o }) <= 300)) continue;
-    seen.set(p.n, [...prev, p]);
-    places.push(p);
-  }
-}
-// Fall back to the last good list so naming does not flip on a bad run.
-const namingPlaces =
-  places ??
-  (await readFile(out('data/places-izmir.json'), 'utf8')
-    .then((txt) => JSON.parse(txt).items ?? [])
-    .catch((e) => {
-      log(`- Uyarı: yedek yer listesi okunamadı (${e.message}); adsız otoparklar adlandırılmadı.`);
-      return [];
-    }));
-
 // Only public reference points. Hospitals, campuses, malls and hotels are
 // left out: "Otopark · X yakını" next to them reads as if the car park
 // belonged to them (and might be for their visitors only).
@@ -592,154 +529,321 @@ const GENERIC_LANDMARK =
   /^(?:(?:çocuk |halk )?park[ıi]?|dinlenme ve çocuk parkı|yeşil alan|merkez|pazar ?yeri|türbe|cami|(?:mustafa kemal )?atatürk (?:büstü|heykeli|anıtı)|şehitler anıtı)$|apartman[ıi]?$|\bapt\.?$|(?:^|\s)sitesi$/;
 const usableLandmark = (n) =>
   n.length <= 28 && !/[()]/.test(n) && !GENERIC_LANDMARK.test(n.toLocaleLowerCase('tr').trim());
-function nearestPlace(p, maxM = 250) {
-  // Car parks restricted to customers/subscribers keep the plain name.
-  if (p.access) return null;
-  let best = null;
-  let bestM = maxM;
-  for (const q of namingPlaces) {
-    if (!LANDMARK_KINDS.has(q.k) || !usableLandmark(q.n)) continue;
-    const m = meters(p, { lat: q.a, lng: q.o });
-    if (m < bestM) {
-      best = q.n;
-      bestM = m;
+
+async function runCity(city) {
+  const izmir = city.id === 'izmir';
+  // İzmir keeps its original labels and file names; other cities get a prefix / suffix.
+  const H = (s) => (izmir ? `## ${s}` : `## ${city.name} · ${s}`);
+  const L = (s) => (izmir ? s : `${city.name}: ${s}`);
+  const files = {
+    parkings: izmir ? 'data/parkings-static.json' : `data/parkings-static-${city.id}.json`,
+    places: `data/places-${city.id}.json`,
+    rail: `data/rail-${city.id}.json`,
+    food: `data/food-${city.id}.json`,
+  };
+  overpassDeadline = Date.now() + city.budgetMin * 60_000;
+  const query = (def, label, timeout = city.queryTimeout) => overpassParts(city, def, label, timeout);
+
+  const elements = await query(PARKING_QUERY, L('otoparklar'));
+  const originOf = new Map();
+  const osmAll = [];
+  for (const el of elements ?? []) {
+    const rec = fromOsm(el);
+    if (!rec) continue;
+    osmAll.push(rec);
+    originOf.set(rec.id, osmOrigin(el.tags ?? {}));
+  }
+  // The same car park is often mapped twice (a node and an area).
+  // An entrance never wins over a car park or garage building here.
+  const isEntrance = (p) => originOf.get(p.id) === 'entrance';
+  const osmDeduped = dedupe(
+    osmAll,
+    30,
+    (p) => (isEntrance(p) ? -10 : 0) + (p.name ? 2 : 0) + (p.capacity ? 1 : 0),
+  );
+  // Entrance nodes: skip those next to a mapped car park, one per garage otherwise.
+  const osmSolid = osmDeduped.filter((p) => !isEntrance(p));
+  // A parking area duplicating a garage building: drop it if either is unnamed or the names match.
+  const osmBuildings = osmSolid.filter((p) => originOf.get(p.id) === 'building');
+  const buildingGain = new Map();
+  const osmAreas = osmSolid.filter((p) => {
+    if (originOf.get(p.id) !== 'parking') return true;
+    const b = osmBuildings.find(
+      (q) => meters(p, q) <= 80 && (!p.name || !q.name || foldTr(p.name) === foldTr(q.name)),
+    );
+    if (!b) return true;
+    // An unnamed building takes the dropped area's name (and capacity if it has none).
+    if (!b.name && p.name && !buildingGain.has(b.id)) {
+      buildingGain.set(b.id, { name: p.name, ...(b.capacity || !p.capacity ? {} : { capacity: p.capacity }) });
+    }
+    return false;
+  });
+  const osmEntrances = dedupe(
+    osmDeduped.filter((p) => isEntrance(p) && !osmSolid.some((s) => meters(p, s) <= 80)),
+    80,
+    (p) => (p.name ? 100 : 0) + Object.values(p).filter((v) => v != null).length,
+  );
+  const osm = [...osmAreas.map((p) => ({ ...p, ...buildingGain.get(p.id) })), ...osmEntrances];
+  log(H('OpenStreetMap (ODbL)'));
+  log('');
+  if (elements) {
+    log(
+      `- Ham öğe: ${elements.length}, herkese açık: ${osmAll.length}, çiftler ayıklanınca: ${osm.length}`,
+    );
+    log(
+      `- Adı olan: ${osm.filter((p) => p.name).length}, kapasitesi olan: ${osm.filter((p) => p.capacity).length}, ücretli işaretli: ${osm.filter((p) => p.isPaid === true).length}`,
+    );
+    log(
+      `- Giriş noktasından türeyen: ${osm.filter(isEntrance).length}, bina olarak işaretli: ${osm.filter((p) => originOf.get(p.id) === 'building').length}`,
+    );
+  }
+  log('');
+
+  // The municipal portal and live API are İzmir-only.
+  let ckanFound = null;
+  if (izmir) {
+    ckanFound = await portal();
+    log('## İzmir açık veri portalı ("otopark" araması)');
+    log('');
+    // Sorted so the report does not change with the portal's result order.
+    for (const r of [...(ckanFound ?? [])].sort((a, b) => a.resource.localeCompare(b.resource))) {
+      log(
+        `- **${r.title}** / ${r.resourceName} (${r.format}, ${r.license ?? 'lisans?'}, güncelleme: ${r.lastModified ?? '?'})` +
+          (r.records != null ? ` — ${r.records} kayıt; alanlar: ${r.fields.join(', ')}` : '') +
+          (r.error ? ` — hata: ${r.error}` : ''),
+      );
+    }
+    log('');
+
+    log('## Canlı doluluk API erişimi (GitHub sunucusundan)');
+    log('');
+    log(`- ${await liveApi()}`);
+    log('');
+  }
+
+  // Rail stations first: the query is small, so run it while the Overpass budget is fresh.
+  const railEls = await query(railQuery(city), L('raylı sistem istasyonları'), city.railTimeout);
+  let railItems = [];
+  if (railEls && railEls.length > 0) {
+    const all = railEls
+      .map((el) => {
+        const t = el.tags ?? {};
+        const name = t['name:tr'] ?? t.name;
+        const lat = el.lat ?? el.center?.lat;
+        const lng = el.lon ?? el.center?.lon;
+        if (!name || typeof lat !== 'number' || typeof lng !== 'number') return null;
+        return { n: name, a: Math.round(lat * 1e5) / 1e5, o: Math.round(lng * 1e5) / 1e5 };
+      })
+      .filter(Boolean);
+    // One entry per name within 300 m (platform nodes, station building, stop position).
+    const seen = new Map();
+    for (const p of all.sort((x, y) => x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o)) {
+      const prev = seen.get(p.n) ?? [];
+      if (prev.some((q) => meters({ lat: q.a, lng: q.o }, { lat: p.a, lng: p.o }) <= 300)) continue;
+      seen.set(p.n, [...prev, p]);
+      railItems.push(p);
     }
   }
-  return best;
-}
 
-const izelman = (ckanFound ?? []).flatMap((r) =>
-  IZELMAN[r.resource] && r.rows
-    ? r.rows.map((row) => fromIzelman(row, IZELMAN[r.resource], r.resource)).filter(Boolean)
-    : [],
-);
-// Same name at the same rounded spot hashes alike: suffix repeats with -2, -3… in list order.
-{
-  const seen = new Map();
-  for (const z of izelman) {
-    const n = (seen.get(z.id) ?? 0) + 1;
-    seen.set(z.id, n);
-    if (n > 1) z.id = `${z.id}-${n}`;
+  // Places first: they also name unnamed car parks ("Otopark · Bostanlı yakını").
+  const placeEls = await query(PLACES_QUERY, L('yer adları'));
+  let places = null;
+  if (placeEls && placeEls.length > 0) {
+    const all = placeEls.map(fromPlace).filter(Boolean);
+    // One entry per name within 300 m (e.g. a mall's node and building).
+    const seen = new Map();
+    places = [];
+    for (const p of all.sort((a, b) => a.n.localeCompare(b.n, 'tr') || a.a - b.a || a.o - b.o)) {
+      const prev = seen.get(p.n) ?? [];
+      if (prev.some((q) => meters({ lat: q.a, lng: q.o }, { lat: p.a, lng: p.o }) <= 300)) continue;
+      seen.set(p.n, [...prev, p]);
+      places.push(p);
+    }
   }
-}
-log('## Sonuç');
-log('');
-log(`- İzelman envanteri: ${izelman.length} otopark.`);
+  // Fall back to the last good list so naming does not flip on a bad run.
+  const namingPlaces =
+    places ??
+    (await readFile(out(files.places), 'utf8')
+      .then((txt) => JSON.parse(txt).items ?? [])
+      .catch((e) => {
+        log(`- Uyarı: yedek yer listesi okunamadı (${e.message}); adsız otoparklar adlandırılmadı.`);
+        return [];
+      }));
+  // Filtered once (same order, same result) instead of per car park: İstanbul has ~5x more of both.
+  const landmarks = namingPlaces.filter((q) => LANDMARK_KINDS.has(q.k) && usableLandmark(q.n));
+  function nearestPlace(p, maxM = 250) {
+    // Car parks restricted to customers/subscribers keep the plain name.
+    if (p.access) return null;
+    let best = null;
+    let bestM = maxM;
+    for (const q of landmarks) {
+      const m = meters(p, { lat: q.a, lng: q.o });
+      if (m < bestM) {
+        best = q.n;
+        bestM = m;
+      }
+    }
+    return best;
+  }
 
-// Official records win over OSM points of the same car park.
-const osmKept = osm
-  .filter((o) => !izelman.some((z) => meters(o, z) <= 80))
-  .map((o) => (o.name ? o : { ...o, near: nearestPlace(o) }));
-log(`- OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
-log(`- Adsız otoparklardan yakın yer adı bulunan: ${osmKept.filter((o) => o.near).length}.`);
-
-if (elements && izelman.length > 0) {
-  const parkings = [...izelman, ...osmKept].sort((a, b) => a.id.localeCompare(b.id));
-  const wrote = await writeData('data/parkings-static.json', {
-    $comment:
-      'Generated by scripts/fetch-sources.mjs. izelman-*: İzmir Büyükşehir Belediyesi Açık Veri (İzelman otopark envanteri); id = izelman-<first 10 hex of sha1(lowercase tr name|lat 4 dp|lng 4 dp)>, repeats get -2, -3 in list order. osm-*: © OpenStreetMap contributors, ODbL 1.0. near: nearest OSM place name within 250 m, for unnamed car parks.',
-    licenses: { izelman: 'İzmir BB Açık Veri Lisansı', osm: 'ODbL-1.0' },
-    parkings,
-  });
-  if (wrote) log(`- data/parkings-static.json: ${parkings.length} otopark.`);
-} else {
-  // Keep the previous file rather than ship a partial one.
-  log('- Bir kaynak alınamadı; data/parkings-static.json değiştirilmedi.');
-}
-
-if (places) {
-  const wrote = await writeData('data/places-izmir.json', {
-    $comment:
-      'Generated by scripts/fetch-sources.mjs for search. n=name, a=lat, o=lng, k=kind. © OpenStreetMap contributors, ODbL 1.0.',
-    items: places,
-  });
-  if (wrote) log(`- data/places-izmir.json: ${places.length} yer (arama için).`);
-} else {
-  log('- Yer listesi alınamadı; data/places-izmir.json değiştirilmedi.');
-}
-
-if (railItems.length > 0) {
-  const wrote = await writeData('data/rail-izmir.json', {
-    $comment:
-      'Generated by scripts/fetch-sources.mjs from OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0): İZBAN, metro, tram and train stations in İzmir, for the "Raylı sisteme yakın" filter.',
-    items: railItems,
-  });
-  if (wrote) log(`- data/rail-izmir.json: ${railItems.length} istasyon.`);
-} else {
-  log('- Raylı istasyon listesi alınamadı; data/rail-izmir.json değiştirilmedi.');
-}
-
-// --- Food places -----------------------------------------------------------
-
-log('');
-log('## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)');
-log('');
-const foodEls = await overpass(FOOD_QUERY, 'yeme-içme');
-if (foodEls && foodEls.length > 0) {
-  const parsed = foodEls.map(fromFood).filter(Boolean);
-  const all = parsed.filter((f) => usableFoodName(f.n));
-  log(`- Ayıklanan (anlamsız ad / yeme-içme dışı): ${parsed.length - all.length}`);
-  // Same name (ignoring case and Turkish letters) within 50 m is one place,
-  // e.g. a node plus a building outline; keep the record with the most details.
-  // Wider would merge real chain branches (two Starbucks ~75 m apart).
-  const detail = (f) => Object.keys(f).length;
-  const food = [];
-  const sortedFood = [...all].sort(
-    (x, y) => detail(y) - detail(x) || x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o,
+  const izelman = (ckanFound ?? []).flatMap((r) =>
+    IZELMAN[r.resource] && r.rows
+      ? r.rows.map((row) => fromIzelman(row, IZELMAN[r.resource], r.resource)).filter(Boolean)
+      : [],
   );
-  for (const f of sortedFood) {
-    const dup = food.some(
-      (q) =>
-        foldTr(q.n) === foldTr(f.n) && meters({ lat: q.a, lng: q.o }, { lat: f.a, lng: f.o }) <= 50,
+  // Same name at the same rounded spot hashes alike: suffix repeats with -2, -3… in list order.
+  {
+    const seen = new Map();
+    for (const z of izelman) {
+      const n = (seen.get(z.id) ?? 0) + 1;
+      seen.set(z.id, n);
+      if (n > 1) z.id = `${z.id}-${n}`;
+    }
+  }
+  log(H('Sonuç'));
+  log('');
+  if (izmir) log(`- İzelman envanteri: ${izelman.length} otopark.`);
+
+  // Official records win over OSM points of the same car park.
+  const osmKept = osm
+    .filter((o) => !izelman.some((z) => meters(o, z) <= 80))
+    .map((o) => (o.name ? o : { ...o, near: nearestPlace(o) }));
+  if (izmir) log(`- OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
+  log(`- Adsız otoparklardan yakın yer adı bulunan: ${osmKept.filter((o) => o.near).length}.`);
+
+  // İzmir needs both sources; other cities only have OSM (and an empty answer is not a result).
+  if (elements && (izmir ? izelman.length > 0 : elements.length > 0)) {
+    const parkings = [...izelman, ...osmKept].sort((a, b) => a.id.localeCompare(b.id));
+    const wrote = await writeData(files.parkings, {
+      $comment: izmir
+        ? 'Generated by scripts/fetch-sources.mjs. izelman-*: İzmir Büyükşehir Belediyesi Açık Veri (İzelman otopark envanteri); id = izelman-<first 10 hex of sha1(lowercase tr name|lat 4 dp|lng 4 dp)>, repeats get -2, -3 in list order. osm-*: © OpenStreetMap contributors, ODbL 1.0. near: nearest OSM place name within 250 m, for unnamed car parks.'
+        : `Generated by scripts/fetch-sources.mjs. osm-*: © OpenStreetMap contributors, ODbL 1.0 (${city.name}). near: nearest OSM place name within 250 m, for unnamed car parks.`,
+      licenses: izmir ? { izelman: 'İzmir BB Açık Veri Lisansı', osm: 'ODbL-1.0' } : { osm: 'ODbL-1.0' },
+      parkings,
+    });
+    if (wrote) log(`- ${files.parkings}: ${parkings.length} otopark.`);
+  } else {
+    // Keep the previous file rather than ship a partial one.
+    log(`- Bir kaynak alınamadı; ${files.parkings} değiştirilmedi.`);
+  }
+
+  if (places) {
+    const wrote = await writeData(files.places, {
+      $comment:
+        'Generated by scripts/fetch-sources.mjs for search. n=name, a=lat, o=lng, k=kind. © OpenStreetMap contributors, ODbL 1.0.',
+      items: places,
+    });
+    if (wrote) log(`- ${files.places}: ${places.length} yer (arama için).`);
+  } else {
+    log(`- Yer listesi alınamadı; ${files.places} değiştirilmedi.`);
+  }
+
+  if (railItems.length > 0) {
+    const wrote = await writeData(files.rail, {
+      $comment: izmir
+        ? 'Generated by scripts/fetch-sources.mjs from OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0): İZBAN, metro, tram and train stations in İzmir, for the "Raylı sisteme yakın" filter.'
+        : `Generated by scripts/fetch-sources.mjs from OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0): metro, Marmaray, train, tram and funicular stations in ${city.name}, for the "Raylı sisteme yakın" filter.`,
+      items: railItems,
+    });
+    if (wrote) log(`- ${files.rail}: ${railItems.length} istasyon.`);
+  } else {
+    log(`- Raylı istasyon listesi alınamadı; ${files.rail} değiştirilmedi.`);
+  }
+
+  // --- Food places ---------------------------------------------------------
+
+  log('');
+  log(H('Yeme-içme yerleri (OpenStreetMap, inceleme verisi)'));
+  log('');
+  const foodEls = await query(FOOD_QUERY, L('yeme-içme'));
+  if (foodEls && foodEls.length > 0) {
+    const parsed = foodEls.map(fromFood).filter(Boolean);
+    const all = parsed.filter((f) => usableFoodName(f.n));
+    log(`- Ayıklanan (anlamsız ad / yeme-içme dışı): ${parsed.length - all.length}`);
+    // Same name (ignoring case and Turkish letters) within 50 m is one place,
+    // e.g. a node plus a building outline; keep the record with the most details.
+    // Wider would merge real chain branches (two Starbucks ~75 m apart).
+    const detail = (f) => Object.keys(f).length;
+    const food = [];
+    // Kept places by folded name: same result as comparing against every kept
+    // place, without O(n²) fold calls (İstanbul has tens of thousands).
+    const keptByName = new Map();
+    const sortedFood = [...all].sort(
+      (x, y) => detail(y) - detail(x) || x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o,
     );
-    if (!dup) food.push(f);
+    for (const f of sortedFood) {
+      const key = foldTr(f.n);
+      const same = keptByName.get(key) ?? [];
+      const dup = same.some(
+        (q) => meters({ lat: q.a, lng: q.o }, { lat: f.a, lng: f.o }) <= 50,
+      );
+      if (dup) continue;
+      same.push(f);
+      keptByName.set(key, same);
+      food.push(f);
+    }
+    food.sort((x, y) => x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o);
+    const by = (key) => food.filter((f) => f[key] != null).length;
+    const kinds = {};
+    for (const f of food) kinds[f.k] = (kinds[f.k] ?? 0) + 1;
+    const cuisines = {};
+    for (const f of food) for (const c of f.c ?? []) cuisines[c] = (cuisines[c] ?? 0) + 1;
+    const topCuisines = Object.entries(cuisines)
+      .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+      .slice(0, 15)
+      .map(([c, n]) => `${c} ${n}`)
+      .join(', ');
+    log(
+      `- Toplam: ${food.length} (${Object.entries(kinds)
+        .sort()
+        .map(([k, n]) => `${k} ${n}`)
+        .join(', ')})`,
+    );
+    log(
+      `- Mutfak türü: ${pct(by('c'), food.length)}, çalışma saati: ${pct(by('h'), food.length)}, telefon: ${pct(by('p'), food.length)}, web: ${pct(by('w'), food.length)}, Instagram: ${pct(by('ig'), food.length)}`,
+    );
+    log(`- En sık mutfak türleri: ${topCuisines || '—'}`);
+    const wrote = await writeData(files.food, {
+      $comment:
+        'Generated by scripts/fetch-sources.mjs. Restaurant list and detail data; the app bundles it for the restaurant screens. Keys: n name, a lat, o lng, k amenity or shop (bakery, pastry, confectionery), c cuisine[], h opening_hours, p phone, w website, ig instagram, ad address, out outdoor seating, wc wheelchair, res reservation. © OpenStreetMap contributors, ODbL 1.0.',
+      items: food,
+    });
+    if (wrote) log(`- ${files.food}: ${food.length} yer.`);
+  } else {
+    log(`- Yeme-içme listesi alınamadı; ${files.food} değiştirilmedi.`);
   }
-  food.sort((x, y) => x.n.localeCompare(y.n, 'tr') || x.a - y.a || x.o - y.o);
-  const by = (key) => food.filter((f) => f[key] != null).length;
-  const kinds = {};
-  for (const f of food) kinds[f.k] = (kinds[f.k] ?? 0) + 1;
-  const cuisines = {};
-  for (const f of food) for (const c of f.c ?? []) cuisines[c] = (cuisines[c] ?? 0) + 1;
-  const topCuisines = Object.entries(cuisines)
-    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
-    .slice(0, 15)
-    .map(([c, n]) => `${c} ${n}`)
-    .join(', ');
-  log(
-    `- Toplam: ${food.length} (${Object.entries(kinds)
-      .sort()
-      .map(([k, n]) => `${k} ${n}`)
-      .join(', ')})`,
-  );
-  log(
-    `- Mutfak türü: ${pct(by('c'), food.length)}, çalışma saati: ${pct(by('h'), food.length)}, telefon: ${pct(by('p'), food.length)}, web: ${pct(by('w'), food.length)}, Instagram: ${pct(by('ig'), food.length)}`,
-  );
-  log(`- En sık mutfak türleri: ${topCuisines || '—'}`);
-  const wrote = await writeData('data/food-izmir.json', {
-    $comment:
-      'Generated by scripts/fetch-sources.mjs. Restaurant list and detail data; the app bundles it for the restaurant screens. Keys: n name, a lat, o lng, k amenity or shop (bakery, pastry, confectionery), c cuisine[], h opening_hours, p phone, w website, ig instagram, ad address, out outdoor seating, wc wheelchair, res reservation. © OpenStreetMap contributors, ODbL 1.0.',
-    items: food,
-  });
-  if (wrote) log(`- data/food-izmir.json: ${food.length} yer.`);
-} else {
-  log('- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.');
+
+  // Other open sources: what the İzmir municipal portal has on food and tourism.
+  if (izmir) {
+    log('');
+    log('## İzmir açık veri portalında yeme-içme / turizm veri setleri');
+    log('');
+    for (const q of ['restoran', 'lokanta', 'kafe', 'turizm', 'işletme']) {
+      try {
+        const r = await ckan('package_search', { q, rows: '20' });
+        const titles = (r.results ?? [])
+          .map((pkg) => pkg.title)
+          .sort((x, y) => x.localeCompare(y, 'tr'));
+        log(`- "${q}": ${titles.length ? titles.join(' · ') : 'sonuç yok'}`);
+      } catch (e) {
+        // Fixed text: a varying error message would change the report every run.
+        console.warn(`CKAN "${q}": ${e.message}`);
+        log(`- "${q}": arama başarısız`);
+      }
+    }
+  }
 }
 
-// Other open sources: what the municipal portal has on food and tourism.
-log('');
-log('## İzmir açık veri portalında yeme-içme / turizm veri setleri');
-log('');
-for (const q of ['restoran', 'lokanta', 'kafe', 'turizm', 'işletme']) {
+// One city failing (even with an unexpected error) must not stop or corrupt the
+// other: files are only written whole, after a city's data is complete.
+for (const city of cities) {
+  if (city !== cities[0]) log('');
   try {
-    const r = await ckan('package_search', { q, rows: '20' });
-    const titles = (r.results ?? [])
-      .map((pkg) => pkg.title)
-      .sort((x, y) => x.localeCompare(y, 'tr'));
-    log(`- "${q}": ${titles.length ? titles.join(' · ') : 'sonuç yok'}`);
+    await runCity(city);
   } catch (e) {
-    // Fixed text: a varying error message would change the report every run.
-    console.warn(`CKAN "${q}": ${e.message}`);
-    log(`- "${q}": arama başarısız`);
+    console.warn(`${city.name} başarısız:`, e);
+    log('');
+    log(`- ${city.name}: beklenmeyen hata (${e.message}); bu şehrin dosyaları değiştirilmedi.`);
   }
 }
 

@@ -2,18 +2,18 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import {
-  CHAT_SYSTEM,
   FREE_DAILY,
-  NARRATE_SYSTEM,
-  PARK_PICK_SYSTEM,
-  PICK_SYSTEM,
-  PLAN_SYSTEM,
-  UNDERSTAND_SYSTEM,
   UnderstandingSchema,
   chatOutputSchema,
+  chatSystem,
+  narrateSystem,
   parkPickOutputSchema,
+  parkPickSystem,
   pickOutputSchema,
+  pickSystem,
   planOutputSchema,
+  planSystem,
+  understandSystem,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
 import {
@@ -187,8 +187,8 @@ export default {
       if (understandReq) {
         const cards = understandReq.lastCards;
         const system = cards
-          ? `${UNDERSTAND_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-          : UNDERSTAND_SYSTEM;
+          ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+          : understandSystem(understandReq.city);
         const response = await client.messages.parse({
           model: MODEL,
           max_tokens: 2048,
@@ -208,8 +208,8 @@ export default {
       if (chatReq) {
         const cards = chatReq.lastCards;
         const system = cards
-          ? `${CHAT_SYSTEM}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-          : CHAT_SYSTEM;
+          ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+          : chatSystem(chatReq.city);
         const response = await client.messages.parse({
           model: MODEL,
           max_tokens: 200,
@@ -231,7 +231,7 @@ export default {
         const response = await client.messages.parse({
           model: MODEL,
           max_tokens: 1024,
-          system: park ? PARK_PICK_SYSTEM : PICK_SYSTEM,
+          system: park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
           output_config: {
             effort: 'low',
             format: zodOutputFormat(park ? parkPickOutputSchema(n) : pickOutputSchema(n)),
@@ -254,7 +254,7 @@ export default {
         const response = await client.messages.parse({
           model: MODEL,
           max_tokens: 1024,
-          system: PLAN_SYSTEM,
+          system: planSystem(planReq.city),
           output_config: {
             effort: 'low',
             format: zodOutputFormat(planOutputSchema(planReq.candidates.length, total)),
@@ -281,7 +281,7 @@ export default {
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 1024,
-          system: NARRATE_SYSTEM,
+          system: narrateSystem(narrateReq.city),
           output_config: { effort: 'low' },
           messages: [
             {
