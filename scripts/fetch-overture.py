@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Fetch food places in Izmir province from Overture Maps and write data/food-overture-izmir.json.
+"""Fetch food places in Izmir and Istanbul provinces from Overture Maps and write
+data/food-overture-<city>.json (deduped against data/food-<city>.json from OpenStreetMap).
 
-Usage: [OVERTURE_RELEASE=2025-10-22.0] python scripts/fetch-overture.py
+Usage: [OVERTURE_RELEASE=2025-10-22.0] [YERIM_CITIES=istanbul] python scripts/fetch-overture.py
 Needs Python 3.11+, pyarrow and shapely (pip install pyarrow shapely).
 """
 import json
@@ -29,24 +30,32 @@ from shapely.ops import unary_union
 from shapely.prepared import prep
 
 ROOT = Path(__file__).resolve().parent.parent
-OSM_FILE = ROOT / 'data' / 'food-izmir.json'
-OUT_FILE = ROOT / 'data' / 'food-overture-izmir.json'
 REPORT_FILE = ROOT / 'data' / 'sources-report.md'
 WEB_CACHE_FILE = 'data/overture-web-check.json'
 BLOCKLIST_FILE = 'data/overture-blocklist.json'
-WEB_MAX_URLS = 6000
+WEB_MAX_URLS = 6000  # total over all cities; each city gets an even share
 WEB_WORKERS = 32
 WEB_TIMEOUT = 8  # seconds per request
-WEB_BUDGET = 15 * 60  # seconds; no new checks are started after this
+WEB_BUDGET = 15 * 60  # seconds over all cities (even share each); no new checks are started after this
 WEB_USER_AGENT = 'YerimVarDataCheck/1.0 (+https://github.com/patrickgt966-art/yerim-var-)'
 
 BUCKET = 'overturemaps-us-west-2'
 MIN_CONFIDENCE = 0.6
 STRICT_CONFIDENCE = 0.7
-MAX_BYTES = int(2.5 * 1024 * 1024)
+MAX_BYTES = int(2.5 * 1024 * 1024)  # per city file
 MIN_KEEP_RATIO = 0.7  # refuse to shrink the file below this share of the old count
 VERIFIED_CONFIDENCE = 0.9
 VERIFIED_SOURCES = 2
+# Confidence steps tried in turn until a city's file fits MAX_BYTES (Izmir fits at the first).
+THRESHOLDS = (MIN_CONFIDENCE, STRICT_CONFIDENCE, 0.8, VERIFIED_CONFIDENCE)
+
+# bbox is a generous (xmin, xmax, ymin, ymax) filter for the province (region) polygon lookup;
+# area_codes are the province's landline codes (a landline with another code is suspect).
+CITIES = [
+    {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',)},
+    {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
+     'area_codes': ('212', '216')},
+]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
 BAD_NAME = re.compile(r'(eczane|anaokulu|ilkokulu|ortaokulu|lisesi)', re.I)
@@ -66,7 +75,7 @@ KASAP_OK = re.compile(r'\b(lokanta|restoran|izgara|kebap|et ev)')
 
 # First phone, spaces/()/- stripped: +90 2xx / 0 2xx / 2xx landline (10 digits after the prefix).
 LANDLINE = re.compile(r'^(?:\+90|0)?(2\d{2})\d{7}$')
-IZMIR_AREA_CODE = '232'
+IZMIR_AREA_CODE = '232'  # default for is_suspect_phone
 
 # basic_category -> app kind (see KIND_KEYS in src/data/restaurants.ts)
 KIND_BY_CATEGORY = {
@@ -161,21 +170,21 @@ def open_dataset(s3, release, theme, typ):
     return ds.dataset(path, filesystem=s3, format='parquet')
 
 
-def find_polygon(s3, release):
-    """Union of the Izmir province (region) polygons, or None."""
+def find_polygon(s3, release, city):
+    """Union of the city's province (region) polygons, or None."""
     dset = open_dataset(s3, release, 'divisions', 'division_area')
     cols = ['geometry', 'subtype', 'country', 'names', 'bbox']
     missing = [c for c in cols if c not in dset.schema.names]
     if missing:
         print(f'divisions schema lacks {missing}; schema is:', file=sys.stderr)
         print(dset.schema, file=sys.stderr)
-        sys.exit(2)
-    flt = bbox_filter(25.9, 28.7, 37.6, 39.6)
+        raise RuntimeError(f'divisions schema lacks {missing}')
+    flt = bbox_filter(*city['bbox'])
     geoms = []
     for batch in dset.to_batches(columns=cols, filter=flt):
         for row in batch.to_pylist():
             name = (row['names'] or {}).get('primary') or ''
-            if row['subtype'] == 'region' and row['country'] == 'TR' and fold(name) in {'izmir'}:
+            if row['subtype'] == 'region' and row['country'] == 'TR' and fold(name) == city['fold']:
                 geoms.append(shapely.wkb.loads(row['geometry']))
     return unary_union(geoms) if geoms else None
 
@@ -200,12 +209,12 @@ def is_suspect_name(name):
     return bool(SUSPECT_NAME.search(f)) and not KASAP_OK.search(f)
 
 
-def is_suspect_phone(phone):
-    """True for a Turkish landline whose area code is not Izmir's 232 (mobile, 444 and 850 are fine)."""
+def is_suspect_phone(phone, area_codes=(IZMIR_AREA_CODE,)):
+    """True for a Turkish landline whose area code is not one of the city's (mobile, 444 and 850 are fine)."""
     if not phone:
         return False
     m = LANDLINE.match(re.sub(r'[\s()\-]', '', phone))
-    return bool(m) and m.group(1) != IZMIR_AREA_CODE
+    return bool(m) and m.group(1) not in area_codes
 
 
 def kind_of(row):
@@ -231,11 +240,11 @@ def is_corroborated(row):
     return len(datasets) >= VERIFIED_SOURCES or (row.get('confidence') or 0.0) >= VERIFIED_CONFIDENCE
 
 
-def to_record(row, kind):
-    """Compact record with the keys of data/food-izmir.json; null keys are dropped."""
+def to_record(row, kind, area_codes=(IZMIR_AREA_CODE,)):
+    """Compact record with the keys of data/food-<city>.json; null keys are dropped."""
     bb = row['bbox']
     phone = (row.get('phones') or [None])[0]
-    suspect = is_suspect_phone(phone) or is_suspect_name(row['names']['primary'])
+    suspect = is_suspect_phone(phone, area_codes) or is_suspect_name(row['names']['primary'])
     rec = {
         'id': 'ov-' + row['id'].replace('-', '')[:16],
         'n': row['names']['primary'].strip(),
@@ -252,7 +261,7 @@ def to_record(row, kind):
     return {k: v for k, v in rec.items() if v}
 
 
-def read_candidates(s3, release, poly):
+def read_candidates(s3, release, poly, area_codes=(IZMIR_AREA_CODE,)):
     """All food places inside the polygon, with confidence; returns (list, raw count, dropped-word Counter)."""
     dset = open_dataset(s3, release, 'places', 'place')
     cols = ['id', 'names', 'basic_category', 'taxonomy', 'confidence', 'operating_status',
@@ -277,7 +286,7 @@ def read_candidates(s3, release, poly):
             if word:
                 dropped[word] += 1
                 continue
-            out.append((row.get('confidence') or 0.0, to_record(row, kind)))
+            out.append((row.get('confidence') or 0.0, to_record(row, kind, area_codes)))
     return out, raw, dropped
 
 
@@ -317,10 +326,19 @@ def dedupe_overture(cands):
     return kept
 
 
-def load_osm():
-    if not OSM_FILE.exists():
+def osm_file(city):
+    return ROOT / 'data' / f"food-{city['id']}.json"
+
+
+def out_file(city):
+    return ROOT / 'data' / f"food-overture-{city['id']}.json"
+
+
+def load_osm(city):
+    path = osm_file(city)
+    if not path.exists():
         return []
-    items = json.loads(OSM_FILE.read_text(encoding='utf-8')).get('items', [])
+    items = json.loads(path.read_text(encoding='utf-8')).get('items', [])
     return [i for i in items if 'a' in i and 'o' in i and i.get('n')]
 
 
@@ -440,7 +458,7 @@ def load_blocklist(path=BLOCKLIST_FILE):
         return set()
 
 
-def check_websites(items, cache_path=WEB_CACHE_FILE):
+def check_websites(items, cache_path=WEB_CACHE_FILE, max_urls=WEB_MAX_URLS, budget=WEB_BUDGET):
     """Dead website -> the link (w) is removed; an unverified record (no v) also gets sp 1, verified records keep v.
     Network only when YERIM_WEB_CHECK == '1'.
 
@@ -464,8 +482,8 @@ def check_websites(items, cache_path=WEB_CACHE_FILE):
         urls = {u for u in (normalise_url(i.get('w')) for i in items) if u}
         # Never-checked URLs first, then earlier 'unknown' ones, so a capped run makes progress over time.
         order = {None: 0, 'unknown': 1}
-        todo = sorted(urls, key=lambda u: (order.get(results.get(u), 2), u))[:WEB_MAX_URLS]
-        deadline = time.monotonic() + WEB_BUDGET
+        todo = sorted(urls, key=lambda u: (order.get(results.get(u), 2), u))[:max_urls]
+        deadline = time.monotonic() + budget
         with ThreadPoolExecutor(max_workers=WEB_WORKERS) as pool:
             for url, verdict in pool.map(lambda u: _check_url(u, deadline), todo):
                 if verdict is None:
@@ -497,31 +515,27 @@ def check_websites(items, cache_path=WEB_CACHE_FILE):
     return stats
 
 
-def render(release, items):
+def render(release, items, city):
     comment = (
         f'Generated by scripts/fetch-overture.py from Overture Maps places release {release}. '
         '© Overture Maps Foundation, CDLA-Permissive-2.0 (data from Meta, Microsoft and others). '
-        'Food places not already in data/food-izmir.json (OpenStreetMap). Keys as in food-izmir.json; v 1 = corroborated (2+ sources or confidence ≥ 0.9); sp 1 = suspect (non-İzmir landline area code or kasap/şarküteri name, or unverified with a dead website).'
+        f"Food places not already in data/food-{city['id']}.json (OpenStreetMap). Keys as in food-{city['id']}.json; v 1 = corroborated (2+ sources or confidence ≥ 0.9); sp 1 = suspect (non-{city['name']} landline area code or kasap/şarküteri name, or unverified with a dead website)."
     )
     doc = {'$comment': comment, 'release': release, 'items': items}
     return json.dumps(doc, ensure_ascii=False, separators=(',', ':'))
 
 
-def existing_count():
-    if not OUT_FILE.exists():
-        return 0
-    try:
-        return len(json.loads(OUT_FILE.read_text(encoding='utf-8')).get('items', []))
-    except (ValueError, OSError):
-        return 0
+def existing_count(city):
+    return len(previous_items(city))
 
 
-def previous_items():
+def previous_items(city):
     """Items of the file about to be overwritten ([] if missing or unreadable)."""
-    if not OUT_FILE.exists():
+    path = out_file(city)
+    if not path.exists():
         return []
     try:
-        return json.loads(OUT_FILE.read_text(encoding='utf-8')).get('items', [])
+        return json.loads(path.read_text(encoding='utf-8')).get('items', [])
     except (ValueError, OSError):
         return []
 
@@ -547,36 +561,11 @@ def web_line(web):
     return '- Web sitesi kontrolü: yapılmadı (önbellek yok)'
 
 
-def append_report(release, raw, kept, dupes, items, size, threshold, dropped, web, diff, blocked_n):
-    kinds = {}
-    for r in items:
-        kinds[r['k']] = kinds.get(r['k'], 0) + 1
-    lines = [
-        '',
-        '## Overture Maps (CDLA-Permissive-2.0)',
-        '',
-        f'- Release: {release} ({date.today().isoformat()})',
-        '- Izmir province polygon: found',
-        f'- Raw candidates (food kinds inside the polygon): {raw}',
-        f'- Kept (confidence >= {threshold}): {kept}',
-        f'- Removed as OSM duplicates: {dupes}',
-        f'- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): {sum(1 for r in items if r.get("v") == 1)}',
-        f'- Ad süzgeciyle atılan: {sum(dropped.values())} (en sık 10 eşleşen kelime: '
-        + (', '.join(f'{w} {n}' for w, n in dropped.most_common(10)) or '-') + ')',
-        f'- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: {blocked_n}',
-        f'- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): {sum(1 for r in items if r.get("sp") == 1)}',
-        web_line(web),
-        *diff,
-        '- Per kind: ' + ', '.join(f'{k} {n}' for k, n in sorted(kinds.items())),
-        f'- data/food-overture-izmir.json: {size / 1024 / 1024:.2f} MB',
-        '',
-    ]
-    section = '\n'.join(lines)
+def put_section(heading, section):
+    """Replaces the report section under `heading` (up to the next "## " heading or EOF), else appends it."""
     text = REPORT_FILE.read_text(encoding='utf-8') if REPORT_FILE.exists() else ''
-    heading = '## Overture Maps (CDLA-Permissive-2.0)'
-    m = re.search(r'^' + re.escape(heading) + r'[^\n]*\n.*?(?=^## |\Z)', text, re.M | re.S)
+    m = re.search(r'^' + re.escape(heading) + r'[ \t]*\n.*?(?=^## |\Z)', text, re.M | re.S)
     if m:
-        # Replace the existing Overture section (up to the next "## " heading or EOF).
         tail = text[m.end():]
         text = text[:m.start()] + section.lstrip('\n') + ('\n' if tail else '') + tail
     else:
@@ -584,38 +573,118 @@ def append_report(release, raw, kept, dupes, items, size, threshold, dropped, we
     REPORT_FILE.write_text(text, encoding='utf-8')
 
 
-def main():
-    s3 = open_s3()
-    release = find_release(s3)
-    print(f'Overture release: {release}')
-    poly = find_polygon(s3, release)
-    if poly is None:
-        fail('Izmir province polygon not found; nothing written')
-    cands, raw, dropped = read_candidates(s3, release, poly)
-    osm_grid = build_osm_grid(load_osm())
-    threshold = MIN_CONFIDENCE
-    items, dupes = select(cands, threshold, osm_grid)
-    text = render(release, items)
-    if len(text.encode('utf-8')) > MAX_BYTES:
-        threshold = STRICT_CONFIDENCE
-        print(f'file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}')
+def report_heading(city):
+    """Izmir keeps the original heading; other cities get a ' · <name>' suffix."""
+    base = '## Overture Maps (CDLA-Permissive-2.0)'
+    return base if city['id'] == 'izmir' else f"{base} · {city['name']}"
+
+
+def append_failure(city, message):
+    put_section(report_heading(city), f"\n{report_heading(city)}\n\n- {city['name']}: {message}; dosya değiştirilmedi.\n")
+
+
+def append_report(city, release, raw, kept, dupes, items, size, threshold, dropped, web, diff, blocked_n):
+    kinds = {}
+    for r in items:
+        kinds[r['k']] = kinds.get(r['k'], 0) + 1
+    heading = report_heading(city)
+    lines = [
+        '',
+        heading,
+        '',
+        f'- Release: {release} ({date.today().isoformat()})',
+        f"- {city['name']} province polygon: found",
+        f'- Raw candidates (food kinds inside the polygon): {raw}',
+        f'- Kept (confidence >= {threshold}): {kept}',
+        f'- Removed as OSM duplicates: {dupes}',
+        f'- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): {sum(1 for r in items if r.get("v") == 1)}',
+        f'- Ad süzgeciyle atılan: {sum(dropped.values())} (en sık 10 eşleşen kelime: '
+        + (', '.join(f'{w} {n}' for w, n in dropped.most_common(10)) or '-') + ')',
+        f'- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: {blocked_n}',
+        f"- Şüpheli ({city['name']} dışı sabit hat ya da kasap/şarküteri): {sum(1 for r in items if r.get('sp') == 1)}",
+        web_line(web),
+        *diff,
+        '- Per kind: ' + ', '.join(f'{k} {n}' for k, n in sorted(kinds.items())),
+        f"- data/food-overture-{city['id']}.json: {size / 1024 / 1024:.2f} MB",
+        '',
+    ]
+    put_section(heading, '\n'.join(lines))
+
+
+def fit_to_size(cands, osm_grid, release, city):
+    """(threshold, items, dupes): the lowest confidence step whose file fits MAX_BYTES.
+
+    If even the strictest step is too big (Istanbul), only the most confident places are kept.
+    """
+    def size_of(items):
+        return len(render(release, items, city).encode('utf-8'))
+
+    for i, threshold in enumerate(THRESHOLDS):
+        if i:
+            print(f"{city['id']}: file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}")
         items, dupes = select(cands, threshold, osm_grid)
-        text = render(release, items)
+        if size_of(items) <= MAX_BYTES:
+            return threshold, items, dupes
+    best = sorted((c for c in cands if c[0] >= threshold), key=lambda c: (-c[0], c[1]['id']))
+    lo, hi = 0, len(best)  # largest prefix of `best` that fits
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if size_of(select(best[:mid], threshold, osm_grid)[0]) <= MAX_BYTES:
+            lo = mid
+        else:
+            hi = mid - 1
+    items, dupes = select(best[:lo], threshold, osm_grid)
+    print(f"{city['id']}: still over {MAX_BYTES} bytes at {threshold}; kept the {lo} most confident candidates")
+    return threshold, items, dupes
+
+
+def run_city(s3, release, city, web_urls, web_budget):
+    out = out_file(city)
+    poly = find_polygon(s3, release, city)
+    if poly is None:
+        raise RuntimeError(f"{city['name']} province polygon not found")
+    cands, raw, dropped = read_candidates(s3, release, poly, city['area_codes'])
+    osm_grid = build_osm_grid(load_osm(city))
+    threshold, items, dupes = fit_to_size(cands, osm_grid, release, city)
     blocked = load_blocklist()
     n_before = len(items)
     items = [i for i in items if i['id'] not in blocked]
     blocked_n = n_before - len(items)
-    web = check_websites(items)
-    text = render(release, items)
-    old = existing_count()
+    web = check_websites(items, max_urls=web_urls, budget=web_budget)
+    text = render(release, items, city)
+    old = existing_count(city)
     if old and len(items) < MIN_KEEP_RATIO * old:
-        print(f'refusing to write: {len(items)} items is under 70% of the existing {old}')
+        print(f"{city['id']}: refusing to write: {len(items)} items is under 70% of the existing {old}")
         return
-    diff = diff_lines(previous_items(), items)
-    OUT_FILE.write_text(text + '\n', encoding='utf-8')
+    diff = diff_lines(previous_items(city), items)
+    out.write_text(text + '\n', encoding='utf-8')
     size = len(text.encode('utf-8')) + 1
-    append_report(release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff, blocked_n)
-    print(f'wrote {len(items)} items ({size} bytes), {dupes} OSM duplicates removed')
+    append_report(city, release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff, blocked_n)
+    print(f"{city['id']}: wrote {len(items)} items ({size} bytes), {dupes} OSM duplicates removed")
+
+
+def main():
+    wanted = [c.strip().lower() for c in re.split(r'[\s,]+', os.environ.get('YERIM_CITIES', '')) if c.strip()]
+    unknown = [c for c in wanted if c not in {x['id'] for x in CITIES}]
+    if unknown:
+        fail(f"unknown city {', '.join(unknown)} (valid: {', '.join(x['id'] for x in CITIES)})")
+    cities = [c for c in CITIES if not wanted or c['id'] in wanted]
+    s3 = open_s3()
+    release = find_release(s3)
+    print(f'Overture release: {release}')
+    # The web-check budget and URL cap are split evenly; the cache and blocklist are shared (keyed by URL / id).
+    web_urls, web_budget = WEB_MAX_URLS // len(cities), WEB_BUDGET // len(cities)
+    failed = []
+    for city in cities:
+        try:
+            run_city(s3, release, city, web_urls, web_budget)
+        except Exception as e:  # one city failing must not stop the next; its file stays as it was
+            print(f"error: {city['id']}: {e}", file=sys.stderr)
+            failed.append(city['id'])
+            append_failure(city, f'hata ({type(e).__name__}: {e})')
+    # Succeeded cities must still be committed, so only a total failure fails the step.
+    if failed and len(failed) == len(cities):
+        sys.exit(1)
 
 
 def _selftest():

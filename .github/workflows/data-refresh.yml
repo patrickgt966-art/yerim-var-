@@ -1,6 +1,7 @@
 name: Data refresh
 
-# Collects static parking data (OpenStreetMap + İzmir open data portal + Overture Maps).
+# Collects static parking, place, rail and food data for İzmir and İstanbul
+# (OpenStreetMap + İzmir open data portal + Overture Maps).
 # The app bundles the result; it never calls these services itself.
 
 on:
@@ -22,9 +23,10 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Overpass is capped at 20 min in the script; CKAN calls have 60 s timeouts;
-    # the Overture website check has a 15 min budget (+20 min over the previous 40).
-    timeout-minutes: 60
+    # Two cities (İzmir, İstanbul). Overpass is capped in the script at 20 min for
+    # İzmir + 30 min for İstanbul; CKAN calls (İzmir only) have 60 s timeouts;
+    # Overture reads both cities' places (two scans) plus a shared 15 min website check.
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
