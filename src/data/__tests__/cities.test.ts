@@ -90,7 +90,12 @@ describe('per-city data never leaks', () => {
     expect(izmirList.length).toBeGreaterThan(1000);
     const id = izmirList[0]!.id;
     setActiveCity('istanbul');
-    expect(allRestaurants()).toEqual([]);
+    const istList = allRestaurants();
+    const istanbul = cityById('istanbul');
+    expect(istList.length).toBeGreaterThan(0);
+    expect(istList.every((r) => isInCityArea(r, istanbul))).toBe(true);
+    const izmirIds = new Set(izmirList.map((r) => r.id));
+    expect(istList.some((r) => izmirIds.has(r.id))).toBe(false);
     expect(getRestaurant(id)).toBeNull();
     setActiveCity('izmir');
     // Memoized per city: the same list comes back.
@@ -105,7 +110,9 @@ describe('per-city data never leaks', () => {
     setActiveCity('istanbul');
     expect(searchPlaces('alsancak')).toEqual([]);
     expect(searchPlaces('saat kulesi')).toEqual([]);
-    expect(staticParkings()).toEqual([]);
+    const istParkings = staticParkings();
+    expect(istParkings.length).toBeGreaterThan(0);
+    expect(istParkings.every((p) => isInCityArea(p, cityById('istanbul')))).toBe(true);
     expect(isNearRail({ lat: 38.4381, lng: 27.1415 }, 100_000)).toBe(false);
     setActiveCity('izmir');
     expect(searchPlaces('alsancak').length).toBeGreaterThan(0);
@@ -123,7 +130,10 @@ describe('addStatic', () => {
     const izmirMerge = addStatic(STATIC_ONLY_PLACEHOLDER);
     expect(izmirMerge.parkings.length).toBeGreaterThan(0);
     setActiveCity('istanbul');
-    expect(addStatic(STATIC_ONLY_PLACEHOLDER).parkings).toEqual([]);
+    const istParkings = addStatic(STATIC_ONLY_PLACEHOLDER).parkings;
+    const izmirIds = new Set(izmirMerge.parkings.map((p) => p.id));
+    expect(istParkings.every((p) => isInCityArea(p, cityById('istanbul')))).toBe(true);
+    expect(istParkings.some((p) => izmirIds.has(p.id))).toBe(false);
     setActiveCity('izmir');
     expect(addStatic(STATIC_ONLY_PLACEHOLDER)).toEqual(izmirMerge);
   });

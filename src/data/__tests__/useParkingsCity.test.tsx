@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { createElement, type ReactNode } from 'react';
 
 import { useApp } from '@/store/app';
-import { setActiveCity } from '../cities';
+import { cityById, isInCityArea, setActiveCity } from '../cities';
 import { ISPARK_PARKING_URL } from '../isparkProvider';
 import { IZMIR_PARKING_URL } from '../izmirProvider';
 import { useParkings } from '../useParkings';
@@ -39,8 +39,11 @@ describe('useParkings follows the selected city', () => {
     await act(async () => useApp.getState().setCity('istanbul'));
     await waitFor(() => expect(result.current.data?.source).toBe('ispark'));
     expect(fetchMock).toHaveBeenCalledWith(ISPARK_PARKING_URL, expect.anything());
-    // Not a single İzmir record in the istanbul list.
-    expect(result.current.data?.parkings.every((p) => p.source === 'ispark')).toBe(true);
+    // The İstanbul list merges in the static OSM car parks; not a single İzmir record in it.
+    const parkings = result.current.data?.parkings ?? [];
+    const istanbul = cityById('istanbul');
+    expect(parkings.every((p) => isInCityArea(p, istanbul))).toBe(true);
+    expect(parkings.some((p) => p.source === 'ispark')).toBe(true);
     unmount();
     client.clear();
   });
