@@ -704,6 +704,18 @@ describe('assistant: chat bugs from the phone', () => {
   const sections = ['park', 'food'] as const;
 
   describe.each(sections)('section %s', (section) => {
+    it.each(['Yakınımda tabikii', 'yakınımda tabii ki lütfen'])(
+      'rules alone: "%s" is a near-me search, not a place called "tabikii"',
+      async (text) => {
+        const r = await answer(text, emptyContext(section), deps);
+        expect(r.reply.text).not.toContain('chat.placeNotFound');
+        expect(r.reply.text).not.toContain('tabikii');
+        expect(r.reply.text).not.toContain('chat.unknown');
+        expect(r.reply.cards.length).toBeGreaterThan(0);
+        expect(r.ctx.place).toBeNull();
+      },
+    );
+
     it('finds kuşbaşı as a dish, with reasons', async () => {
       const r = await answer('kuşbaşı', emptyContext(section), deps);
       expect(r.reply.text).toContain('chat.dishLikely');

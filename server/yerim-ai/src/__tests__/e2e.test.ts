@@ -585,3 +585,93 @@ describe('city', () => {
     expect(((await q.json()) as { remaining: number }).remaining).toBe(9);
   });
 });
+
+describe('the phone request that failed with a 502', () => {
+  // The history, city and ids of a real phone session (no lastCards on that message).
+  const phoneHistory: ChatTurn[] = [
+    { role: 'user', text: 'Oo kingo naber lo' },
+    { role: 'bot', text: 'İyiyim, sağ ol! Yemek ya da otopark için ne arıyorsun? ✨' },
+    { role: 'user', text: 'Hocam bana bir diyet menü sporcuyumda' },
+    { role: 'bot', text: 'Hangi semtte arayayım?' },
+  ];
+  const ask = (extra: Record<string, unknown> = {}) =>
+    client.understand({
+      deviceId: DEVICE(),
+      messageId: `ph${Date.now().toString(36)}`,
+      text: 'Yakınımda tabikii',
+      history: phoneHistory,
+      section: 'food',
+      city: 'izmir',
+      ...extra,
+    });
+
+  it('is answered, and the model sees a clean message list', async () => {
+    tick();
+    mockParse.mockResolvedValueOnce({
+      stop_reason: 'end_turn',
+      parsed_output: { ...searchOut('', true), nearMe: true, dish: 'diyet', wishes: ['healthy'] },
+    });
+    const r = await ask({ lastCards: { count: 3, kind: 'restaurant' } });
+    expect(r).toMatchObject({ ok: true, value: { kind: 'search', nearMe: true, wishes: ['healthy'] } });
+    const sent = mockParse.mock.calls.at(-1)![0] as {
+      system: string;
+      messages: { role: string; content: string }[];
+    };
+    expect(sent.system).toContain(understandSystem('izmir'));
+    expect(sent.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant', 'user']);
+    expect(sent.messages.every((m) => m.content.trim() !== '')).toBe(true);
+    noRejections();
+  });
+
+  it('a history cut in the middle of an emoji is still valid JSON for the API', async () => {
+    tick();
+    const bot = `${'a'.repeat(MAX_MESSAGE_CHARS - 1)}🍽️ tail`;
+    await ask({ history: [{ role: 'user', text: 'selam' }, { role: 'bot', text: bot }] });
+    const sent = mockParse.mock.calls.at(-1)![0] as { messages: { content: string }[] };
+    for (const m of sent.messages) expect(m.content.isWellFormed()).toBe(true);
+    noRejections();
+  });
+
+  it('a whitespace-only message is a 400 from the worker, not a call that Anthropic rejects', async () => {
+    tick();
+    const res = await rawPost('/understand', {
+      deviceId: DEVICE(), messageId: 'ws1', text: '   ', history: [], section: 'food',
+    });
+    expect(res.status).toBe(400);
+    rejected.length = 0;
+  });
+
+  it.each([
+    ['empty strings everywhere', { ...searchOut('', false), kind: 'search' }],
+    ['a chat with an empty reply', { ...searchOut('', false), kind: 'chat', reply: '', action: 'none' }],
+    ['a chat with an odd action', { ...searchOut('', false), kind: 'chat', reply: 'Selam!', action: 'dance' }],
+    ['a search with an unknown wish and a huge party', {
+      ...searchOut('', true), wishes: ['teleport', 'cheap', 'cheap'], partySize: 5000,
+      dishServes: ['a', 'a', 'b', 'c', 'd', 'e', 'f'],
+    }],
+  ])('%s: a 200, never a 502', async (_name, out) => {
+    tick();
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: out });
+    const r = await ask();
+    expect(r.ok).toBe(true);
+    noRejections();
+  });
+
+  it.each([
+    ['pick', "Bornova'da köfteci", { pick: 42, reasons: ['teleport'], runnerUp: 9, runnerUpWhy: 'x', tone: null }],
+    ['plan', "Bornova'da önce park sonra yemek", { restaurant: -3, parking: 1e9, reasons: [], tone: 'x' }],
+  ])('an unusable %s in the same message keeps the search reply', async (_n, text, bad) => {
+    const chat = session('food');
+    tick();
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: searchOut('Bornova', true) });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: bad });
+    const res = await chat.send(text);
+    expect(failures()).toEqual([_n === 'pick' ? '/pick' : '/plan']);
+    expect(res.reply.cards.length).toBeGreaterThan(0);
+    expect(res.reply.text).not.toBe(i18n.t('chat.pickUnavailable'));
+    expect(res.reply.notice).toBeUndefined();
+    // Only the router call is charged: the failed pick / plan gave nothing and shares its use.
+    expect(await quotaLeft()).toBe(9);
+    noRejections();
+  });
+});

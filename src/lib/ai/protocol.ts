@@ -18,6 +18,16 @@ export const ROUTER_TIMEOUT_MS = 6000;
 export const MAX_CANDIDATES = 5;
 export const MAX_PLAN_PARKINGS = 3;
 
+/**
+ * The first `max` UTF-16 units of `text`, never ending in half of a surrogate pair: a cut emoji
+ * is a lone surrogate, which JSON.stringify escapes and the Anthropic API rejects (HTTP 400).
+ */
+export function clipText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const last = text.charCodeAt(max - 1);
+  return text.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
+}
+
 export type ChatTurn = { role: 'user' | 'bot'; text: string };
 
 /**
@@ -177,57 +187,90 @@ export const UnderstandingModelSchema = z.object({
 });
 export type UnderstandingModel = z.infer<typeof UnderstandingModelSchema>;
 
-/** A string field of the flat output: "" (or a missing / null field) means "not given". */
-function given(v: unknown): string | null {
-  return typeof v === 'string' && v !== '' ? v : null;
+/** The longest free-text field the app is given (the app drops what is over its own, tighter limit). */
+const MAX_FIELD_CHARS = 300;
+const MAX_SERVE_CHARS = 40;
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** A string field of the flat output: "" (or a missing / null / blank field) means "not given". */
+function given(v: unknown, max = MAX_FIELD_CHARS): string | null {
+  return typeof v === 'string' && v.trim() !== '' ? clipText(v, max) : null;
+}
+
+/** The values of `raw` that are one of `allowed`, once each, at most `max`; anything else is dropped. */
+function codes<T extends string>(raw: unknown, allowed: readonly T[], max: number): T[] {
+  if (!Array.isArray(raw)) return [];
+  const out: T[] = [];
+  for (const v of raw) {
+    const hit = allowed.find((a) => a === v);
+    if (hit !== undefined && !out.includes(hit)) out.push(hit);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/** An integer in 0..max, or null (anything else, including a float, is not an index). */
+function index(v: unknown, max: number): number | null {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= max ? v : null;
 }
 
 /**
- * The flat model output as the `Understanding` the app (and every deployed app) reads: the worker
- * sends this shape, as before. Tolerant: a missing or null field gets its default, the sentinels
- * ("" / "none" / 0 / [] / false) become null, the caps the schema cannot express are applied, and
- * a chat without a reply is "unknown". A chat / unknown already shaped like the union passes
- * through unchanged.
+ * The flat model output (or an answer already shaped like the union) as the `Understanding` the
+ * app, and every deployed app, reads. TOTAL: it never throws and its result always passes
+ * `UnderstandingSchema`. Tolerant: a missing, null or odd field gets its default, the sentinels
+ * ("" / "none" / 0 / [] / false) become null, an unknown code is dropped, numbers are clamped,
+ * strings and lists are capped, and a chat without a reply (or anything unreadable) is "unknown".
  */
 export function toUnderstanding(raw: unknown): Understanding {
-  if (typeof raw !== 'object' || raw === null) return { kind: 'unknown' };
-  const m = raw as Partial<Record<keyof UnderstandingModel, unknown>>;
-  if (m.kind === 'chat') {
-    return typeof m.reply === 'string' && m.reply !== ''
-      ? {
-          kind: 'chat',
-          reply: m.reply,
-          action: CHAT_ACTIONS.find((a) => a === m.action) ?? 'none',
-        }
-      : { kind: 'unknown' };
+  const unknown: Understanding = { kind: 'unknown' };
+  try {
+    if (!isObject(raw)) return unknown;
+    const m = raw;
+    let out: Understanding = unknown;
+    if (m.kind === 'chat') {
+      const reply = given(m.reply);
+      if (reply !== null) {
+        out = { kind: 'chat', reply, action: CHAT_ACTIONS.find((a) => a === m.action) ?? 'none' };
+      }
+    } else if (m.kind === 'search') {
+      const party = typeof m.partySize === 'number' ? Math.trunc(m.partySize) : 0;
+      // The union shape (clarify / plan objects) and the flat shape (clarifyAsk / planWhen) both read.
+      const clarify = isObject(m.clarify) ? m.clarify : null;
+      const plan = isObject(m.plan) ? m.plan : null;
+      const ask = CLARIFY_ASKS.find((a) => a === (m.clarifyAsk ?? clarify?.ask));
+      const when = PLAN_WHENS.find((w) => w === (m.planWhen ?? plan?.when));
+      const serves = (Array.isArray(m.dishServes) ? m.dishServes : [])
+        .map((v) => given(v, MAX_SERVE_CHARS))
+        .filter((v): v is string => v !== null)
+        .filter((v, i, all) => all.indexOf(v) === i)
+        .slice(0, 5);
+      out = {
+        kind: 'search',
+        district: given(m.district),
+        cat: FOOD_CATEGORY_VALUES.find((c) => c === m.cat) ?? null,
+        dish: given(m.dish),
+        place: given(m.place),
+        food: m.food === true,
+        requireParking: m.requireParking === true,
+        appleQuery: given(m.appleQuery),
+        nearMe: m.nearMe === true,
+        dishServes: serves.length > 0 ? serves : null,
+        wishes: codes(m.wishes, WISHES, 6),
+        partySize: party >= 1 && party <= 99 ? party : null,
+        clarify: ask ? { ask, text: given(m.clarifyText ?? clarify?.text) } : null,
+        plan: when ? { when } : null,
+        tone: given(m.tone),
+        dishNote: given(m.dishNote),
+      };
+    }
+    // The guarantee, checked here and not left to the request path.
+    const checked = UnderstandingSchema.safeParse(out);
+    return checked.success ? (checked.data as Understanding) : unknown;
+  } catch {
+    return unknown;
   }
-  if (m.kind !== 'search') return { kind: 'unknown' };
-  const party = m.partySize;
-  const cat = FOOD_CATEGORY_VALUES.find((c) => c === m.cat);
-  const ask = CLARIFY_ASKS.find((a) => a === m.clarifyAsk);
-  const when = PLAN_WHENS.find((w) => w === m.planWhen);
-  const serves = Array.isArray(m.dishServes) ? (m.dishServes as string[]).slice(0, 5) : [];
-  return {
-    kind: 'search',
-    district: given(m.district),
-    cat: cat ?? null,
-    dish: given(m.dish),
-    place: given(m.place),
-    food: m.food === true,
-    requireParking: m.requireParking === true,
-    appleQuery: given(m.appleQuery),
-    nearMe: m.nearMe === true,
-    dishServes: serves.length > 0 ? serves : null,
-    wishes: ((Array.isArray(m.wishes) ? m.wishes : []) as Wish[]).slice(0, 6),
-    partySize:
-      typeof party === 'number' && Number.isInteger(party) && party >= 1 && party <= 99
-        ? party
-        : null,
-    clarify: ask ? { ask, text: given(m.clarifyText) } : null,
-    plan: when ? { when } : null,
-    tone: given(m.tone),
-    dishNote: given(m.dishNote),
-  };
 }
 
 /** Client parse: an older deployed server answers without the newer fields. */
@@ -565,6 +608,57 @@ export function planModelSchema(restaurants: number, parkings: number) {
   });
 }
 
+/**
+ * The model's /pick answer (restaurants or car parks) as the strict output for `n` candidates, or
+ * null when it is unusable (no valid `pick` index). TOTAL: never throws. An out-of-range
+ * `runnerUp` or an unknown code is dropped, reasons are deduplicated and capped, `tone` is cut.
+ * Used by the worker before it answers and by the app on what it receives.
+ */
+export function toPick(
+  raw: unknown,
+  n: number,
+  park = false,
+): PickResponse | ParkPickResponse | null {
+  try {
+    if (!isObject(raw)) return null;
+    const max = Math.max(0, n - 1);
+    const pick = index(raw.pick, max);
+    if (pick === null) return null;
+    const allowed: readonly string[] = park ? PARK_REASONS : PICK_REASONS;
+    const why = allowed.find((r) => r === raw.runnerUpWhy);
+    const out = {
+      pick,
+      reasons: codes(raw.reasons, allowed, MAX_REASONS),
+      runnerUp: index(raw.runnerUp, max),
+      runnerUpWhy: why ?? null,
+      tone: given(raw.tone),
+    };
+    const checked = (park ? parkPickOutputSchema(n) : pickOutputSchema(n)).safeParse(out);
+    return checked.success ? checked.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The model's /plan answer as the strict output, or null when a chosen index is out of range. Total. */
+export function toPlan(raw: unknown, restaurants: number, parkings: number): PlanResponse | null {
+  try {
+    if (!isObject(raw)) return null;
+    const restaurant = index(raw.restaurant, Math.max(0, restaurants - 1));
+    const parking = index(raw.parking, Math.max(0, parkings - 1));
+    if (restaurant === null || parking === null) return null;
+    const checked = planOutputSchema(restaurants, parkings).safeParse({
+      restaurant,
+      parking,
+      reasons: codes(raw.reasons, PICK_REASONS, MAX_REASONS),
+      tone: given(raw.tone),
+    });
+    return checked.success ? checked.data : null;
+  } catch {
+    return null;
+  }
+}
+
 const LIMITS_TR = `Sınırlar (uygulama bunları ayrıca denetler, uymayan sonuç atılır):
 - Sadece verilen indekslerden birini seç; yeni indeks ya da isim uydurma.
 - reasons yalnızca verilen koddan seçilir ve SADECE o adayın verilerinde gerçekten doğruysa yazılır; emin değilsen yazma.
@@ -633,6 +727,15 @@ export const chatOutputSchema = z.object({
   action: z.enum(CHAT_ACTIONS),
 });
 export type ChatResponse = z.infer<typeof chatOutputSchema>;
+
+/** The model's /chat answer as the strict output; an unknown action is "none", anything unreadable an empty reply. Total. */
+export function toChat(raw: unknown): ChatResponse {
+  const m = isObject(raw) ? raw : {};
+  return {
+    reply: typeof m.reply === 'string' ? clipText(m.reply, MAX_FIELD_CHARS) : '',
+    action: CHAT_ACTIONS.find((a) => a === m.action) ?? 'none',
+  };
+}
 
 export function chatSystem(city?: string): string {
   const c = promptCity(city);

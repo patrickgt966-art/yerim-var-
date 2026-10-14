@@ -12,6 +12,7 @@ import {
   OPEN_STATES,
   PLAN_WHENS,
   CitySchema,
+  clipText,
   todayIstanbul,
   type CancelRequest,
   type ChatRequest,
@@ -277,7 +278,7 @@ function isId(v: unknown): v is string {
 }
 
 function isText(v: unknown, max: number): v is string {
-  return typeof v === 'string' && v.length > 0 && v.length <= max;
+  return typeof v === 'string' && v.trim() !== '' && v.length <= max;
 }
 
 function isNum(v: unknown): v is number {
@@ -307,7 +308,7 @@ function readHistory(raw: unknown, maxTurns: number, maxChars: number): ChatTurn
     if (!isRecord(h)) return null;
     if (h.role !== 'user' && h.role !== 'bot') return null;
     if (typeof h.text !== 'string') return null;
-    const text = h.text.slice(0, maxChars);
+    const text = clipText(h.text, maxChars);
     if (text.trim() === '') continue;
     turns.push({ role: h.role, text });
   }

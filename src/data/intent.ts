@@ -72,7 +72,7 @@ const ADDRESS = words(
   'dostum dost kardesim kardes kanka kanki abi abla hocam hoca reis birader moruk canim guzelim usta kral kralice baba aga',
 );
 const FILLER = words(
-  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim cekti cekiyor gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum derken dedim demek istedim kastettim kast etmistim ettim yani hani aslinda onu bunu yemekten yemegi',
+  'bana beni bize ben biz bul bulur bulsana bulurmusun goster oner ara istiyorum istiyoruz isterim yemek yiyelim yiyecek yiyecegim bir bi yer yeri yerler mekan nerede nerde var mi mu misin musun ne diyorsun dersin lutfen acaba simdi peki hemen yakin yakinimda yakinda yakindaki civar civarinda civarda cevresinde tarafinda tarafta lazim cok ve ile icin vay cevap ver olsun olan bugun aksam ogle sabah gidelim gidecegim yapacak yapalim yapabilecegim yiyebilirim yiyebilecegim yiyebilecegimiz oturabilecegim oturalim cekti cekiyor gidebilecegim gidebilirim gidilecek oncesi sonrasi mac yakininda yakinlarinda yaninda karsisinda civarindaki etrafinda civari burada buraya burda etrafimda cevremde yiyecem gidecem sart varmi yakinimdaki yakinlarda buralarda etrafta cevrede bulundugum derken dedim demek istedim kastettim kast etmistim ettim yani hani aslinda onu bunu yemekten yemegi tabi tabii tabiii tabiki tabikii tabikiii ki iste',
 );
 // Filler only when the text is about food or names a district; else it may be a place name.
 const COND_FILLER = words('restoran restorani restorant lokal sey seyler acik');
@@ -87,6 +87,8 @@ const PARKING = words('park parki parkli parkyeri');
 const NEAR_ME = words(
   'yakinimda yakinimdaki yakinda yakindaki yakin yakinlarda buralarda etrafta etrafimda civarda cevrede cevremde',
 );
+// Near-me words that stand for the user's own position (not the bare "yakın", which may be "en yakın").
+const SELF_NEAR = words('yakinimda yakinimdaki buralarda etrafimda cevremde');
 const NEGATION = words('olmayan olmasin secme istemiyorum istemem haric yok degil');
 // A category word right before one of these is ruled out ("kebap olmasın", "köfte değil de balık").
 const NEGATES_PREVIOUS = words('olmasin istemiyorum istemem olmayan haric degil');
@@ -530,7 +532,8 @@ export function parseQuery(raw: string): QueryIntent {
   if (rest.length === 0) {
     if (all.some((t) => ABUSE.has(t))) return { kind: 'abuse' };
     if (hasGreeting) return { kind: 'greeting' };
-    if (!foodWord) {
+    // "yakınımda tabii", "buralarda lütfen": only filler around a near-me word is a near-me search.
+    if (!foodWord && !all.some((t) => SELF_NEAR.has(t))) {
       return all.some((t) => TOPIC.has(t)) ? { kind: 'offtopic' } : { kind: 'empty' };
     }
   }
@@ -697,7 +700,7 @@ export function parseQuery(raw: string): QueryIntent {
     tokens = tokens.filter((_, i) => i !== districtAt).filter((t) => !COND_FILLER.has(t));
   }
   const placeQuery = tokens.join(' ');
-  if (fullPlace === '' && !cat && !hasPark && !food) return { kind: 'empty' };
+  if (fullPlace === '' && !cat && !hasPark && !food && !nearMe) return { kind: 'empty' };
 
   const uncertain = placeQuery !== '' && searchPlaces(placeQuery, 1).length === 0;
   const text = cat ? [fullPlace, dish].filter(Boolean).join(' ') : fullPlace;

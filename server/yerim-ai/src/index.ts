@@ -4,20 +4,18 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import {
   FREE_DAILY,
   UnderstandingModelSchema,
-  UnderstandingSchema,
-  capReasons,
   chatOutputSchema,
   chatSystem,
   narrateSystem,
   parkPickModelSchema,
-  parkPickOutputSchema,
   parkPickSystem,
   pickModelSchema,
-  pickOutputSchema,
   pickSystem,
   planModelSchema,
-  planOutputSchema,
   planSystem,
+  toChat,
+  toPick,
+  toPlan,
   toUnderstanding,
   understandSystem,
   type Understanding,
@@ -90,6 +88,23 @@ function invalidRequestMessage(err: unknown): string | undefined {
   return inner.message
     .replace(/"[^"]{41,}"|“[^”]{41,}”|`[^`]{41,}`|'[^']{41,}'/g, '"[cut]"')
     .slice(0, 300);
+}
+
+/**
+ * True when the API answered but the SDK could not read the answer: the structured output was cut
+ * off or did not fit the schema (the SDK throws an AnthropicError "Failed to parse structured
+ * output ...", or a SyntaxError / ZodError). An HTTP error (it has a status), a lost connection
+ * or any other error is a real upstream failure.
+ */
+function unreadableOutput(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const e = err as { status?: unknown; name?: unknown; message?: unknown };
+  if (typeof e.status === 'number') return false;
+  return (
+    e.name === 'SyntaxError' ||
+    e.name === 'ZodError' ||
+    (typeof e.message === 'string' && e.message.startsWith('Failed to parse structured output'))
+  );
 }
 
 function json(body: unknown, status = 200): Response {
@@ -238,6 +253,16 @@ export default {
         502,
       );
     };
+    /** The SDK call, or null when the API answered but the output could not be read. */
+    const readable = async <T>(call: () => Promise<T>): Promise<T | null> => {
+      try {
+        return await call();
+      } catch (err) {
+        if (!unreadableOutput(err)) throw err;
+        console.error('output unreadable', errorDetail(err));
+        return null;
+      }
+    };
     const noOutput = (stopReason: unknown) => `no_output_${safeCode(stopReason) || 'unknown'}`;
 
     try {
@@ -248,30 +273,32 @@ export default {
         const system = cards
           ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
           : understandSystem(understandReq.city);
-        const response = await client.messages.parse({
-          model: MODEL,
-          max_tokens: 2048,
-          system,
-          output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
-          messages: toMessages(understandReq.history, understandReq.text),
-        });
+        const unknown = async () =>
+          respond('error', {
+            understanding: { kind: 'unknown' } satisfies Understanding,
+            remaining: await giveBack(),
+          });
+        const response = await readable(() =>
+          client.messages.parse({
+            model: MODEL,
+            max_tokens: 2048,
+            system,
+            output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
+            messages: toMessages(understandReq.history, understandReq.text),
+          }),
+        );
+        if (!response) return unknown();
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
           return respond(response.stop_reason === 'refusal' ? 'refusal' : 'error', {
             understanding: { kind: 'unknown' } satisfies Understanding,
             remaining: await giveBack(),
           });
         }
-        // The model answers one flat object; the app reads the union it always read.
-        const understanding = UnderstandingSchema.safeParse(
-          toUnderstanding(response.parsed_output),
-        );
-        if (!understanding.success) {
-          return respond('error', {
-            understanding: { kind: 'unknown' } satisfies Understanding,
-            remaining: await giveBack(),
-          });
-        }
-        return respond('ok', { understanding: understanding.data, remaining: q.remaining });
+        // The model answers one flat object; the app reads the union it always read. The
+        // conversion is total: whatever the model wrote, the result fits the union (at worst
+        // "unknown"), so this is a 200 and never a 502.
+        const understanding = toUnderstanding(response.parsed_output);
+        return respond('ok', { understanding, remaining: q.remaining });
       }
 
       if (chatReq) {
@@ -279,87 +306,97 @@ export default {
         const system = cards
           ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
           : chatSystem(chatReq.city);
-        const response = await client.messages.parse({
-          model: MODEL,
-          max_tokens: 200,
-          system,
-          output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
-          messages: toMessages(chatReq.history, chatReq.text),
-        });
-        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+        const response = await readable(() =>
+          client.messages.parse({
+            model: MODEL,
+            max_tokens: 200,
+            system,
+            output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
+            messages: toMessages(chatReq.history, chatReq.text),
+          }),
+        );
+        if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
           return upstreamFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
-        // Older apps read the bare reply; they never see the count.
-        return respond('ok', response.parsed_output);
+        // Older apps read the bare reply; they never see the count. An unreadable or empty reply
+        // is an empty reply (the app then uses its own template) and the use is given back.
+        const said = toChat(response?.parsed_output);
+        if (said.reply === '') {
+          await giveBack();
+          return respond('error', said);
+        }
+        return respond('ok', said);
       }
 
       // Candidates carry facts only (no names); the output schemas bound every index.
       if (pickReq) {
         const park = pickReq.candidates[0]?.kind === 'parking';
         const n = pickReq.candidates.length;
-        const response = await client.messages.parse({
-          model: MODEL,
-          max_tokens: 1024,
-          system: park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
-          output_config: {
-            effort: 'low',
-            format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
-          },
-          messages: [
-            {
-              role: 'user',
-              content: JSON.stringify({ text: pickReq.text, candidates: pickReq.candidates }),
+        const response = await readable(() =>
+          client.messages.parse({
+            model: MODEL,
+            max_tokens: 1024,
+            system: park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
+            output_config: {
+              effort: 'low',
+              format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
             },
-          ],
-        });
-        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+            messages: [
+              {
+                role: 'user',
+                content: JSON.stringify({ text: pickReq.text, candidates: pickReq.candidates }),
+              },
+            ],
+          }),
+        );
+        if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
           return upstreamFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
-        const out = park
-          ? parkPickOutputSchema(n).safeParse(capReasons(response.parsed_output))
-          : pickOutputSchema(n).safeParse(capReasons(response.parsed_output));
-        if (!out.success) return upstreamFail('error', 'invalid_output');
-        return respond('ok', { pick: out.data, remaining: q.remaining });
+        // Total: an unusable pick (no valid index) is `pick: null` with a 200 and the use given
+        // back; the app then answers with its own rules.
+        const out = toPick(response?.parsed_output, n, park);
+        if (!out) return respond('error', { pick: null, remaining: await giveBack() });
+        return respond('ok', { pick: out, remaining: q.remaining });
       }
 
       if (planReq) {
         const total = planReq.candidates.reduce((n, c) => n + c.parkings.length, 0);
-        const response = await client.messages.parse({
-          model: MODEL,
-          max_tokens: 1024,
-          system: planSystem(planReq.city),
-          output_config: {
-            effort: 'low',
-            format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
-          },
-          messages: [
-            {
-              role: 'user',
-              content: JSON.stringify({
-                text: planReq.text,
-                when: planReq.when,
-                candidates: planReq.candidates,
-              }),
+        const response = await readable(() =>
+          client.messages.parse({
+            model: MODEL,
+            max_tokens: 1024,
+            system: planSystem(planReq.city),
+            output_config: {
+              effort: 'low',
+              format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
             },
-          ],
-        });
-        if (response.stop_reason === 'refusal' || !response.parsed_output) {
+            messages: [
+              {
+                role: 'user',
+                content: JSON.stringify({
+                  text: planReq.text,
+                  when: planReq.when,
+                  candidates: planReq.candidates,
+                }),
+              },
+            ],
+          }),
+        );
+        if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
           return upstreamFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
-        const out = planOutputSchema(planReq.candidates.length, total).safeParse(
-          capReasons(response.parsed_output),
-        );
-        if (!out.success) return upstreamFail('error', 'invalid_output');
-        return respond('ok', { plan: out.data, remaining: q.remaining });
+        const out = toPlan(response?.parsed_output, planReq.candidates.length, total);
+        if (!out) return respond('error', { plan: null, remaining: await giveBack() });
+        return respond('ok', { plan: out, remaining: q.remaining });
       }
 
       if (narrateReq) {
