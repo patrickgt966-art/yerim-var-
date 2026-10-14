@@ -187,9 +187,34 @@ describe('validUnderstand', () => {
     expect(validUnderstand({ ...ok, deviceId: 'a'.repeat(65) })).toBeNull();
   });
 
-  it('rejects more than the history limit', () => {
-    const history = Array.from({ length: HISTORY_LIMIT + 1 }, () => ({ role: 'user', text: 'x' }));
-    expect(validUnderstand({ ...ok, history })).toBeNull();
+  it('keeps the last turns when there are more than the history limit', () => {
+    const history = Array.from({ length: HISTORY_LIMIT + 2 }, (_, i) => ({
+      role: 'user',
+      text: `t${i}`,
+    }));
+    const req = validUnderstand({ ...ok, history });
+    expect(req?.history).toHaveLength(HISTORY_LIMIT);
+    expect(req?.history[0]?.text).toBe('t2');
+  });
+
+  it('clips an over-long history turn instead of rejecting, and drops empty turns', () => {
+    const history = [
+      { role: 'bot', text: 'b'.repeat(600) },
+      { role: 'user', text: '' },
+      { role: 'user', text: 'merhaba' },
+    ];
+    const req = validUnderstand({ ...ok, history });
+    expect(req?.history).toEqual([
+      { role: 'bot', text: 'b'.repeat(MAX_MESSAGE_CHARS) },
+      { role: 'user', text: 'merhaba' },
+    ]);
+  });
+
+  it('still rejects a malformed history turn', () => {
+    expect(validUnderstand({ ...ok, history: 'x' })).toBeNull();
+    expect(validUnderstand({ ...ok, history: [{ role: 'system', text: 'a' }] })).toBeNull();
+    expect(validUnderstand({ ...ok, history: [{ role: 'user', text: 5 }] })).toBeNull();
+    expect(validUnderstand({ ...ok, history: ['x'] })).toBeNull();
   });
 
   it('accepts optional lastCards and rejects bad ones', () => {

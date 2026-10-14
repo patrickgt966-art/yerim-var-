@@ -195,7 +195,7 @@ describe('one counter across the endpoints', () => {
     mockParse.mockRejectedValueOnce(new Error('boom'));
     const bad = await post(env, '/understand', understandBody('m1'));
     expect(bad.status).toBe(502);
-    expect(await bad.json()).toEqual({ error: 'upstream', remaining: 10 });
+    expect(await bad.json()).toEqual({ error: 'upstream', remaining: 10, detail: 'Error' });
     mockParse.mockResolvedValueOnce({ stop_reason: 'refusal', parsed_output: null });
     const refused = await post(env, '/understand', understandBody('m2'));
     expect(await refused.json()).toEqual({ understanding: { kind: 'unknown' }, remaining: 10 });
@@ -304,5 +304,86 @@ describe('city', () => {
     expect(res.status).toBe(400);
     expect(mockParse).not.toHaveBeenCalled();
     expect(await remainingOf(kv)).toBe(10);
+  });
+});
+
+describe('upstream failure detail', () => {
+  /** What the SDK throws for an HTTP error: a status and the API's JSON body. */
+  const apiError = (status: number, type: string) =>
+    Object.assign(new Error(`${status} invalid x-api-key sk-ant-SECRET`), {
+      name: 'AuthenticationError',
+      status,
+      error: { type: 'error', error: { type, message: 'invalid x-api-key sk-ant-SECRET' } },
+    });
+
+  it('a 401 says so in detail, with no message, key or text', async () => {
+    const kv = fakeKV();
+    mockParse.mockRejectedValueOnce(apiError(401, 'authentication_error'));
+    const res = await post(envOf(kv), '/understand', understandBody('m1'));
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: 'upstream',
+      remaining: 10,
+      detail: 'anthropic_401_authentication_error',
+    });
+    const logged = (console.error as jest.Mock).mock.calls.flat().join(' ');
+    expect(logged).toContain('anthropic_401_authentication_error');
+    expect(logged).not.toMatch(/SECRET|gizli/);
+  });
+
+  it('an error that is not an APIError gives its name; no output gives the stop reason', async () => {
+    const kv = fakeKV();
+    mockParse.mockRejectedValueOnce(new TypeError('x'));
+    const a = await post(envOf(kv), '/pick', pickBody('m1'));
+    expect(((await a.json()) as { detail: string }).detail).toBe('TypeError');
+    mockParse.mockResolvedValueOnce({ stop_reason: 'max_tokens', parsed_output: null });
+    const b = await post(envOf(kv), '/pick', pickBody('m2'));
+    expect(((await b.json()) as { detail: string }).detail).toBe('no_output_max_tokens');
+  });
+});
+
+describe('the flat model output', () => {
+  const flat = { ...searchOut, reply: null, action: null };
+
+  it('/understand answers the union shape apps read, not the flat object', async () => {
+    const kv = fakeKV();
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flat });
+    const res = await post(envOf(kv), '/understand', understandBody('m1'));
+    const body = (await res.json()) as {
+      understanding: Record<string, unknown>;
+      remaining: number;
+    };
+    expect(body.remaining).toBe(9);
+    expect(body.understanding).toEqual(searchOut);
+    expect(body.understanding).not.toHaveProperty('reply');
+
+    mockParse.mockResolvedValueOnce({
+      stop_reason: 'end_turn',
+      parsed_output: { ...flat, kind: 'chat', reply: 'Selam!', action: 'none' },
+    });
+    const chat = await post(envOf(kv), '/understand', understandBody('m2'));
+    expect(((await chat.json()) as { understanding: unknown }).understanding).toEqual({
+      kind: 'chat',
+      reply: 'Selam!',
+      action: 'none',
+    });
+  });
+
+  it('/pick cuts a long reason list instead of failing, and rejects an out-of-range index', async () => {
+    const kv = fakeKV();
+    mockParse.mockResolvedValueOnce({
+      stop_reason: 'end_turn',
+      parsed_output: { ...pickOut, reasons: ['closest', 'open_now', 'open_late', 'outdoor'] },
+    });
+    const ok = await post(envOf(kv), '/pick', pickBody('m1'));
+    expect(((await ok.json()) as { pick: { reasons: string[] } }).pick.reasons).toHaveLength(3);
+
+    mockParse.mockResolvedValueOnce({
+      stop_reason: 'end_turn',
+      parsed_output: { ...pickOut, pick: 7 },
+    });
+    const bad = await post(envOf(kv), '/pick', pickBody('m2'));
+    expect(bad.status).toBe(502);
+    expect(await bad.json()).toEqual({ error: 'upstream', remaining: 9, detail: 'invalid_output' });
   });
 });

@@ -41,9 +41,13 @@ describe('validChat', () => {
     expect(validChat({ ...good, text: 'x'.repeat(MAX_CHAT_CHARS) })).not.toBeNull();
     const turn = { role: 'user', text: 'a' };
     expect(validChat({ ...good, history: Array(CHAT_HISTORY_LIMIT).fill(turn) })).not.toBeNull();
-    expect(validChat({ ...good, history: Array(CHAT_HISTORY_LIMIT + 1).fill(turn) })).toBeNull();
+    expect(
+      validChat({ ...good, history: Array(CHAT_HISTORY_LIMIT + 1).fill(turn) })?.history,
+    ).toHaveLength(CHAT_HISTORY_LIMIT);
     expect(validChat({ ...good, history: [{ role: 'system', text: 'a' }] })).toBeNull();
-    expect(validChat({ ...good, history: [{ role: 'user', text: 'x'.repeat(301) }] })).toBeNull();
+    expect(
+      validChat({ ...good, history: [{ role: 'user', text: 'x'.repeat(301) }] })?.history,
+    ).toEqual([{ role: 'user', text: 'x'.repeat(MAX_CHAT_CHARS) }]);
     expect(validChat({ ...good, history: 'x' })).toBeNull();
     expect(validChat({ ...good, lastCards: { count: 2, kind: 'cafe' } })).toBeNull();
     expect(validChat({ ...good, lastCards: { count: -1, kind: 'parking' } })).toBeNull();

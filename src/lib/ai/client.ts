@@ -15,6 +15,7 @@ import {
   planOutputSchema,
   type ChatRequest,
   type ChatResponse,
+  type ChatTurn,
   type NarrateRequest,
   type ParkPickRequest,
   type ParkPickResponse,
@@ -80,6 +81,17 @@ const forCity = <T extends { city?: string }>(req: T): T => ({
   city: req.city ?? activeCity().id,
 });
 
+/**
+ * The history as the server accepts it: the last `maxTurns` turns, each text clipped to `maxChars`
+ * (the start stays; bot replies are often longer) and turns without text dropped.
+ */
+function clipHistory(history: ChatTurn[], maxTurns: number, maxChars: number): ChatTurn[] {
+  return history
+    .slice(-maxTurns)
+    .map((h) => ({ role: h.role, text: h.text.slice(0, maxChars) }))
+    .filter((h) => h.text.trim() !== '');
+}
+
 export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch) {
   const root = baseUrl.replace(/\/+$/, '');
 
@@ -141,7 +153,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         {
           ...forCity(req),
           text: req.text.slice(0, MAX_MESSAGE_CHARS),
-          history: req.history.slice(-HISTORY_LIMIT),
+          history: clipHistory(req.history, HISTORY_LIMIT, MAX_MESSAGE_CHARS),
         },
         UNDERSTAND_TIMEOUT_MS,
       );
@@ -227,9 +239,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         {
           ...forCity(req),
           text: req.text.slice(0, MAX_CHAT_CHARS),
-          history: req.history
-            .slice(-CHAT_HISTORY_LIMIT)
-            .map((h) => ({ role: h.role, text: h.text.slice(0, MAX_CHAT_CHARS) })),
+          history: clipHistory(req.history, CHAT_HISTORY_LIMIT, MAX_CHAT_CHARS),
         },
         CHAT_TIMEOUT_MS,
       );
