@@ -106,23 +106,24 @@ const rawPost = (path: string, body: unknown) =>
 const searchOut = (district: string, food: boolean) => ({
   kind: 'search',
   district,
-  cat: null,
-  dish: null,
-  place: null,
+  cat: 'none',
+  dish: '',
+  place: '',
   food,
   requireParking: false,
-  appleQuery: null,
+  appleQuery: '',
   nearMe: false,
-  dishServes: null,
+  dishServes: [],
   wishes: [],
-  partySize: null,
-  clarify: null,
-  plan: null,
-  tone: null,
-  dishNote: null,
-  // The flat model output: the fields of the other kinds are null.
-  reply: null,
-  action: null,
+  partySize: 0,
+  clarifyAsk: 'none',
+  clarifyText: '',
+  planWhen: 'none',
+  tone: '',
+  dishNote: '',
+  // The flat model output: the fields of the other kinds are empty.
+  reply: '',
+  action: 'none',
 });
 
 const anthropicCalls: { system: string; content: unknown }[] = [];

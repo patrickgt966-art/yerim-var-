@@ -147,68 +147,86 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
  * What the model is asked to produce for /understand: ONE flat object. Structured outputs reject a
  * `$defs` / `$ref` (a reused sub-schema, or any array with a `.max()`) next to an `anyOf`, and a
  * discriminated union is an `anyOf` of objects, so the model never sees `UnderstandingSchema`.
- * Every property is required; a field that does not apply to the `kind` is null (wishes: []).
+ * The API also caps the union-typed parameters (`["string","null"]`, `anyOf [X, null]`), so this
+ * schema has NONE: every property is required and "not given" is a sentinel, which
+ * `toUnderstanding` maps back to null: "" (strings), "none" (enums), 0 (partySize), false
+ * (booleans), [] (arrays). clarify / plan are flattened into clarifyAsk + clarifyText / planWhen.
  * Limits that JSON schema cannot carry are applied by `toUnderstanding`.
  * Keep every sub-schema inline and separate: do not reuse one instance twice.
  */
 export const UnderstandingModelSchema = z.object({
   kind: z.enum(['search', 'chat', 'unknown']),
-  district: z.string().nullable(),
-  cat: z.enum(FOOD_CATEGORY_VALUES).nullable(),
-  dish: z.string().nullable(),
-  place: z.string().nullable(),
-  food: z.boolean().nullable(),
-  requireParking: z.boolean().nullable(),
-  appleQuery: z.string().nullable(),
-  nearMe: z.boolean().nullable(),
-  dishServes: z.array(z.string()).nullable(),
+  district: z.string(),
+  cat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
+  dish: z.string(),
+  place: z.string(),
+  food: z.boolean(),
+  requireParking: z.boolean(),
+  appleQuery: z.string(),
+  nearMe: z.boolean(),
+  dishServes: z.array(z.string()),
   wishes: z.array(z.enum(WISHES)),
-  partySize: z.number().int().nullable(),
-  clarify: z.object({ ask: z.enum(CLARIFY_ASKS), text: z.string().nullable() }).nullable(),
-  plan: z.object({ when: z.enum(PLAN_WHENS) }).nullable(),
-  tone: z.string().nullable(),
-  dishNote: z.string().nullable(),
-  reply: z.string().nullable(),
-  action: z.enum(CHAT_ACTIONS).nullable(),
+  partySize: z.number().int(),
+  clarifyAsk: z.enum([...CLARIFY_ASKS, 'none']),
+  clarifyText: z.string(),
+  planWhen: z.enum([...PLAN_WHENS, 'none']),
+  tone: z.string(),
+  dishNote: z.string(),
+  reply: z.string(),
+  action: z.enum(CHAT_ACTIONS),
 });
 export type UnderstandingModel = z.infer<typeof UnderstandingModelSchema>;
 
+/** A string field of the flat output: "" (or a missing / null field) means "not given". */
+function given(v: unknown): string | null {
+  return typeof v === 'string' && v !== '' ? v : null;
+}
+
 /**
  * The flat model output as the `Understanding` the app (and every deployed app) reads: the worker
- * sends this shape, as before. Tolerant: a missing or null field gets its default, the caps the
- * schema cannot express are applied, and a chat without a reply is "unknown". Input that is already
- * shaped like the union (search / chat / unknown) passes through unchanged.
+ * sends this shape, as before. Tolerant: a missing or null field gets its default, the sentinels
+ * ("" / "none" / 0 / [] / false) become null, the caps the schema cannot express are applied, and
+ * a chat without a reply is "unknown". A chat / unknown already shaped like the union passes
+ * through unchanged.
  */
 export function toUnderstanding(raw: unknown): Understanding {
   if (typeof raw !== 'object' || raw === null) return { kind: 'unknown' };
-  const m = raw as Partial<UnderstandingModel>;
+  const m = raw as Partial<Record<keyof UnderstandingModel, unknown>>;
   if (m.kind === 'chat') {
     return typeof m.reply === 'string' && m.reply !== ''
-      ? { kind: 'chat', reply: m.reply, action: m.action ?? 'none' }
+      ? {
+          kind: 'chat',
+          reply: m.reply,
+          action: CHAT_ACTIONS.find((a) => a === m.action) ?? 'none',
+        }
       : { kind: 'unknown' };
   }
   if (m.kind !== 'search') return { kind: 'unknown' };
   const party = m.partySize;
+  const cat = FOOD_CATEGORY_VALUES.find((c) => c === m.cat);
+  const ask = CLARIFY_ASKS.find((a) => a === m.clarifyAsk);
+  const when = PLAN_WHENS.find((w) => w === m.planWhen);
+  const serves = Array.isArray(m.dishServes) ? (m.dishServes as string[]).slice(0, 5) : [];
   return {
     kind: 'search',
-    district: m.district ?? null,
-    cat: m.cat ?? null,
-    dish: m.dish ?? null,
-    place: m.place ?? null,
-    food: m.food ?? false,
-    requireParking: m.requireParking ?? false,
-    appleQuery: m.appleQuery ?? null,
-    nearMe: m.nearMe ?? false,
-    dishServes: Array.isArray(m.dishServes) ? m.dishServes.slice(0, 5) : null,
-    wishes: (Array.isArray(m.wishes) ? m.wishes : []).slice(0, 6),
+    district: given(m.district),
+    cat: cat ?? null,
+    dish: given(m.dish),
+    place: given(m.place),
+    food: m.food === true,
+    requireParking: m.requireParking === true,
+    appleQuery: given(m.appleQuery),
+    nearMe: m.nearMe === true,
+    dishServes: serves.length > 0 ? serves : null,
+    wishes: ((Array.isArray(m.wishes) ? m.wishes : []) as Wish[]).slice(0, 6),
     partySize:
       typeof party === 'number' && Number.isInteger(party) && party >= 1 && party <= 99
         ? party
         : null,
-    clarify: m.clarify ?? null,
-    plan: m.plan ?? null,
-    tone: m.tone ?? null,
-    dishNote: m.dishNote ?? null,
+    clarify: ask ? { ask, text: given(m.clarifyText) } : null,
+    plan: when ? { when } : null,
+    tone: given(m.tone),
+    dishNote: given(m.dishNote),
   };
 }
 
@@ -283,22 +301,22 @@ Karar (kind):
 
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
-- search: district (şehrin ilçesi ya da null), cat (kategori ya da null), dish (yemek adı ya da null), place (ilçe dışında bir yer/mekân adı ya da null), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da null), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
-- Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes null olsun.
+- search: district (şehrin ilçesi ya da ""), cat (kategori ya da "none"), dish (yemek adı ya da ""), place (ilçe dışında bir yer/mekân adı ya da ""), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da ""), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes boş dizi olsun.
 - "yakınımda", "en yakın", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
 - wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy, tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (raylı sistem/metro yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
-- partySize: kaç kişi olduklarını söylediyse sayı, yoksa null.
-- clarify: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa {ask, text} döndür; aksi halde null. ask sadece district, dish, party, time ya da duration olabilir.
-- plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa {when} (now, tonight, lunch, dinner, later_today), değilse null.
+- partySize: kaç kişi olduklarını söylediyse sayı, yoksa 0.
+- clarifyAsk / clarifyText: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa clarifyAsk'a sorunun konusunu (district, dish, party, time ya da duration) ve clarifyText'e sorunun cümlesini yaz; aksi halde clarifyAsk "none", clarifyText "" olsun.
+- plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa planWhen (now, tonight, lunch, dinner, later_today), değilse "none".
 - chat: reply (1-2 kısa, sıcak, hafif esprili cümle, en çok 140 karakter) ve action (none, ask_food_or_park, suggest_examples, pick_from_last). Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!"); konu dışı laflara kısaca gülümseyip yemek ya da otoparka dön. ask_food_or_park: ne arandığı belli değilse. suggest_examples: nasıl kullanılacağı sorulduysa. pick_from_last: kullanıcı seçimi sana bırakıyorsa VE aşağıda son cevapta kart olduğu yazıyorsa. Diğer durumlarda none. reply HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok); rakam, mekân adı, fiyat, "ücretsiz", otopark, mesafe, açık/kapalı iddiası, link, @, # içermesin, en çok bir emoji olsun, cümle ortasında büyük harfle başlayan sözcük (özel ad) olmasın; uygulama bu cevabı denetler ve kurala uymayanı atar.
-- Şema tek düzdür: kind her zaman yazılır; o kind'a ait olmayan alanlar null olur (wishes için boş dizi). chat için reply ve action, search için diğer alanlar doldurulur.
+- Şema tek düzdür: tüm alanlar her zaman yazılır; "verilmedi" demek için metinlerde "", kategori/clarifyAsk/planWhen/action alanlarında "none", partySize için 0, food/requireParking/nearMe için false, dishServes ve wishes için [] kullan. O kind'a ait olmayan alanlar bu boş değerlerde kalır. chat için reply ve action, search için diğer alanlar doldurulur.
 - Sadece şemaya uygun JSON döndür.
 
-SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin, hepsi null olabilir. Başka hiçbir alana metin yazma (chat reply yukarıdaki kurallara tabidir).
+SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin, hepsi boş ("") olabilir. Başka hiçbir alana metin yazma (chat reply yukarıdaki kurallara tabidir).
 - tone (en çok 90 karakter, tek kısa samimi cümle): kullanıcının durumuna ya da dileğine sıcak bir karşılık, örneğin "Yıldönümünüz kutlu olsun!".
-- clarify.text (en çok 80 karakter): sorunun cümlesi, örneğin "Hangi semtte yemek istersiniz?".
+- clarifyText (en çok 80 karakter): sorunun cümlesi, örneğin "Hangi semtte yemek istersiniz?".
 - dishNote (en çok 140 karakter): yemek bizim için bilinmiyorsa ya da egzotikse yemeğin KENDİSİ hakkında genel bilgi, örneğin "Kibbe, bulgur ve kıymayla yapılan, içli köfteye benzeyen bir Orta Doğu yemeğidir." Asla belirli bir mekân hakkında değil.
-Bu üç alanda: rakam, saat, fiyat, mesafe, dakika, açık/kapalı, otopark, boş yer, "en iyi/lezzetli/meşhur", puan, yorum, menü, güvenlik, kamera, yükseklik, rezervasyon, mekân adı, link, @ ya da # yazma; yer hakkında hiçbir iddiada bulunma (sakin, romantik, manzaralı, ucuz, güvenli, yakın gibi). (clarify.text otopark kelimesini kullanabilir.) Bu alanlar uygulamada denetlenir ve kurala uymayan atılır.`;
+Bu üç alanda: rakam, saat, fiyat, mesafe, dakika, açık/kapalı, otopark, boş yer, "en iyi/lezzetli/meşhur", puan, yorum, menü, güvenlik, kamera, yükseklik, rezervasyon, mekân adı, link, @ ya da # yazma; yer hakkında hiçbir iddiada bulunma (sakin, romantik, manzaralı, ucuz, güvenli, yakın gibi). (clarifyText otopark kelimesini kullanabilir.) Bu alanlar uygulamada denetlenir ve kurala uymayan atılır.`;
 }
 
 /** The İzmir prompt (the default; scripts/ai-eval.ts reads it). */
