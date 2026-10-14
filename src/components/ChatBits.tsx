@@ -204,16 +204,17 @@ export function BotBubble({
             <Txt
               style={{ fontSize: 14, lineHeight: 20 }}
               accessibilityLabel={
-                (message.sparkle ? t('chat.sparkle') + '. ' : '') +
+                (message.sparkle ? t('chat.aiAnswer') + '. ' : '') +
                 t('chat.a11yBot', { text: message.text })
               }
             >
               {message.text}
               {message.sparkle && (
                 <Text
+                  testID="ai-marker"
                   accessible={false}
                   importantForAccessibility="no"
-                  style={{ fontSize: 11, lineHeight: 20 }}
+                  style={{ fontSize: 11, lineHeight: 20, color: c.textSecondary }}
                 >
                   {' ✨'}
                 </Text>

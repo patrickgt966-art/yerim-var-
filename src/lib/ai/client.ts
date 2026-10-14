@@ -43,15 +43,33 @@ export function aiBaseUrl(): string | null {
 export type AiResult<T> =
   | { ok: true; value: T; remaining: number }
   /** `remaining` is the server's count after a failure (an older server omits it). */
-  | { ok: false; reason: 'off' | 'quota' | 'error'; remaining?: number };
+  | { ok: false; reason: 'off' | 'quota' | 'error'; remaining?: number; detail?: AiFailDetail };
 
-type Failure = { failed: 'quota' | 'error'; remaining?: number; timedOut?: boolean };
+/** Why a call failed: gave up waiting, an HTTP error status, no connection, or a reply that does not fit. */
+export type AiFailDetail = 'timeout' | 'http' | 'network' | 'schema';
+
+type Failure = {
+  failed: 'quota' | 'error';
+  remaining?: number;
+  timedOut?: boolean;
+  detail: AiFailDetail;
+};
 
 const fail = (
   reason: 'quota' | 'error',
   remaining?: number,
-): { ok: false; reason: 'quota' | 'error'; remaining?: number } =>
-  remaining === undefined ? { ok: false, reason } : { ok: false, reason, remaining };
+  detail?: AiFailDetail,
+): { ok: false; reason: 'quota' | 'error'; remaining?: number; detail?: AiFailDetail } => ({
+  ok: false,
+  reason,
+  ...(remaining === undefined ? {} : { remaining }),
+  ...(detail === undefined ? {} : { detail }),
+});
+
+/** Dev only (shows in the `expo start` terminal). Never the message text. */
+function warnDev(path: string, detail: AiFailDetail, extra?: string): void {
+  if (__DEV__) console.warn(`[ai] ${path} failed: ${detail}${extra ? ` (${extra})` : ''}`);
+}
 
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
@@ -85,19 +103,27 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         signal: controller.signal,
       });
       if (!res.ok) {
+        warnDev(path, 'http', `HTTP ${res.status}`);
         let failed: 'quota' | 'error' = res.status === 429 ? 'quota' : 'error';
         try {
           const err = (await res.json()) as { remaining?: unknown; reason?: unknown } | null;
           // Too fast or a busy server is no empty quota: the uses left are still there.
           if (err?.reason === 'slow' || err?.reason === 'global') failed = 'error';
-          return { failed, remaining: num(err?.remaining) };
+          return { failed, remaining: num(err?.remaining), detail: 'http' };
         } catch {
-          return { failed };
+          return { failed, detail: 'http' };
         }
       }
-      return { data: await res.json() };
+      try {
+        return { data: await res.json() };
+      } catch {
+        warnDev(path, 'schema', `HTTP ${res.status}, body is not JSON`);
+        return { failed: 'error', detail: 'schema' };
+      }
     } catch {
-      return { failed: 'error', ...(timedOut ? { timedOut: true } : {}) };
+      const detail = timedOut ? 'timeout' : 'network';
+      warnDev(path, detail);
+      return { failed: 'error', detail, ...(timedOut ? { timedOut: true } : {}) };
     } finally {
       clearTimeout(timer);
     }
@@ -122,11 +148,15 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       if ('failed' in res) {
         // Gave up waiting: the server may still be working (or have charged); take the use back.
         if (res.timedOut) cancel(req.deviceId, req.messageId);
-        return fail(res.failed, res.remaining);
+        return fail(res.failed, res.remaining, res.detail);
       }
       const body = res.data as { understanding?: unknown; remaining?: unknown } | null;
       const parsed = UnderstandingClientSchema.safeParse(body?.understanding);
-      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
+      if (!parsed.success || typeof body?.remaining !== 'number') {
+        const issue = parsed.success ? 'remaining' : parsed.error.issues[0]?.path.join('.') || '(root)';
+        warnDev('/understand', 'schema', `HTTP 200, first issue at ${issue}`);
+        return fail('error', undefined, 'schema');
+      }
       return { ok: true, value: parsed.data, remaining: body.remaining };
     },
 
