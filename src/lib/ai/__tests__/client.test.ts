@@ -229,7 +229,7 @@ describe('ai client', () => {
     await createAiClient('https://ai.test', fakeFetch(503, {})).understand(understandReq);
     expect(String(warn.mock.calls[0]![0])).toContain('HTTP 503');
     warn.mockClear();
-    const bad = fakeFetch(200, { understanding: { kind: 'search', wishes: ['nope'] }, remaining: 4 });
+    const bad = fakeFetch(200, { understanding: { kind: 'weather' }, remaining: 4 });
     const r = await createAiClient('https://ai.test', bad).understand(understandReq);
     expect(r).toEqual({ ok: false, reason: 'error', detail: 'schema' });
     expect(String(warn.mock.calls[0]![0])).toContain('schema');
@@ -327,6 +327,58 @@ describe('ai client upstream detail', () => {
   });
 });
 
+describe('ai client dev warning for a failed call', () => {
+  const warns = () => (console.warn as jest.Mock).mock.calls.map((c) => String(c[0]));
+
+  it('prints the worker detail and message, each cut to 300 characters, never the text', async () => {
+    const f = fakeFetch(502, {
+      error: 'upstream',
+      remaining: 9,
+      detail: 'anthropic_400_invalid_request_error',
+      message: 'messages.0.content: must not be empty ' + 'x'.repeat(400),
+    });
+    await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(warns()).toEqual([
+      `[ai] /understand failed: http (HTTP 502) anthropic_400_invalid_request_error — messages.0.content: must not be empty ${'x'.repeat(300 - 'messages.0.content: must not be empty '.length)}`,
+    ]);
+    expect(warns().join('')).not.toContain(understandReq.text);
+  });
+
+  it('prints the detail alone, and ignores a detail or message that is not a string', async () => {
+    await createAiClient('https://ai.test', fakeFetch(502, { detail: 'SyntaxError' })).understand(understandReq);
+    await createAiClient('https://ai.test', fakeFetch(502, { detail: 7, message: { a: 1 } })).understand(understandReq);
+    expect(warns()).toEqual([
+      '[ai] /understand failed: http (HTTP 502) SyntaxError',
+      '[ai] /understand failed: http (HTTP 502)',
+    ]);
+  });
+
+  it('does the same for every other endpoint', async () => {
+    const f = fakeFetch(502, { detail: 'anthropic_529_overloaded_error' });
+    const c = createAiClient('https://ai.test', f);
+    await c.narrate(narrateReq);
+    await c.chat({ deviceId: 'd-test', messageId: 'm1', text: 'selam', history: [] });
+    await c.quota('d-test');
+    expect(warns()).toEqual([
+      '[ai] /narrate failed: http (HTTP 502) anthropic_529_overloaded_error',
+      '[ai] /chat failed: http (HTTP 502) anthropic_529_overloaded_error',
+      '[ai] /quota failed: http (HTTP 502) anthropic_529_overloaded_error',
+    ]);
+  });
+
+  it('a body that is not JSON still warns with the status', async () => {
+    const f = jest.fn(async () => ({
+      status: 502,
+      ok: false,
+      json: async () => {
+        throw new Error('not json');
+      },
+    })) as unknown as typeof fetch;
+    await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(warns()).toEqual(['[ai] /understand failed: http (HTTP 502)']);
+  });
+});
+
 describe('ai client quota', () => {
   it('returns the remaining count', async () => {
     const f = fakeFetch(200, { remaining: 3 });
@@ -375,19 +427,31 @@ describe('ai client pick / plan / understand extras', () => {
     expect(f).toHaveBeenCalledWith('https://ai.test/pick', expect.anything());
   });
 
-  it('treats an out-of-range pick, an unknown reason or a refusal as an error', async () => {
-    const bad = [
-      { ...pick, pick: 3 },
-      { ...pick, reasons: ['cheapest'] },
-      { ...pick, reasons: ['closest', 'open_now', 'outdoor', 'free_parking'] },
-      { ...pick, runnerUp: 7, runnerUpWhy: 'closest' },
-    ];
-    for (const b of bad) {
+  it('treats an out-of-range pick, or a null one, as an error', async () => {
+    for (const b of [{ ...pick, pick: 3 }, { ...pick, pick: -1 }, { ...pick, pick: 0.5 }, null]) {
       const r = await createAiClient(
         'https://ai.test',
         fakeFetch(200, { pick: b, remaining: 3 }),
       ).pick(pickReq);
       expect(r).toEqual({ ok: false, reason: 'error' });
+    }
+  });
+
+  it('keeps a pick whose extras are odd: unknown or extra reasons and an out-of-range runner-up are dropped', async () => {
+    const cases: [object, object][] = [
+      [{ ...pick, reasons: ['cheapest'] }, { ...pick, reasons: [] }],
+      [
+        { ...pick, reasons: ['closest', 'open_now', 'outdoor', 'free_parking'] },
+        { ...pick, reasons: ['closest', 'open_now', 'outdoor'] },
+      ],
+      [{ ...pick, runnerUp: 7, runnerUpWhy: 'closest' }, { ...pick, runnerUp: null, runnerUpWhy: 'closest' }],
+    ];
+    for (const [sent, kept] of cases) {
+      const r = await createAiClient(
+        'https://ai.test',
+        fakeFetch(200, { pick: sent, remaining: 3 }),
+      ).pick(pickReq);
+      expect(r).toEqual({ ok: true, value: kept, remaining: 3 });
     }
   });
 
@@ -461,10 +525,11 @@ describe('ai client pick / plan / understand extras', () => {
       'https://ai.test',
       fakeFetch(200, { pick: { ...ok, reasons: ['outdoor'] }, remaining: 1 }),
     ).pickPark(parkReq);
-    expect(food.ok).toBe(false);
+    // A restaurant reason is not a car park reason: it is dropped, the pick stays.
+    expect(food).toMatchObject({ ok: true, value: { pick: 0, reasons: [] } });
   });
 
-  it('rejects an understanding with an unknown wish', async () => {
+  it('keeps an understanding with an unknown wish and drops the wish', async () => {
     const u = {
       kind: 'search',
       district: null,
@@ -479,6 +544,14 @@ describe('ai client pick / plan / understand extras', () => {
     const r = await createAiClient(
       'https://ai.test',
       fakeFetch(200, { understanding: u, remaining: 3 }),
+    ).understand(understandReq);
+    expect(r).toMatchObject({ ok: true, value: { kind: 'search', wishes: [] } });
+  });
+
+  it('rejects an understanding of an unknown kind', async () => {
+    const r = await createAiClient(
+      'https://ai.test',
+      fakeFetch(200, { understanding: { kind: 'weather' }, remaining: 3 }),
     ).understand(understandReq);
     expect(r).toEqual({ ok: false, reason: 'error', detail: 'schema' });
   });
@@ -521,7 +594,7 @@ describe('ai client chat', () => {
     const client = (f: typeof fetch) => createAiClient('https://ai.test', f);
     expect(await client(fakeFetch(429, { reason: 'global' })).chat(chatReq)).toBeNull();
     expect(await client(fakeFetch(502, { error: 'upstream' })).chat(chatReq)).toBeNull();
-    expect(await client(fakeFetch(200, { reply: 'x', action: 'dance' })).chat(chatReq)).toBeNull();
+    expect(await client(fakeFetch(200, { reply: 7, action: 'none' })).chat(chatReq)).toBeNull();
     expect(await client(fakeFetch(200, { reply: 5, action: 'none' })).chat(chatReq)).toBeNull();
     const down = jest.fn(async () => {
       throw new Error('offline');

@@ -430,7 +430,7 @@ describe('the flat model output', () => {
     });
   });
 
-  it('/pick cuts a long reason list instead of failing, and rejects an out-of-range index', async () => {
+  it('/pick cuts a long reason list instead of failing, and answers an out-of-range index with pick null (200) and gives the use back', async () => {
     const kv = fakeKV();
     mockParse.mockResolvedValueOnce({
       stop_reason: 'end_turn',
@@ -444,7 +444,7 @@ describe('the flat model output', () => {
       parsed_output: { ...pickOut, pick: 7 },
     });
     const bad = await post(envOf(kv), '/pick', pickBody('m2'));
-    expect(bad.status).toBe(502);
-    expect(await bad.json()).toEqual({ error: 'upstream', remaining: 9, detail: 'invalid_output' });
+    expect(bad.status).toBe(200);
+    expect(await bad.json()).toEqual({ pick: null, remaining: 9 });
   });
 });

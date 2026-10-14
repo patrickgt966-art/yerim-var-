@@ -199,6 +199,22 @@ describe('localPart', () => {
     expect(localPart('Konak')).toBe('Konak');
   });
 
+  it('reads "yakınımda" with filler words as near-me, never as a place name', () => {
+    for (const q of [
+      'Yakınımda tabikii',
+      'yakınımda tabii',
+      'yakınımda tabi ki',
+      'yakınımda lütfen',
+      'yakınımda hemen',
+      'yakınımda bi',
+      'yakınımda işte',
+      'buralarda tabii ki lütfen',
+    ]) {
+      expect(parseQuery(q)).toMatchObject({ kind: 'search', nearMe: true, placeQuery: '' });
+    }
+    expect(search('yakınımda balık tabii')).toMatchObject({ nearMe: true, cat: 'fish', placeQuery: '' });
+  });
+
   it('gives the district for a car-park text', () => {
     expect(localPart('konakta otopark')).toBe('Konak');
   });

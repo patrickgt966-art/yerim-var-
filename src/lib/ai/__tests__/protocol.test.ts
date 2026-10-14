@@ -1,6 +1,12 @@
 import { CITIES } from '@/data/cities';
 
 import {
+  UnderstandingSchema,
+  clipText,
+  toChat,
+  toPick,
+  toPlan,
+  toUnderstanding,
   chatSystem,
   CitySchema,
   CHAT_SYSTEM,
@@ -118,5 +124,66 @@ describe('CitySchema', () => {
   it('accepts exactly the open cities', () => {
     for (const c of CITIES) expect(CitySchema.safeParse(c.id).success).toBe(c.available);
     expect(CitySchema.safeParse('atlantis').success).toBe(false);
+  });
+});
+
+
+describe('clipText', () => {
+  it('never ends in half of a surrogate pair', () => {
+    const s = `${'a'.repeat(199)}🍽️x`;
+    expect(clipText(s, 200)).toBe('a'.repeat(199));
+    expect(clipText(s, 200).isWellFormed()).toBe(true);
+    expect(clipText('abc', 200)).toBe('abc');
+    expect(clipText('🍽️🍽️', 2)).toBe('🍽️'.slice(0, 2));
+  });
+});
+
+describe('total conversions: junk in, a schema-valid shape (or null / unknown) out', () => {
+  const junk: unknown[] = [
+    undefined, null, 0, 1, 'x', '', [], [1], {}, { kind: 5 }, { pick: 'a' }, { kind: 'search' },
+    { kind: 'search', wishes: 'cheap', dishServes: { a: 1 }, partySize: NaN, cat: 7 },
+    { kind: 'search', partySize: Infinity, clarifyAsk: 'district', clarifyText: 7 },
+    { kind: 'chat', reply: 7 }, { kind: 'chat', reply: ['a'] },
+    { pick: 1.5 }, { pick: -1 }, { pick: 0, reasons: 'closest' }, { pick: 0, reasons: [null, {}, 'x'] },
+    { restaurant: 0, parking: 0, reasons: {} }, { reply: null, action: null },
+  ];
+
+  it('never throws', () => {
+    for (const j of junk) {
+      expect(() => toUnderstanding(j)).not.toThrow();
+      expect(() => toPick(j, 3)).not.toThrow();
+      expect(() => toPick(j, 0, true)).not.toThrow();
+      expect(() => toPlan(j, 3, 5)).not.toThrow();
+      expect(() => toChat(j)).not.toThrow();
+      expect(UnderstandingSchema.safeParse(toUnderstanding(j)).success).toBe(true);
+      expect(toChat(j).reply).toEqual(expect.any(String));
+    }
+  });
+
+  it('keeps what is usable of a search and drops the rest', () => {
+    const u = toUnderstanding({
+      kind: 'search', district: 'Bornova', cat: 'nope', wishes: ['cheap', 'teleport', 'cheap'],
+      partySize: 5000, dishServes: ['a', 'a', '', 'b', 'c', 'd', 'e', 'f'], clarifyAsk: 'district',
+      clarifyText: '', planWhen: 'tomorrow', food: true,
+    });
+    expect(u).toMatchObject({
+      kind: 'search', district: 'Bornova', cat: null, wishes: ['cheap'], partySize: null,
+      dishServes: ['a', 'b', 'c', 'd', 'e'], clarify: { ask: 'district', text: null }, plan: null,
+    });
+  });
+
+  it('reads the union shape too (clarify and plan objects)', () => {
+    expect(
+      toUnderstanding({ kind: 'search', clarify: { ask: 'party', text: 'Kaç kişi?' }, plan: { when: 'now' } }),
+    ).toMatchObject({ clarify: { ask: 'party', text: 'Kaç kişi?' }, plan: { when: 'now' } });
+  });
+
+  it('an unusable pick or plan is null, a usable one is cleaned', () => {
+    expect(toPick({ pick: 3, reasons: [] }, 3)).toBeNull();
+    expect(toPlan({ restaurant: 0, parking: 9, reasons: [] }, 2, 3)).toBeNull();
+    expect(
+      toPick({ pick: 1, reasons: ['closest', 'closest', 'x', 'outdoor', 'open_now', 'open_late'], runnerUp: 7, runnerUpWhy: 'bad', tone: '' }, 3),
+    ).toEqual({ pick: 1, reasons: ['closest', 'outdoor', 'open_now'], runnerUp: null, runnerUpWhy: null, tone: null });
+    expect(toChat({ reply: 'Selam!', action: 'dance' })).toEqual({ reply: 'Selam!', action: 'none' });
   });
 });

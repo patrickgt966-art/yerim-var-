@@ -9,10 +9,11 @@ import {
   MAX_MESSAGE_CHARS,
   ROUTER_TIMEOUT_MS,
   UnderstandingClientSchema,
-  chatOutputSchema,
-  parkPickOutputSchema,
-  pickOutputSchema,
-  planOutputSchema,
+  clipText,
+  toChat,
+  toPick,
+  toPlan,
+  toUnderstanding,
   type ChatRequest,
   type ChatResponse,
   type ChatTurn,
@@ -68,9 +69,14 @@ const fail = (
 });
 
 /** Dev only (shows in the `expo start` terminal). Never the message text. */
-function warnDev(path: string, detail: AiFailDetail, extra?: string): void {
-  if (__DEV__) console.warn(`[ai] ${path} failed: ${detail}${extra ? ` (${extra})` : ''}`);
+function warnDev(path: string, detail: AiFailDetail, extra?: string, why?: string): void {
+  if (__DEV__) {
+    console.warn(`[ai] ${path} failed: ${detail}${extra ? ` (${extra})` : ''}${why ? ` ${why}` : ''}`);
+  }
 }
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
@@ -88,7 +94,7 @@ const forCity = <T extends { city?: string }>(req: T): T => ({
 function clipHistory(history: ChatTurn[], maxTurns: number, maxChars: number): ChatTurn[] {
   return history
     .slice(-maxTurns)
-    .map((h) => ({ role: h.role, text: h.text.slice(0, maxChars) }))
+    .map((h) => ({ role: h.role, text: clipText(h.text, maxChars) }))
     .filter((h) => h.text.trim() !== '');
 }
 
@@ -115,14 +121,24 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         signal: controller.signal,
       });
       if (!res.ok) {
-        warnDev(path, 'http', `HTTP ${res.status}`);
         let failed: 'quota' | 'error' = res.status === 429 ? 'quota' : 'error';
         try {
-          const err = (await res.json()) as { remaining?: unknown; reason?: unknown } | null;
+          const err = (await res.json()) as {
+            remaining?: unknown;
+            reason?: unknown;
+            detail?: unknown;
+            message?: unknown;
+          } | null;
           // Too fast or a busy server is no empty quota: the uses left are still there.
           if (err?.reason === 'slow' || err?.reason === 'global') failed = 'error';
-          return { failed, remaining: num(err?.remaining), detail: 'http' };
+          const why = [err?.detail, err?.message]
+            .filter((v): v is string => typeof v === 'string' && v !== '')
+            .map((v) => v.slice(0, 300))
+            .join(' — ');
+          warnDev(path, 'http', `HTTP ${res.status}`, why);
+          return { failed, remaining: num(err?.remaining), detail: 'http', ...(why ? { why } : {}) };
         } catch {
+          warnDev(path, 'http', `HTTP ${res.status}`);
           return { failed, detail: 'http' };
         }
       }
@@ -152,7 +168,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         '/understand',
         {
           ...forCity(req),
-          text: req.text.slice(0, MAX_MESSAGE_CHARS),
+          text: clipText(req.text, MAX_MESSAGE_CHARS),
           history: clipHistory(req.history, HISTORY_LIMIT, MAX_MESSAGE_CHARS),
         },
         UNDERSTAND_TIMEOUT_MS,
@@ -163,7 +179,13 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         return fail(res.failed, res.remaining, res.detail);
       }
       const body = res.data as { understanding?: unknown; remaining?: unknown } | null;
-      const parsed = UnderstandingClientSchema.safeParse(body?.understanding);
+      // An odd field (an unknown wish, a list too long, a code from a newer worker) must not cost
+      // the answer: the tolerant conversion keeps what is usable. Only an unreadable one fails.
+      let parsed = UnderstandingClientSchema.safeParse(body?.understanding);
+      if (!parsed.success && isRecord(body?.understanding) && body.understanding.kind !== 'unknown') {
+        const again = UnderstandingClientSchema.safeParse(toUnderstanding(body.understanding));
+        if (again.success && again.data.kind !== 'unknown') parsed = again;
+      }
       if (!parsed.success || typeof body?.remaining !== 'number') {
         const issue = parsed.success ? 'remaining' : parsed.error.issues[0]?.path.join('.') || '(root)';
         warnDev('/understand', 'schema', `HTTP 200, first issue at ${issue}`);
@@ -175,7 +197,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async narrate(req: NarrateRequest): Promise<AiResult<string>> {
       const res = await post(
         '/narrate',
-        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: clipText(req.text, MAX_MESSAGE_CHARS) },
         NARRATE_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
@@ -190,43 +212,43 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     async pick(req: PickRequest): Promise<AiResult<PickResponse>> {
       const res = await post(
         '/pick',
-        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: clipText(req.text, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
       const body = res.data as { pick?: unknown; remaining?: unknown } | null;
-      const parsed = pickOutputSchema(req.candidates.length).safeParse(body?.pick);
-      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
-      return { ok: true, value: parsed.data, remaining: body.remaining };
+      const picked = toPick(body?.pick, req.candidates.length) as PickResponse | null;
+      if (!picked || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: picked, remaining: body.remaining };
     },
 
     /** Job 2 for car parks (same endpoint, the candidates say which kind). */
     async pickPark(req: ParkPickRequest): Promise<AiResult<ParkPickResponse>> {
       const res = await post(
         '/pick',
-        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: clipText(req.text, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
       const body = res.data as { pick?: unknown; remaining?: unknown } | null;
-      const parsed = parkPickOutputSchema(req.candidates.length).safeParse(body?.pick);
-      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
-      return { ok: true, value: parsed.data, remaining: body.remaining };
+      const picked = toPick(body?.pick, req.candidates.length, true) as ParkPickResponse | null;
+      if (!picked || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: picked, remaining: body.remaining };
     },
 
     /** Job 4. Restaurant and car park indices are bounded by what was sent. */
     async plan(req: PlanRequest): Promise<AiResult<PlanResponse>> {
       const res = await post(
         '/plan',
-        { ...forCity(req), text: req.text.slice(0, MAX_MESSAGE_CHARS) },
+        { ...forCity(req), text: clipText(req.text, MAX_MESSAGE_CHARS) },
         PICK_TIMEOUT_MS,
       );
       if ('failed' in res) return fail(res.failed, res.remaining);
       const body = res.data as { plan?: unknown; remaining?: unknown } | null;
       const parks = req.candidates.reduce((n, c) => n + c.parkings.length, 0);
-      const parsed = planOutputSchema(req.candidates.length, parks).safeParse(body?.plan);
-      if (!parsed.success || typeof body?.remaining !== 'number') return fail('error');
-      return { ok: true, value: parsed.data, remaining: body.remaining };
+      const planned = toPlan(body?.plan, req.candidates.length, parks);
+      if (!planned || typeof body?.remaining !== 'number') return fail('error');
+      return { ok: true, value: planned, remaining: body.remaining };
     },
 
     /**
@@ -238,14 +260,14 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         '/chat',
         {
           ...forCity(req),
-          text: req.text.slice(0, MAX_CHAT_CHARS),
+          text: clipText(req.text, MAX_CHAT_CHARS),
           history: clipHistory(req.history, CHAT_HISTORY_LIMIT, MAX_CHAT_CHARS),
         },
         CHAT_TIMEOUT_MS,
       );
       if ('failed' in res) return null;
-      const parsed = chatOutputSchema.safeParse(res.data);
-      return parsed.success ? parsed.data : null;
+      const said = toChat(res.data);
+      return said.reply === '' ? null : said;
     },
 
     /** Server-side uses left today; null on any error (an older server has no /quota). */
