@@ -1,59 +1,46 @@
 import raw from '../../data/places.json';
-import izmirPlaces from '../../data/places-izmir.json';
-import railIzmir from '../../data/rail-izmir.json';
+import { activeCity, cityById, isInCityArea } from './cities';
+import { placesFile, railFile } from './cityData';
 import { distanceMeters, type LatLng } from './geo';
 
 export type Place = { id: string; name: string; district: string; icon: string } & LatLng;
 
+/** İzmir's popular places and piers (data/places.json); other cities have none yet. */
 export const POPULAR_PLACES = raw.popular as Place[];
 export const PIERS = raw.piers as ({ name: string } & LatLng)[];
 
-export const IZMIR_CENTER: LatLng = { lat: 38.4237, lng: 27.1428 };
+export { IZMIR_CENTER } from './cities';
+
+/** Popular places of the active city. */
+export const popularPlaces = (): Place[] => (activeCity().id === 'izmir' ? POPULAR_PLACES : []);
+
+/** Piers of the active city. */
+const piers = () => (activeCity().id === 'izmir' ? PIERS : []);
 
 export function isNearPier(p: LatLng, maxMeters = 400): boolean {
-  return PIERS.some((pier) => distanceMeters(p, pier) <= maxMeters);
+  return piers().some((pier) => distanceMeters(p, pier) <= maxMeters);
 }
 
-let railStations: LatLng[] | undefined;
+// Keyed by city id: switching city must never serve another city's stations.
+const railStations = new Map<string, LatLng[]>();
 
 /** Within maxMeters of an İZBAN / metro / tram station (places with k 'rail'). */
 export function isNearRail(p: LatLng, maxMeters = 500): boolean {
-  railStations ??= [
-    ...(railIzmir as { items: { a: number; o: number }[] }).items,
-    ...(izmirPlaces as { items: { a: number; o: number; k: string }[] }).items.filter(
-      (x) => x.k === 'rail',
-    ),
-  ].map((x) => ({ lat: x.a, lng: x.o }));
-  return railStations.some((s) => distanceMeters(p, s) <= maxMeters);
+  const id = activeCity().id;
+  let stations = railStations.get(id);
+  if (!stations) {
+    stations = [
+      ...(railFile(id).items ?? []),
+      ...(placesFile(id).items ?? []).filter((x) => x.k === 'rail'),
+    ].map((x) => ({ lat: x.a, lng: x.o }));
+    railStations.set(id, stations);
+  }
+  return stations.some((s) => distanceMeters(p, s) <= maxMeters);
 }
 
-/**
- * Westmost longitude of İzmir land per latitude band: keeps out the open
- * Aegean (and Chios / Lesbos) while Çeşme, Alaçatı, Karaburun, Foça, Dikili
- * stay in. Bands are ordered from the highest lower bound down.
- */
-const WEST_LIMITS: [minLat: number, minLng: number][] = [
-  [38.75, 26.7], // Foça, Dikili, Bergama
-  [38.5, 26.33], // Karaburun
-  [38.36, 26.45], // sea between Karaburun and Çeşme
-  [38.2, 26.2], // Çeşme peninsula
-  [0, 26.6], // Seferihisar, Özdere and south
-];
-
-/**
- * Rough İzmir province outline: a box, within 120 km of the centre, and east
- * of the west coast; a location outside is not a useful search centre.
- */
+/** İzmir province outline (see isInCityArea); the active city's is `isInCityArea(p)`. */
 export function isInIzmirArea(p: LatLng): boolean {
-  if (!(
-    p.lat >= 37.8 &&
-    p.lat <= 39.4 &&
-    p.lng <= 28.5 &&
-    distanceMeters(p, IZMIR_CENTER) < 120_000
-  ))
-    return false;
-  const band = WEST_LIMITS.find(([minLat]) => p.lat >= minLat);
-  return !!band && p.lng >= band[1];
+  return isInCityArea(p, cityById('izmir'));
 }
 
 /**
@@ -68,6 +55,7 @@ export type CuratedPlace = {
   aliases?: string[];
 } & LatLng;
 
+/** İzmir's curated places. */
 export const CURATED_PLACES: CuratedPlace[] = [
   // Starbucks "Folkart A Blok" node.
   {
@@ -171,3 +159,7 @@ export const CURATED_PLACES: CuratedPlace[] = [
     aliases: ['efes', 'ephesus', 'efes antik kent', 'efes antik'],
   },
 ];
+
+/** Curated places of the active city; only İzmir has any. */
+export const curatedPlaces = (): CuratedPlace[] =>
+  activeCity().id === 'izmir' ? CURATED_PLACES : [];

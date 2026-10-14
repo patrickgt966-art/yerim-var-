@@ -14,11 +14,11 @@ import {
   MODIFIERS,
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
-import { IZMIR_CENTER, isNearRail } from '@/data/places';
+import { activeCity, CITIES } from '@/data/cities';
+import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
 import {
-  IZMIR_DISTRICTS,
   isQualifierWord,
   looksLikePlace,
   parseQuery,
@@ -293,9 +293,22 @@ const GENERIC_SUFFIX_WORDS = new Set([
   'lokanta',
   'lokantasi',
   'bufe',
-  'izmir',
-  ...IZMIR_DISTRICTS.map((d) => fold(d.name)),
+  ...CITIES.map((c) => fold(c.name)),
 ]);
+
+// Per city id: the districts are part of the generic words.
+const districtWords = new Map<string, Set<string>>();
+
+function isGenericSuffixWord(w: string): boolean {
+  if (GENERIC_SUFFIX_WORDS.has(w)) return true;
+  const { id, districts } = activeCity();
+  let set = districtWords.get(id);
+  if (!set) {
+    set = new Set(districts.map(fold));
+    districtWords.set(id, set);
+  }
+  return set.has(w);
+}
 
 /** The word next to a district that no dish or category explains, and what it turns out to be. */
 function districtLeftover(it: QueryIntent, text: string): Leftover | null {
@@ -306,7 +319,7 @@ function districtLeftover(it: QueryIntent, text: string): Leftover | null {
   if (qWords.length === 0) return null;
   const pq = qWords.join(' ');
   // A second district name is a place of its own ("Bornova Buca"), not an unknown word.
-  if (qWords.some((w) => IZMIR_DISTRICTS.some((d) => fold(d.name) === w))) return null;
+  if (qWords.some((w) => activeCity().districtCenters.some((d) => fold(d.name) === w))) return null;
   const x = typedPlaceText(text, pq);
   if (qWords.some(isFoodWord)) return { kind: 'food', x };
   const centre = it.district;
@@ -321,8 +334,7 @@ function districtLeftover(it: QueryIntent, text: string): Leftover | null {
       .split(' ')
       .every(
         (nw) =>
-          GENERIC_SUFFIX_WORDS.has(nw) ||
-          qWords.some((w) => NAME_SUFFIXES.some((s) => nw === w + s)),
+          isGenericSuffixWord(nw) || qWords.some((w) => NAME_SUFFIXES.some((s) => nw === w + s)),
       );
   if (pq.length >= 3 && near.some(exact)) return { kind: 'name', x };
   // 2. A known place (university, mall, landmark) whose full name starts with the words.
@@ -393,7 +405,7 @@ function intentFromUnderstanding(
   text: string,
 ): Extract<QueryIntent, { kind: 'search' }> {
   const district = u.district
-    ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)
+    ? (activeCity().districtCenters.find((d) => fold(d.name) === fold(u.district!)) ?? null)
     : null;
   // A dish or a category is food, whichever section the chat is in.
   const food = u.food || u.cat !== null || !!u.dish;
@@ -818,7 +830,7 @@ async function chatFromRouter(
   const said = validateFreeText(
     'chat',
     res.reply,
-    textContext(deps, ctx.place ?? IZMIR_CENTER, cards),
+    textContext(deps, ctx.place ?? activeCity().center, cards),
   );
   if (!said) return null;
   if (res.action === 'pick_from_last' && cards.length >= 2) {
@@ -1099,7 +1111,7 @@ async function answerText(
     const matches = allRestaurants().filter((r) => fold(r.name).startsWith(folded));
     const first = matches[0];
     if (first) {
-      const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+      const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
       const nearest = matches
         .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
         .sort((a, b) => a.distanceM - b.distanceM)
@@ -1255,7 +1267,7 @@ async function answerText(
     // A place hit that does not carry the words in its name is only a fuzzy guess.
     const weakHit = !!h && !qWords.every((w) => hasWordStart(fold(h.name), w));
     if (maybeDish && (!h || weakHit)) {
-      const from: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+      const from: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
       const reach = WIDE_RADII_M[WIDE_RADII_M.length - 1]!;
       // Names that start with the typed words: search it as a dish (tier 1 = these names).
       const nameHit = restaurantsNear(from, reach, 5000).some(
@@ -1326,7 +1338,7 @@ async function answerText(
           (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
         );
         if (named.length > 0) {
-          const target: LatLng = ctx.place ?? (await deps.here()) ?? IZMIR_CENTER;
+          const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
           const nearest = named
             .map((r) => ({ ...r, distanceM: distanceMeters(target, r) }))
             .sort((a, b) => a.distanceM - b.distanceM)
@@ -1502,7 +1514,7 @@ async function run(
       target = here;
       where = t('chat.nearYou');
     } else {
-      target = IZMIR_CENTER;
+      target = activeCity().center;
       where = t('chat.center');
     }
   }
@@ -2070,13 +2082,13 @@ async function clarify(
   meta: AnswerMeta,
 ): Promise<Result> {
   const { t } = deps;
-  const here = (await deps.here()) ?? IZMIR_CENTER;
+  const here = (await deps.here()) ?? activeCity().center;
   const asked = validateFreeText('clarify', meta.ai?.clarify?.text, textContext(deps, here));
   const text = asked ?? t(`chat.ask_${ask}`);
   const group = [...new Set<Wish>([...meta.wishes, 'group'])];
   let actions: ChatAction[];
   if (ask === 'district') {
-    const nearest = [...IZMIR_DISTRICTS]
+    const nearest = [...activeCity().districtCenters]
       .sort((a, b) => distanceMeters(here, a) - distanceMeters(here, b))
       .slice(0, 3);
     actions = [
@@ -2201,7 +2213,7 @@ function textContext(deps: AssistantDeps, around: LatLng, cards: ChatCard[] = []
         .map((p) => p.name),
       ...restaurantsNear(around, 1500, 250).map((r) => r.name),
     ],
-    districts: IZMIR_DISTRICTS.map((d) => d.name),
+    districts: [...activeCity().districts],
   };
 }
 
@@ -2571,7 +2583,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
 
   const lines: string[] = [];
   const first = food ? getRestaurant(restaurants[0]!.id) : null;
-  const tctx = textContext(deps, first ?? res.ctx.place ?? IZMIR_CENTER, reply.cards);
+  const tctx = textContext(deps, first ?? res.ctx.place ?? activeCity().center, reply.cards);
   const dish = res.ctx.dish ?? '';
   let sparkle = false;
 
@@ -2660,7 +2672,7 @@ export async function pickFromCards(
   const food = cards.some((c) => c.kind === 'restaurant');
   const first = cards[0];
   const around = first && food ? getRestaurant(first.id) : null;
-  const tctx = textContext(deps, around ?? ctx.place ?? IZMIR_CENTER, cards);
+  const tctx = textContext(deps, around ?? ctx.place ?? activeCity().center, cards);
   const text = query.trim() || t('chat.noun.all');
   const pick = food
     ? await askPick(cards, text, ctx.dish ?? '', deps, tctx)

@@ -1,0 +1,63 @@
+[
+  {
+    "parkID": 101,
+    "parkName": "KADIKÖY ÇARŞI KATLI OTOPARKI",
+    "lat": "40.9903",
+    "lng": "29.0245",
+    "capacity": 220,
+    "emptyCapacity": 37,
+    "workHours": "24 Saat",
+    "parkType": "KAPALI OTOPARK",
+    "freeTime": 15,
+    "district": "Kadıköy",
+    "isOpen": 1
+  },
+  {
+    "parkID": "102",
+    "parkName": "Beşiktaş Barbaros Açık Otopark",
+    "lat": "41.0424",
+    "lng": "29.0089",
+    "capacity": "80",
+    "emptyCapacity": "0",
+    "workHours": "08:00-20:00",
+    "parkType": "AÇIK OTOPARK",
+    "freeTime": 0,
+    "district": "Beşiktaş",
+    "isOpen": "1",
+    "tariffNote": "extra keys are ignored"
+  },
+  {
+    "parkID": 103,
+    "parkName": "Üsküdar Yol Üstü",
+    "lat": 41.0262,
+    "lng": 29.0151,
+    "capacity": 0,
+    "emptyCapacity": null,
+    "workHours": "Pazartesi-Cumartesi 09:00-19:00",
+    "parkType": "YOL ÜSTÜ",
+    "freeTime": 30,
+    "district": "Üsküdar",
+    "isOpen": 0
+  },
+  {
+    "parkID": 104,
+    "parkName": "Sarıyer Meydan Kapalı Otopark",
+    "lat": "41,1687",
+    "lng": "29,0572",
+    "capacity": 120,
+    "emptyCapacity": 150,
+    "workHours": "24 Saat",
+    "parkType": "Kapalı Otopark",
+    "freeTime": 60,
+    "district": "Sarıyer",
+    "isOpen": 1
+  },
+  {
+    "parkID": 105,
+    "parkName": "   ",
+    "lat": "not a number",
+    "lng": "29.0",
+    "capacity": 10,
+    "emptyCapacity": 2
+  }
+]

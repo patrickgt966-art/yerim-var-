@@ -1,4 +1,6 @@
 import { deviceCache, type ParkingCache } from './cache';
+import { activeCity, cityById } from './cities';
+import { IsparkProvider } from './isparkProvider';
 import { IzmirOpenDataProvider } from './izmirProvider';
 import { MockProvider } from './mockProvider';
 import type { ParkingProvider, ParkingResult } from './types';
@@ -16,7 +18,24 @@ export type LoadOptions = {
   signal?: AbortSignal;
   cache?: ParkingCache;
   retryDelaysMs?: number[];
+  /** City to load; defaults to the active one. Fixed at the start, so a switch mid-load cannot mix cities. */
+  cityId?: string;
 };
+
+/** The live provider of a city. Cities without one (not open yet) fall back to İzmir's. */
+export function providerFor(cityId: string): ParkingProvider {
+  switch (cityById(cityId).id) {
+    case 'istanbul':
+      return new IsparkProvider();
+    default:
+      return new IzmirOpenDataProvider();
+  }
+}
+
+/** Only İzmir has sample data; elsewhere nothing is shown instead of another city's pins. */
+function fallbackFor(cityId: string): ParkingProvider | null {
+  return cityById(cityId).id === 'izmir' ? new MockProvider() : null;
+}
 
 function wait(ms: number, signal?: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -33,13 +52,23 @@ function wait(ms: number, signal?: AbortSignal) {
  * Loads parkings in this order:
  * 1. the primary provider, retried with RETRY_DELAYS_MS;
  * 2. the last good result saved on the device, flagged `offline`;
- * 3. sample data, flagged by `source: 'mock'` ("Deneme bilgisi gösteriliyor").
+ * 3. sample data, flagged by `source: 'mock'` ("Deneme bilgisi gösteriliyor"), for İzmir
+ *    only; other cities get an empty 'static-only' result carrying the error.
+ * The provider and the device cache follow the city (the active one by default).
  */
 export async function loadParkings(
-  primary: ParkingProvider = new IzmirOpenDataProvider(),
-  fallback: ParkingProvider = new MockProvider(),
-  { signal, cache = deviceCache, retryDelaysMs = RETRY_DELAYS_MS }: LoadOptions = {},
+  primary?: ParkingProvider,
+  fallback?: ParkingProvider | null,
+  {
+    signal,
+    cache = deviceCache,
+    retryDelaysMs = RETRY_DELAYS_MS,
+    cityId = activeCity().id,
+  }: LoadOptions = {},
 ): Promise<ParkingResult> {
+  const city = cityById(cityId);
+  const source = primary ?? providerFor(city.id);
+  const sample = fallback === undefined ? fallbackFor(city.id) : fallback;
   let error: unknown;
   const startedAt = Date.now();
   for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
@@ -48,13 +77,13 @@ export async function loadParkings(
       await wait(retryDelaysMs[attempt - 1] ?? 0, signal);
     }
     try {
-      const parkings = await primary.list(signal, attempt);
+      const parkings = await source.list(signal, attempt);
       const result: ParkingResult = {
         parkings,
-        source: primary.source,
+        source: source.source,
         fetchedAt: new Date().toISOString(),
       };
-      await cache.save(result);
+      await cache.save(result, city.id);
       return result;
     } catch (e) {
       error = e;
@@ -65,14 +94,22 @@ export async function loadParkings(
 
   const reason = error instanceof Error ? error.message : String(error);
   // Shows up in the `expo start` terminal during development only.
-  if (__DEV__) console.warn(`[yerim-var] İzmir verisi alınamadı: ${reason}`);
-  const cached = await cache.load();
+  if (__DEV__) console.warn(`[yerim-var] ${city.name} verisi alınamadı: ${reason}`);
+  const cached = await cache.load(city.id);
   if (cached) return { ...cached, offline: true, fallbackReason: reason };
 
-  const parkings = await fallback.list(signal);
+  if (!sample) {
+    return {
+      parkings: [],
+      source: 'static-only',
+      fetchedAt: new Date().toISOString(),
+      fallbackReason: reason,
+    };
+  }
+  const parkings = await sample.list(signal);
   return {
     parkings,
-    source: fallback.source,
+    source: sample.source,
     fetchedAt: new Date().toISOString(),
     fallbackReason: reason,
   };

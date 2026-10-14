@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 
 import { YerimMapKit, type ApplePlaceResult } from '../../modules/yerim-mapkit';
 import { appleSearchAvailable } from './appleParkings';
+import { activeCity } from './cities';
 import { distanceMeters, type LatLng } from './geo';
-import { IZMIR_CENTER } from './places';
 import { fold, type SearchHit } from './search';
 
-/** Bias region: the whole province, centred on İzmir, so no user position is sent. */
+/** Bias region: the whole province, centred on the active city, so no user position is sent. */
 const REGION_RADIUS_M = 60_000;
 export const APPLE_MIN_CHARS = 3;
 const MIN_CHARS = APPLE_MIN_CHARS;
@@ -43,7 +43,7 @@ export function mergeHits(local: SearchHit[], apple: SearchHit[], limit = 8): Se
 /** Apple Maps free-text search ("Sevil 2 İş Hanı"); empty where unavailable. */
 export async function searchApplePlaces(
   query: string,
-  center: LatLng = IZMIR_CENTER,
+  center: LatLng = activeCity().center,
 ): Promise<SearchHit[]> {
   const q = query.trim();
   if (!YerimMapKit || q.length < MIN_CHARS) return [];
@@ -73,7 +73,7 @@ function useDebounced<T>(value: T, ms: number): T {
 export function useAppleSuggestions(query: string) {
   const q = useDebounced(query.trim(), DEBOUNCE_MS);
   const result = useQuery({
-    queryKey: ['apple-places', fold(q)],
+    queryKey: ['apple-places', activeCity().id, fold(q)],
     queryFn: () => searchApplePlaces(q),
     enabled: appleSearchAvailable && q.length >= MIN_CHARS,
     staleTime: 10 * 60 * 1000,
