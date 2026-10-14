@@ -76,6 +76,22 @@ function errorDetail(err: unknown): string {
   return safeCode(e.name) || 'unknown';
 }
 
+/**
+ * The API's own message for a 400 invalid_request_error: it describes our request schema and
+ * parameters, not the user's text. Safety net: anything inside quotes longer than 40 characters is
+ * stripped (so a fragment of user text cannot leak) and the rest is cut to 300 characters.
+ */
+function invalidRequestMessage(err: unknown): string | undefined {
+  if (typeof err !== 'object' || err === null) return undefined;
+  const e = err as { status?: unknown; error?: { error?: { type?: unknown; message?: unknown } } };
+  const inner = e.error?.error;
+  if (e.status !== 400 || inner?.type !== 'invalid_request_error') return undefined;
+  if (typeof inner.message !== 'string' || inner.message === '') return undefined;
+  return inner.message
+    .replace(/"[^"]{41,}"|“[^”]{41,}”|`[^`]{41,}`|'[^']{41,}'/g, '"[cut]"')
+    .slice(0, 300);
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -207,9 +223,20 @@ export default {
       );
       return json(body, status);
     };
-    const upstreamFail = async (outcome: Outcome = 'error', detail = 'unknown') => {
-      console.error('upstream failed', detail);
-      return respond(outcome, { error: 'upstream', remaining: await giveBack(), detail }, 502);
+    const upstreamFail = async (
+      outcome: Outcome = 'error',
+      detail = 'unknown',
+      message?: string,
+    ) => {
+      console.error('upstream failed', detail, message ?? '');
+      const remaining = await giveBack();
+      return respond(
+        outcome,
+        message === undefined
+          ? { error: 'upstream', remaining, detail }
+          : { error: 'upstream', remaining, detail, message },
+        502,
+      );
     };
     const noOutput = (stopReason: unknown) => `no_output_${safeCode(stopReason) || 'unknown'}`;
 
@@ -361,8 +388,9 @@ export default {
 
       return json({ error: 'not_found' }, 404);
     } catch (err) {
-      // Never the user's text, a key or the SDK's message: only the status and error type.
-      return upstreamFail('error', errorDetail(err));
+      // Never the user's text, a key or the SDK's message: the status and error type, plus the
+      // API's (sanitised) message for a 400 invalid_request_error only.
+      return upstreamFail('error', errorDetail(err), invalidRequestMessage(err));
     }
   },
 };

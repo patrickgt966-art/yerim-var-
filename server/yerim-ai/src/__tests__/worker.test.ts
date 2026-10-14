@@ -72,6 +72,28 @@ const searchOut = {
   tone: null,
   dishNote: null,
 };
+// What the model returns (the flat schema, sentinels instead of nulls) for `searchOut` above.
+const flatSearch = {
+  kind: 'search',
+  district: '',
+  cat: 'none',
+  dish: '',
+  place: '',
+  food: true,
+  requireParking: false,
+  appleQuery: '',
+  nearMe: true,
+  dishServes: [],
+  wishes: [],
+  partySize: 0,
+  clarifyAsk: 'none',
+  clarifyText: '',
+  planWhen: 'none',
+  tone: '',
+  dishNote: '',
+  reply: '',
+  action: 'none',
+};
 const pickBody = (messageId: string, deviceId = 'dev-1') => ({
   deviceId,
   messageId,
@@ -110,7 +132,7 @@ describe('one counter across the endpoints', () => {
   it('understand + pick + plan of one message are one use; the next message is another', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
-    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
     const u = await post(env, '/understand', understandBody('msg-1'));
     expect(u.status).toBe(200);
     expect(((await u.json()) as { remaining: number }).remaining).toBe(9);
@@ -123,7 +145,7 @@ describe('one counter across the endpoints', () => {
     const day = [...kv.store.keys()].find((k) => k.startsWith('ai:global:'))!;
     expect(kv.store.get(day)).toBe('1');
 
-    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
     await post(env, '/understand', understandBody('msg-2'));
     expect(await remainingOf(kv)).toBe(8);
   });
@@ -148,7 +170,7 @@ describe('one counter across the endpoints', () => {
   it('the 11th message gets a 429 with remaining 0 and Anthropic is not called', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
-    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
     for (let i = 0; i < 10; i++) {
       expect((await post(env, '/understand', understandBody(`m${i}`))).status).toBe(200);
     }
@@ -162,7 +184,7 @@ describe('one counter across the endpoints', () => {
   it('the global cap counts every endpoint and stops Anthropic calls ("global", 429)', async () => {
     const kv = fakeKV();
     const env = envOf(kv, { AI_GLOBAL_DAILY: '2' });
-    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
     expect((await post(env, '/understand', understandBody('m1', 'a'), '1.1.1.1')).status).toBe(200);
     mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: pickOut });
     expect((await post(env, '/pick', pickBody('m2', 'b'), '2.2.2.2')).status).toBe(200);
@@ -180,7 +202,7 @@ describe('one counter across the endpoints', () => {
   it('a second new message within the interval is "slow"; a pick of the first is not', async () => {
     const kv = fakeKV();
     const env = envOf(kv, { CHAT_MIN_INTERVAL_MS: '60000' });
-    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
     expect((await post(env, '/understand', understandBody('m1'))).status).toBe(200);
     const slow = await post(env, '/understand', understandBody('m2'));
     expect(slow.status).toBe(429);
@@ -209,7 +231,7 @@ describe('/cancel', () => {
   it('after the call finished: the use comes back', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
-    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
     await post(env, '/understand', understandBody('m1'));
     expect(await remainingOf(kv)).toBe(9);
     const res = await post(env, '/cancel', { deviceId: 'dev-1', messageId: 'm1' });
@@ -230,7 +252,7 @@ describe('/cancel', () => {
     expect(await remainingOf(kv)).toBe(9);
     await post(env, '/cancel', { deviceId: 'dev-1', messageId: 'm1' });
     expect(await remainingOf(kv)).toBe(10);
-    finish({ stop_reason: 'end_turn', parsed_output: searchOut });
+    finish({ stop_reason: 'end_turn', parsed_output: flatSearch });
     const res = await running;
     expect(((await res.json()) as { remaining: number }).remaining).toBe(10);
     expect(await remainingOf(kv)).toBe(10);
@@ -252,7 +274,7 @@ describe('the log line', () => {
   it('has endpoint, ms, outcome and remaining, and never the text or the device id', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
-    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
     await post(env, '/understand', understandBody('m1', 'secret-device'));
     mockParse.mockRejectedValueOnce(new Error('boom'));
     await post(env, '/pick', pickBody('m2', 'secret-device'));
@@ -280,7 +302,7 @@ describe('city', () => {
 
   it('a request with city istanbul gets the İstanbul prompt; without a city it is İzmir', async () => {
     const env = envOf(fakeKV());
-    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: searchOut });
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
     await post(env, '/understand', { ...understandBody('m1'), city: 'istanbul' });
     expect(systemOfLastCall()).toContain('İstanbul için');
     expect(systemOfLastCall()).not.toContain('İzmir');
@@ -331,6 +353,45 @@ describe('upstream failure detail', () => {
     expect(logged).not.toMatch(/SECRET|gizli/);
   });
 
+  it('a 400 invalid_request_error adds the API message, cut and without long quoted text', async () => {
+    const kv = fakeKV();
+    const quoted = 'gizli kullanıcı metni '.repeat(4);
+    const err = Object.assign(new Error('400 sk-ant-SECRET'), {
+      name: 'BadRequestError',
+      status: 400,
+      error: {
+        type: 'error',
+        error: {
+          type: 'invalid_request_error',
+          message: `Schema is too complex: 17 parameters use union types (limit 16). "short" "${quoted}" ${'x'.repeat(400)}`,
+        },
+      },
+    });
+    mockParse.mockRejectedValueOnce(err);
+    const res = await post(envOf(kv), '/understand', understandBody('m1'));
+    const body = (await res.json()) as { detail: string; message: string; remaining: number };
+    expect(res.status).toBe(502);
+    expect(body.detail).toBe('anthropic_400_invalid_request_error');
+    expect(body.remaining).toBe(10);
+    expect(body.message).toContain('Schema is too complex: 17 parameters use union types');
+    expect(body.message).toContain('"short"');
+    expect(body.message).not.toContain('gizli');
+    expect(body.message.length).toBeLessThanOrEqual(300);
+    const logged = (console.error as jest.Mock).mock.calls.flat().join(' ');
+    expect(logged).toContain('Schema is too complex');
+    expect(logged).not.toMatch(/SECRET|gizli/);
+  });
+
+  it('other API errors get no message', async () => {
+    const kv = fakeKV();
+    mockParse.mockRejectedValueOnce(apiError(401, 'authentication_error'));
+    const a = await post(envOf(kv), '/understand', understandBody('m1'));
+    expect(await a.json()).not.toHaveProperty('message');
+    mockParse.mockRejectedValueOnce(apiError(400, 'other_error'));
+    const b = await post(envOf(kv), '/understand', understandBody('m2'));
+    expect(await b.json()).not.toHaveProperty('message');
+  });
+
   it('an error that is not an APIError gives its name; no output gives the stop reason', async () => {
     const kv = fakeKV();
     mockParse.mockRejectedValueOnce(new TypeError('x'));
@@ -343,7 +404,7 @@ describe('upstream failure detail', () => {
 });
 
 describe('the flat model output', () => {
-  const flat = { ...searchOut, reply: null, action: null };
+  const flat = flatSearch;
 
   it('/understand answers the union shape apps read, not the flat object', async () => {
     const kv = fakeKV();
