@@ -2,9 +2,9 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 1728, herkese açık: 1576, çiftler ayıklanınca: 1454
-- Adı olan: 52, kapasitesi olan: 41, ücretli işaretli: 72
-- Giriş noktasından türeyen: 22, bina olarak işaretli: 1
+- Ham öğe: 0, herkese açık: 0, çiftler ayıklanınca: 0
+- Adı olan: 0, kapasitesi olan: 0, ücretli işaretli: 0
+- Giriş noktasından türeyen: 0, bina olarak işaretli: 0
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -18,21 +18,24 @@
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 6 kayıt
+- HTTP 200, 7 kayıt
 
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
-- OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 685.
-- data/parkings-static.json: 1489 otopark.
-- data/places-izmir.json: 3509 yer (arama için).
+- OSM'den İzelman ile çakışan 0 kayıt çıkarıldı.
+- Adsız otoparklardan yakın yer adı bulunan: 0.
+- data/parkings-static.json: 1489 → 82 kayıt, çok düştü; yazılmadı.
+- data/places-izmir.json: 3510 yer (arama için).
 - data/rail-izmir.json: 165 istasyon.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Overpass alınamadı (yeme-içme; tüm sunucular ve denemeler).
-- Yeme-içme listesi alınamadı; data/food-izmir.json değiştirilmedi.
+- Ayıklanan (anlamsız ad / yeme-içme dışı): 7
+- Toplam: 2435 (bakery 170, bar 82, biergarten 4, cafe 832, confectionery 32, fast_food 414, food_court 24, ice_cream 20, pastry 61, pub 29, restaurant 767)
+- Mutfak türü: 26%, çalışma saati: 8%, telefon: 8%, web: 6%, Instagram: 1%
+- En sık mutfak türleri: coffee_shop 157, turkish 144, burger 86, pizza 60, kebab 54, chicken 31, sandwich 31, seafood 31, regional 30, fish 22, breakfast 16, dessert 12, italian 10, pasta 10, tea 10
+- data/food-izmir.json: 2435 yer.
 
 ## İzmir açık veri portalında yeme-içme / turizm veri setleri
 
@@ -44,27 +47,27 @@
 
 ## İstanbul · OpenStreetMap (ODbL)
 
-- Ham öğe: 5615, herkese açık: 5151, çiftler ayıklanınca: 4523
-- Adı olan: 574, kapasitesi olan: 157, ücretli işaretli: 459
-- Giriş noktasından türeyen: 398, bina olarak işaretli: 0
+- Ham öğe: 5153, herkese açık: 4700, çiftler ayıklanınca: 4293
+- Adı olan: 572, kapasitesi olan: 165, ücretli işaretli: 478
+- Giriş noktasından türeyen: 0, bina olarak işaretli: 4
 
-- Overpass alınamadı (İstanbul: yer adları 2/4; tüm sunucular ve denemeler).
-- Uyarı: yedek yer listesi okunamadı (ENOENT: no such file or directory, open '/home/runner/work/yerim-var-/yerim-var-/data/places-istanbul.json'); adsız otoparklar adlandırılmadı.
+- İstanbul: yer adları · yer adları: 15 kutu, 14 tam başarılı; eksik bölgeler (güney,batı,kuzey,doğu): 41.2,28.95,41.3,29.2.
+- İstanbul: yer adları · bina adları (ağır regex): 15 kutu, 1 tam başarılı (eşik %90; bu grup atıldı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
 ## İstanbul · Sonuç
 
-- Adsız otoparklardan yakın yer adı bulunan: 0.
-- data/parkings-static-istanbul.json: 4523 otopark.
-- Yer listesi alınamadı; data/places-istanbul.json değiştirilmedi.
+- Adsız otoparklardan yakın yer adı bulunan: 1802.
+- data/parkings-static-istanbul.json: 4293 otopark.
+- data/places-istanbul.json: 7130 yer (arama için).
 - data/rail-istanbul.json: 296 istasyon.
 
 ## İstanbul · Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- Overpass alınamadı (İstanbul: yeme-içme 1/3; tüm sunucular ve denemeler).
+- İstanbul: yeme-içme · restoran: 15 kutu, 10 tam başarılı (eşik %90; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
 - Yeme-içme listesi alınamadı; data/food-istanbul.json değiştirilmedi.
 
 ## Overture Maps (CDLA-Permissive-2.0)
 
-- Release: 2026-09-23.1 (2026-10-14)
+- Release: 2026-09-23.1 (2026-10-15)
 - İzmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
 - Kept (confidence >= 0.6): 15730
@@ -72,15 +75,16 @@
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1113
-- Web sitesi kontrolü: 3000 kontrol edildi, 1482 açık, 1385 açılmıyor, 133 belirsiz
-- Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
-- Per kind: bar 957, cafe 3871, fast_food 747, food_court 4, restaurant 9052
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
+- Web sitesi kontrolü: 3000 kontrol edildi, 1477 açık, 1384 açılmıyor, 139 belirsiz
+- Önceki çalıştırmaya göre: +1 yeni, −1 kaybolan
+- Kaybolanlardan örnekler: Samimi
+- Per kind: bar 957, cafe 3870, fast_food 747, food_court 4, restaurant 9053
 - data/food-overture-izmir.json: 2.21 MB
 
 ## Overture Maps (CDLA-Permissive-2.0) · İstanbul
 
-- Release: 2026-09-23.1 (2026-10-14)
+- Release: 2026-09-23.1 (2026-10-15)
 - İstanbul province polygon: found
 - Raw candidates (food kinds inside the polygon): 57906
 - Kept (confidence >= 0.9): 13842
@@ -89,7 +93,7 @@
 - Ad süzgeciyle atılan: 343 (en sık 10 eşleşen kelime: market 82, catering 76, dernegi 64, organizasyon 23, malzemeleri 23, lokali 21, toptan 10, dugun salonu 10, bakkal 7, makinalari 6)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 0
 - Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 48
-- Web sitesi kontrolü: 3000 kontrol edildi, 1739 açık, 1120 açılmıyor, 141 belirsiz
-- Önceki çalıştırmaya göre: +13842 yeni, −0 kaybolan
+- Web sitesi kontrolü: 3000 kontrol edildi, 1685 açık, 1056 açılmıyor, 259 belirsiz
+- Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 636, cafe 3645, fast_food 771, restaurant 8790
-- data/food-overture-istanbul.json: 2.46 MB
+- data/food-overture-istanbul.json: 2.42 MB
