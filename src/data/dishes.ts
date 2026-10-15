@@ -401,7 +401,7 @@ export const DISHES: DishProfile[] = [
   d('baklava', 'dessert', 'baklavacı-tatlıcı', ['baklava', 'baklavaci', ...SWEET]),
   d('kunefe', 'dessert', 'künefeci-tatlıcı', ['kunefe', 'kunefeci', 'tatlici']),
   d('sutlac', 'dessert', 'muhallebici-tatlıcı', ['sutlac', 'muhallebi', 'muhallebici', 'tatlici']),
-  d('kazandibi', 'dessert', 'muhallebici-tatlıcı', ['muhallebi', 'muhallebici', 'tatlici']),
+  d('kazandibi', 'dessert', 'muhallebici-tatlıcı', ['kazandibi', 'muhallebi', 'muhallebici', 'tatlici']),
   d(
     'dondurma',
     'dessert',
@@ -460,7 +460,7 @@ export const DISHES: DishProfile[] = [
   d('kusburnu', 'cafe', 'çay bahçesi-kahvehane', ['cay', 'kahvehane', ...COFFEE], ['tea']),
   d('espresso', 'cafe', 'kahveci', COFFEE, COFFEE_TAGS),
   d('latte', 'cafe', 'kahveci', COFFEE, COFFEE_TAGS),
-  d('cay', 'cafe', 'çay bahçesi-kahvehane', ['cay', 'kahvehane'], ['tea']),
+  d('cay', 'cafe', 'çay bahçesi-kahvehane', ['cay', 'kahvehane'], ['tea', 'cay']),
   d('cay bahcesi', 'cafe', 'çay bahçesi', ['cay', 'kahvehane'], ['tea']),
   d('bubble tea', 'cafe', 'bubble tea dükkanı', ['bubble', 'boba'], ['bubble_tea']),
 

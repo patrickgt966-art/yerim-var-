@@ -54,9 +54,19 @@ describe('normalizeIspark on the live capture', () => {
   });
 
   it('shows the free count right after the fetch', () => {
-    const p = byId(3068)!;
-    expect(p.free).toBe(577);
-    expect(getFreshness(p, now)).toEqual({ kind: 'updated', at: now });
-    expect(visibleFree(p, now)).toBe(577);
+    // Every record whose emptyCapacity is a valid count (not above its capacity) shows it right away.
+    const valid = records.filter(
+      (r) =>
+        Number.isInteger(r.emptyCapacity) &&
+        (r.emptyCapacity as number) >= 0 &&
+        (r.emptyCapacity as number) <= (r.capacity as number),
+    );
+    expect(valid.length).toBeGreaterThan(0);
+    for (const r of valid) {
+      const p = byId(r.parkID as number)!;
+      expect(p.free).toBe(r.emptyCapacity);
+      expect(getFreshness(p, now)).toEqual({ kind: 'updated', at: now });
+      expect(visibleFree(p, now)).toBe(r.emptyCapacity);
+    }
   });
 });
