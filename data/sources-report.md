@@ -2,9 +2,9 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 0, herkese açık: 0, çiftler ayıklanınca: 0
-- Adı olan: 0, kapasitesi olan: 0, ücretli işaretli: 0
-- Giriş noktasından türeyen: 0, bina olarak işaretli: 0
+- Ham öğe: 1623, herkese açık: 1484, çiftler ayıklanınca: 1374
+- Adı olan: 48, kapasitesi olan: 37, ücretli işaretli: 64
+- Giriş noktasından türeyen: 21, bina olarak işaretli: 0
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -18,16 +18,16 @@
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 7 kayıt
+- HTTP 200, 5 kayıt
 
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
-- OSM'den İzelman ile çakışan 0 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 0.
-- data/parkings-static.json: 1489 → 82 kayıt, çok düştü; yazılmadı.
+- OSM'den İzelman ile çakışan 35 kayıt çıkarıldı.
+- Adsız otoparklardan yakın yer adı bulunan: 670.
+- data/parkings-static.json: 1421 otopark.
 - data/places-izmir.json: 3510 yer (arama için).
-- data/rail-izmir.json: 165 istasyon.
+- Raylı istasyon listesi alınamadı; data/rail-izmir.json değiştirilmedi.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
@@ -47,22 +47,22 @@
 
 ## İstanbul · OpenStreetMap (ODbL)
 
-- Ham öğe: 5153, herkese açık: 4700, çiftler ayıklanınca: 4293
-- Adı olan: 572, kapasitesi olan: 165, ücretli işaretli: 478
-- Giriş noktasından türeyen: 0, bina olarak işaretli: 4
+- Ham öğe: 5903, herkese açık: 5393, çiftler ayıklanınca: 4680
+- Adı olan: 583, kapasitesi olan: 166, ücretli işaretli: 483
+- Giriş noktasından türeyen: 387, bina olarak işaretli: 4
 
-- İstanbul: yer adları · yer adları: 15 kutu, 14 tam başarılı; eksik bölgeler (güney,batı,kuzey,doğu): 41.2,28.95,41.3,29.2.
-- İstanbul: yer adları · bina adları (ağır regex): 15 kutu, 1 tam başarılı (eşik %90; bu grup atıldı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- İstanbul: yer adları · yer adları: 15 kutu, 12 tam başarılı (eşik %90; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
 ## İstanbul · Sonuç
 
-- Adsız otoparklardan yakın yer adı bulunan: 1802.
-- data/parkings-static-istanbul.json: 4293 otopark.
-- data/places-istanbul.json: 7130 yer (arama için).
-- data/rail-istanbul.json: 296 istasyon.
+- Adsız otoparklardan yakın yer adı bulunan: 1955.
+- data/parkings-static-istanbul.json: 4680 otopark.
+- Yer listesi alınamadı; data/places-istanbul.json değiştirilmedi.
+- Raylı istasyon listesi alınamadı; data/rail-istanbul.json değiştirilmedi.
 
 ## İstanbul · Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- İstanbul: yeme-içme · restoran: 15 kutu, 10 tam başarılı (eşik %90; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- İstanbul: yeme-içme · restoran: 15 kutu, 9 tam başarılı; eksik bölgeler (güney,batı,kuzey,doğu): 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- İstanbul: yeme-içme · kafe, bar, pastane: 15 kutu, 0 tam başarılı (eşik %50; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 40.9,28.7,41,28.95 | 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
 - Yeme-içme listesi alınamadı; data/food-istanbul.json değiştirilmedi.
 
 ## Overture Maps (CDLA-Permissive-2.0)
@@ -70,15 +70,15 @@
 - Release: 2026-09-23.1 (2026-10-15)
 - İzmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
-- Kept (confidence >= 0.6): 15730
+- Kept (confidence >= 0.6): 15743
 - Removed as OSM duplicates: 1099
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1111
-- Web sitesi kontrolü: 3000 kontrol edildi, 1477 açık, 1384 açılmıyor, 139 belirsiz
-- Önceki çalıştırmaya göre: +1 yeni, −1 kaybolan
-- Kaybolanlardan örnekler: Samimi
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1118
+- Web sitesi kontrolü: 4099 kontrol edildi, 2271 açık, 1686 açılmıyor, 142 belirsiz
+- Kayıt sayıları (İzmir): ham 20431, kapalı 0, kullanılamaz ad 13, ad süzgeci 184, aday 20234; güven < 0.6 4476, Overture içi kopya/boyut sınırı 15, OSM kopyası 1099, elle çıkarılan 13; son 14631
+- Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
 - Per kind: bar 957, cafe 3870, fast_food 747, food_court 4, restaurant 9053
 - data/food-overture-izmir.json: 2.21 MB
 
@@ -87,13 +87,14 @@
 - Release: 2026-09-23.1 (2026-10-15)
 - İstanbul province polygon: found
 - Raw candidates (food kinds inside the polygon): 57906
-- Kept (confidence >= 0.9): 13842
+- Kept (confidence >= 0.6): 44046
 - Removed as OSM duplicates: 0
-- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 13794
+- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 19118
 - Ad süzgeciyle atılan: 343 (en sık 10 eşleşen kelime: market 82, catering 76, dernegi 64, organizasyon 23, malzemeleri 23, lokali 21, toptan 10, dugun salonu 10, bakkal 7, makinalari 6)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 0
-- Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 48
-- Web sitesi kontrolü: 3000 kontrol edildi, 1685 açık, 1056 açılmıyor, 259 belirsiz
-- Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
-- Per kind: bar 636, cafe 3645, fast_food 771, restaurant 8790
-- data/food-overture-istanbul.json: 2.42 MB
+- Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 3463
+- Web sitesi kontrolü: 14775 kontrol edildi, 8479 açık, 5630 açılmıyor, 666 belirsiz
+- Kayıt sayıları (İstanbul): ham 57906, kapalı 0, kullanılamaz ad 344, ad süzgeci 343, aday 57219; güven < 0.6 13124, Overture içi kopya/boyut sınırı 49, OSM kopyası 0, elle çıkarılan 0, zayıf kayıt (iletişim bilgisi yok) 0; son 44046
+- Önceki çalıştırmaya göre: +30204 yeni, −0 kaybolan
+- Per kind: bar 2125, cafe 12030, fast_food 2581, food_court 30, restaurant 27280
+- data/food-overture-istanbul.json: 7.08 MB
