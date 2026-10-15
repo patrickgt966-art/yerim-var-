@@ -25,8 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     # Two cities (İzmir, İstanbul). Overpass is capped in the script at 20 min for
     # İzmir + 45 min for İstanbul (tiled places/food); CKAN calls (İzmir only) have 60 s timeouts;
-    # Overture reads both cities' places (two scans) plus a shared 15 min website check.
-    timeout-minutes: 120
+    # Overture reads both cities' places (two scans) plus a shared 35 min website check
+    # (split between the cities by candidate count).
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
