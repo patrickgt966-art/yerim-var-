@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useApp } from '@/store/app';
 import { activeCity, CITIES, cityById, isInCityArea, setActiveCity } from '../cities';
+import { distanceMeters } from '../geo';
 import { parseQuery } from '../intent';
 import { cleanName } from '../names';
 import { isInIzmirArea, isNearRail } from '../places';
@@ -19,6 +20,15 @@ import sample from './fixtures/ispark-sample.json';
 
 const SARAYBURNU = { lat: 41.0136, lng: 28.9503 };
 const KONAK = { lat: 38.4189, lng: 27.1287 };
+
+/** The invariant in İstanbul: every hit lies in İstanbul and none is near İzmir's Konak. */
+const expectOnlyIstanbul = (query: string) => {
+  const istanbul = cityById('istanbul');
+  for (const p of searchPlaces(query)) {
+    expect(isInCityArea(p, istanbul)).toBe(true);
+    expect(distanceMeters(p, KONAK)).toBeGreaterThan(50_000);
+  }
+};
 
 afterEach(() => {
   setActiveCity('izmir');
@@ -109,7 +119,7 @@ describe('per-city data never leaks', () => {
     expect(isNearRail({ lat: 38.4381, lng: 27.1415 }, 100_000)).toBe(true);
     setActiveCity('istanbul');
     expect(searchPlaces('alsancak')).toEqual([]);
-    expect(searchPlaces('saat kulesi')).toEqual([]);
+    expectOnlyIstanbul('saat kulesi');
     const istParkings = staticParkings();
     expect(istParkings.length).toBeGreaterThan(0);
     expect(istParkings.every((p) => isInCityArea(p, cityById('istanbul')))).toBe(true);
@@ -121,7 +131,7 @@ describe('per-city data never leaks', () => {
   it('drops the popular and curated places of izmir in istanbul', () => {
     expect(searchPlaces('konak')[0]?.lat).toBeCloseTo(KONAK.lat, 1);
     setActiveCity('istanbul');
-    expect(searchPlaces('konak')).toEqual([]);
+    expectOnlyIstanbul('konak');
   });
 });
 

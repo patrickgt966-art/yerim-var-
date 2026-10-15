@@ -77,6 +77,12 @@ const CITIES = [
       rounds: 2,
       pauseMs: 15_000,
       minOk: 0.9,
+      // Food is supplementary (Overture already has ~13.8k restaurants): half the tiles will do.
+      foodMinOk: 0.5,
+      // Pause between tile requests; after HTTP 429/504 a mirror gets a longer rest (30-60 s).
+      gapMs: 5_000,
+      busyMinMs: 30_000,
+      busyMaxMs: 60_000,
       baseMin: 20,
       placesMin: 15,
       foodMin: 10,
@@ -179,7 +185,10 @@ FOOD_QUERY.tiled = [
 let overpassDeadline = 0;
 
 // opts (tiled queries only): rounds / pauseMs = retry rounds over the mirrors and the
-// backoff unit; quiet = no report line on failure (the caller summarizes).
+// backoff unit; quiet = no report line on failure (the caller summarizes);
+// busyMinMs / busyMaxMs = wait after HTTP 429/504; spread = rotate the first mirror per
+// request and per round so retries do not all land on the same server.
+let mirrorTurn = 0;
 async function overpass(query, label, httpMs = 180_000, opts = {}) {
   const rounds = opts.rounds ?? 3;
   const pauseMs = opts.pauseMs ?? 30_000;
@@ -189,9 +198,11 @@ async function overpass(query, label, httpMs = 180_000, opts = {}) {
     console.warn(`Overpass süre bütçesi doldu (${label}).`);
     return true;
   };
+  const turn = opts.spread ? mirrorTurn++ : 0;
   for (let round = 0; round < rounds && !outOfTime(); round++) {
     if (round > 0) await new Promise((r) => setTimeout(r, pauseMs * round));
-    for (const url of OVERPASS) {
+    for (let k = 0; k < OVERPASS.length; k++) {
+      const url = OVERPASS[(turn + (opts.spread ? round : 0) + k) % OVERPASS.length];
       if (outOfTime()) break;
       try {
         const res = await fetchWithTimeout(url, {
@@ -202,7 +213,7 @@ async function overpass(query, label, httpMs = 180_000, opts = {}) {
           },
           body: `data=${encodeURIComponent(query)}`,
         }, httpMs);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
         const body = await res.json();
         // Overpass reports timeouts/out-of-memory as HTTP 200 + a remark
         // with partial results; never ship those.
@@ -211,6 +222,15 @@ async function overpass(query, label, httpMs = 180_000, opts = {}) {
       } catch (e) {
         // Console only: retries vary per run and must not change the report.
         console.warn(`Overpass ${url} başarısız (tur ${round + 1}): ${e.message}`);
+        if (opts.busyMinMs && (e.status === 429 || e.status === 504)) {
+          // Busy mirror: rest 30-60 s (never past the budget) before the next attempt.
+          const wait = Math.min(
+            opts.busyMinMs + Math.random() * (opts.busyMaxMs - opts.busyMinMs),
+            Math.max(0, overpassDeadline - Date.now()),
+          );
+          console.warn(`Sunucu meşgul; ${Math.round(wait / 1000)} sn beklenecek.`);
+          await new Promise((r) => setTimeout(r, wait));
+        }
       }
     }
   }
@@ -252,26 +272,38 @@ const quarters = (b) => {
 // Tiled run of a query for a big city: each statement group is queried per tile
 // (bbox filter on top of the area filter), results merged by OSM type/id. A failed
 // tile is retried as 4 quarters. A group is accepted with >= minOk of its tiles
-// fully done (missing boxes are logged; the data is still written). Returns null when
+// fully done (minOk, default cfg.minOk; missing boxes are logged; the data is still written). Returns null when
 // a required group is not accepted, so the old file is kept; an optional group
 // that fails is dropped and logged.
-async function overpassTiled(city, def, label) {
+async function overpassTiled(city, def, label, minOk = city.tiled.minOk) {
   const cfg = city.tiled;
   const tiles = makeTiles(cfg);
   const groups = def.tiled ?? [{ label: null, statements: def.one }];
   const merged = new Map();
+  let requested = false;
   for (const g of groups) {
     const gl = g.label ? `${label} · ${g.label}` : label;
     const got = new Map();
     const missing = [];
     let okTiles = 0;
-    const run = (box, tag) =>
-      overpass(
+    const run = async (box, tag) => {
+      // Gentle on Overpass: a pause before every request but the first.
+      if (requested) await new Promise((r) => setTimeout(r, cfg.gapMs));
+      requested = true;
+      return overpass(
         buildQuery(city, g.statements.replaceAll('(area.city);', `(area.city)(${bboxStr(box)});`), cfg.timeout),
         `${gl} ${tag}`,
         cfg.httpMs,
-        { rounds: cfg.rounds, pauseMs: cfg.pauseMs, quiet: true },
+        {
+          rounds: cfg.rounds,
+          pauseMs: cfg.pauseMs,
+          quiet: true,
+          busyMinMs: cfg.busyMinMs,
+          busyMaxMs: cfg.busyMaxMs,
+          spread: true,
+        },
       );
+    };
     const add = (els) => els.forEach((el) => got.set(`${el.type}/${el.id}`, el));
     for (const [i, tile] of tiles.entries()) {
       const tag = `kutu ${i + 1}/${tiles.length}`;
@@ -291,10 +323,10 @@ async function overpassTiled(city, def, label) {
       if (failed.length) missing.push(...failed);
       else okTiles++;
     }
-    const ok = okTiles / tiles.length >= cfg.minOk;
+    const ok = okTiles / tiles.length >= minOk;
     log(
       `- ${gl}: ${tiles.length} kutu, ${okTiles} tam başarılı` +
-        (ok ? '' : ` (eşik %${cfg.minOk * 100}; ${g.optional ? 'bu grup atıldı' : 'sonuç kullanılmadı'})`) +
+        (ok ? '' : ` (eşik %${minOk * 100}; ${g.optional ? 'bu grup atıldı' : 'sonuç kullanılmadı'})`) +
         (missing.length ? `; eksik bölgeler (güney,batı,kuzey,doğu): ${missing.map(bboxStr).join(' | ')}` : '') +
         '.',
     );
@@ -672,10 +704,10 @@ async function runCity(city) {
   };
   setBudget(city.tiled?.baseMin);
   const query = (def, label, timeout = city.queryTimeout) => overpassParts(city, def, label, timeout);
-  const queryBig = (def, label, min) => {
+  const queryBig = (def, label, min, minOk) => {
     if (!city.tiled) return query(def, label);
     setBudget(min);
-    return overpassTiled(city, def, label);
+    return overpassTiled(city, def, label, minOk);
   };
 
   const elements = await query(PARKING_QUERY, L('otoparklar'));
@@ -889,7 +921,7 @@ async function runCity(city) {
   log('');
   log(H('Yeme-içme yerleri (OpenStreetMap, inceleme verisi)'));
   log('');
-  const foodEls = await queryBig(FOOD_QUERY, L('yeme-içme'), city.tiled?.foodMin);
+  const foodEls = await queryBig(FOOD_QUERY, L('yeme-içme'), city.tiled?.foodMin, city.tiled?.foodMinOk);
   if (foodEls && foodEls.length > 0) {
     const parsed = foodEls.map(fromFood).filter(Boolean);
     const all = parsed.filter((f) => usableFoodName(f.n));
