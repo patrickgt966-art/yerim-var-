@@ -2,9 +2,9 @@
 
 ## OpenStreetMap (ODbL)
 
-- Ham öğe: 1623, herkese açık: 1484, çiftler ayıklanınca: 1374
-- Adı olan: 48, kapasitesi olan: 37, ücretli işaretli: 64
-- Giriş noktasından türeyen: 21, bina olarak işaretli: 0
+- Ham öğe: 1728, herkese açık: 1576, çiftler ayıklanınca: 1454
+- Adı olan: 52, kapasitesi olan: 41, ücretli işaretli: 72
+- Giriş noktasından türeyen: 22, bina olarak işaretli: 1
 
 ## İzmir açık veri portalı ("otopark" araması)
 
@@ -18,16 +18,16 @@
 
 ## Canlı doluluk API erişimi (GitHub sunucusundan)
 
-- HTTP 200, 5 kayıt
+- HTTP 200, 6 kayıt
 
 ## Sonuç
 
 - İzelman envanteri: 82 otopark.
-- OSM'den İzelman ile çakışan 35 kayıt çıkarıldı.
-- Adsız otoparklardan yakın yer adı bulunan: 670.
-- data/parkings-static.json: 1421 otopark.
+- OSM'den İzelman ile çakışan 47 kayıt çıkarıldı.
+- Adsız otoparklardan yakın yer adı bulunan: 685.
+- data/parkings-static.json: 1489 otopark.
 - data/places-izmir.json: 3510 yer (arama için).
-- Raylı istasyon listesi alınamadı; data/rail-izmir.json değiştirilmedi.
+- data/rail-izmir.json: 155 istasyon.
 
 ## Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
@@ -51,50 +51,57 @@
 - Adı olan: 583, kapasitesi olan: 166, ücretli işaretli: 483
 - Giriş noktasından türeyen: 387, bina olarak işaretli: 4
 
-- İstanbul: yer adları · yer adları: 15 kutu, 12 tam başarılı (eşik %90; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- İstanbul: yer adları · yer adları: 15 kutu, 15 tam başarılı.
+- İstanbul: yer adları · bina adları (ağır regex): 15 kutu, 0 tam başarılı (eşik %90; bu grup atıldı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 40.9,28.7,41,28.95 | 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
 ## İstanbul · Sonuç
 
-- Adsız otoparklardan yakın yer adı bulunan: 1955.
+- Adsız otoparklardan yakın yer adı bulunan: 2006.
 - data/parkings-static-istanbul.json: 4680 otopark.
-- Yer listesi alınamadı; data/places-istanbul.json değiştirilmedi.
-- Raylı istasyon listesi alınamadı; data/rail-istanbul.json değiştirilmedi.
+- data/places-istanbul.json: 7305 yer (arama için).
+- data/rail-istanbul.json: 296 istasyon.
 
 ## İstanbul · Yeme-içme yerleri (OpenStreetMap, inceleme verisi)
 
-- İstanbul: yeme-içme · restoran: 15 kutu, 9 tam başarılı; eksik bölgeler (güney,batı,kuzey,doğu): 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
-- İstanbul: yeme-içme · kafe, bar, pastane: 15 kutu, 0 tam başarılı (eşik %50; sonuç kullanılmadı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 40.9,28.7,41,28.95 | 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
-- Yeme-içme listesi alınamadı; data/food-istanbul.json değiştirilmedi.
+- İstanbul: yeme-içme · restoran: 15 kutu, 11 tam başarılı; eksik bölgeler (güney,batı,kuzey,doğu): 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- İstanbul: yeme-içme · kafe, bar, pastane: 15 kutu, 0 tam başarılı (eşik %50; bu grup atıldı); eksik bölgeler (güney,batı,kuzey,doğu): 40.8,28.45,40.9,28.7 | 40.8,28.7,40.9,28.95 | 40.9,28.45,41,28.7 | 40.9,28.7,41,28.95 | 40.8,28.95,40.9,29.2 | 40.8,29.2,40.9,29.45 | 40.9,28.95,41,29.2 | 40.9,29.2,41,29.45 | 40.8,29.45,40.9,29.7 | 40.8,29.7,40.9,29.95 | 40.9,29.45,41,29.7 | 40.9,29.7,41,29.95 | 41,27.95,41.1,28.2 | 41,28.2,41.1,28.45 | 41.1,27.95,41.2,28.2 | 41.1,28.2,41.2,28.45 | 41,28.45,41.1,28.7 | 41,28.7,41.1,28.95 | 41.1,28.45,41.2,28.7 | 41.1,28.7,41.2,28.95 | 41,28.95,41.1,29.2 | 41,29.2,41.1,29.45 | 41.1,28.95,41.2,29.2 | 41.1,29.2,41.2,29.45 | 41,29.45,41.1,29.7 | 41,29.7,41.1,29.95 | 41.1,29.45,41.2,29.7 | 41.1,29.7,41.2,29.95 | 41.2,27.95,41.3,28.2 | 41.2,28.2,41.3,28.45 | 41.3,27.95,41.4,28.2 | 41.3,28.2,41.4,28.45 | 41.2,28.45,41.3,28.7 | 41.2,28.7,41.3,28.95 | 41.3,28.45,41.4,28.7 | 41.3,28.7,41.4,28.95 | 41.2,28.95,41.3,29.2 | 41.2,29.2,41.3,29.45 | 41.3,28.95,41.4,29.2 | 41.3,29.2,41.4,29.45 | 41.2,29.45,41.3,29.7 | 41.2,29.7,41.3,29.95 | 41.3,29.45,41.4,29.7 | 41.3,29.7,41.4,29.95 | 41.4,27.95,41.5,28.2 | 41.4,28.2,41.5,28.45 | 41.5,27.95,41.6,28.2 | 41.5,28.2,41.6,28.45 | 41.4,28.45,41.5,28.7 | 41.4,28.7,41.5,28.95 | 41.5,28.45,41.6,28.7 | 41.5,28.7,41.6,28.95 | 41.4,28.95,41.5,29.2 | 41.4,29.2,41.5,29.45 | 41.5,28.95,41.6,29.2 | 41.5,29.2,41.6,29.45 | 41.4,29.45,41.5,29.7 | 41.4,29.7,41.5,29.95 | 41.5,29.45,41.6,29.7 | 41.5,29.7,41.6,29.95.
+- Ayıklanan (anlamsız ad / yeme-içme dışı): 10
+- Toplam: 3785 (restaurant 3785)
+- Mutfak türü: 31%, çalışma saati: 13%, telefon: 18%, web: 15%, Instagram: 1%
+- En sık mutfak türleri: turkish 596, kebab 107, seafood 98, regional 81, pizza 77, fish 65, burger 37, steak_house 37, italian 34, breakfast 30, international 29, chicken 24, local 22, sushi 21, coffee_shop 20
+- data/food-istanbul.json: 3785 yer.
 
 ## Overture Maps (CDLA-Permissive-2.0)
 
 - Release: 2026-09-23.1 (2026-10-15)
 - İzmir province polygon: found
 - Raw candidates (food kinds inside the polygon): 20431
-- Kept (confidence >= 0.6): 15743
-- Removed as OSM duplicates: 1099
+- Kept (confidence >= 0.7): 13882
+- Removed as OSM duplicates: 1061
 - Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 6048
 - Ad süzgeciyle atılan: 184 (en sık 10 eşleşen kelime: market 62, lokali 27, catering 24, dernegi 20, dugun salonu 13, organizasyon 10, dugun 7, toptan 7, performance hall 6, ekipmanlari 3)
-- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 13
-- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 1118
-- Web sitesi kontrolü: 4099 kontrol edildi, 2271 açık, 1686 açılmıyor, 142 belirsiz
-- Kayıt sayıları (İzmir): ham 20431, kapalı 0, kullanılamaz ad 13, ad süzgeci 184, aday 20234; güven < 0.6 4476, Overture içi kopya/boyut sınırı 15, OSM kopyası 1099, elle çıkarılan 13; son 14631
-- Önceki çalıştırmaya göre: +0 yeni, −0 kaybolan
-- Per kind: bar 957, cafe 3870, fast_food 747, food_court 4, restaurant 9053
-- data/food-overture-izmir.json: 2.21 MB
+- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 12
+- Şüpheli (İzmir dışı sabit hat ya da kasap/şarküteri): 984
+- Web sitesi kontrolü: 3872 kontrol edildi, 2125 açık, 1590 açılmıyor, 157 belirsiz
+- Kayıt sayıları (İzmir): ham 20431, kapalı 0, kullanılamaz ad 13, ad süzgeci 184, aday 20234; güven < 0.7 6340, Overture içi kopya/boyut sınırı 12, OSM kopyası 1061, elle çıkarılan 12; son 12809
+- Önceki çalıştırmaya göre: +0 yeni, −1822 kaybolan
+- Kaybolanlardan örnekler: 01 Adana, 06 Döner, 06 DÖNER, 1 Waffle 1 Kumpir, 10 Buçuk, 1071 meşhur muş tandır ekmeği, 1881 Cafe Lounge, 1983 Katipoglu Sandvic ve Hamburger, 1Yer Restorant, 25 Erzurum Cağ Kebab Salonu
+- Per kind: bar 807, cafe 3400, fast_food 658, food_court 4, restaurant 7940
+- data/food-overture-izmir.json: 1.97 MB
 
 ## Overture Maps (CDLA-Permissive-2.0) · İstanbul
 
 - Release: 2026-09-23.1 (2026-10-15)
 - İstanbul province polygon: found
 - Raw candidates (food kinds inside the polygon): 57906
-- Kept (confidence >= 0.6): 44046
-- Removed as OSM duplicates: 0
-- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 19118
+- Kept (confidence >= 0.7): 38673
+- Removed as OSM duplicates: 1863
+- Doğrulanmış (2+ kaynak ya da güven ≥ 0,9): 17725
 - Ad süzgeciyle atılan: 343 (en sık 10 eşleşen kelime: market 82, catering 76, dernegi 64, organizasyon 23, malzemeleri 23, lokali 21, toptan 10, dugun salonu 10, bakkal 7, makinalari 6)
 - Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: 0
-- Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 3463
-- Web sitesi kontrolü: 14775 kontrol edildi, 8479 açık, 5630 açılmıyor, 666 belirsiz
-- Kayıt sayıları (İstanbul): ham 57906, kapalı 0, kullanılamaz ad 344, ad süzgeci 343, aday 57219; güven < 0.6 13124, Overture içi kopya/boyut sınırı 49, OSM kopyası 0, elle çıkarılan 0, zayıf kayıt (iletişim bilgisi yok) 0; son 44046
-- Önceki çalıştırmaya göre: +30204 yeni, −0 kaybolan
-- Per kind: bar 2125, cafe 12030, fast_food 2581, food_court 30, restaurant 27280
-- data/food-overture-istanbul.json: 7.08 MB
+- Şüpheli (İstanbul dışı sabit hat ya da kasap/şarküteri): 2892
+- Web sitesi kontrolü: 13899 kontrol edildi, 8028 açık, 5197 açılmıyor, 674 belirsiz
+- Kayıt sayıları (İstanbul): ham 57906, kapalı 0, kullanılamaz ad 344, ad süzgeci 343, aday 57219; güven < 0.7 18502, Overture içi kopya/boyut sınırı 44, OSM kopyası 1863, elle çıkarılan 0, zayıf kayıt (iletişim bilgisi yok) 0; son 36810
+- Önceki çalıştırmaya göre: +0 yeni, −7236 kaybolan
+- Kaybolanlardan örnekler: 01 Adana Cadde Kebap, 01 Adana Kebapcı, 01 Ocakbaşi Alper Gülteki̇n, 01 Ocakbaşı Veysi Çalım, 1453 Cankurtaran Cafe, 180 Derece Butik Pasta, 1924 Istanbul, 1birbasalounge, 1doner, 2 de 1 Köfte
+- Per kind: bar 1703, cafe 10319, fast_food 2261, food_court 29, restaurant 22498
+- data/food-overture-istanbul.json: 6.02 MB
