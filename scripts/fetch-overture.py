@@ -53,7 +53,7 @@ THRESHOLDS = (MIN_CONFIDENCE, STRICT_CONFIDENCE, 0.8, VERIFIED_CONFIDENCE)
 # area_codes are the province's landline codes (a landline with another code is suspect).
 CITIES = [
     {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',),
-     'min_conf': 0.6},
+     'min_conf': 0.7},
     {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
      'area_codes': ('212', '216'), 'strict': True,  # strict: drop weak records below STRICT_CONFIDENCE
      'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
