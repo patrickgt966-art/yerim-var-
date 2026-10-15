@@ -52,9 +52,11 @@ THRESHOLDS = (MIN_CONFIDENCE, STRICT_CONFIDENCE, 0.8, VERIFIED_CONFIDENCE)
 # bbox is a generous (xmin, xmax, ymin, ymax) filter for the province (region) polygon lookup;
 # area_codes are the province's landline codes (a landline with another code is suspect).
 CITIES = [
-    {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',)},
+    {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',),
+     'min_conf': 0.6},
     {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
-     'area_codes': ('212', '216'), 'strict': True},  # strict: drop weak records below STRICT_CONFIDENCE
+     'area_codes': ('212', '216'), 'strict': True,  # strict: drop weak records below STRICT_CONFIDENCE
+     'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
@@ -633,7 +635,7 @@ def append_report(city, release, raw, kept, dupes, items, size, threshold, dropp
         web_line(web),
         f"- Kayıt sayıları ({city['name']}): ham {raw}, kapalı {counts['closed']}, kullanılamaz ad {counts['bad_name']}, "
         f"ad süzgeci {sum(dropped.values())}, aday {counts['cands']}; "
-        f"güven < {threshold} {counts['low_conf']}, Overture içi kopya/boyut sınırı {counts['self_dup']}, "
+        f"güven < {counts['floor']} {counts['low_conf']}, Overture içi kopya/boyut sınırı {counts['self_dup']}, "
         f"OSM kopyası {dupes}, elle çıkarılan {blocked_n}"
         + (f", zayıf kayıt (iletişim bilgisi yok) {counts['weak']}" if counts['strict'] else '')
         + f"; son {len(items)}",
@@ -653,7 +655,8 @@ def fit_to_size(cands, osm_grid, release, city):
     def size_of(items):
         return len(render(release, items, city).encode('utf-8'))
 
-    for i, threshold in enumerate(THRESHOLDS):
+    floor = city.get('min_conf', MIN_CONFIDENCE)
+    for i, threshold in enumerate(t for t in THRESHOLDS if t >= floor):
         if i:
             print(f"{city['id']}: file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}")
         items, dupes = select(cands, threshold, osm_grid)
@@ -686,7 +689,8 @@ def run_city(release, city, loaded, web_urls, web_budget):
     threshold, items, dupes = fit_to_size(cands, osm_grid, release, city)
     n_sel = len(items) + dupes
     counts = {'cands': len(cands), 'closed': extra['closed'], 'bad_name': extra['bad_name'],
-              'low_conf': sum(1 for c, _ in cands if c < threshold), 'weak': 0, 'strict': bool(city.get('strict'))}
+              'floor': city.get('min_conf', MIN_CONFIDENCE),
+              'low_conf': sum(1 for c, _ in cands if c < city.get('min_conf', MIN_CONFIDENCE)), 'weak': 0, 'strict': bool(city.get('strict'))}
     counts['self_dup'] = len(cands) - counts['low_conf'] - n_sel
     blocked = load_blocklist()
     n_before = len(items)

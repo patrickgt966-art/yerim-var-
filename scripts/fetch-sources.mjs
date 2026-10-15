@@ -175,8 +175,9 @@ const FOOD_QUERY = queryDef(
 );
 
 FOOD_QUERY.tiled = [
-  { label: 'restoran', statements: FOOD_QUERY.many[0] },
-  { label: 'kafe, bar, pastane', statements: FOOD_QUERY.many.slice(1).join('\n') },
+  // optional: each food group is accepted on its own; overpassTiled drops and logs a failed one.
+  { label: 'restoran', statements: FOOD_QUERY.many[0], optional: true },
+  { label: 'kafe, bar, pastane', statements: FOOD_QUERY.many.slice(1).join('\n'), optional: true },
 ];
 
 // Each city gets its own budget for all of its Overpass queries (set in
