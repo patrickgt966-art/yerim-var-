@@ -443,18 +443,22 @@ function knownPlace(query: string): boolean {
 }
 
 /**
- * Rule intent + AI intent: the AI fills what the rules left empty and decides intent and wishes;
+ * Rule intent + AI intent: the AI decides what to eat, intent and wishes and fills what the rules left empty;
  * a district or a place name that exists in our data stays as the rules read it.
  */
 function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
-  const cat = rule.cat ?? ai.cat;
+  // What to eat is the AI's call: it reads the meaning ("kas yapacak bir şey" is protein), the
+  // rules only read words. Where both land on the same category the rules' dish stays, as it
+  // carries our own dish profile.
+  const aiLeads = (ai.cat !== null || !!ai.dish) && ai.cat !== rule.cat;
+  const cat = aiLeads ? ai.cat : (rule.cat ?? ai.cat);
   const food = rule.food || ai.food || cat !== null || !!ai.dish;
   const requireParking = rule.requireParking || ai.requireParking;
   return {
     ...rule,
     cat,
-    dish: rule.cat ? rule.dish : ai.dish,
-    dishServes: rule.cat ? null : ai.dishServes,
+    dish: aiLeads ? ai.dish : rule.cat ? rule.dish : ai.dish,
+    dishServes: aiLeads ? ai.dishServes : rule.cat ? null : ai.dishServes,
     district: rule.district ?? ai.district,
     // A place name our data knows stays as the rules read it. Leftover words the rules could not
     // place are what the AI decides: it knows what they meant.
@@ -872,6 +876,8 @@ async function within<T>(p: Promise<T>, ms: number): Promise<T | null> {
 type Routed =
   | { kind: 'search'; value: Extract<Understanding, { kind: 'search' }> }
   | { kind: 'chat'; value: { reply: string; action: ChatReplyAction } }
+  // The AI read the message and could not tell what is wanted.
+  | { kind: 'unknown' }
   | { kind: 'none' };
 
 /**
@@ -919,7 +925,7 @@ async function route(
   const v = res.value;
   if (v.kind === 'search') return { out: { kind: 'search', value: v }, ...notice };
   if (v.kind === 'chat') return { out: { kind: 'chat', value: v }, ...notice };
-  return { out: none, ...notice };
+  return { out: { kind: 'unknown' }, ...notice };
 }
 
 export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
@@ -1019,6 +1025,22 @@ async function answerText(
       }
       return withNotice(res);
     }
+  }
+
+  // The AI read the message and could not tell what is wanted: say so instead of guessing with
+  // the rules (a guess shows unrelated places). Abuse keeps its own calm answer below.
+  if (routed.out.kind === 'unknown' && !followUp && it.kind !== 'abuse') {
+    meta.settled = true;
+    return withNotice(
+      plain(
+        {
+          text: variant(t, 'chat.unknown', 2, text, cityExamples()),
+          cards: [],
+          actions: examples(ctx.section, t),
+        },
+        ctx,
+      ),
+    );
   }
 
   const ruleIt = it;

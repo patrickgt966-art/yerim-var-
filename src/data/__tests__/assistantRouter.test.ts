@@ -139,9 +139,17 @@ describe('the router: every message goes to Haiku first', () => {
       expect(ai.pick).not.toHaveBeenCalled();
     });
 
-    it('unknown, an error and a thrown error all leave the rule path (one router call)', async () => {
+    it('the AI could not tell what is wanted: it says so, no rule guess and no cards', async () => {
+      const { ai, deps } = mockAi(async () => ({ ok: true, remaining: 8, value: { kind: 'unknown' } }));
+      const r = await answer('lahmacun', emptyContext('food'), deps);
+      expect(r.reply.cards).toHaveLength(0);
+      expect(r.reply.text).toMatch(/^chat.unknown_/);
+      expect(ai.understand).toHaveBeenCalledTimes(1);
+      expect(ai.pick).not.toHaveBeenCalled();
+    });
+
+    it('an error and a thrown error leave the rule path (one router call)', async () => {
       for (const understand of [
-        async () => ({ ok: true, remaining: 8, value: { kind: 'unknown' } }),
         fail,
         async () => {
           throw new Error('boom');
