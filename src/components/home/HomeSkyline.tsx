@@ -27,6 +27,8 @@ export function HomeSkyline() {
         <IstanbulSkyline />
       ) : city === 'ankara' ? (
         <AnkaraSkyline />
+      ) : city === 'bursa' ? (
+        <BursaSkyline />
       ) : (
         <IzmirSkyline />
       )}
@@ -166,6 +168,50 @@ function AnkaraSkyline() {
       </G>
       {/* Kocatepe Camii: courtyard body, central dome, two half domes and four minarets */}
       <Path d="M280 92V68H340V92zM293 68A17 17 0 0 1 327 68zM309.4 51V42H310.6V51zM280 68A9 9 0 0 1 298 68zM322 68A9 9 0 0 1 340 68zM272.5 92V36H275.5V92zM270.5 46V43.5H277.5V46zM272 36L274 22L276 36zM284.5 92V36H287.5V92zM282.5 46V43.5H289.5V46zM284 36L286 22L288 36zM332.5 92V36H335.5V92zM330.5 46V43.5H337.5V46zM332 36L334 22L336 36zM344.5 92V36H347.5V92zM342.5 46V43.5H349.5V46zM344 36L346 22L348 36z" />
+      {/* Gentle ground line */}
+      <Path
+        d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
+  );
+}
+
+/**
+ * Bursa: Uludağ as a big mountain behind everything (with a few snow patches), the Yeşil Türbe
+ * (octagonal tomb under a ribbed dome, the mint accent), the Ulu Cami (a wide block under a row of
+ * nine small domes, two minarets) and the Tophane Saat Kulesi on its hill (the orange accent).
+ * Shapes that overlap share one path so the translucent fill does not double up.
+ */
+function BursaSkyline() {
+  return (
+    <G testID="skyline-bursa" fill={brand.white} fillOpacity={0.32}>
+      {/* Uludağ: the long ridge behind everything, then its snow patches */}
+      <Path
+        d="M0 92V64L36 58L84 44L132 26L178 12L206 6L232 16L262 30L300 44L346 54L390 60V92z"
+        fillOpacity={0.12}
+      />
+      <Path d="M178 12L206 6L232 16L218 20L206 14L196 22L186 16z" fillOpacity={0.14} />
+      {/* Foothills */}
+      <Path
+        d="M0 92V78C40 70 90 72 130 76S220 80 260 74 340 68 390 74V92z"
+        fillOpacity={0.14}
+      />
+      {/* Cypress trees */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M84 92c-3-8-3-16 0-26 3 10 3 18 0 26zM240 92c-3-7-3-14 0-22 3 8 3 15 0 22zM352 92c-3-8-3-16 0-26 3 10 3 18 0 26zM372 92c-3-6-3-12 0-18 3 6 3 12 0 18z" />
+      </G>
+      {/* Yeşil Türbe, in mint: platform, octagonal body, drum, ribbed dome and finial */}
+      <G fill={brand.mint} fillOpacity={0.8}>
+        <Path d="M28 92V86H76V92zM32 86V64L38 58H66L72 64V86zM40 58V52H64V58zM40 52C40 42 45 37 52 33C59 37 64 42 64 52zM51.4 33V25H52.6V33z" />
+      </G>
+      {/* Ulu Cami: wide block, a row of nine small domes and two minarets */}
+      <Path d="M106 92V64H214V92zM106 64A6 6 0 0 1 118 64zM118 64A6 6 0 0 1 130 64zM130 64A6 6 0 0 1 142 64zM142 64A6 6 0 0 1 154 64zM154 64A6 6 0 0 1 166 64zM166 64A6 6 0 0 1 178 64zM178 64A6 6 0 0 1 190 64zM190 64A6 6 0 0 1 202 64zM202 64A6 6 0 0 1 214 64zM100 92V30H104V92zM97.5 44V41H106.5V44zM99.5 30L102 14L104.5 30zM216 92V30H220V92zM213.5 44V41H222.5V44zM215.5 30L218 14L220.5 30z" />
+      {/* Tophane hill and Saat Kulesi, in orange so the city reads at a glance */}
+      <Path d="M246 92V84C260 76 274 72 296 70S330 76 346 92z" />
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M286 72V62H306V72zM289 62V36H303V62zM287 36V34H305V36zM290 34V24H302V34zM288.5 24L296 10L303.5 24zM295.3 10V4H296.7V10z" />
+      </G>
       {/* Gentle ground line */}
       <Path
         d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"

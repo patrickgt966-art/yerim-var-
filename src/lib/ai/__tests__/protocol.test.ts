@@ -124,6 +124,16 @@ describe('city in the system prompts', () => {
     expect(chatSystem('ankara')).toContain("Ankara'da yemek");
   });
 
+  it('names Bursa for bursa and never İzmir', () => {
+    for (const make of all) {
+      const text = make('bursa');
+      expect(text).toContain('Bursa');
+      expect(text).not.toContain('İzmir');
+      expect(text).not.toBe(make('izmir'));
+    }
+    expect(chatSystem('bursa')).toContain("Bursa'da yemek");
+  });
+
   it('does not call the district an İzmir district', () => {
     expect(understandSystem('istanbul')).toContain('şehrin ilçesi');
   });
@@ -135,8 +145,9 @@ describe('CitySchema', () => {
     expect(CitySchema.safeParse('atlantis').success).toBe(false);
   });
 
-  it('accepts ankara', () => {
+  it('accepts ankara and bursa', () => {
     expect(CitySchema.safeParse('ankara').success).toBe(true);
+    expect(CitySchema.safeParse('bursa').success).toBe(true);
     expect(CitySchema.safeParse('antalya').success).toBe(false);
   });
 });

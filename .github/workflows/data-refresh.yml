@@ -23,11 +23,12 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Three cities (İzmir, İstanbul, Ankara). Overpass is capped in the script at 20 min for
-    # İzmir + 45 min for İstanbul + 37 min for Ankara (tiled places/food); CKAN calls (İzmir only)
-    # have 60 s timeouts; Overture reads all cities' places (three scans) plus a shared 35 min
-    # website check (split between the cities by candidate count).
-    timeout-minutes: 180
+    # Four cities (İzmir, İstanbul, Ankara, Bursa). Overpass is capped in the script at 20 min for
+    # İzmir + 45 min for İstanbul + 37 min for Ankara + 30 min for Bursa (tiled places/food); CKAN
+    # calls (İzmir, and Bursa's optional Açık Yeşil) have 60 s timeouts and 120 s downloads;
+    # Overture reads all cities' places (four scans) plus a shared 35 min website check
+    # (split between the cities by candidate count).
+    timeout-minutes: 210
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

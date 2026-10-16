@@ -5,6 +5,7 @@ import { useApp } from '../app';
 const KONAK = { lat: 38.4189, lng: 27.1287 };
 const SARAYBURNU = { lat: 41.0136, lng: 28.9503 };
 const ANKARA = { lat: 39.9334, lng: 32.8597 };
+const BURSA = { lat: 40.1826, lng: 29.0665 };
 
 beforeEach(() => {
   setActiveCity('izmir');
@@ -58,11 +59,18 @@ it('setCity switches to ankara', () => {
   expect(activeCity().id).toBe('ankara');
 });
 
+it('setCity switches to bursa', () => {
+  useApp.getState().setCity('bursa');
+  expect(useApp.getState().city).toBe('bursa');
+  expect(activeCity().id).toBe('bursa');
+});
+
 describe('cityAt', () => {
   it('finds the open city around a point', () => {
     expect(cityAt(KONAK)?.id).toBe('izmir');
     expect(cityAt(SARAYBURNU)?.id).toBe('istanbul');
     expect(cityAt(ANKARA)?.id).toBe('ankara');
+    expect(cityAt(BURSA)?.id).toBe('bursa');
   });
 
   it('finds nothing in a closed city or at sea', () => {
@@ -76,5 +84,6 @@ describe('city names', () => {
     expect(cityById('izmir').locative).toBe("İzmir'de");
     expect(cityById('istanbul').locative).toBe("İstanbul'da");
     expect(cityById('ankara').locative).toBe("Ankara'da");
+    expect(cityById('bursa').locative).toBe("Bursa'da");
   });
 });

@@ -1,5 +1,5 @@
-// Collects static parking, place, rail and food data for İzmir and İstanbul
-// provinces from open sources and writes data/parkings-static[-istanbul].json,
+// Collects static parking, place, rail and food data for İzmir, İstanbul, Ankara and Bursa
+// provinces from open sources and writes data/parkings-static[-<city>].json,
 // places-/rail-/food-<city>.json plus data/sources-report.md.
 //
 // Runs in GitHub Actions (.github/workflows/data-refresh.yml); the app never
@@ -7,6 +7,9 @@
 // - OpenStreetMap via Overpass (ODbL): every city.
 // - İzmir open data portal (CKAN, CC BY 4.0), İzmir only: every dataset matching
 //   "otopark" is downloaded to data/raw/ for review; known ones are merged.
+// - Bursa Büyükşehir open data portal "Açık Yeşil" (CKAN), Bursa only, optional: every resource of
+//   the dataset `otopark` goes to data/raw/bursa-otopark-*; JSON / GeoJSON with points is merged
+//   (capacity only) when its keys can be guessed. Any failure leaves the OSM data alone.
 //
 // Usage: node scripts/fetch-sources.mjs [izmir|istanbul]   (or YERIM_CITIES=istanbul)
 import { createHash } from 'node:crypto';
@@ -122,6 +125,38 @@ const CITIES = [
     railTimeout: 180,
     httpMs: 330_000,
     // Ankaray (light_rail), Ankara metro (subway), Başkentray (train).
+    railTypes: 'subway|light_rail|train|tram',
+  },
+  {
+    id: 'bursa',
+    name: 'Bursa',
+    // Same tiled pattern, a smaller province: 10 + 12 + 8 min. No live parking API.
+    budgetMin: 30,
+    split: true,
+    tiled: {
+      bbox: { s: 39.55, w: 28.25, n: 40.65, e: 30.0 },
+      rows: 3,
+      cols: 4,
+      // South-west tile (lat < 39.9167, lng < 28.6875) is Balıkesir: the province's south-west
+      // edge (Büyükorhan, Orhaneli) starts east of it. The north coast stays in (İmralı is Mudanya's).
+      skip: (t) => t.n <= 39.9167 && t.e <= 28.6875,
+      timeout: 90,
+      httpMs: 120_000,
+      rounds: 2,
+      pauseMs: 15_000,
+      minOk: 0.9,
+      foodMinOk: 0.5,
+      gapMs: 5_000,
+      busyMinMs: 30_000,
+      busyMaxMs: 60_000,
+      baseMin: 10,
+      placesMin: 12,
+      foodMin: 8,
+    },
+    queryTimeout: 300,
+    railTimeout: 180,
+    httpMs: 330_000,
+    // Bursaray (subway / light_rail), T1 tram.
     railTypes: 'subway|light_rail|train|tram',
   },
 ];
@@ -556,6 +591,210 @@ function fromIzelman(row, kind, resourceId) {
   return rec;
 }
 
+// --- Bursa open data portal "Açık Yeşil" (CKAN), optional ---------------------
+
+const BURSA_CKAN = 'https://acikyesil.bursa.bel.tr/api/3/action';
+// A little wider than the province: a point outside is a wrong column, not a Bursa car park.
+const BURSA_BOX = { s: 39.4, n: 40.8, w: 28.1, e: 30.2 };
+const MAX_RAW_BYTES = 25 * 1024 * 1024;
+
+// Column name -> comparable key: "OTOPARK_ADI" and "Otopark Adı" both become "otoparkadi".
+const nk = (k) => foldTr(String(k)).replace(/ /g, '');
+const toNum = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v !== 'string' || !v.trim()) return null;
+  const n = Number(v.trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+const inBursa = (lat, lng) =>
+  lat >= BURSA_BOX.s && lat <= BURSA_BOX.n && lng >= BURSA_BOX.w && lng <= BURSA_BOX.e;
+/** [lat, lng] if the pair lies in Bursa, also when the two columns were swapped; else null. */
+const bursaPoint = (a, b) =>
+  a == null || b == null ? null : inBursa(a, b) ? [a, b] : inBursa(b, a) ? [b, a] : null;
+
+const LAT_KEYS = /^(lat|latitude|latitud|enlem|y|ycoord|ycoordinate|koordinaty|coordy|konumy)$/;
+const LNG_KEYS = /^(lng|lon|long|longitude|longitud|boylam|x|xcoord|xcoordinate|koordinatx|coordx|konumx)$/;
+const POINT_KEYS = /^(konum|koordinat|koordinatlar|coordinates|coordinate|location|latlng|latlon|geom|geometry|wkt|the_geom|thegeom)$/;
+const NAME_KEYS = ['otoparkadi', 'otoparkismi', 'adi', 'ad', 'isim', 'name', 'baslik', 'title', 'tanim', 'yeradi', 'lokasyonadi', 'lokasyon'];
+const NAME_NOT = /(ilce|mahalle|yol|sokak|cadde|kurum|isletme|firma|sahip|durum|tip|tur|adres|kod|sayi|id$|no$)/;
+const CAP_NOT = /(engelli|bos|dolu|motor|bisiklet|sarj|elektrik)/;
+
+/** Which columns hold the point, name and capacity; guessed from the column names. */
+function detectKeys(rows) {
+  const keys = new Map(); // normalized -> original
+  for (const row of rows.slice(0, 200)) {
+    for (const k of Object.keys(row)) if (!keys.has(nk(k))) keys.set(nk(k), k);
+  }
+  const all = [...keys.keys()];
+  const orig = (n) => (n == null ? null : keys.get(n));
+  const lat = all.find((n) => LAT_KEYS.test(n) || n.includes('enlem') || n.includes('latitude'));
+  const lng = all.find((n) => LNG_KEYS.test(n) || n.includes('boylam') || n.includes('longitude'));
+  const point = all.find((n) => POINT_KEYS.test(n));
+  const name =
+    NAME_KEYS.find((n) => keys.has(n)) ??
+    all.find((n) => (n.includes('otopark') || n.includes('adi')) && !NAME_NOT.test(n) && !n.includes('kapasite'));
+  const cap =
+    all.find((n) => /^(kapasite|capacity|kapasitesi)$/.test(n)) ??
+    all.find((n) => n.includes('kapasite') && !CAP_NOT.test(n)) ??
+    all.find((n) => n.includes('capacity') && !CAP_NOT.test(n)) ??
+    all.find((n) => /(aracsayisi|parkyerisayisi|parksayisi|aracadedi|kontenjan)/.test(n));
+  return { lat: orig(lat), lng: orig(lng), point: orig(point), name: orig(name), cap: orig(cap) };
+}
+
+/** [lat, lng] from a combined value: "40.19,29.06", [lng, lat], {lat, lng} or WKT POINT(lng lat). */
+function pointFromValue(v) {
+  if (v == null) return null;
+  if (Array.isArray(v)) return v.length >= 2 ? bursaPoint(toNum(v[0]), toNum(v[1])) : null;
+  if (typeof v === 'object') {
+    const k = Object.keys(v);
+    const la = k.find((x) => LAT_KEYS.test(nk(x)));
+    const lo = k.find((x) => LNG_KEYS.test(nk(x)));
+    if (la && lo) return bursaPoint(toNum(v[la]), toNum(v[lo]));
+    return v.coordinates ? pointFromValue(v.coordinates) : null;
+  }
+  const m = String(v).match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
+  return m ? bursaPoint(Number(m[1]), Number(m[2])) : null;
+}
+
+/** Rows of a JSON / GeoJSON body: features (properties + point) or the biggest array of objects. */
+function rowsOf(body) {
+  if (body && body.type === 'FeatureCollection' && Array.isArray(body.features)) {
+    return body.features
+      .filter((f) => f && typeof f === 'object')
+      .map((f) => ({ ...(f.properties ?? {}), __point: f.geometry?.type === 'Point' ? f.geometry.coordinates : null }));
+  }
+  let best = [];
+  const walk = (node, depth) => {
+    if (Array.isArray(node)) {
+      const objs = node.filter((x) => x && typeof x === 'object' && !Array.isArray(x));
+      if (objs.length > best.length) best = objs;
+      if (depth < 3) for (const x of node.slice(0, 3)) walk(x, depth + 1);
+    } else if (node && typeof node === 'object' && depth < 3) {
+      for (const x of Object.values(node)) walk(x, depth + 1);
+    }
+  };
+  walk(body, 0);
+  return best;
+}
+
+function fromBursaRow(row, keys) {
+  let pt = null;
+  if (row.__point) pt = bursaPoint(toNum(row.__point[1]), toNum(row.__point[0])); // GeoJSON is [lng, lat]
+  if (!pt && keys.lat && keys.lng) pt = bursaPoint(toNum(row[keys.lat]), toNum(row[keys.lng]));
+  if (!pt && keys.point) pt = pointFromValue(row[keys.point]);
+  if (!pt) return null;
+  const rawName = keys.name ? String(row[keys.name] ?? '').trim() : '';
+  const cap = keys.cap ? int(Math.round(toNum(row[keys.cap]) ?? 0)) : null;
+  const capacity = cap && cap <= 20000 ? cap : null; // larger is a wrong column
+  // A point with neither a name nor a capacity adds nothing over OSM.
+  if (!rawName && !capacity) return null;
+  let name = rawName ? titleTr(rawName) : null;
+  if (name && !/otopark/i.test(name)) name += ' Otoparkı';
+  const rec = {
+    id: '',
+    name,
+    lat: round(pt[0]),
+    lng: round(pt[1]),
+    capacity,
+    isPaid: null,
+    isIndoor: null,
+    nonstop: null,
+    openingHoursText: null,
+    operator: 'Bursa Büyükşehir Belediyesi',
+    address: null,
+    access: null,
+    // Same kind as the İzelman inventory: municipal, capacity only, never a free count.
+    source: 'izelman',
+  };
+  const key = `${(name ?? '').toLocaleLowerCase('tr')}|${rec.lat.toFixed(4)}|${rec.lng.toFixed(4)}`;
+  rec.id = 'bursa-bb-' + createHash('sha1').update(key).digest('hex').slice(0, 10);
+  return rec;
+}
+
+/**
+ * Downloads every resource of the Açık Yeşil dataset `otopark` to data/raw/bursa-otopark-* and
+ * returns the car parks found in the JSON / GeoJSON ones. Never throws: each step has its own
+ * try/catch and logs what it found, so a changed portal only shortens the report.
+ */
+async function bursaPortal() {
+  const records = [];
+  log('## Bursa açık veri portalı (Açık Yeşil, "otopark" veri seti)');
+  log('');
+  let pkg;
+  try {
+    const res = await fetchWithTimeout(`${BURSA_CKAN}/package_show?id=otopark`, {}, 60_000);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    if (!body.success) throw new Error('success=false');
+    pkg = body.result;
+  } catch (e) {
+    console.warn(`Açık Yeşil: ${e.message}`);
+    log('- Veri seti alınamadı (isteğe bağlı kaynak; yalnızca OSM kullanıldı).');
+    log('');
+    return records;
+  }
+  const resources = Array.isArray(pkg?.resources) ? pkg.resources : [];
+  log(`- Veri seti: ${pkg?.title ?? 'otopark'} (${pkg?.license_title ?? pkg?.license_id ?? 'lisans?'}), ${resources.length} kaynak.`);
+  const used = new Set();
+  for (const [i, r] of resources.entries()) {
+    const label = `${r?.name ?? r?.id ?? `kaynak ${i + 1}`} (${r?.format ?? '?'})`;
+    try {
+      const url = String(r?.url ?? '');
+      if (!/^https?:\/\//i.test(url)) {
+        log(`- ${label}: adres yok, atlandı.`);
+        continue;
+      }
+      const res = await fetchWithTimeout(url, {}, 120_000);
+      if (!res.ok) {
+        log(`- ${label}: indirilemedi (HTTP ${res.status}).`);
+        continue;
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      const ext = String(r?.format ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+      let base = `bursa-otopark-${String(r?.id ?? `r${i + 1}`).replace(/[^A-Za-z0-9-]/g, '').slice(0, 40) || `r${i + 1}`}`;
+      if (used.has(base)) base += `-${i + 1}`;
+      used.add(base);
+      if (buf.length > MAX_RAW_BYTES) {
+        log(`- ${label}: ${buf.length} bayt, çok büyük; kaydedilmedi.`);
+        continue;
+      }
+      await writeFile(out(`data/raw/${base}.${ext}`), buf);
+      let rows = null;
+      try {
+        rows = rowsOf(JSON.parse(buf.toString('utf8').replace(/^﻿/, '')));
+      } catch {
+        log(`- ${label}: data/raw/${base}.${ext} (${buf.length} bayt), JSON değil; birleştirilmedi.`);
+        continue;
+      }
+      if (rows.length === 0) {
+        log(`- ${label}: data/raw/${base}.${ext} (${buf.length} bayt), kayıt dizisi bulunamadı.`);
+        continue;
+      }
+      const keys = detectKeys(rows);
+      const found = rows.map((row) => fromBursaRow(row, keys)).filter(Boolean);
+      log(
+        `- ${label}: data/raw/${base}.${ext} (${buf.length} bayt), ${rows.length} satır; bulunan alanlar: ` +
+          `enlem=${keys.lat ?? '—'}, boylam=${keys.lng ?? '—'}, konum=${keys.point ?? '—'}, ad=${keys.name ?? '—'}, kapasite=${keys.cap ?? '—'}; ` +
+          `kullanılabilir: ${found.length}.`,
+      );
+      records.push(...found);
+    } catch (e) {
+      console.warn(`Açık Yeşil ${label}: ${e.message}`);
+      log(`- ${label}: işlenemedi (${e.name === 'AbortError' ? 'zaman aşımı' : e.message}).`);
+    }
+  }
+  // Same name at the same rounded spot hashes alike: suffix repeats with -2, -3… in list order.
+  const seen = new Map();
+  for (const z of records) {
+    const n = (seen.get(z.id) ?? 0) + 1;
+    seen.set(z.id, n);
+    if (n > 1) z.id = `${z.id}-${n}`;
+  }
+  log(`- Birleştirilecek belediye otoparkı: ${records.length}.`);
+  log('');
+  return records;
+}
+
 // --- Places for search --------------------------------------------------
 
 function placeKind(t) {
@@ -797,7 +1036,10 @@ async function runCity(city) {
   }
   log('');
 
-  // The municipal portal and live API are İzmir-only.
+  // Bursa's municipal inventory is optional: bursaPortal never throws and may return nothing.
+  const bursaMuni = city.id === 'bursa' ? await bursaPortal() : [];
+
+  // The İzmir municipal portal and live API are İzmir-only.
   let ckanFound = null;
   if (izmir) {
     ckanFound = await portal();
@@ -903,20 +1145,26 @@ async function runCity(city) {
   if (izmir) log(`- İzelman envanteri: ${izelman.length} otopark.`);
 
   // Official records win over OSM points of the same car park.
+  const official = [...izelman, ...bursaMuni];
   const osmKept = osm
-    .filter((o) => !izelman.some((z) => meters(o, z) <= 80))
+    .filter((o) => !official.some((z) => meters(o, z) <= 80))
     .map((o) => (o.name ? o : { ...o, near: nearestPlace(o) }));
   if (izmir) log(`- OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
+  if (bursaMuni.length) log(`- OSM'den Açık Yeşil ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
   log(`- Adsız otoparklardan yakın yer adı bulunan: ${osmKept.filter((o) => o.near).length}.`);
 
   // İzmir needs both sources; other cities only have OSM (and an empty answer is not a result).
   if (elements && (izmir ? izelman.length > 0 : elements.length > 0)) {
-    const parkings = [...izelman, ...osmKept].sort((a, b) => a.id.localeCompare(b.id));
+    const parkings = [...official, ...osmKept].sort((a, b) => a.id.localeCompare(b.id));
     const wrote = await writeData(files.parkings, {
       $comment: izmir
         ? 'Generated by scripts/fetch-sources.mjs. izelman-*: İzmir Büyükşehir Belediyesi Açık Veri (İzelman otopark envanteri); id = izelman-<first 10 hex of sha1(lowercase tr name|lat 4 dp|lng 4 dp)>, repeats get -2, -3 in list order. osm-*: © OpenStreetMap contributors, ODbL 1.0. near: nearest OSM place name within 250 m, for unnamed car parks.'
-        : `Generated by scripts/fetch-sources.mjs. osm-*: © OpenStreetMap contributors, ODbL 1.0 (${city.name}). near: nearest OSM place name within 250 m, for unnamed car parks.`,
-      licenses: izmir ? { izelman: 'İzmir BB Açık Veri Lisansı', osm: 'ODbL-1.0' } : { osm: 'ODbL-1.0' },
+        : `Generated by scripts/fetch-sources.mjs. ${bursaMuni.length ? 'bursa-bb-*: Bursa Büyükşehir Belediyesi Açık Yeşil (otopark veri seti, yalnızca kapasite). ' : ''}osm-*: © OpenStreetMap contributors, ODbL 1.0 (${city.name}). near: nearest OSM place name within 250 m, for unnamed car parks.`,
+      licenses: izmir
+        ? { izelman: 'İzmir BB Açık Veri Lisansı', osm: 'ODbL-1.0' }
+        : bursaMuni.length
+          ? { 'bursa-bb': 'Bursa Büyükşehir Belediyesi Açık Yeşil', osm: 'ODbL-1.0' }
+          : { osm: 'ODbL-1.0' },
       parkings,
     });
     if (wrote) log(`- ${files.parkings}: ${parkings.length} otopark.`);

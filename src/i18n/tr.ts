@@ -241,6 +241,8 @@ const tr = {
     sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
       'İzmir Büyükşehir Belediyesi Açık Veri (CC BY 4.0), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
+    sourceBursa:
+      'Bursa Büyükşehir Belediyesi Açık Yeşil, otopark veri seti. Boş yer bilgisi yok.',
     sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
       '© OpenStreetMap katkıcıları (ODbL). Boş yer bilgisi yok. Bilgileri gönüllüler girdi.',

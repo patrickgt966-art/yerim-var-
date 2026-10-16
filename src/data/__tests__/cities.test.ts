@@ -77,6 +77,32 @@ describe('active city', () => {
     expect(cityExamples(ank).dLoc).toBe("Bahçelievler'de");
   });
 
+  it('opens bursa with its 17 districts and no live parking', () => {
+    const bur = cityById('bursa');
+    expect(bur).toMatchObject({
+      available: true,
+      parkingSource: 'osm',
+      parkingAttribution: 'OpenStreetMap',
+      locative: "Bursa'da",
+      center: { lat: 40.1885, lng: 29.061 },
+    });
+    expect(bur.districts).toHaveLength(17);
+    expect(bur.districtCenters.map((d) => d.name)).toEqual([...bur.districts]);
+    expect(hasLiveParking(bur)).toBe(false);
+    for (const d of bur.districtCenters) expect(isInCityArea(d, bur)).toBe(true);
+    // Province corners stay inside; Balıkesir, İstanbul and the Marmara are outside.
+    expect(isInCityArea({ lat: 39.6, lng: 28.3 }, bur)).toBe(true);
+    expect(isInCityArea({ lat: 40.6, lng: 29.95 }, bur)).toBe(true);
+    expect(isInCityArea({ lat: 39.65, lng: 27.9 }, bur)).toBe(false);
+    expect(isInCityArea({ lat: 41.0082, lng: 28.9784 }, bur)).toBe(false);
+    expect(cityExamples(bur)).toMatchObject({
+      aLoc: "Nilüfer'de",
+      bLoc: "Osmangazi'de",
+      cLoc: "Mudanya'da",
+      dLoc: "Görükle'de",
+    });
+  });
+
   it('opens istanbul with its 39 districts', () => {
     const ist = cityById('istanbul');
     expect(ist).toMatchObject({ available: true, parkingSource: 'ispark' });
@@ -86,6 +112,7 @@ describe('active city', () => {
       'izmir',
       'istanbul',
       'ankara',
+      'bursa',
     ]);
   });
 
@@ -197,6 +224,18 @@ describe('districts and names follow the city', () => {
     expect(it2.kind === 'search' && it2.district?.name).toBe('Çankaya');
     const it3 = parseQuery('kecioren kebap');
     expect(it3.kind === 'search' && it3.district?.name).toBe('Keçiören');
+    const it4 = parseQuery('Bornova kebap');
+    expect(it4.kind === 'search' && it4.district).toBeNull();
+  });
+
+  it('parses bursa districts', () => {
+    setActiveCity('bursa');
+    const it1 = parseQuery("Nilüfer'de iskender");
+    expect(it1.kind === 'search' && it1.district?.name).toBe('Nilüfer');
+    const it2 = parseQuery("Mudanya'da balık");
+    expect(it2.kind === 'search' && it2.district?.name).toBe('Mudanya');
+    const it3 = parseQuery('osmangazi otopark');
+    expect(it3.kind === 'search' && it3.district?.name).toBe('Osmangazi');
     const it4 = parseQuery('Bornova kebap');
     expect(it4.kind === 'search' && it4.district).toBeNull();
   });

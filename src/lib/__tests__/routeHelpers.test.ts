@@ -197,9 +197,10 @@ describe('city', () => {
   it('keeps an available city', () => {
     expect(city('izmir')).toBe('izmir');
   });
-  it('keeps istanbul and ankara, which are available now', () => {
+  it('keeps istanbul, ankara and bursa, which are available now', () => {
     expect(city('istanbul')).toBe('istanbul');
     expect(city('ankara')).toBe('ankara');
+    expect(city('bursa')).toBe('bursa');
   });
   it('falls back to izmir for unknown, unavailable or non-string cities', () => {
     expect(city('atlantis')).toBe('izmir');
@@ -209,7 +210,8 @@ describe('city', () => {
   });
   it('is a persisted data key and absent when not stored', () => {
     expect(persistedData({ city: 'ankara' })).toEqual({ city: 'ankara' });
-    expect(persistedData({ city: 'bursa' })).toEqual({ city: 'izmir' });
+    expect(persistedData({ city: 'bursa' })).toEqual({ city: 'bursa' });
+    expect(persistedData({ city: 'antalya' })).toEqual({ city: 'izmir' });
     expect(persistedData({ onboarded: true })).toEqual({ onboarded: true });
   });
 });

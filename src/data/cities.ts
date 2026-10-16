@@ -156,6 +156,27 @@ export const ANKARA_DISTRICTS: readonly District[] = [
   { name: 'Yenimahalle', lat: 39.9667, lng: 32.8 },
 ];
 
+/** The 17 districts of Bursa (centres are rough, a few km). */
+export const BURSA_DISTRICTS: readonly District[] = [
+  { name: 'Büyükorhan', lat: 39.7742, lng: 28.8986 },
+  { name: 'Gemlik', lat: 40.4311, lng: 29.1544 },
+  { name: 'Gürsu', lat: 40.215, lng: 29.19 },
+  { name: 'Harmancık', lat: 39.6808, lng: 29.1503 },
+  { name: 'İnegöl', lat: 40.0783, lng: 29.5128 },
+  { name: 'İznik', lat: 40.4292, lng: 29.7211 },
+  { name: 'Karacabey', lat: 40.2147, lng: 28.3597 },
+  { name: 'Keles', lat: 39.9172, lng: 29.2328 },
+  { name: 'Kestel', lat: 40.1964, lng: 29.2078 },
+  { name: 'Mudanya', lat: 40.3753, lng: 28.8836 },
+  { name: 'Mustafakemalpaşa', lat: 40.0361, lng: 28.4106 },
+  { name: 'Nilüfer', lat: 40.2133, lng: 28.9786 },
+  { name: 'Orhaneli', lat: 39.9022, lng: 28.9922 },
+  { name: 'Orhangazi', lat: 40.49, lng: 29.3086 },
+  { name: 'Osmangazi', lat: 40.195, lng: 29.06 },
+  { name: 'Yenişehir', lat: 40.2625, lng: 29.6361 },
+  { name: 'Yıldırım', lat: 40.1917, lng: 29.0997 },
+];
+
 const names = (list: readonly District[]) => list.map((d) => d.name);
 
 // The boxes of cities that are not open yet are placeholders until their data lands.
@@ -256,14 +277,27 @@ export const CITIES: City[] = [
     id: 'bursa',
     name: 'Bursa',
     locative: "Bursa'da",
-    available: false,
+    examples: {
+      a: 'Nilüfer',
+      aLoc: "Nilüfer'de",
+      b: 'Osmangazi',
+      bLoc: "Osmangazi'de",
+      c: 'Mudanya',
+      cLoc: "Mudanya'da",
+      d: 'Görükle',
+      dLoc: "Görükle'de",
+    },
+    available: true,
     center: { lat: 40.1885, lng: 29.061 },
-    bounds: { minLat: 39.7, maxLat: 40.6, minLng: 28.3, maxLng: 29.8 },
-    radiusKm: 80,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    // The province reaches about 39.55-40.65 N, 28.25-30.0 E; its far corners lie ~105 km from the centre.
+    bounds: { minLat: 39.55, maxLat: 40.65, minLng: 28.25, maxLng: 30.0 },
+    radiusKm: 110,
+    districts: names(BURSA_DISTRICTS),
+    districtCenters: BURSA_DISTRICTS,
+    // No live parking API: the OSM car parks (and the optional municipal inventory) carry a
+    // capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
 ];
 

@@ -71,8 +71,11 @@ describe('onboarding', () => {
     expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İzmir Büyükşehir')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İSPARK, 243 otopark')).toBeTruthy();
-    expect(screen.getByText('Canlı otopark verisi yok; otoparklar kapasite bilgisiyle')).toBeTruthy();
-    expect(screen.getAllByText('Yakında')).toHaveLength(2);
+    // Ankara and Bursa share the static-only line.
+    expect(
+      screen.getAllByText('Canlı otopark verisi yok; otoparklar kapasite bilgisiyle'),
+    ).toHaveLength(2);
+    expect(screen.getAllByText('Yakında')).toHaveLength(1);
     // The store city is preselected and Devam is available right away.
     expect(screen.getByLabelText(/^İzmir, seçili/)).toBeTruthy();
     expect(screen.getByText('Devam')).toBeTruthy();
@@ -92,6 +95,14 @@ describe('onboarding', () => {
     await tap(/^Ankara, /);
     expect(useApp.getState().city).toBe('ankara');
     expect(screen.getByLabelText(/^Ankara, seçili, Canlı otopark verisi yok/)).toBeTruthy();
+  });
+
+  it('sets the store city when Bursa is picked and says it has no live car park data', async () => {
+    await mount();
+    await press('Başla, uygulamaya geç');
+    await tap(/^Bursa, /);
+    expect(useApp.getState().city).toBe('bursa');
+    expect(screen.getByLabelText(/^Bursa, seçili, Canlı otopark verisi yok/)).toBeTruthy();
   });
 
   it('does not select a city that is not open yet', async () => {

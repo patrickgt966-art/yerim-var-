@@ -59,6 +59,8 @@ CITIES = [
      'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
     {'id': 'ankara', 'name': 'Ankara', 'fold': 'ankara', 'bbox': (31.0, 34.5, 38.8, 40.8),
      'area_codes': ('312',), 'strict': True, 'min_conf': 0.7},
+    {'id': 'bursa', 'name': 'Bursa', 'fold': 'bursa', 'bbox': (28.1, 30.1, 39.5, 40.7),
+     'area_codes': ('224',), 'strict': True, 'min_conf': 0.7},
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
