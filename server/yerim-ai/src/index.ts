@@ -17,6 +17,7 @@ import {
   toPick,
   toPlan,
   toUnderstanding,
+  todayIstanbul,
   understandSystem,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
@@ -188,7 +189,24 @@ export default {
     const limits = aiLimits(env);
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
     if (!(await ipGuard(env.QUOTA, ip, now, limits.perIp))) {
-      return json({ error: 'rate_limited' }, 429);
+      return json(
+        { error: 'rate_limited', reason: 'ip', remaining: await peek(env.QUOTA, deviceId, now) },
+        429,
+      );
+    }
+
+    // Retries of the same stage may repeat, but a new question needs a new messageId.
+    // Store only a digest, never text/output. Distributed races still need an atomic store.
+    const callKey = `ai:call:${todayIstanbul(now)}:${deviceId}:${messageId}:${path}`;
+    const digest = await crypto.subtle.digest(
+      'SHA-256', new TextEncoder().encode(JSON.stringify(parsed)),
+    );
+    const fingerprint = Array.from(
+      new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0'),
+    ).join('');
+    const previous = await env.QUOTA.get(callKey);
+    if (previous && previous !== fingerprint) {
+      return json({ error: 'duplicate_message' }, 409);
     }
 
     // TODO(subscriptions): check an entitlement here and raise the limit (SUB_DAILY) for subscribers.
@@ -201,6 +219,7 @@ export default {
         429,
       );
     }
+    await env.QUOTA.put(callKey, fingerprint, { expirationTtl: 172800 });
 
     // The use is only kept when the user got an answer: give it back on any failure.
     const giveBack = async (): Promise<number> => {
@@ -216,6 +235,14 @@ export default {
     // uses left. Never the user's text or the device id.
     const started = Date.now();
     const respond = async (outcome: Outcome, body: unknown, status = 200): Promise<Response> => {
+      // Failed stages can be retried, whether or not /understand already spent the use.
+      if (outcome !== 'ok' && !previous) {
+        try {
+          await env.QUOTA.put(callKey, '', { expirationTtl: 172800 });
+        } catch {
+          // A storage outage must not swallow the fallback response.
+        }
+      }
       let logged: Outcome | 'timeout-cancelled' = outcome;
       let remaining = q.remaining;
       if (body !== null && typeof body === 'object' && 'remaining' in body) {

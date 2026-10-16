@@ -129,6 +129,52 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('one counter across the endpoints', () => {
+  it('reports an IP limit without pretending the device used all ten messages', async () => {
+    const env = envOf(fakeKV(), { AI_DAILY_PER_IP: '1' });
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    await post(env, '/understand', understandBody('first'));
+    const blocked = await post(env, '/understand', understandBody('second'));
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ reason: 'ip', remaining: 9 });
+    expect(mockParse).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows retrying a failed stage after its use was refunded', async () => {
+    const kv = fakeKV();
+    const env = envOf(kv);
+    mockParse.mockRejectedValueOnce(new Error('upstream'));
+    expect((await post(env, '/understand', understandBody('retry'))).status).toBe(502);
+    expect(await remainingOf(kv)).toBe(10);
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    expect((await post(env, '/understand', understandBody('retry'))).status).toBe(200);
+    expect(await remainingOf(kv)).toBe(9);
+  });
+
+  it('keeps a successful message bound after a later identical retry fails', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    await post(env, '/understand', understandBody('bound'));
+    mockParse.mockRejectedValueOnce(new Error('retry failed'));
+    expect((await post(env, '/understand', understandBody('bound'))).status).toBe(502);
+    expect((await post(env, '/understand', {
+      ...understandBody('bound'), text: 'yeni soru',
+    })).status).toBe(409);
+    expect(mockParse).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not run a completed endpoint again when a client reuses its messageId with new text', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    expect((await post(env, '/understand', understandBody('reused'))).status).toBe(200);
+    const duplicate = await post(env, '/understand', {
+      ...understandBody('reused'), text: 'tamamen farklı bir soru',
+    });
+    expect(duplicate.status).toBe(409);
+    expect(mockParse).toHaveBeenCalledTimes(1);
+    // The legitimate second stage of the same message still runs for the same use.
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: pickOut });
+    expect((await post(env, '/pick', pickBody('reused'))).status).toBe(200);
+  });
   it('understand + pick + plan of one message are one use; the next message is another', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
@@ -246,9 +292,14 @@ describe('/cancel', () => {
     const kv = fakeKV();
     const env = envOf(kv);
     let finish!: (v: unknown) => void;
-    mockParse.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => (entered = resolve));
+    mockParse.mockImplementationOnce(() => {
+      entered();
+      return new Promise((resolve) => (finish = resolve));
+    });
     const running = post(env, '/understand', understandBody('m1'));
-    await new Promise((r) => setTimeout(r, 20));
+    await started;
     expect(await remainingOf(kv)).toBe(9);
     await post(env, '/cancel', { deviceId: 'dev-1', messageId: 'm1' });
     expect(await remainingOf(kv)).toBe(10);

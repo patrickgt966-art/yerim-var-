@@ -425,7 +425,10 @@ def classify(result):
         return classify(result.code)
     if isinstance(result, urllib.error.URLError):
         return classify(result.reason) if isinstance(result.reason, BaseException) else 'unknown'
-    if isinstance(result, (socket.gaierror, ConnectionRefusedError)):
+    # Resolver outages are not evidence that the business's website is dead.
+    if isinstance(result, socket.gaierror):
+        return 'dead' if result.errno == socket.EAI_NONAME else 'unknown'
+    if isinstance(result, ConnectionRefusedError):
         return 'dead'
     if isinstance(result, int):
         if 200 <= result < 400 or result in (401, 403, 405, 429):
@@ -782,7 +785,8 @@ def _selftest():
     assert [r['id'] for r in kept] == ['b', 'c', 'd', 'f'] and n == 2, kept
     for status, want in ((200, 'ok'), (301, 'ok'), (403, 'ok'), (404, 'dead'), (410, 'dead'), (503, 'unknown')):
         assert classify(status) == want, status
-    assert classify(socket.gaierror()) == 'dead'
+    assert classify(socket.gaierror(socket.EAI_NONAME, 'not found')) == 'dead'
+    assert classify(socket.gaierror(socket.EAI_AGAIN, 'temporary failure')) == 'unknown'
     assert classify(socket.timeout()) == 'unknown'
     with tempfile.TemporaryDirectory() as tmp:
         cache = Path(tmp) / 'web-cache.json'

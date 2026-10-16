@@ -104,11 +104,9 @@ const CITIES = [
     budgetMin: 37,
     split: true,
     tiled: {
-      bbox: { s: 38.95, w: 31.25, n: 40.65, e: 34.1 },
+      bbox: { s: 38.6, w: 30.8, n: 40.75, e: 34.3 },
       rows: 4,
       cols: 4,
-      // North-east tile (lat > 40.225, lng > 33.3875) is Çankırı / Kırıkkale: nothing of Ankara province.
-      skip: (t) => t.s >= 40.225 && t.w >= 33.3875,
       timeout: 90,
       httpMs: 120_000,
       rounds: 2,
@@ -372,9 +370,9 @@ const quarters = (b) => {
 // Tiled run of a query for a big city: each statement group is queried per tile
 // (bbox filter on top of the area filter), results merged by OSM type/id. A failed
 // tile is retried as 4 quarters. A group is accepted with >= minOk of its tiles
-// fully done (minOk, default cfg.minOk; missing boxes are logged; the data is still written). Returns null when
-// a required group is not accepted, so the old file is kept; an optional group
-// that fails is dropped and logged.
+// fully done (minOk, default cfg.minOk). A group must also have no missing boxes,
+// so a regional outage cannot delete that region's records. Returns null when
+// any group is incomplete, so the old file (including optional landmarks) is kept.
 async function overpassTiled(city, def, label, minOk = city.tiled.minOk) {
   const cfg = city.tiled;
   const tiles = makeTiles(cfg);
@@ -423,15 +421,14 @@ async function overpassTiled(city, def, label, minOk = city.tiled.minOk) {
       if (failed.length) missing.push(...failed);
       else okTiles++;
     }
-    const ok = okTiles / tiles.length >= minOk;
+    const ok = okTiles / tiles.length >= minOk && missing.length === 0;
     log(
       `- ${gl}: ${tiles.length} kutu, ${okTiles} tam başarılı` +
-        (ok ? '' : ` (eşik %${minOk * 100}; ${g.optional ? 'bu grup atıldı' : 'sonuç kullanılmadı'})`) +
+        (ok ? '' : ` (eşik %${minOk * 100}; sonuç kullanılmadı)`) +
         (missing.length ? `; eksik bölgeler (güney,batı,kuzey,doğu): ${missing.map(bboxStr).join(' | ')}` : '') +
         '.',
     );
     if (!ok) {
-      if (g.optional) continue;
       return null;
     }
     for (const [k, el] of got) merged.set(k, el);

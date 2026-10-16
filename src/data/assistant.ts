@@ -65,6 +65,7 @@ import {
   PARK_REASONS,
   PICK_REASONS,
   ROUTER_TIMEOUT_MS,
+  clipText,
   type ChatReplyAction,
   type ClarifyAsk,
   type DishMatch,
@@ -2301,7 +2302,7 @@ function pickCandidate(card: Extract<ChatCard, { kind: 'restaurant' }>, i: numbe
 /** A candidate's name and type in words, so the AI can judge whether it fits the request. */
 function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): PickCandidate {
   const r = getRestaurant(card.id);
-  if (!r) return { ...c, name: card.name.slice(0, MAX_LABEL_CHARS) };
+  if (!r) return { ...c, name: clipText(card.name, MAX_LABEL_CHARS) };
   const cat = categoryOf(r);
   const tf = t as Parameters<typeof cuisineLabels>[1];
   const kind = kindLabel(r.kind, tf);
@@ -2312,8 +2313,8 @@ function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): Pic
   ].filter((p, k, all) => all.indexOf(p) === k);
   return {
     ...c,
-    name: r.name.slice(0, MAX_LABEL_CHARS),
-    ...(parts.length > 0 ? { type: parts.join(', ').slice(0, MAX_LABEL_CHARS) } : {}),
+    name: clipText(r.name, MAX_LABEL_CHARS),
+    ...(parts.length > 0 ? { type: clipText(parts.join(', '), MAX_LABEL_CHARS) } : {}),
   };
 }
 

@@ -78,6 +78,17 @@ describe('validateFreeText', () => {
     expect(validateFreeText('dishNote', 'bornova tarafında yapılır', ctx)).toBeNull();
   });
 
+  it('rejects a known one-word place name in lowercase inside a sentence', () => {
+    expect(validateFreeText('tone', 'Bence mado tercih edilebilir.', ctx)).toBeNull();
+    expect(validateFreeText('dishNote', 'Bu tatlı mado için özeldir.', ctx)).toBeNull();
+    expect(validateFreeText('tone', 'Afiyet olsun, madem buradasın.', ctx)).not.toBeNull();
+  });
+
+  it.each(['Detaylar için ornek.xyz adresine bak.', 'Detaylar için ornek.dev adresine bak.', 'Bedel ٣₺.'])(
+    'rejects URLs and Unicode digits outside the original ASCII/domain allowlist: %s',
+    (text) => expect(validateFreeText('tone', text, ctx)).toBeNull(),
+  );
+
   it('allows park words only in the clarify question', () => {
     expect(validateFreeText('clarify', 'Arabayı nereye bırakmak istersin, otopark mı?')).toBe(
       'Arabayı nereye bırakmak istersin, otopark mı?',
