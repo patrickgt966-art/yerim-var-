@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Teşekkürler! Uygulamadaki "Bildir" butonu otopark bilgilerini aşağıya önceden doldurur.
-        Doluluk verisi İzmir Büyükşehir Belediyesi açık veri portalından gelir; anlık doluluk hatalarını düzeltemeyebiliriz ama tarife ve otopark bilgilerini güncelleyebiliriz.
+        Doluluk verisi İzmir'de İzmir Büyükşehir Belediyesi açık veri portalından, İstanbul'da İBB / İSPARK'tan gelir (Ankara, Bursa ve Antalya'da canlı veri yok); anlık doluluk hatalarını düzeltemeyebiliriz ama tarife ve otopark bilgilerini güncelleyebiliriz.
   - type: input
     id: otopark
     attributes:

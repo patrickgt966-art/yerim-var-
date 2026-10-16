@@ -15,10 +15,11 @@ Açığın ne olduğunu, nasıl tekrar üretileceğini ve olası etkisini yaz. �
 
 ## Kapsam
 
-Uygulamanın hesabı ve sunucusu yoktur. Ağa giden istekler İzmir Büyükşehir Belediyesi açık veri API'sine ve Apple Haritalar'a (harita, adres ve yer araması) gider; ayrıntılar [gizlilik politikasında](docs/gizlilik.html). Özellikle ilgilendiklerimiz:
+Uygulamanın hesabı yoktur. Tek sunucu isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare Worker). Ağa giden istekler seçili şehrin doluluk API'sine (İzmir Büyükşehir Belediyesi ya da İBB / İSPARK), Apple Haritalar'a (harita, adres ve yer araması) ve kullanıcı onay verdiyse Yerim ✨ sunucusuna gider; ayrıntılar [gizlilik politikasında](docs/gizlilik.html). Özellikle ilgilendiklerimiz:
 
 - Konumun veya cihazdaki verilerin (favoriler, aktif park) cihaz dışına sızması
 - API yanıtındaki kötü niyetli veriyle uygulamanın çökertilmesi veya yanıltıcı içerik gösterilmesi
 - Açılan bağlantıların (Apple Haritalar, GitHub) manipüle edilmesi
+- Yerim ✨ sunucusunun kötüye kullanılması (günlük sınırların aşılması, Anthropic anahtarının sızması) ya da modelin uygulamanın verisinde olmayan bir bilgiyi gösterebilmesi
 
-İzmir açık veri API'sinin kendisindeki sorunlar belediyeye bildirilmelidir.
+Açık veri API'lerinin kendisindeki sorunlar ilgili kuruma (İzmir Büyükşehir Belediyesi, İBB) bildirilmelidir.

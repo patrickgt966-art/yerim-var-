@@ -2,6 +2,8 @@
 
 Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
 
+> Not (2026-10-16): Güncel iş listesi [`YAPILACAKLAR.md`](YAPILACAKLAR.md) içinde. Bu belge 9 Ekim'deki plandır; o tarihten sonra uygulama beş şehre (İzmir, İstanbul, Ankara, Bursa, Antalya) açıldı, Overture restoranları ve Yerim ✨ (Cloudflare sunucusu, Claude Haiku) eklendi. Aşağıdaki İzmir'e, sunucusuz yapıya ve veri sayılarına dair ifadeler o günün durumunu anlatır.
+
 ## 1. Sıradaki işler
 
 - [x] **Listede olmayan yerleri Apple Haritalar'da anlık aramak.** (Kodlandı; uygulamanın kendi derlemesinde cihazda denenmesi gerekiyor.) "Sevil 2 İş Hanı" gibi gömülü listede olmayan bir yer yazılınca Apple Haritalar'a sorulur (`modules/yerim-mapkit` içine `MKLocalSearch` ile yer araması). Sıra: gömülü liste → Apple yer araması → adres araması. Yalnızca uygulamanın kendi derlemesinde çalışır.
