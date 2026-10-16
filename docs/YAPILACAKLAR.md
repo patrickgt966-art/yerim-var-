@@ -1,19 +1,21 @@
 # Yapılacaklar
 
-Son güncelleme: 15 Ekim 2026.
+Son güncelleme: 16 Ekim 2026.
 
 ## Sıradaki büyük işler (bu sırayla)
 
-1. **Yapay zekayı daha zeki yapmak.** Yapay zeka artık her mesajı okuyor (#48–#53). Sırada:
+1. **Codex ile test ettirmek.** Yapay zeka ve beş şehrin akışlarını bağımsız bir gözle uçtan uca denetletmek.
+2. **Gerçek konuşmalarla sınav seti.** Her değişiklikte ölçelim (`scripts/ai-eval.ts`, elle çalışan "AI eval" görevi).
+3. **Yapay zekayı daha zeki yapmak.**
    - Arama cevaplarının metnini de yapay zeka yazsın (bilgiler yine bizim veriden, dil daha doğal).
    - Takip sorularını daha iyi anlasın ("diyet menü" → semt sorusu → "yakınımda" zincirini tek istekte birleştirsin).
-   - Gerçek konuşmalarla bir sınav seti kurup her değişiklikte ölçelim (`scripts/ai-eval.ts`).
-2. **Ankara'yı eklemek.** Canlı otopark verisi yok; otoparklar "kapasite" bilgisiyle (OSM + BELTAŞ listesi) gösterilecek. Veri betikleri, semtler, örnekler ve Anıtkabir/Atakule silueti İstanbul'daki gibi.
-3. **Codex ile test ettirmek.** Yapay zeka, İstanbul ve Ankara akışlarını bağımsız bir gözle uçtan uca denetletmek.
+4. **Menü / diyet verisi.** Elimizde yok: vejetaryen gibi istekler yalnızca yerin adı ve türüne göre yargılanıyor.
+5. **"Burası kapanmış" düğmesi.** Kullanıcı bildirimleriyle kapanmış yerleri gizlemek (Cloudflare sunucusu artık var).
 
-### İstanbul'da kalanlar
-- İSPARK canlı verisi telefonda doğrulanacak (sunucu biçimi açık kaynak istemcilerden alındı).
-- `places-istanbul.json` ve `food-istanbul.json` boş: Overpass zaman aşımına uğradı, veri işi tekrar çalıştırılacak.
+### Şehirlerde kalanlar
+- Bursa: Açık Yeşil (Bursa BB) "otopark" veri seti son çalışmada alınamadı; tekrar denenecek.
+- İstanbul: İSPARK tarifesi (`ParkDetay?id=`, aylık ücret dahil) otopark detay sayfasında gösterilebilir. Önerildi, karar verilmedi.
+- İSPARK canlı verisi telefonda denenecek (biçim GitHub'dan alınan canlı örnekle uyuşuyor).
 
 ## Şimdi yapılabilir (hesap gerekmez)
 
@@ -38,18 +40,19 @@ Son güncelleme: 15 Ekim 2026.
 
 ### Veri doğruluğu
 - **Denetim sonucu (10 Ekim)**: 50 Overture yerinden 37 açık, 5 taşınmış, 8 kapanmış. 13 hatalı yer kara listede; tüm Overture yerlerinde "Bilgi eski olabilir".
-- **"Burası kapanmış mı?" düğmesi**: kullanıcı bildirimleriyle gizleme (Cloudflare sunucusu artık var).
 - **Foursquare çapraz kontrolü**: `FSQ_TOKEN` gerekir.
 - **Apple ile toplu kontrol** (Apple hesabından sonra): önce denetlenen 50 yerle dene.
 
 ### Uygulama boyutu
-- Şu an ~15–20 MB indirme, gömülü veri 3,2 MB. Başka şehir eklenirse şehir verisini ilk açılışta indirme düşünülür.
+- Beş şehirle gömülü veri ~17,5 MB (sıkıştırılmamış JSON). Şehir verisini ilk açılışta indirme düşünülür.
 
 ## Yerim ✨ (Haiku) durumu
 
 - Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 10 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
-- Haiku ne zaman çağrılır: kuralların anlamadığı kelime kalırsa. Selam, küfür, anlamsız mesaj hak harcamaz.
-- Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları.
+- Onay verildiyse her mesaj önce yönlendiriciye (`/understand`) gider; model kısa bir `meaning` yazar, sonra `search` / `chat` / `unknown` döner. Anlamazsa "anlayamadım" der, tahmin etmez.
+- Yönlendirici 9 sn içinde cevap vermezse, ağ hatasında ya da hak bitince uygulama kendi kurallarıyla cevap verir ve bunu söyler.
+- `/pick` yakındaki en çok 15 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
+- Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`).
 - Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
 
 ## Apple Developer hesabından sonra
@@ -65,7 +68,17 @@ Son güncelleme: 15 Ekim 2026.
 - Apple Developer hesabı (yıllık 99$)
 - GitHub Pages (gizlilik sayfası için)
 - Destek e-posta adresi, geri bildirim formu
-- Başka şehir (İstanbul) araştırılsın mı?
+- İSPARK tarifesi otopark detay sayfasında gösterilsin mi?
+
+## Tamamlananlar (12–16 Ekim)
+
+- Şehirler: İstanbul tamamlandı (İSPARK canlı doluluk, yer, raylı sistem, restoran verisi); Ankara, Bursa ve Antalya eklendi (canlı veri yok, otoparklar kapasite bilgisiyle; arıza uyarısı yerine sakin not). Şehir onboarding'de ve Profil'de seçiliyor; ana sayfa silueti şehre göre.
+- Veri: aylık görev beş şehri topluyor (300 dk); Overpass kutulara bölündü ve tekrar deniyor; Overture'da her şehirde 0,7 güven eşiği, şehir başına 10 MB sınırı, sıkı zayıf kayıt kuralı
+- Yerim ✨: her mesajı yapay zeka anlıyor (`/understand`, önce gizli `meaning`, düz şema); anlamazsa "anlayamadım" diyor; yönlendirici bekleme süresi 9 sn
+- Yerim ✨ seçim: `/pick` yakındaki 15 yerin adını ve türünü görüp uyanları değerlendiriyor (`fit`, `noneFit`); uyan yoksa söylüyor
+- Arayüz: başlıkta gerçek logo (BrandWordmark); Yerim sekmesi, ✨ hakkı, şehir düğmesi ve arama kartı için tek seferlik ipucu balonları
+- Onboarding: 4 adım (Merhaba, Şehrini seç, Yerim ile konuş, Konum); eski "Dürüst veri" adımı ve Skyline bileşeni kaldırıldı
+- Belgeler: README, gizlilik metni ve veri belgeleri beş şehre göre güncellendi
 
 ## Tamamlananlar (10–11 Ekim)
 

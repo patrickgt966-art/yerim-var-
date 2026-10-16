@@ -2,6 +2,8 @@
 
 Son kontrol: **2026-10-07**. Proje sahibi yanıtı Türkiye'den bir tarayıcıda açtı. Geliştirme ortamı bu alan adına erişemiyor (ağ politikası 403).
 
+Uygulama beş şehri destekler (`src/data/cities.ts`). Canlı doluluk yalnızca İzmir'de (bu belge) ve İstanbul'da (aşağıda, "İstanbul: İBB / İSPARK") var. Ankara, Bursa ve Antalya'da canlı kaynak yok; otoparklar OpenStreetMap'ten kapasite bilgisiyle gelir ve doluluk için istek atılmaz.
+
 ## Uç nokta
 
 ```
@@ -103,3 +105,17 @@ Tarayıcıda görülen yanıttan bunlar anlaşılmıyor:
 - [ ] **Yanıt başlıkları** (`Cache-Control`, `Last-Modified`, `ETag`) ve **CORS** (`Access-Control-Allow-Origin`). iOS uygulaması için CORS gerekmez; yalnızca web sürümü için önemli.
 - [ ] **Veri lisansı.** Üçüncü taraf kaynaklara göre İzmir Açık Veri Lisansı, CC BY 4.0 ile uyumlu. Portal sayfasından teyit edilmeli.
 - [ ] **Toplam kayıt sayısı.** Örnekte 7 kayıt var; yanıtın tamamı olup olmadığı belli değil.
+
+## İstanbul: İBB / İSPARK
+
+Son kontrol: **2026-10-16**, GitHub Actions'tan (`scripts/fetch-ispark-sample.mjs`, veri görevinin bir adımı). Ham yanıtlar: `data/raw/ispark-sample.json` ve `data/raw/ispark-detail-sample.json`.
+
+```
+GET https://api.ibb.gov.tr/ispark/Park
+GET https://api.ibb.gov.tr/ispark/ParkDetay?id=<parkID>
+```
+
+- `Park`: anahtarsız, JSON dizi, 243 kayıt. Alanlar: `parkID`, `parkName`, `lat` ve `lng` (metin), `capacity`, `emptyCapacity`, `workHours` ("24 Saat"), `parkType` ("KAPALI OTOPARK", "AÇIK OTOPARK"…), `freeTime` (dakika), `district`, `isOpen` (1/0). Uygulama bu uç noktayı kullanır (`src/data/isparkProvider.ts`); biçim örnekle uyuşuyor.
+- **Zaman damgası yok** (listede). Tazelik İzmir'deki gibi indirme anından ölçülür.
+- `ParkDetay?id=`: ek olarak `updateDate` ("16.10.2026 18:45:25"), `monthlyFee`, `tariff` ("0-1 Saat : 110,00;1-2 Saat : 140,00;…"), `address` ve `areaPolygon`. Uygulama bu uç noktayı henüz kullanmıyor.
+- Doğrulanamayanlar: güncelleme sıklığı, yanıt başlıkları, veri lisansı, telefondan erişim.

@@ -24,26 +24,38 @@
 <body>
 <main>
 <h1>Gizlilik Politikası</h1>
-<p class="muted">Yerim Var: Yemek ve Park · Son güncelleme: 9 Ekim 2026 · <a href="#en">English below</a></p>
+<p class="muted">Yerim Var: Yemek ve Park · Son güncelleme: 16 Ekim 2026 · <a href="#en">English below</a></p>
 
-<p>Yerim Var, İzmir'de otopark ve gideceğin yerin yanındaki park yerini bulmana yardım eden açık kaynaklı bir uygulamadır. Hesap, sunucu, analitik, reklam ve takip yoktur. Senden kişisel veri toplamıyor, saklamıyor ve kimseye satmıyoruz.</p>
+<p>Yerim Var; İzmir, İstanbul, Ankara, Bursa ve Antalya'da restoran, otopark ve gideceğin yerin yanındaki park yerini bulmana yardım eden açık kaynaklı bir uygulamadır. Hesap, analitik, reklam ve takip yoktur. Tek sunucumuz isteğe bağlı yapay zekâ asistanı Yerim ✨ içindir (aşağıda). Senden kişisel veri toplamıyor ve kimseye satmıyoruz.</p>
 
 <h2>Cihazında kalan bilgiler</h2>
 <ul>
   <li><strong>Favorilerin</strong> (otoparklar ve restoranlar), <strong>ev/iş kayıtların</strong> ve <strong>aktif park bilgin</strong> yalnızca telefonunda saklanır. Uygulamayı silince bunlar da silinir.</li>
   <li>Son indirilen otopark doluluk verisi, internet yokken gösterebilmek için telefonunda önbelleğe alınır.</li>
+  <li>Seçtiğin şehir, Yerim ✨ onayın, günlük hak sayın ve rastgele üretilen cihaz kimliği telefonunda saklanır.</li>
 </ul>
 
 <h2>Konum</h2>
 <p>Konumunu yalnızca uygulama açıkken ve sen izin verirsen, yakınındaki otoparkları ve restoranları göstermek, yürüme mesafesini hesaplamak ve park ettiğin yeri kaydetmek için kullanırız. Konumun bize gönderilmez; mesafe hesapları telefonunda yapılır. Arka planda konum kullanılmaz.</p>
 
+<h2>Yerim ✨ (yapay zekâ, isteğe bağlı)</h2>
+<p>Yerim ✨ yalnızca sen onay verirsen çalışır. Onay verirsen her sohbet mesajın bizim sunucumuz (Cloudflare) üzerinden Anthropic'in Claude modeline gider. Gönderilenler:</p>
+<ul>
+  <li>Yazdığın mesaj ve sohbetteki son birkaç mesaj,</li>
+  <li>seçtiğin şehir,</li>
+  <li>restoran seçiminde, uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı ve türü (kategori, mutfak) ile yürüme süresi, en yakın otoparkın uzaklığı, ücretsiz olup olmadığı, boş yer sayısı ve açık/kapalı bilgisi,</li>
+  <li>günlük hakkı saymak için rastgele üretilmiş bir cihaz kimliği.</li>
+</ul>
+<p>Konumun (koordinatların) ve hesap bilgisi gönderilmez; hesap yoktur. Sunucu mesaj metnini kaydetmez. Günlük hak sınırı için cihaz kimliğine ve IP adresine bağlı sayaçlar en fazla iki gün tutulur. Mesajına kişisel bilgi yazma. Onay vermezsen uygulama kendi kurallarıyla cevap verir.</p>
+
 <h2>Uygulamanın bağlandığı servisler</h2>
 <table>
   <tr><th>Servis</th><th>Ne gönderilir</th><th>Neden</th></tr>
-  <tr><td>İzmir Büyükşehir Belediyesi açık veri API'si</td><td>Kişisel veri içermeyen standart bir istek</td><td>Otoparkların doluluk bilgisini almak</td></tr>
-  <tr><td>Apple Haritalar (harita, adres ve yer araması)</td><td>Arama kutusuna yazdığın metin (yer aramasında arama alanı İzmir'in tamamıdır, konumun gönderilmez); otopark aramasında arama noktasının (konumun ya da aradığın yerin) ~100 m'ye yuvarlanmış yaklaşık bölgesi; harita gösterirken ekrandaki bölgenin harita görüntüleri</td><td>Harita göstermek, yer ve otopark bulmak</td></tr>
+  <tr><td>Seçili şehrin doluluk API'si: İzmir'de İzmir Büyükşehir Belediyesi açık veri API'si, İstanbul'da İBB / İSPARK. Ankara, Bursa ve Antalya'da bu istek yapılmaz.</td><td>Kişisel veri içermeyen standart bir istek</td><td>Otoparkların doluluk bilgisini almak</td></tr>
+  <tr><td>Yerim ✨ sunucusu (Cloudflare) ve Anthropic (yalnızca onay verirsen)</td><td>Yukarıdaki "Yerim ✨" bölümünde sayılanlar</td><td>Mesajını anlamak ve yakındaki yerlerden uygun olanı seçmek</td></tr>
+  <tr><td>Apple Haritalar (harita, adres ve yer araması)</td><td>Arama kutusuna yazdığın metin (yer aramasında arama alanı seçili şehrin tamamıdır, konumun gönderilmez); otopark aramasında arama noktasının (konumun ya da aradığın yerin) ~100 m'ye yuvarlanmış yaklaşık bölgesi; harita gösterirken ekrandaki bölgenin harita görüntüleri</td><td>Harita göstermek, yer ve otopark bulmak</td></tr>
 </table>
-<p>Bu servisler, her internet bağlantısında olduğu gibi IP adresini görebilir. Apple'ın verileri nasıl işlediği için <a href="https://www.apple.com/legal/privacy/">Apple Gizlilik Politikası</a>'na bakabilirsin.</p>
+<p>Bu servisler, her internet bağlantısında olduğu gibi IP adresini görebilir. Apple'ın verileri nasıl işlediği için <a href="https://www.apple.com/legal/privacy/">Apple Gizlilik Politikası</a>'na, Anthropic için <a href="https://www.anthropic.com/legal/privacy">Anthropic Gizlilik Politikası</a>'na bakabilirsin.</p>
 
 <h2>Dış bağlantılar</h2>
 <p>Bir restoranın telefonunu aradığında, web sitesini ya da Instagram sayfasını açtığında ilgili uygulama ya da site açılır. Yol tarifi istediğinde hedefin (yürüyüş tarifinde başlangıç noktanın da) koordinatları Apple Haritalar uygulamasına aktarılır. Oradaki işlemler o hizmetin kendi gizlilik kurallarına tabidir.</p>
@@ -58,26 +70,38 @@
 <hr>
 
 <h1 id="en">Privacy Policy</h1>
-<p class="muted">Yerim Var: Yemek ve Park · Last updated: 9 October 2026</p>
+<p class="muted">Yerim Var: Yemek ve Park · Last updated: 16 October 2026</p>
 
-<p>Yerim Var is an open-source app that helps you find parking in İzmir, including next to the place you are going. There are no accounts, servers, analytics, ads or tracking. We do not collect, store or sell personal data.</p>
+<p>Yerim Var is an open-source app that helps you find restaurants and parking in İzmir, İstanbul, Ankara, Bursa and Antalya, including next to the place you are going. There are no accounts, analytics, ads or tracking. Our only server is for the optional AI assistant Yerim ✨ (see below). We do not collect or sell personal data.</p>
 
 <h2>Data that stays on your device</h2>
 <ul>
   <li>Your <strong>favourites</strong> (car parks and restaurants), <strong>home/work places</strong> and <strong>active parking</strong> are stored only on your phone and are deleted with the app.</li>
   <li>The last downloaded occupancy data is cached on your phone so it can be shown offline.</li>
+  <li>Your selected city, your Yerim ✨ consent, your daily use count and a randomly generated device ID are stored on your phone.</li>
 </ul>
 
 <h2>Location</h2>
 <p>With your permission, your location is used only while the app is open, to show nearby car parks and restaurants, calculate walking distances and save where you parked. It is never sent to us; distances are calculated on your phone. No background location is used.</p>
 
+<h2>Yerim ✨ (AI, optional)</h2>
+<p>Yerim ✨ only works if you agree. If you do, each chat message goes through our server (Cloudflare) to Anthropic's Claude model. What is sent:</p>
+<ul>
+  <li>your message and the last few messages of the chat,</li>
+  <li>your selected city,</li>
+  <li>when picking a restaurant, from the app's own data: the public name and type (category, cuisine) of nearby places, with walking time, distance to the nearest car park, whether it is free, its free spaces and whether the place is open,</li>
+  <li>a randomly generated device ID, to count daily uses.</li>
+</ul>
+<p>Your location (coordinates) and account details are not sent; there are no accounts. The server does not store message text. For the daily limit, counters tied to the device ID and IP address are kept for at most two days. Do not put personal information in your messages. If you do not agree, the app answers with its own rules.</p>
+
 <h2>Services the app connects to</h2>
 <table>
   <tr><th>Service</th><th>What is sent</th><th>Why</th></tr>
-  <tr><td>İzmir Metropolitan Municipality open data API</td><td>A standard request with no personal data</td><td>Car park occupancy</td></tr>
-  <tr><td>Apple Maps (map, address and place search)</td><td>The text you type in search (place search covers all of İzmir and does not include your location); for car park search, the approximate area of the search point (your location or the place you searched), rounded to ~100 m; map imagery for the area shown on screen</td><td>Showing the map, finding places and car parks</td></tr>
+  <tr><td>The selected city's occupancy API: İzmir Metropolitan Municipality open data in İzmir, İBB / İSPARK in İstanbul. No such request in Ankara, Bursa and Antalya.</td><td>A standard request with no personal data</td><td>Car park occupancy</td></tr>
+  <tr><td>Yerim ✨ server (Cloudflare) and Anthropic (only with your consent)</td><td>What is listed under "Yerim ✨" above</td><td>Understanding your message and picking a fitting nearby place</td></tr>
+  <tr><td>Apple Maps (map, address and place search)</td><td>The text you type in search (place search covers the whole selected city and does not include your location); for car park search, the approximate area of the search point (your location or the place you searched), rounded to ~100 m; map imagery for the area shown on screen</td><td>Showing the map, finding places and car parks</td></tr>
 </table>
-<p>Like any internet connection, these services can see your IP address. See the <a href="https://www.apple.com/legal/privacy/">Apple Privacy Policy</a> for how Apple handles data.</p>
+<p>Like any internet connection, these services can see your IP address. See the <a href="https://www.apple.com/legal/privacy/">Apple Privacy Policy</a> and the <a href="https://www.anthropic.com/legal/privacy">Anthropic Privacy Policy</a> for how they handle data.</p>
 
 <h2>External links</h2>
 <p>Calling a restaurant or opening its website or Instagram page opens the relevant app or site. Asking for directions passes the destination coordinates (and, for walking directions, the starting point) to the Apple Maps app. These follow their own privacy rules.</p>

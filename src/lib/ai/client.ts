@@ -286,7 +286,8 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     },
 
     /**
-     * Small talk. Costs no ✨ and has no `remaining`; null on any failure (a limit, an error, a
+     * Small talk (kept for older app versions; the server charges it like any other message). The
+     * reply has no `remaining`; null on any failure (a limit, an error, a
      * timeout, a reply that does not fit the schema), so the caller uses its own template.
      */
     async chat(req: ChatRequest): Promise<ChatResponse | null> {

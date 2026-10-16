@@ -24,6 +24,6 @@ body:
     id: kapsam
     attributes:
       label: Kapsam
-      description: Yerim Var bir navigasyon uygulaması değildir; hesap, sunucu ve takip içermez.
+      description: Yerim Var bir navigasyon uygulaması değildir; hesap ve takip içermez. Tek sunucusu isteğe bağlı Yerim ✨ içindir.
       options:
         - label: Öneri hesap, sunucu, analitik veya yeni bir ücretli dış servis gerektirmiyor (gerektiriyorsa aşağıda açıkla).
