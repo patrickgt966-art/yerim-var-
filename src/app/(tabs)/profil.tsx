@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
+import { activeCity, hasLiveParking } from '@/data/cities';
 import { formatClock } from '@/data/freshness';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl } from '@/lib/ai/client';
@@ -44,6 +45,10 @@ export default function ProfileScreen() {
           data.fallbackReason ? (
             <Txt variant="caption" secondary>
               {t('freshness.staticOnlyBanner')}
+            </Txt>
+          ) : !hasLiveParking(activeCity()) ? (
+            <Txt variant="caption" secondary>
+              {t('freshness.noLiveBanner', { place: activeCity().locative })}
             </Txt>
           ) : null
         ) : data ? (

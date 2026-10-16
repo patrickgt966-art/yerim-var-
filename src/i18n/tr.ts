@@ -40,6 +40,8 @@ const tr = {
     noDataShort: 'Bilgi yok',
     sampleBanner: 'Bu bilgi deneme, gerçek değil. Belediye verisine ulaşılamıyor.',
     staticOnlyBanner: 'Belediye verisine ulaşılamıyor. Otopark konumları var, boş yer bilgisi yok.',
+    // Calm note for a city without a live parking API (Ankara); not an outage.
+    noLiveBanner: '{{place}} canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.',
     offline: 'İnternet yok',
     offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
   },
@@ -50,6 +52,7 @@ const tr = {
     cityTitle: 'Hangi şehirdesin?',
     citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
     citySourceIspark: 'Canlı otopark: İSPARK, 243 otopark',
+    citySourceStatic: 'Canlı otopark verisi yok; otoparklar kapasite bilgisiyle',
     cityA11yRow: '{{name}}, {{source}}',
     cityA11ySelected: '{{name}}, seçili, {{source}}',
     cityA11ySoon: '{{name}}, yakında',
@@ -238,6 +241,8 @@ const tr = {
     sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
       'İzmir Büyükşehir Belediyesi Açık Veri (CC BY 4.0), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
+    sourceBursa:
+      'Bursa Büyükşehir Belediyesi Açık Yeşil, otopark veri seti. Boş yer bilgisi yok.',
     sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
       '© OpenStreetMap katkıcıları (ODbL). Boş yer bilgisi yok. Bilgileri gönüllüler girdi.',

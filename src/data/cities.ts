@@ -40,9 +40,9 @@ export type City = {
   /** District names; `districtCenters` holds the same districts with their centres. */
   districts: readonly string[];
   districtCenters: readonly District[];
-  /** Live parking source of the city; null while the city is not open. */
+  /** Parking source of the city; null while the city is not open. 'osm' (or another static kind) means no live API. */
   parkingSource: DataSource | null;
-  /** Credit line for the live parking data. */
+  /** Credit line for the parking data. */
   parkingAttribution: string | null;
 };
 
@@ -127,6 +127,79 @@ export const ISTANBUL_DISTRICTS: readonly District[] = [
   { name: 'Zeytinburnu', lat: 40.99, lng: 28.904 },
 ];
 
+/** The 25 districts of Ankara (centres are rough, a few km). */
+export const ANKARA_DISTRICTS: readonly District[] = [
+  { name: 'Akyurt', lat: 40.1325, lng: 33.0889 },
+  { name: 'Altındağ', lat: 39.9667, lng: 32.8667 },
+  { name: 'Ayaş', lat: 40.0178, lng: 32.3358 },
+  { name: 'Bala', lat: 39.5575, lng: 33.1233 },
+  { name: 'Beypazarı', lat: 40.1675, lng: 31.9208 },
+  { name: 'Çamlıdere', lat: 40.4903, lng: 32.4767 },
+  { name: 'Çankaya', lat: 39.9179, lng: 32.8627 },
+  { name: 'Çubuk', lat: 40.2378, lng: 33.0328 },
+  { name: 'Elmadağ', lat: 39.9233, lng: 33.2336 },
+  { name: 'Etimesgut', lat: 39.9553, lng: 32.6772 },
+  { name: 'Evren', lat: 39.0233, lng: 33.8097 },
+  { name: 'Gölbaşı', lat: 39.7894, lng: 32.8031 },
+  { name: 'Güdül', lat: 40.2111, lng: 32.2486 },
+  { name: 'Haymana', lat: 39.4333, lng: 32.4953 },
+  { name: 'Kahramankazan', lat: 40.2058, lng: 32.6803 },
+  { name: 'Kalecik', lat: 40.1, lng: 33.4103 },
+  { name: 'Keçiören', lat: 39.981, lng: 32.864 },
+  { name: 'Kızılcahamam', lat: 40.4694, lng: 32.6503 },
+  { name: 'Mamak', lat: 39.925, lng: 32.9167 },
+  { name: 'Nallıhan', lat: 40.1861, lng: 31.3519 },
+  { name: 'Polatlı', lat: 39.5772, lng: 32.1411 },
+  { name: 'Pursaklar', lat: 40.0397, lng: 32.9006 },
+  { name: 'Sincan', lat: 39.9667, lng: 32.5833 },
+  { name: 'Şereflikoçhisar', lat: 38.9381, lng: 33.5386 },
+  { name: 'Yenimahalle', lat: 39.9667, lng: 32.8 },
+];
+
+/** The 17 districts of Bursa (centres are rough, a few km). */
+export const BURSA_DISTRICTS: readonly District[] = [
+  { name: 'Büyükorhan', lat: 39.7742, lng: 28.8986 },
+  { name: 'Gemlik', lat: 40.4311, lng: 29.1544 },
+  { name: 'Gürsu', lat: 40.215, lng: 29.19 },
+  { name: 'Harmancık', lat: 39.6808, lng: 29.1503 },
+  { name: 'İnegöl', lat: 40.0783, lng: 29.5128 },
+  { name: 'İznik', lat: 40.4292, lng: 29.7211 },
+  { name: 'Karacabey', lat: 40.2147, lng: 28.3597 },
+  { name: 'Keles', lat: 39.9172, lng: 29.2328 },
+  { name: 'Kestel', lat: 40.1964, lng: 29.2078 },
+  { name: 'Mudanya', lat: 40.3753, lng: 28.8836 },
+  { name: 'Mustafakemalpaşa', lat: 40.0361, lng: 28.4106 },
+  { name: 'Nilüfer', lat: 40.2133, lng: 28.9786 },
+  { name: 'Orhaneli', lat: 39.9022, lng: 28.9922 },
+  { name: 'Orhangazi', lat: 40.49, lng: 29.3086 },
+  { name: 'Osmangazi', lat: 40.195, lng: 29.06 },
+  { name: 'Yenişehir', lat: 40.2625, lng: 29.6361 },
+  { name: 'Yıldırım', lat: 40.1917, lng: 29.0997 },
+];
+
+/** The 19 districts of Antalya (centres are rough, a few km). */
+export const ANTALYA_DISTRICTS: readonly District[] = [
+  { name: 'Akseki', lat: 37.0475, lng: 31.7897 },
+  { name: 'Aksu', lat: 36.9419, lng: 30.8484 },
+  { name: 'Alanya', lat: 36.5438, lng: 31.9998 },
+  { name: 'Demre', lat: 36.2461, lng: 29.9847 },
+  { name: 'Döşemealtı', lat: 37.0, lng: 30.6 },
+  { name: 'Elmalı', lat: 36.7358, lng: 29.9186 },
+  { name: 'Finike', lat: 36.2975, lng: 30.1469 },
+  { name: 'Gazipaşa', lat: 36.2692, lng: 32.3203 },
+  { name: 'Gündoğmuş', lat: 36.8103, lng: 32.0989 },
+  { name: 'İbradı', lat: 37.0969, lng: 31.5964 },
+  { name: 'Kaş', lat: 36.202, lng: 29.6414 },
+  { name: 'Kemer', lat: 36.6003, lng: 30.5597 },
+  { name: 'Kepez', lat: 36.95, lng: 30.69 },
+  { name: 'Konyaaltı', lat: 36.8836, lng: 30.6339 },
+  { name: 'Korkuteli', lat: 37.0653, lng: 30.1967 },
+  { name: 'Kumluca', lat: 36.3708, lng: 30.2878 },
+  { name: 'Manavgat', lat: 36.7869, lng: 31.4439 },
+  { name: 'Muratpaşa', lat: 36.8841, lng: 30.7056 },
+  { name: 'Serik', lat: 36.9176, lng: 31.1006 },
+];
+
 const names = (list: readonly District[]) => list.map((d) => d.name);
 
 // The boxes of cities that are not open yet are placeholders until their data lands.
@@ -189,42 +262,86 @@ export const CITIES: City[] = [
     id: 'ankara',
     name: 'Ankara',
     locative: "Ankara'da",
-    available: false,
-    center: { lat: 39.9334, lng: 32.8597 },
-    bounds: { minLat: 39.3, maxLat: 40.5, minLng: 32.0, maxLng: 33.7 },
-    radiusKm: 100,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    examples: {
+      a: 'Kızılay',
+      aLoc: "Kızılay'da",
+      b: 'Çankaya',
+      bLoc: "Çankaya'da",
+      c: 'Tunalı',
+      cLoc: "Tunalı'da",
+      d: 'Bahçelievler',
+      dLoc: "Bahçelievler'de",
+    },
+    available: true,
+    center: { lat: 39.9208, lng: 32.8541 },
+    // The province reaches about 38.6-40.75 N, 30.8-34.3 E; its far points lie ~160 km from the centre.
+    bounds: { minLat: 38.6, maxLat: 40.75, minLng: 30.8, maxLng: 34.3 },
+    radiusKm: 170,
+    districts: names(ANKARA_DISTRICTS),
+    districtCenters: ANKARA_DISTRICTS,
+    // No live parking API: the OSM car parks carry a capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
   {
     id: 'antalya',
     name: 'Antalya',
     locative: "Antalya'da",
-    available: false,
+    examples: {
+      a: 'Konyaaltı',
+      aLoc: "Konyaaltı'nda",
+      b: 'Lara',
+      bLoc: "Lara'da",
+      c: 'Kaleiçi',
+      cLoc: "Kaleiçi'nde",
+      d: 'Muratpaşa',
+      dLoc: "Muratpaşa'da",
+    },
+    available: true,
     center: { lat: 36.8969, lng: 30.7133 },
-    bounds: { minLat: 36.2, maxLat: 37.4, minLng: 29.9, maxLng: 31.6 },
-    radiusKm: 100,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    // The province reaches about 36.0-37.55 N, 29.25-32.65 E; its far corner (Gazipaşa) lies ~200 km from the centre.
+    bounds: { minLat: 36.0, maxLat: 37.55, minLng: 29.25, maxLng: 32.65 },
+    radiusKm: 200,
+    districts: names(ANTALYA_DISTRICTS),
+    districtCenters: ANTALYA_DISTRICTS,
+    // No live parking API: the OSM car parks carry a capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
   {
     id: 'bursa',
     name: 'Bursa',
     locative: "Bursa'da",
-    available: false,
+    examples: {
+      a: 'Nilüfer',
+      aLoc: "Nilüfer'de",
+      b: 'Osmangazi',
+      bLoc: "Osmangazi'de",
+      c: 'Mudanya',
+      cLoc: "Mudanya'da",
+      d: 'Görükle',
+      dLoc: "Görükle'de",
+    },
+    available: true,
     center: { lat: 40.1885, lng: 29.061 },
-    bounds: { minLat: 39.7, maxLat: 40.6, minLng: 28.3, maxLng: 29.8 },
-    radiusKm: 80,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    // The province reaches about 39.55-40.65 N, 28.25-30.0 E; its far corners lie ~105 km from the centre.
+    bounds: { minLat: 39.55, maxLat: 40.65, minLng: 28.25, maxLng: 30.0 },
+    radiusKm: 110,
+    districts: names(BURSA_DISTRICTS),
+    districtCenters: BURSA_DISTRICTS,
+    // No live parking API: the OSM car parks (and the optional municipal inventory) carry a
+    // capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
 ];
+
+/** Parking sources without occupancy: a city whose source is one of them has no live parking API. */
+const STATIC_PARKING_SOURCES: readonly (DataSource | null)[] = ['osm', 'izelman', 'apple'];
+
+/** False for a city whose car parks are bundled records only (Ankara): no free counts will ever arrive. */
+export const hasLiveParking = (city: City = activeCity()): boolean =>
+  !STATIC_PARKING_SOURCES.includes(city.parkingSource);
 
 /** True only for a known city that is open for use. */
 export const isAvailableCity = (id: unknown): id is string =>

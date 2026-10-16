@@ -23,7 +23,17 @@ export function HomeSkyline() {
       // Ends just above the search card, which overlaps the hero by 34.
       style={{ position: 'absolute', left: 0, right: 0, bottom: 30 }}
     >
-      {city === 'istanbul' ? <IstanbulSkyline /> : <IzmirSkyline />}
+      {city === 'istanbul' ? (
+        <IstanbulSkyline />
+      ) : city === 'ankara' ? (
+        <AnkaraSkyline />
+      ) : city === 'bursa' ? (
+        <BursaSkyline />
+      ) : city === 'antalya' ? (
+        <AntalyaSkyline />
+      ) : (
+        <IzmirSkyline />
+      )}
     </Svg>
   );
 }
@@ -128,6 +138,130 @@ function IstanbulSkyline() {
         d="M0 90c8-3 16-3 24 0s16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0v2H0z"
         fillOpacity={0.3}
       />
+    </G>
+  );
+}
+
+/**
+ * Ankara: Ankara Kalesi on its hill, Anıtkabir (colonnade on a platform), Atakule (the orange
+ * accent, a slim tower with a disc), Kocatepe Camii (big dome, four minarets) and gentle hills
+ * instead of waves. Shapes that overlap share one path so the translucent fill does not double up.
+ */
+function AnkaraSkyline() {
+  return (
+    <G testID="skyline-ankara" fill={brand.white} fillOpacity={0.32}>
+      {/* Rolling hills behind everything */}
+      <Path
+        d="M0 92V68c40-10 84-10 126-2s72 6 112-2 86-8 120 0c14 3 24 6 32 8V92z"
+        fillOpacity={0.12}
+      />
+      {/* Ankara Kalesi: the hill, then the walls and towers with their battlements */}
+      <Path d="M0 92V74C16 66 30 60 46 58S88 62 104 76S112 86 118 92z" />
+      <Path d="M30 58V46H86V58zM24 58V38H36V58zM52 58V28H66V58zM80 58V36H92V58zM24 38V35h2V38zM28 38V35h2V38zM32 38V35h2V38zM52 28V25h2V28zM56 28V25h2V28zM60 28V25h2V28zM64 28V25h2V28zM80 36V33h2V36zM84 36V33h2V36zM88 36V33h2V36zM38 46V43h2V46zM42 46V43h2V46zM46 46V43h2V46zM70 46V43h2V46zM74 46V43h2V46zM78 46V43h2V46z" />
+      {/* Cypress trees */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M122 92c-3-8-3-16 0-26 3 10 3 18 0 26zM222 92c-3-7-3-14 0-22 3 8 3 15 0 22zM372 92c-3-8-3-16 0-26 3 10 3 18 0 26z" />
+      </G>
+      {/* Anıtkabir: platform, steps, towers, colonnade with its beam and the Hall of Honour */}
+      <Path d="M128 92V86H214V92zM136 86V82H206V86zM134 82V58H146V82zM196 82V58H208V82zM132.5 58V55H147.5V58zM194.5 58V55H209.5V58zM148 66V61H194V66zM158 61V50H184V61zM156 50L171 43L186 50zM150 82V66h2.4V82zM155 82V66h2.4V82zM160 82V66h2.4V82zM165 82V66h2.4V82zM170 82V66h2.4V82zM175 82V66h2.4V82zM180 82V66h2.4V82zM185 82V66h2.4V82zM190 82V66h2.4V82z" />
+      {/* Atakule, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M236 92L240.5 40H245.5L250 92zM229 36H257L253 44H233zM233 36A10 8 0 0 1 253 36zM242.4 28V12H243.6V28z" />
+      </G>
+      {/* Kocatepe Camii: courtyard body, central dome, two half domes and four minarets */}
+      <Path d="M280 92V68H340V92zM293 68A17 17 0 0 1 327 68zM309.4 51V42H310.6V51zM280 68A9 9 0 0 1 298 68zM322 68A9 9 0 0 1 340 68zM272.5 92V36H275.5V92zM270.5 46V43.5H277.5V46zM272 36L274 22L276 36zM284.5 92V36H287.5V92zM282.5 46V43.5H289.5V46zM284 36L286 22L288 36zM332.5 92V36H335.5V92zM330.5 46V43.5H337.5V46zM332 36L334 22L336 36zM344.5 92V36H347.5V92zM342.5 46V43.5H349.5V46zM344 36L346 22L348 36z" />
+      {/* Gentle ground line */}
+      <Path
+        d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
+  );
+}
+
+/**
+ * Bursa: Uludağ as a big mountain behind everything (with a few snow patches), the Yeşil Türbe
+ * (octagonal tomb under a ribbed dome, the mint accent), the Ulu Cami (a wide block under a row of
+ * nine small domes, two minarets) and the Tophane Saat Kulesi on its hill (the orange accent).
+ * Shapes that overlap share one path so the translucent fill does not double up.
+ */
+function BursaSkyline() {
+  return (
+    <G testID="skyline-bursa" fill={brand.white} fillOpacity={0.32}>
+      {/* Uludağ: the long ridge behind everything, then its snow patches */}
+      <Path
+        d="M0 92V64L36 58L84 44L132 26L178 12L206 6L232 16L262 30L300 44L346 54L390 60V92z"
+        fillOpacity={0.12}
+      />
+      <Path d="M178 12L206 6L232 16L218 20L206 14L196 22L186 16z" fillOpacity={0.14} />
+      {/* Foothills */}
+      <Path
+        d="M0 92V78C40 70 90 72 130 76S220 80 260 74 340 68 390 74V92z"
+        fillOpacity={0.14}
+      />
+      {/* Cypress trees */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M84 92c-3-8-3-16 0-26 3 10 3 18 0 26zM240 92c-3-7-3-14 0-22 3 8 3 15 0 22zM352 92c-3-8-3-16 0-26 3 10 3 18 0 26zM372 92c-3-6-3-12 0-18 3 6 3 12 0 18z" />
+      </G>
+      {/* Yeşil Türbe, in mint: platform, octagonal body, drum, ribbed dome and finial */}
+      <G fill={brand.mint} fillOpacity={0.8}>
+        <Path d="M28 92V86H76V92zM32 86V64L38 58H66L72 64V86zM40 58V52H64V58zM40 52C40 42 45 37 52 33C59 37 64 42 64 52zM51.4 33V25H52.6V33z" />
+      </G>
+      {/* Ulu Cami: wide block, a row of nine small domes and two minarets */}
+      <Path d="M106 92V64H214V92zM106 64A6 6 0 0 1 118 64zM118 64A6 6 0 0 1 130 64zM130 64A6 6 0 0 1 142 64zM142 64A6 6 0 0 1 154 64zM154 64A6 6 0 0 1 166 64zM166 64A6 6 0 0 1 178 64zM178 64A6 6 0 0 1 190 64zM190 64A6 6 0 0 1 202 64zM202 64A6 6 0 0 1 214 64zM100 92V30H104V92zM97.5 44V41H106.5V44zM99.5 30L102 14L104.5 30zM216 92V30H220V92zM213.5 44V41H222.5V44zM215.5 30L218 14L220.5 30z" />
+      {/* Tophane hill and Saat Kulesi, in orange so the city reads at a glance */}
+      <Path d="M246 92V84C260 76 274 72 296 70S330 76 346 92z" />
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M286 72V62H306V72zM289 62V36H303V62zM287 36V34H305V36zM290 34V24H302V34zM288.5 24L296 10L303.5 24zM295.3 10V4H296.7V10z" />
+      </G>
+      {/* Gentle ground line */}
+      <Path
+        d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
+  );
+}
+
+/**
+ * Antalya: the Beydağları ridge behind everything, the Yivli Minare with its mosque dome (the
+ * orange accent: a square base, a fluted shaft drawn as four strips, balcony and cone), Hadrian's
+ * Gate (Hadriyanüs Kapısı: two towers and three arches, cut out with even-odd), the round
+ * Hıdırlık Kulesi on its cliff, a palm in mint and two bands of sea waves along the bottom.
+ * Shapes that overlap share one path (all wound the same way) so the translucent fill does not
+ * double up.
+ */
+function AntalyaSkyline() {
+  return (
+    <G testID="skyline-antalya" fill={brand.white} fillOpacity={0.32}>
+      {/* Beydağları: a jagged ridge behind everything, then nearer foothills */}
+      <Path
+        d="M0 88V52L26 42L52 48L84 30L112 38L150 18L182 28L214 10L240 24L268 16L300 34L334 26L362 40L390 32V88z"
+        fillOpacity={0.12}
+      />
+      <Path
+        d="M0 88V70C40 62 90 66 130 70S220 72 260 66 340 60 390 66V88z"
+        fillOpacity={0.14}
+      />
+      {/* Yivli Minare and the mosque dome beside it, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M44 88V74H68V88zM48 74V30H51.4V74zM52.2 74V30H55.6V74zM56.4 74V30H59.8V74zM60.6 74V30H64V74zM45 30V27H67V30zM52 27V20H60V27zM51 20L56 6L61 20zM55.4 6V1H56.6V6zM72 88V80H98V88zM75 80A10 10 0 0 1 95 80z" />
+      </G>
+      {/* Hadrian's Gate: two towers joined by a low body, three arches cut out (even-odd) */}
+      <Path
+        fillRule="evenodd"
+        d="M108 88V38H124V50H196V38H212V88zM151 88V72A9 9 0 0 1 169 72V88zM128 88V75A7 7 0 0 1 142 75V88zM178 88V75A7 7 0 0 1 192 75V88z"
+      />
+      <Path d="M108 38V34H112V38zM116 38V34H120V38zM200 38V34H204V38zM208 38V34H212V38z" />
+      {/* Hıdırlık Kulesi: cliff, square base, round tower and a crenellated top */}
+      <Path d="M226 88V80L240 74L250 68H282L294 72L306 80V88zM252 68V52H280V68zM257 52V30H275V52zM254 30V26H278V30zM254 26V22H258.8V26zM263.6 26V22H268.4V26zM273.2 26V22H278V26z" />
+      {/* A palm, in mint: trunk, crown and fronds */}
+      <G fill={brand.mint} fillOpacity={0.6}>
+        <Path d="M334 88H338C337 70 339 54 340 40H337C336 54 334 70 334 88zM338 40Q342 30 338 22Q334 30 338 40zM338 40Q326 28 306 36Q326 34 338 44zM338 41Q324 40 312 56Q326 48 338 45zM338 44Q350 36 370 36Q350 28 338 40zM338 45Q350 48 364 56Q352 40 338 41z" />
+      </G>
+      {/* The sea: a back and a front band of waves */}
+      <Path d="M0 85Q7.5 81 15 85T30 85T45 85T60 85T75 85T90 85T105 85T120 85T135 85T150 85T165 85T180 85T195 85T210 85T225 85T240 85T255 85T270 85T285 85T300 85T315 85T330 85T345 85T360 85T375 85T390 85V92H0z" fillOpacity={0.14} />
+      <Path d="M0 89Q7.5 92 15 89T30 89T45 89T60 89T75 89T90 89T105 89T120 89T135 89T150 89T165 89T180 89T195 89T210 89T225 89T240 89T255 89T270 89T285 89T300 89T315 89T330 89T345 89T360 89T375 89T390 89V92H0z" fillOpacity={0.3} />
     </G>
   );
 }

@@ -22,11 +22,18 @@ export type LoadOptions = {
   cityId?: string;
 };
 
-/** The live provider of a city. Cities without one (not open yet) fall back to İzmir's. */
-export function providerFor(cityId: string): ParkingProvider {
+/**
+ * The live provider of a city; null for a city without a live API (Ankara, Bursa, Antalya: bundled car parks
+ * only). Cities not open yet fall back to İzmir's.
+ */
+export function providerFor(cityId: string): ParkingProvider | null {
   switch (cityById(cityId).id) {
     case 'istanbul':
       return new IsparkProvider();
+    case 'ankara':
+    case 'bursa':
+    case 'antalya':
+      return null;
     default:
       return new IzmirOpenDataProvider();
   }
@@ -54,7 +61,8 @@ function wait(ms: number, signal?: AbortSignal) {
  * 2. the last good result saved on the device, flagged `offline`;
  * 3. sample data, flagged by `source: 'mock'` ("Deneme bilgisi gösteriliyor"), for İzmir
  *    only; other cities get an empty 'static-only' result carrying the error.
- * The provider and the device cache follow the city (the active one by default).
+ * The provider and the device cache follow the city (the active one by default). A city without a
+ * live provider (Ankara) gets an empty 'static-only' result without an error.
  */
 export async function loadParkings(
   primary?: ParkingProvider,
@@ -68,6 +76,11 @@ export async function loadParkings(
 ): Promise<ParkingResult> {
   const city = cityById(cityId);
   const source = primary ?? providerFor(city.id);
+  // No live API in this city: the bundled car parks are all there is, and that is not a failure
+  // (no fallbackReason, so no outage banner). Nothing to cache either.
+  if (!source) {
+    return { parkings: [], source: 'static-only', fetchedAt: new Date().toISOString() };
+  }
   const sample = fallback === undefined ? fallbackFor(city.id) : fallback;
   let error: unknown;
   const startedAt = Date.now();

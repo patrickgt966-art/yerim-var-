@@ -263,7 +263,7 @@ export default function ParkingDetail() {
               : p.source === 'osm'
                 ? t('detail.sourceOsm')
                 : p.source === 'izelman'
-                  ? t('detail.sourceIzelman')
+                  ? t(p.id.startsWith('bursa-bb-') ? 'detail.sourceBursa' : 'detail.sourceIzelman')
                   : p.source === 'apple'
                     ? t('detail.sourceApple')
                     : p.source === 'ispark'

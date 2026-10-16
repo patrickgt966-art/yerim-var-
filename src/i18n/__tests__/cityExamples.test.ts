@@ -109,6 +109,69 @@ describe('city example texts', () => {
     ]);
   });
 
+  it('names the Ankara places while Ankara is active', () => {
+    setActiveCity('ankara');
+    const out = EXAMPLE_KEYS.map(resolve);
+    expect(out.slice(0, 3)).toEqual(['Kızılay', 'Çankaya', 'Tunalı']);
+    expect(out).toContain("bir de Bahçelievler'de bak");
+    expect(out).toContain('Selam! Yer adı ya da "Tunalı\'da köfteci" gibi yazabilirsin.');
+  });
+
+  it('names the Antalya places while Antalya is active', () => {
+    setActiveCity('antalya');
+    const out = EXAMPLE_KEYS.map(resolve);
+    expect(out.slice(0, 3)).toEqual(['Konyaaltı', 'Lara', 'Kaleiçi']);
+    expect(out).toContain("bir de Muratpaşa'da bak");
+    expect(out).toContain('Selam! Yer adı ya da "Kaleiçi\'nde köfteci" gibi yazabilirsin.');
+  });
+
+  it('has no İzmir place name in any text, chat suggestion or prompt with Antalya active', () => {
+    setActiveCity('antalya');
+    const ctx = { sort: 'distance', freeParking: true, place: null } as unknown as ChatContext;
+    const texts = [
+      ...leaves(tr).map(resolve),
+      ...suggestions(ctx, (k, o) => i18n.t(k, o)),
+      understandSystem('antalya'),
+    ];
+    for (const text of texts) {
+      for (const place of IZMIR_PLACES) expect(text).not.toContain(place);
+    }
+  });
+
+  it('names the Bursa places while Bursa is active', () => {
+    setActiveCity('bursa');
+    const out = EXAMPLE_KEYS.map(resolve);
+    expect(out.slice(0, 3)).toEqual(['Nilüfer', 'Osmangazi', 'Mudanya']);
+    expect(out).toContain("bir de Görükle'de bak");
+    expect(out).toContain('Selam! Yer adı ya da "Mudanya\'da köfteci" gibi yazabilirsin.');
+  });
+
+  it('has no İzmir place name in any text, chat suggestion or prompt with Bursa active', () => {
+    setActiveCity('bursa');
+    const ctx = { sort: 'distance', freeParking: true, place: null } as unknown as ChatContext;
+    const texts = [
+      ...leaves(tr).map(resolve),
+      ...suggestions(ctx, (k, o) => i18n.t(k, o)),
+      understandSystem('bursa'),
+    ];
+    for (const text of texts) {
+      for (const place of IZMIR_PLACES) expect(text).not.toContain(place);
+    }
+  });
+
+  it('has no İzmir place name in any text, chat suggestion or prompt with Ankara active', () => {
+    setActiveCity('ankara');
+    const ctx = { sort: 'distance', freeParking: true, place: null } as unknown as ChatContext;
+    const texts = [
+      ...leaves(tr).map(resolve),
+      ...suggestions(ctx, (k, o) => i18n.t(k, o)),
+      understandSystem('ankara'),
+    ];
+    for (const text of texts) {
+      for (const place of IZMIR_PLACES) expect(text).not.toContain(place);
+    }
+  });
+
   it('has no İzmir place name in any text with İstanbul active', () => {
     setActiveCity('istanbul');
     const texts = leaves(tr).map(resolve);

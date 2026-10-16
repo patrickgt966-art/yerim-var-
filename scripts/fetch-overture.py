@@ -49,7 +49,8 @@ VERIFIED_SOURCES = 2
 # Confidence steps tried in turn until a city's file fits MAX_BYTES (Izmir fits at the first).
 THRESHOLDS = (MIN_CONFIDENCE, STRICT_CONFIDENCE, 0.8, VERIFIED_CONFIDENCE)
 
-# bbox is a generous (xmin, xmax, ymin, ymax) filter for the province (region) polygon lookup;
+# bbox is a generous (xmin, xmax, ymin, ymax) filter for the province (region) polygon lookup: the
+# polygon's own bbox must lie fully inside it, so leave a wide margin around the province;
 # area_codes are the province's landline codes (a landline with another code is suspect).
 CITIES = [
     {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',),
@@ -57,6 +58,12 @@ CITIES = [
     {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
      'area_codes': ('212', '216'), 'strict': True,  # strict: drop weak records below STRICT_CONFIDENCE
      'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
+    {'id': 'ankara', 'name': 'Ankara', 'fold': 'ankara', 'bbox': (30.4, 34.7, 38.3, 41.1),
+     'area_codes': ('312',), 'strict': True, 'min_conf': 0.7},
+    {'id': 'bursa', 'name': 'Bursa', 'fold': 'bursa', 'bbox': (27.7, 30.4, 39.2, 41.0),
+     'area_codes': ('224',), 'strict': True, 'min_conf': 0.7},
+    {'id': 'antalya', 'name': 'Antalya', 'fold': 'antalya', 'bbox': (28.8, 33.1, 35.7, 37.9),
+     'area_codes': ('242',), 'strict': True, 'min_conf': 0.7},
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
@@ -75,11 +82,11 @@ DROP_NAME = re.compile(
 SUSPECT_NAME = re.compile(r'\b(kasap|sarkuteri|sarkuterisi)\b')
 KASAP_OK = re.compile(r'\b(lokanta|restoran|izgara|kebap|et ev)')
 
-# First phone, spaces/()/- stripped: +90 2xx / 0 2xx / 2xx landline (10 digits after the prefix).
-LANDLINE = re.compile(r'^(?:\+90|0)?(2\d{2})\d{7}$')
+# First phone, spaces/()/- stripped: +90 / 0 / bare landline with a 2xx-4xx area code (10 digits).
+LANDLINE = re.compile(r'^(?:\+90|0)?([2-4]\d{2})\d{7}$')
 IZMIR_AREA_CODE = '232'  # default for is_suspect_phone
-# Strict (Istanbul) rule: a valid Istanbul landline (212/216), mobile (5xx), 444 or 850 number.
-VALID_PHONE = re.compile(r'^(?:\+90|0)?(?:(?:212|216)\d{7}|5\d{9}|444\d{4}|850\d{7})$')
+# Strict rule: a landline with one of the city's area codes, a mobile (5xx), 444 or 850 number.
+VALID_OTHER = re.compile(r'^(?:\+90|0)?(?:5\d{9}|444\d{4}|850\d{7})$')
 
 # basic_category -> app kind (see KIND_KEYS in src/data/restaurants.ts)
 KIND_BY_CATEGORY = {
@@ -221,19 +228,23 @@ def is_suspect_phone(phone, area_codes=(IZMIR_AREA_CODE,)):
     return bool(m) and m.group(1) not in area_codes
 
 
-def has_valid_phone(phone):
-    """True for a valid Istanbul landline (212/216) or a mobile / 444 / 850 number."""
-    return bool(phone) and bool(VALID_PHONE.match(re.sub(r'[\s()\-]', '', phone)))
+def has_valid_phone(phone, area_codes=('212', '216')):
+    """True for a landline with one of the city's area codes or a mobile / 444 / 850 number."""
+    if not phone:
+        return False
+    p = re.sub(r'[\s()\-]', '', phone)
+    m = LANDLINE.match(p)
+    return (bool(m) and m.group(1) in area_codes) or bool(VALID_OTHER.match(p))
 
 
-def drop_weak(items, confidence, strong, web_results):
+def drop_weak(items, confidence, strong, web_results, area_codes=('212', '216')):
     """Strict rule: below STRICT_CONFIDENCE keep a record only with a live website, a valid phone,
     a social link or corroboration (`strong` ids). Returns (kept, dropped count)."""
     kept = []
     for rec in items:
         url = normalise_url(rec.get('w'))
         if (confidence.get(rec['id'], 0.0) >= STRICT_CONFIDENCE or rec['id'] in strong
-                or has_valid_phone(rec.get('p')) or (url and web_results.get(url) == 'ok')):
+                or has_valid_phone(rec.get('p'), area_codes) or (url and web_results.get(url) == 'ok')):
             kept.append(rec)
     return kept, len(items) - len(kept)
 
@@ -698,7 +709,8 @@ def run_city(release, city, loaded, web_urls, web_budget):
     blocked_n = n_before - len(items)
     web = check_websites(items, max_urls=web_urls, budget=web_budget)
     if city.get('strict'):
-        items, counts['weak'] = drop_weak(items, {r['id']: c for c, r in cands}, extra['strong'], web['results'])
+        items, counts['weak'] = drop_weak(items, {r['id']: c for c, r in cands}, extra['strong'], web['results'],
+                                              city['area_codes'])
     text = render(release, items, city)
     old = existing_count(city)
     if old and len(items) < MIN_KEEP_RATIO * old:
@@ -763,6 +775,7 @@ def _selftest():
         assert has_valid_phone(p), p
     for p in (None, '', '+902324463476', '123'):
         assert not has_valid_phone(p), p
+    assert has_valid_phone('0312 417 12 34', ('312',)) and not has_valid_phone('0312 417 12 34')
     weak = [{'id': 'a', 'p': '+902324463476'}, {'id': 'b', 'p': '+905393289990'}, {'id': 'c'},
             {'id': 'd', 'w': 'http://ok.example'}, {'id': 'e'}, {'id': 'f'}]
     kept, n = drop_weak(weak, {'f': 0.8}, {'c'}, {'http://ok.example': 'ok'})

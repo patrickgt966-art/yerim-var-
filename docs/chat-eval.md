@@ -1,6 +1,6 @@
 # Chat eval baseline
 
-Date: 2026-10-10
+Date: 2026-10-16
 
 ```
 Chat eval (parseQuery): 51/59
