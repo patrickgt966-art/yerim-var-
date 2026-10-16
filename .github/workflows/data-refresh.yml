@@ -28,7 +28,7 @@ jobs:
     # Antalya (tiled places/food); CKAN calls (İzmir, and Bursa's optional Açık Yeşil) have 60 s
     # timeouts and 120 s downloads; Overture reads all cities' places (five scans) plus a shared
     # 35 min website check (split between the cities by candidate count).
-    timeout-minutes: 240
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
