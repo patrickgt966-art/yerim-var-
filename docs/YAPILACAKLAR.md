@@ -1,14 +1,19 @@
 # Yapılacaklar
 
-Son güncelleme: 11 Ekim 2026.
+Son güncelleme: 15 Ekim 2026.
 
-## Senden bekleyenler (önce bunlar)
+## Sıradaki büyük işler (bu sırayla)
 
-1. Bilgisayarda `git stash` + `git pull` (#37–#39 birleşti; yerel kopya güncel olsun).
-2. Sunucuyu güncelle: `server\yerim-ai` klasöründe `npx wrangler deploy` (Haiku'nun yemek bilgisini vermesi için şart; yapıldıysa geç).
-3. Telefonda test: "lahmacun yemek istiyorum", "kuşbaşı", "bana en yakın tavuk pilavcı bul", "çiğ börek", takip soruları ("daha yakını var mı", "otoparkı ücretsiz olsun", "bir de Buca'da bak"), 5. ✨ hakkında "son hakkındı" notu.
-4. (İsteğe bağlı) Haiku sınavı: GitHub → Settings → Secrets → `ANTHROPIC_API_KEY` ekle, sonra Actions → **AI eval** → Run workflow (~3 sent).
-5. Max 5x aboneliğin varsa: claude.ai faturalama ayarlarından Console hesabını bağla (aylık 100$ API kredisi).
+1. **Yapay zekayı daha zeki yapmak.** Yapay zeka artık her mesajı okuyor (#48–#53). Sırada:
+   - Arama cevaplarının metnini de yapay zeka yazsın (bilgiler yine bizim veriden, dil daha doğal).
+   - Takip sorularını daha iyi anlasın ("diyet menü" → semt sorusu → "yakınımda" zincirini tek istekte birleştirsin).
+   - Gerçek konuşmalarla bir sınav seti kurup her değişiklikte ölçelim (`scripts/ai-eval.ts`).
+2. **Ankara'yı eklemek.** Canlı otopark verisi yok; otoparklar "kapasite" bilgisiyle (OSM + BELTAŞ listesi) gösterilecek. Veri betikleri, semtler, örnekler ve Anıtkabir/Atakule silueti İstanbul'daki gibi.
+3. **Codex ile test ettirmek.** Yapay zeka, İstanbul ve Ankara akışlarını bağımsız bir gözle uçtan uca denetletmek.
+
+### İstanbul'da kalanlar
+- İSPARK canlı verisi telefonda doğrulanacak (sunucu biçimi açık kaynak istemcilerden alındı).
+- `places-istanbul.json` ve `food-istanbul.json` boş: Overpass zaman aşımına uğradı, veri işi tekrar çalıştırılacak.
 
 ## Şimdi yapılabilir (hesap gerekmez)
 

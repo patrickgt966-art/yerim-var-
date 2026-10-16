@@ -33,16 +33,16 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT_FILE = ROOT / 'data' / 'sources-report.md'
 WEB_CACHE_FILE = 'data/overture-web-check.json'
 BLOCKLIST_FILE = 'data/overture-blocklist.json'
-WEB_MAX_URLS = 6000  # total over all cities; each city gets an even share
+WEB_MAX_URLS = 20000  # total over all cities; each city gets a share proportional to its candidate count
 WEB_WORKERS = 32
 WEB_TIMEOUT = 8  # seconds per request
-WEB_BUDGET = 15 * 60  # seconds over all cities (even share each); no new checks are started after this
+WEB_BUDGET = 35 * 60  # seconds over all cities (share proportional to candidates); no new checks are started after this
 WEB_USER_AGENT = 'YerimVarDataCheck/1.0 (+https://github.com/patrickgt966-art/yerim-var-)'
 
 BUCKET = 'overturemaps-us-west-2'
 MIN_CONFIDENCE = 0.6
 STRICT_CONFIDENCE = 0.7
-MAX_BYTES = int(2.5 * 1024 * 1024)  # per city file
+MAX_BYTES = 10 * 1024 * 1024  # per city file
 MIN_KEEP_RATIO = 0.7  # refuse to shrink the file below this share of the old count
 VERIFIED_CONFIDENCE = 0.9
 VERIFIED_SOURCES = 2
@@ -52,9 +52,11 @@ THRESHOLDS = (MIN_CONFIDENCE, STRICT_CONFIDENCE, 0.8, VERIFIED_CONFIDENCE)
 # bbox is a generous (xmin, xmax, ymin, ymax) filter for the province (region) polygon lookup;
 # area_codes are the province's landline codes (a landline with another code is suspect).
 CITIES = [
-    {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',)},
+    {'id': 'izmir', 'name': 'İzmir', 'fold': 'izmir', 'bbox': (25.9, 28.7, 37.6, 39.6), 'area_codes': ('232',),
+     'min_conf': 0.7},
     {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
-     'area_codes': ('212', '216')},
+     'area_codes': ('212', '216'), 'strict': True,  # strict: drop weak records below STRICT_CONFIDENCE
+     'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
@@ -76,6 +78,8 @@ KASAP_OK = re.compile(r'\b(lokanta|restoran|izgara|kebap|et ev)')
 # First phone, spaces/()/- stripped: +90 2xx / 0 2xx / 2xx landline (10 digits after the prefix).
 LANDLINE = re.compile(r'^(?:\+90|0)?(2\d{2})\d{7}$')
 IZMIR_AREA_CODE = '232'  # default for is_suspect_phone
+# Strict (Istanbul) rule: a valid Istanbul landline (212/216), mobile (5xx), 444 or 850 number.
+VALID_PHONE = re.compile(r'^(?:\+90|0)?(?:(?:212|216)\d{7}|5\d{9}|444\d{4}|850\d{7})$')
 
 # basic_category -> app kind (see KIND_KEYS in src/data/restaurants.ts)
 KIND_BY_CATEGORY = {
@@ -217,6 +221,23 @@ def is_suspect_phone(phone, area_codes=(IZMIR_AREA_CODE,)):
     return bool(m) and m.group(1) not in area_codes
 
 
+def has_valid_phone(phone):
+    """True for a valid Istanbul landline (212/216) or a mobile / 444 / 850 number."""
+    return bool(phone) and bool(VALID_PHONE.match(re.sub(r'[\s()\-]', '', phone)))
+
+
+def drop_weak(items, confidence, strong, web_results):
+    """Strict rule: below STRICT_CONFIDENCE keep a record only with a live website, a valid phone,
+    a social link or corroboration (`strong` ids). Returns (kept, dropped count)."""
+    kept = []
+    for rec in items:
+        url = normalise_url(rec.get('w'))
+        if (confidence.get(rec['id'], 0.0) >= STRICT_CONFIDENCE or rec['id'] in strong
+                or has_valid_phone(rec.get('p')) or (url and web_results.get(url) == 'ok')):
+            kept.append(rec)
+    return kept, len(items) - len(kept)
+
+
 def kind_of(row):
     tax = row.get('taxonomy') or {}
     return KIND_BY_CATEGORY.get(row.get('basic_category')) or KIND_BY_TAXONOMY.get(tax.get('primary'))
@@ -262,13 +283,17 @@ def to_record(row, kind, area_codes=(IZMIR_AREA_CODE,)):
 
 
 def read_candidates(s3, release, poly, area_codes=(IZMIR_AREA_CODE,)):
-    """All food places inside the polygon, with confidence; returns (list, raw count, dropped-word Counter)."""
+    """All food places inside the polygon, with confidence; returns (list, raw count, dropped-word Counter,
+    extra) where extra has the closed / unusable-name counts and `strong` (ids with a social link or 2+ sources)."""
     dset = open_dataset(s3, release, 'places', 'place')
     cols = ['id', 'names', 'basic_category', 'taxonomy', 'confidence', 'operating_status',
             'phones', 'websites', 'addresses', 'bbox', 'sources']
+    if 'socials' in dset.schema.names:
+        cols.append('socials')
     x0, y0, x1, y1 = poly.bounds
     prepared = prep(poly)
     out, raw, dropped = [], 0, Counter()
+    extra = {'closed': 0, 'bad_name': 0, 'strong': set()}
     for batch in dset.to_batches(columns=cols, filter=bbox_filter(x0, x1, y0, y1)):
         for row in batch.to_pylist():
             kind = kind_of(row)
@@ -279,15 +304,20 @@ def read_candidates(s3, release, poly, area_codes=(IZMIR_AREA_CODE,)):
                 continue
             raw += 1
             if row.get('operating_status') in CLOSED:
+                extra['closed'] += 1
                 continue
             if not usable_name((row.get('names') or {}).get('primary')):
+                extra['bad_name'] += 1
                 continue
             word = drop_reason(row['names']['primary'])
             if word:
                 dropped[word] += 1
                 continue
-            out.append((row.get('confidence') or 0.0, to_record(row, kind, area_codes)))
-    return out, raw, dropped
+            rec = to_record(row, kind, area_codes)
+            if row.get('socials') or is_corroborated(row):
+                extra['strong'].add(rec['id'])
+            out.append((row.get('confidence') or 0.0, rec))
+    return out, raw, dropped, extra
 
 
 class Grid:
@@ -476,7 +506,7 @@ def check_websites(items, cache_path=WEB_CACHE_FILE, max_urls=WEB_MAX_URLS, budg
         except (ValueError, OSError, AttributeError):
             results = {}
     stats = {'mode': 'cache' if results or checked_on else 'none', 'checked': 0, 'ok': 0, 'dead': 0,
-             'unknown': 0, 'marked': 0, 'unlinked': 0, 'date': checked_on}
+             'unknown': 0, 'marked': 0, 'unlinked': 0, 'date': checked_on, 'results': results}
 
     if os.environ.get('YERIM_WEB_CHECK') == '1':
         urls = {u for u in (normalise_url(i.get('w')) for i in items) if u}
@@ -583,7 +613,7 @@ def append_failure(city, message):
     put_section(report_heading(city), f"\n{report_heading(city)}\n\n- {city['name']}: {message}; dosya değiştirilmedi.\n")
 
 
-def append_report(city, release, raw, kept, dupes, items, size, threshold, dropped, web, diff, blocked_n):
+def append_report(city, release, raw, kept, dupes, items, size, threshold, dropped, web, diff, blocked_n, counts):
     kinds = {}
     for r in items:
         kinds[r['k']] = kinds.get(r['k'], 0) + 1
@@ -603,6 +633,12 @@ def append_report(city, release, raw, kept, dupes, items, size, threshold, dropp
         f'- Elle kontrolde kapanmış/taşınmış bulunup çıkarılan: {blocked_n}',
         f"- Şüpheli ({city['name']} dışı sabit hat ya da kasap/şarküteri): {sum(1 for r in items if r.get('sp') == 1)}",
         web_line(web),
+        f"- Kayıt sayıları ({city['name']}): ham {raw}, kapalı {counts['closed']}, kullanılamaz ad {counts['bad_name']}, "
+        f"ad süzgeci {sum(dropped.values())}, aday {counts['cands']}; "
+        f"güven < {counts['floor']} {counts['low_conf']}, Overture içi kopya/boyut sınırı {counts['self_dup']}, "
+        f"OSM kopyası {dupes}, elle çıkarılan {blocked_n}"
+        + (f", zayıf kayıt (iletişim bilgisi yok) {counts['weak']}" if counts['strict'] else '')
+        + f"; son {len(items)}",
         *diff,
         '- Per kind: ' + ', '.join(f'{k} {n}' for k, n in sorted(kinds.items())),
         f"- data/food-overture-{city['id']}.json: {size / 1024 / 1024:.2f} MB",
@@ -619,7 +655,8 @@ def fit_to_size(cands, osm_grid, release, city):
     def size_of(items):
         return len(render(release, items, city).encode('utf-8'))
 
-    for i, threshold in enumerate(THRESHOLDS):
+    floor = city.get('min_conf', MIN_CONFIDENCE)
+    for i, threshold in enumerate(t for t in THRESHOLDS if t >= floor):
         if i:
             print(f"{city['id']}: file over {MAX_BYTES} bytes; raising confidence threshold to {threshold}")
         items, dupes = select(cands, threshold, osm_grid)
@@ -638,19 +675,30 @@ def fit_to_size(cands, osm_grid, release, city):
     return threshold, items, dupes
 
 
-def run_city(s3, release, city, web_urls, web_budget):
-    out = out_file(city)
+def load_city(s3, release, city):
+    """Reads a city's candidates (needed up front so the web-check budget can be split by candidate count)."""
     poly = find_polygon(s3, release, city)
     if poly is None:
         raise RuntimeError(f"{city['name']} province polygon not found")
-    cands, raw, dropped = read_candidates(s3, release, poly, city['area_codes'])
-    osm_grid = build_osm_grid(load_osm(city))
+    return read_candidates(s3, release, poly, city['area_codes']), build_osm_grid(load_osm(city))
+
+
+def run_city(release, city, loaded, web_urls, web_budget):
+    out = out_file(city)
+    (cands, raw, dropped, extra), osm_grid = loaded
     threshold, items, dupes = fit_to_size(cands, osm_grid, release, city)
+    n_sel = len(items) + dupes
+    counts = {'cands': len(cands), 'closed': extra['closed'], 'bad_name': extra['bad_name'],
+              'floor': city.get('min_conf', MIN_CONFIDENCE),
+              'low_conf': sum(1 for c, _ in cands if c < city.get('min_conf', MIN_CONFIDENCE)), 'weak': 0, 'strict': bool(city.get('strict'))}
+    counts['self_dup'] = len(cands) - counts['low_conf'] - n_sel
     blocked = load_blocklist()
     n_before = len(items)
     items = [i for i in items if i['id'] not in blocked]
     blocked_n = n_before - len(items)
     web = check_websites(items, max_urls=web_urls, budget=web_budget)
+    if city.get('strict'):
+        items, counts['weak'] = drop_weak(items, {r['id']: c for c, r in cands}, extra['strong'], web['results'])
     text = render(release, items, city)
     old = existing_count(city)
     if old and len(items) < MIN_KEEP_RATIO * old:
@@ -659,7 +707,7 @@ def run_city(s3, release, city, web_urls, web_budget):
     diff = diff_lines(previous_items(city), items)
     out.write_text(text + '\n', encoding='utf-8')
     size = len(text.encode('utf-8')) + 1
-    append_report(city, release, raw, len(items) + dupes, dupes, items, size, threshold, dropped, web, diff, blocked_n)
+    append_report(city, release, raw, n_sel, dupes, items, size, threshold, dropped, web, diff, blocked_n, counts)
     print(f"{city['id']}: wrote {len(items)} items ({size} bytes), {dupes} OSM duplicates removed")
 
 
@@ -672,13 +720,24 @@ def main():
     s3 = open_s3()
     release = find_release(s3)
     print(f'Overture release: {release}')
-    # The web-check budget and URL cap are split evenly; the cache and blocklist are shared (keyed by URL / id).
-    web_urls, web_budget = WEB_MAX_URLS // len(cities), WEB_BUDGET // len(cities)
-    failed = []
+    # The web-check budget and URL cap are split in proportion to each city's candidate count;
+    # the cache and blocklist are shared (keyed by URL / id).
+    failed, loaded = [], {}
     for city in cities:
         try:
-            run_city(s3, release, city, web_urls, web_budget)
+            loaded[city['id']] = load_city(s3, release, city)
         except Exception as e:  # one city failing must not stop the next; its file stays as it was
+            print(f"error: {city['id']}: {e}", file=sys.stderr)
+            failed.append(city['id'])
+            append_failure(city, f'hata ({type(e).__name__}: {e})')
+    total = max(1, sum(len(v[0][0]) for v in loaded.values()))
+    for city in cities:
+        if city['id'] not in loaded:
+            continue
+        share = len(loaded[city['id']][0][0]) / total
+        try:
+            run_city(release, city, loaded.pop(city['id']), int(WEB_MAX_URLS * share), int(WEB_BUDGET * share))
+        except Exception as e:
             print(f"error: {city['id']}: {e}", file=sys.stderr)
             failed.append(city['id'])
             append_failure(city, f'hata ({type(e).__name__}: {e})')
@@ -700,6 +759,14 @@ def _selftest():
     assert not is_suspect_phone('+902324463476')
     assert not is_suspect_phone('+905393289990')
     assert not is_suspect_phone('(0232) 220 22 11')
+    for p in ('+902123381104', '0216 338 11 04', '+905393289990', '4441234', '08501234567'):
+        assert has_valid_phone(p), p
+    for p in (None, '', '+902324463476', '123'):
+        assert not has_valid_phone(p), p
+    weak = [{'id': 'a', 'p': '+902324463476'}, {'id': 'b', 'p': '+905393289990'}, {'id': 'c'},
+            {'id': 'd', 'w': 'http://ok.example'}, {'id': 'e'}, {'id': 'f'}]
+    kept, n = drop_weak(weak, {'f': 0.8}, {'c'}, {'http://ok.example': 'ok'})
+    assert [r['id'] for r in kept] == ['b', 'c', 'd', 'f'] and n == 2, kept
     for status, want in ((200, 'ok'), (301, 'ok'), (403, 'ok'), (404, 'dead'), (410, 'dead'), (503, 'unknown')):
         assert classify(status) == want, status
     assert classify(socket.gaierror()) == 'dead'
