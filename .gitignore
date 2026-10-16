@@ -43,3 +43,6 @@ yarn-error.*
 # local
 .env
 *.log
+
+# Cloudflare Wrangler local state (wrangler dev)
+.wrangler/
