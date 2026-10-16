@@ -12,6 +12,7 @@
 //   (capacity only) when its keys can be guessed. Any failure leaves the OSM data alone.
 //
 // Usage: node scripts/fetch-sources.mjs [izmir|istanbul]   (or YERIM_CITIES=istanbul)
+import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
