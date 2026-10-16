@@ -11,9 +11,10 @@ export const HISTORY_LIMIT = 6;
 export const MAX_RESULTS = 5;
 /**
  * How long the app waits for the router (/understand) before it answers with its own rules.
- * Haiku with structured output is usually faster; a longer wait feels like a hang.
+ * Haiku with structured output is usually faster, but the first call after a schema change (the
+ * API compiles the schema then) and a cold worker took longer than 6 s; a longer wait feels like a hang.
  */
-export const ROUTER_TIMEOUT_MS = 6000;
+export const ROUTER_TIMEOUT_MS = 9000;
 /** /pick and /plan: candidate restaurants per request, and car parks per restaurant (plan). */
 export const MAX_CANDIDATES = 5;
 export const MAX_PLAN_PARKINGS = 3;
@@ -339,7 +340,7 @@ export function understandSystem(city?: string): string {
   const place = cityExamples(c).a;
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "${place}" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
 
-Önce meaning alanına mesajın ne demek istediğini kendi kısa cümlenle yaz (en çok 100 karakter, kullanıcıya gösterilmez; örneğin "kas yapmak istiyor, protein ağırlıklı et ya da tavuk yemek istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
+Önce meaning alanına mesajın ne demek istediğini kendi kısa cümlenle yaz (en çok 60 karakter, kullanıcıya gösterilmez; örneğin "kas yapmak istiyor, protein ağırlıklı et ya da tavuk yemek istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
 
 Karar (kind):
 - "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "${place}"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.

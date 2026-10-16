@@ -161,6 +161,15 @@ describe('assistant', () => {
     ).toBe(true);
   });
 
+  it('does not quote a whole sentence back as a dish name', async () => {
+    const r = await answer(
+      'Hi guys bro hoca bicepsimi büyütmek istiyorum o yüzden ona göre bir restoran arıyorum',
+      emptyContext('food'),
+      deps,
+    );
+    expect(r.reply.text).not.toMatch(/chat\.dishUnknown \{/);
+  });
+
   it('does not call a plain category word an unknown dish', async () => {
     const r = await answer('yakınımda kahve', emptyContext('food'), deps);
     expect(r.reply.text).not.toContain('chat.dishUnknown');
