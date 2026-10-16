@@ -9,7 +9,7 @@
    "lat": "41.0246",
    "lng": "29.0915",
    "capacity": 1029,
-   "emptyCapacity": 439,
+   "emptyCapacity": 475,
    "workHours": "24 Saat",
    "parkType": "KAPALI OTOPARK",
    "freeTime": 15,
@@ -35,7 +35,7 @@
    "lat": "41.0836",
    "lng": "29.0081",
    "capacity": 236,
-   "emptyCapacity": 82,
+   "emptyCapacity": 96,
    "workHours": "24 Saat",
    "parkType": "AÇIK OTOPARK",
    "freeTime": 5,
@@ -48,7 +48,7 @@
    "lat": "41.0841",
    "lng": "29.0054",
    "capacity": 300,
-   "emptyCapacity": 79,
+   "emptyCapacity": 67,
    "workHours": "24 Saat",
    "parkType": "AÇIK OTOPARK",
    "freeTime": 5,
@@ -61,7 +61,7 @@
    "lat": "41.0927",
    "lng": "28.9494",
    "capacity": 250,
-   "emptyCapacity": 101,
+   "emptyCapacity": 142,
    "workHours": "07:00-23:00",
    "parkType": "AÇIK OTOPARK",
    "freeTime": 15,
@@ -79,7 +79,7 @@
    "parkType": "YOL ÜSTÜ",
    "freeTime": 15,
    "district": "ŞİŞLİ",
-   "isOpen": 1
+   "isOpen": 0
   },
   {
    "parkID": 2452,
@@ -92,7 +92,7 @@
    "parkType": "AÇIK OTOPARK",
    "freeTime": 0,
    "district": "ÜSKÜDAR",
-   "isOpen": 1
+   "isOpen": 0
   },
   {
    "parkID": 346,
@@ -118,7 +118,7 @@
    "parkType": "YOL ÜSTÜ",
    "freeTime": 15,
    "district": "BEŞİKTAŞ",
-   "isOpen": 1
+   "isOpen": 0
   },
   {
    "parkID": 828,
@@ -131,7 +131,7 @@
    "parkType": "YOL ÜSTÜ",
    "freeTime": 15,
    "district": "FATİH",
-   "isOpen": 1
+   "isOpen": 0
   },
   {
    "parkID": 1913,
@@ -139,7 +139,7 @@
    "lat": "41.0879",
    "lng": "28.9446",
    "capacity": 116,
-   "emptyCapacity": 36,
+   "emptyCapacity": 32,
    "workHours": "24 Saat",
    "parkType": "AÇIK OTOPARK",
    "freeTime": 25,
@@ -165,7 +165,7 @@
    "lat": "41.0797",
    "lng": "28.938",
    "capacity": 159,
-   "emptyCapacity": 53,
+   "emptyCapacity": 42,
    "workHours": "24 Saat",
    "parkType": "KAPALI OTOPARK",
    "freeTime": 15,
@@ -196,7 +196,7 @@
    "parkType": "AÇIK OTOPARK",
    "freeTime": 0,
    "district": "BEYOĞLU",
-   "isOpen": 1
+   "isOpen": 0
   },
   {
    "parkID": 2685,
@@ -217,7 +217,7 @@
    "lat": "41.1838",
    "lng": "28.7396",
    "capacity": 700,
-   "emptyCapacity": 477,
+   "emptyCapacity": 456,
    "workHours": "24 Saat",
    "parkType": "KAPALI OTOPARK",
    "freeTime": 15,
@@ -230,7 +230,7 @@
    "lat": "40.9881",
    "lng": "28.8459",
    "capacity": 250,
-   "emptyCapacity": 150,
+   "emptyCapacity": 182,
    "workHours": "08:00-23:00",
    "parkType": "AÇIK OTOPARK",
    "freeTime": 15,
@@ -243,7 +243,7 @@
    "lat": "40.9904",
    "lng": "28.8456",
    "capacity": 150,
-   "emptyCapacity": 80,
+   "emptyCapacity": 75,
    "workHours": "24 Saat",
    "parkType": "KAPALI OTOPARK",
    "freeTime": 0,
@@ -261,7 +261,7 @@
    "parkType": "YOL ÜSTÜ",
    "freeTime": 0,
    "district": "FATİH",
-   "isOpen": 1
+   "isOpen": 0
   }
  ]
 }
