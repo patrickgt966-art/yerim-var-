@@ -820,6 +820,9 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
   ],
   meat: [
     'kebap',
+    'protein',
+    'proteinli',
+    'yuksek protein',
     'kebab',
     'et',
     'izgara',
