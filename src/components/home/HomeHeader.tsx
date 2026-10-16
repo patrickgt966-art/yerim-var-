@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandWordmark } from '@/components/BrandWordmark';
+import { useCoachTarget } from '@/components/coach/registry';
 import { CityButton } from '@/components/CityPicker';
 import { Txt } from '@/components/Txt';
 import { aiBaseUrl } from '@/lib/ai/client';
@@ -19,6 +21,7 @@ function AiPill() {
   const { t } = useTranslation();
   const consent = useAi((s) => s.consent);
   const left = useAi((s) => s.remaining());
+  const coach = useCoachTarget('ai');
   // Throttled; keeps the pill honest after a failed or slow AI call.
   useFocusEffect(
     useCallback(() => {
@@ -28,6 +31,7 @@ function AiPill() {
   if (!aiBaseUrl() || consent !== 'yes') return null;
   return (
     <View
+      {...coach}
       accessible
       accessibilityLabel={t('home.a11yAi', { count: left })}
       style={{
@@ -55,6 +59,7 @@ export function HomeHeader() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const c = useColors();
+  const cityCoach = useCoachTarget('city');
   return (
     <View
       style={{
@@ -70,40 +75,13 @@ export function HomeHeader() {
     >
       <HomeSkyline />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-        {/* Small brand mark, so the orange words of the title below stay the only highlight. */}
         <View
-          accessible
-          accessibilityRole="header"
-          accessibilityLabel="yerim var"
           style={{ flexGrow: 1, flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
         >
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 9,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: brand.orange,
-            }}
-          >
-            <Txt
-              allowFontScaling={false}
-              style={{ fontFamily: fonts.display, fontSize: 16, lineHeight: 19 }}
-              color={brand.navy}
-            >
-              Y
-            </Txt>
-          </View>
-          <Txt
-            style={{ flexShrink: 1, fontFamily: fonts.display, fontSize: 17, lineHeight: 22 }}
-            color="rgba(255,255,255,0.85)"
-            numberOfLines={1}
-          >
-            yerim var
-          </Txt>
+          <BrandWordmark layout="inline" tone="onDark" size={20} header />
         </View>
         <View
+          {...cityCoach}
           style={{
             borderRadius: 22,
             paddingHorizontal: 8,

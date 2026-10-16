@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { useCoachTarget } from '@/components/coach/registry';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import { cityExamples } from '@/data/cities';
@@ -26,8 +27,10 @@ export function SearchCard() {
   // Re-render on a city switch: the example places follow the active city.
   useApp((s) => s.city);
   const examples = cityExamples();
+  const coach = useCoachTarget('search');
   return (
     <View
+      {...coach}
       style={{
         marginTop: -34,
         marginHorizontal: 16,

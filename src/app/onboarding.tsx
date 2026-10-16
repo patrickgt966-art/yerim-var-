@@ -14,9 +14,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CarMark } from '@/components/CarMark';
+import { BrandWordmark } from '@/components/BrandWordmark';
 import { Icon } from '@/components/Icon';
 import { OnboardingBackdrop } from '@/components/OnboardingBackdrop';
+import { PBadge } from '@/components/PBadge';
 import { Txt } from '@/components/Txt';
 import { cityById } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
@@ -166,72 +167,48 @@ export default function Onboarding() {
       >
         {page === 0 && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-            <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-              <View
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                style={[
-                  asym(18, 6),
-                  {
-                    width: 64,
-                    height: 64,
-                    backgroundColor: '#FFFFFF',
-                    borderWidth: 4,
-                    borderColor: brand.orange,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  },
-                ]}
-              >
-                <Txt
-                  allowFontScaling={false}
-                  style={{ fontFamily: fonts.display, fontSize: 38, lineHeight: 44 }}
-                  color={brand.navy}
-                >
-                  P
-                </Txt>
-              </View>
-            </Animated.View>
             <View
               style={{ width: 280, height: 280, alignItems: 'center', justifyContent: 'center' }}
             >
               <Rings />
-              <Animated.View entering={FadeInDown.delay(300).duration(1200)}>
-                <CarMark size={200} />
+              {/* Food + parking: orange fork-and-knife tile with a white P badge on its corner. */}
+              <Animated.View
+                entering={FadeInDown.delay(300).duration(1200)}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={{ width: 168, height: 168 }}
+              >
+                <View
+                  style={[
+                    asym(48, 14),
+                    {
+                      width: 168,
+                      height: 168,
+                      backgroundColor: brand.orange,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                  ]}
+                >
+                  <Icon name="cutlery" size={104} color={brand.navy} strokeWidth={2} />
+                </View>
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: -26,
+                    bottom: -26,
+                    shadowColor: brand.navy,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 4 },
+                  }}
+                >
+                  <PBadge size={72} inverted />
+                </View>
               </Animated.View>
             </View>
-            <Animated.View
-              entering={FadeInDown.delay(900).duration(800)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
-              accessible
-              accessibilityRole="header"
-              accessibilityLabel={t('brand.a11yTitle')}
-            >
-              <Txt
-                allowFontScaling={false}
-                style={{ fontFamily: fonts.display, fontSize: 56, lineHeight: 62 }}
-                color="#FFFFFF"
-              >
-                yerim
-              </Txt>
-              <View
-                style={[
-                  asym(12, 4),
-                  {
-                    backgroundColor: brand.orange,
-                    paddingHorizontal: 12,
-                    transform: [{ rotate: '-5deg' }],
-                  },
-                ]}
-              >
-                <Txt
-                  allowFontScaling={false}
-                  style={{ fontFamily: fonts.display, fontSize: 40, lineHeight: 50 }}
-                  color={brand.navy}
-                >
-                  var!
-                </Txt>
-              </View>
+            <Animated.View entering={FadeInDown.delay(900).duration(800)}>
+              <BrandWordmark layout="stacked" tone="onDark" size={56} header />
             </Animated.View>
             <Animated.View entering={FadeInDown.delay(1100).duration(800)}>
               <Txt
