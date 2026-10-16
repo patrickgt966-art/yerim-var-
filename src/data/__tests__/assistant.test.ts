@@ -493,7 +493,7 @@ describe('assistant', () => {
       expect(r.reply.cards.length).toBeGreaterThan(0);
     });
 
-    it('keeps the rule-found district and category when the AI disagrees', async () => {
+    it('the AI decides what to eat; a district our data knows stays as the rules read it', async () => {
       const r = await answer(
         'bornovada romantik köfteci',
         emptyContext('food'),
@@ -517,7 +517,7 @@ describe('assistant', () => {
         }),
       );
       expect(r.ctx.place?.label).toBe('Bornova');
-      expect(r.ctx.cat).toBe('meat');
+      expect(r.ctx.cat).toBe('fish');
       expect(r.ctx.requireParking).toBe(true);
     });
 
