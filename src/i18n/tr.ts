@@ -44,7 +44,7 @@ const tr = {
     offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
   },
   onboarding: {
-    tagline: 'Nereye gideceğini ya da ne yiyeceğini söyle. Park yerini biz bulalım.',
+    tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
     start: 'Başla',
     next: 'Devam',
     howTitle: 'Dürüst veri',
@@ -59,6 +59,17 @@ const tr = {
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
     a11yStep: 'Adım {{n}}, toplam 3 adım',
+  },
+  coach: {
+    yerim:
+      'Bu Yerim, yapay zeka asistanın. Ne yemek istediğini ya da nereye gideceğini yaz, o bulsun.',
+    ai: 'Günlük yapay zeka hakların. Her mesaj 1 hak harcar, gece yenilenir.',
+    city: 'Şehrini buradan değiştir.',
+    search: 'Yemek, yer ya da otopark yaz; ya da hazır örneklerden birine dokun.',
+    next: 'Devam',
+    skip: 'Geç',
+    a11yHint: 'Sonraki ipucuna geçer',
+    a11yStep: 'İpucu {{n}} / {{total}}',
   },
   city: {
     a11yButton: 'Şehir: {{name}}, değiştir',

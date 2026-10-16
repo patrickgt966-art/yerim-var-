@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useCoachRegistry } from '@/components/coach/registry';
 import { ActiveStrip } from '@/components/home/ActiveStrip';
 import { Cravings } from '@/components/home/Cravings';
 import { HomeHeader } from '@/components/home/HomeHeader';
@@ -21,7 +22,11 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setFocused(true);
-      return () => setFocused(false);
+      useCoachRegistry.getState().setHomeFocused(true);
+      return () => {
+        setFocused(false);
+        useCoachRegistry.getState().setHomeFocused(false);
+      };
     }, []),
   );
   const c = useColors();
