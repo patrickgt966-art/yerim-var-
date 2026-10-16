@@ -10,10 +10,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Ferry, Skyline } from './Skyline';
+import { fonts } from '@/theme';
+
+import { Icon, type IconName } from './Icon';
+import { Txt } from './Txt';
 
 const BAY_H = 112;
+const LINE = 'rgba(255,255,255,0.14)';
 
+/** A column of dashed parking bays along one screen edge. */
 function Bays({ side, height }: { side: 'left' | 'right'; height: number }) {
   const rows = Math.ceil(height / BAY_H) + 1;
   return (
@@ -26,7 +31,7 @@ function Bays({ side, height }: { side: 'left' | 'right'; height: number }) {
             marginBottom: 8,
             borderWidth: 1.5,
             borderStyle: 'dashed',
-            borderColor: 'rgba(255,255,255,0.18)',
+            borderColor: LINE,
             borderRadius: 10,
             ...(side === 'left' ? { borderLeftWidth: 0 } : { borderRightWidth: 0 }),
           }}
@@ -36,78 +41,89 @@ function Bays({ side, height }: { side: 'left' | 'right'; height: number }) {
   );
 }
 
-function DrivingCar({
-  side,
-  duration,
-  height,
+type GlyphKind = IconName | 'P';
+
+/** A small food or parking glyph that bobs slowly; static under Reduce Motion. */
+function Floater({
+  kind,
+  x,
+  y,
+  size,
   delay,
-  orange,
+  rotate,
 }: {
-  side: 'left' | 'right';
-  duration: number;
-  height: number;
+  kind: GlyphKind;
+  x: number;
+  y: number;
+  size: number;
   delay: number;
-  orange?: boolean;
+  rotate: number;
 }) {
   const reduce = useReducedMotion();
-  const y = useSharedValue(side === 'left' ? height : -80);
+  const t = useSharedValue(0);
   useEffect(() => {
     if (reduce) return;
-    y.value = withDelay(
+    t.value = withDelay(
       delay,
-      withRepeat(
-        withTiming(side === 'left' ? -80 : height, { duration, easing: Easing.linear }),
-        -1,
-        false,
-      ),
+      withRepeat(withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.ease) }), -1, true),
     );
-  }, [reduce, side, duration, height, delay, y]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  }, [reduce, delay, t]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: -10 * t.value }, { rotate: `${rotate}deg` }],
+  }));
+  const color = 'rgba(255,255,255,0.22)';
   return (
-    <Animated.View
-      style={[
-        styles.car,
-        side === 'left' ? { left: 14 } : { right: 14 },
-        {
-          top: reduce ? height * (side === 'left' ? 0.3 : 0.6) : 0,
-          backgroundColor: orange ? 'rgba(255,138,31,0.55)' : 'rgba(255,255,255,0.28)',
-        },
-        style,
-      ]}
-    >
-      <View style={styles.window} />
-      <View style={[styles.window, { height: 6 }]} />
+    <Animated.View style={[{ position: 'absolute', left: x, top: y }, style]}>
+      {kind === 'P' ? (
+        <View
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size * 0.28,
+            borderWidth: 1.5,
+            borderColor: color,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Txt
+            allowFontScaling={false}
+            style={{ fontFamily: fonts.display, fontSize: size * 0.62, lineHeight: size * 0.8 }}
+            color={color}
+          >
+            P
+          </Txt>
+        </View>
+      ) : (
+        <Icon name={kind} size={size} color={color} strokeWidth={1.8} />
+      )}
     </Animated.View>
   );
 }
 
-/** Animated parking-lot background with the İzmir skyline. Respects Reduce Motion. */
+/**
+ * City-neutral background: dashed parking bays, soft brand-colour blobs and a few floating food and
+ * parking glyphs. No landmarks, so it fits every city. Respects Reduce Motion.
+ */
 export function OnboardingBackdrop() {
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
-  const ferryX = useSharedValue(-90);
-  const glow = useSharedValue(0);
+  const drift = useSharedValue(0);
 
   useEffect(() => {
     if (reduce) return;
-    ferryX.value = withRepeat(
-      withTiming(width + 60, { duration: 24000, easing: Easing.linear }),
-      -1,
-      false,
-    );
-    glow.value = withRepeat(
+    drift.value = withRepeat(
       withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
-  }, [reduce, width, ferryX, glow]);
+  }, [reduce, drift]);
 
-  const ferryStyle = useAnimatedStyle(() => ({ transform: [{ translateX: ferryX.value }] }));
-  const glowStyle = useAnimatedStyle(() => ({
+  const blobStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: -40 * glow.value },
-      { translateY: 50 * glow.value },
-      { scale: 1 + 0.15 * glow.value },
+      { translateX: -40 * drift.value },
+      { translateY: 50 * drift.value },
+      { scale: 1 + 0.15 * drift.value },
     ],
   }));
 
@@ -118,45 +134,41 @@ export function OnboardingBackdrop() {
       accessible={false}
       importantForAccessibility="no-hide-descendants"
     >
-      <Animated.View style={[styles.glow, { right: -120, top: -80 }, glowStyle]} />
+      <Animated.View style={[styles.blob, { right: -120, top: -80 }, blobStyle]} />
       <View
         style={[
-          styles.glow,
-          { left: width / 2 - 140, bottom: -60, backgroundColor: 'rgba(255,138,31,0.18)' },
+          styles.blob,
+          { left: -140, top: height * 0.45, backgroundColor: 'rgba(255,138,31,0.14)' },
+        ]}
+      />
+      <View
+        style={[
+          styles.blob,
+          { left: width / 2 - 140, bottom: -110, backgroundColor: 'rgba(255,138,31,0.18)' },
         ]}
       />
       <Bays side="left" height={height} />
       <Bays side="right" height={height} />
-      <DrivingCar side="left" duration={16000} height={height} delay={0} />
-      <DrivingCar side="right" duration={20000} height={height} delay={1500} orange />
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 90, alignItems: 'center' }}>
-        <Skyline
-          width={width}
-          height={(width * 150) / 230}
-          tint="rgba(255,255,255,0.1)"
-          bg="#0B3C49"
-        />
-      </View>
-      <Animated.View style={[{ position: 'absolute', bottom: 120 }, ferryStyle]}>
-        <Ferry width={56} height={25} color="rgba(255,255,255,0.35)" />
-      </Animated.View>
+      <Floater kind="cutlery" x={width * 0.14} y={height * 0.12} size={30} delay={0} rotate={-12} />
+      <Floater kind="P" x={width * 0.74} y={height * 0.2} size={30} delay={900} rotate={8} />
+      <Floater kind="cup" x={width * 0.8} y={height * 0.62} size={28} delay={1800} rotate={10} />
+      <Floater kind="P" x={width * 0.1} y={height * 0.7} size={26} delay={600} rotate={-6} />
+      <Floater kind="cup" x={width * 0.22} y={height * 0.86} size={24} delay={2400} rotate={-10} />
+      <Floater
+        kind="cutlery"
+        x={width * 0.66}
+        y={height * 0.88}
+        size={26}
+        delay={1300}
+        rotate={14}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   column: { position: 'absolute', top: 0, bottom: 0, width: 54 },
-  car: {
-    position: 'absolute',
-    width: 26,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  window: { width: 16, height: 8, borderRadius: 3, backgroundColor: '#0B3C49' },
-  glow: {
+  blob: {
     position: 'absolute',
     width: 280,
     height: 280,

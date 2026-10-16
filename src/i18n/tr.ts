@@ -47,18 +47,26 @@ const tr = {
     tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
     start: 'Başla',
     next: 'Devam',
-    howTitle: 'Dürüst veri',
-    howBody:
-      "Boş yer sayıları İzmir Büyükşehir Belediyesi'nden gelir. Her kartta güncelleme zamanı yazar. Veri eskiyse sayıyı göstermeyiz.",
-    howBodyIspark:
-      "Boş yer sayıları İBB Açık Veri / İSPARK'tan gelir. Her kartta güncelleme zamanı yazar. Veri eskiyse sayıyı göstermeyiz.",
+    cityTitle: 'Hangi şehirdesin?',
+    citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
+    citySourceIspark: 'Canlı otopark: İSPARK, 243 otopark',
+    cityA11yRow: '{{name}}, {{source}}',
+    cityA11ySelected: '{{name}}, seçili, {{source}}',
+    cityA11ySoon: '{{name}}, yakında',
+    aiTitle: 'Yerim ile konuş',
+    aiChatUser: '{{aLoc}} akşam balık, yanında otopark olsun',
+    aiChatBot: 'Sana 3 yer buldum, hepsinin yanında otopark var.',
+    aiChatA11y: 'Örnek sohbet. Sen: {{user}}. Yerim: {{bot}}',
+    aiBody:
+      'Yerim, yapay zeka asistanın. Ne istediğini kendi cümlenle yaz; restoranı ve park yerini o bulsun. Günde 10 ✨ hakkın var, her mesaj 1 hak.',
+    aiHonest: 'Restoran ve otopark bilgileri açık veriden gelir; yapay zeka bilgi uydurmaz.',
     locTitle: 'Yakınındakileri göster',
     locBody:
       'Konumunu yalnızca yakındaki yerleri sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de aramayı kullanabilirsin.',
     allow: 'Konuma izin ver',
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
-    a11yStep: 'Adım {{n}}, toplam 3 adım',
+    a11yStep: 'Adım {{n}}, toplam 4 adım',
   },
   coach: {
     yerim:
