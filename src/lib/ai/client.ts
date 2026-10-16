@@ -113,10 +113,11 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
     body: unknown,
     timeoutMs: number,
   ): Promise<{ data: unknown } | Failure> {
+    const started = Date.now();
     const res = await send(path, body, timeoutMs);
     if ('failed' in res && res.status === 400 && isRecord(body) && 'city' in body) {
       const { city: _city, ...withoutCity } = body;
-      return send(path, withoutCity, timeoutMs);
+      return send(path, withoutCity, Math.max(0, timeoutMs - (Date.now() - started)));
     }
     return res;
   }
@@ -149,7 +150,8 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
             message?: unknown;
           } | null;
           // Too fast or a busy server is no empty quota: the uses left are still there.
-          if (err?.reason === 'slow' || err?.reason === 'global') failed = 'error';
+          if (err?.reason === 'slow' || err?.reason === 'global' || err?.reason === 'ip')
+            failed = 'error';
           const why = [err?.detail, err?.message]
             .filter((v): v is string => typeof v === 'string' && v !== '')
             .map((v) => v.slice(0, 300))
@@ -163,6 +165,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
             ...(why ? { why } : {}),
           };
         } catch {
+          if (timedOut) throw new Error('timeout');
           warnDev(path, 'http', `HTTP ${res.status}`);
           return { failed, status: res.status, detail: 'http' };
         }
@@ -170,6 +173,7 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       try {
         return { data: await res.json() };
       } catch {
+        if (timedOut) throw new Error('timeout');
         warnDev(path, 'schema', `HTTP ${res.status}, body is not JSON`);
         return { failed: 'error', detail: 'schema' };
       }

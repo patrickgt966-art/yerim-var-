@@ -49,6 +49,7 @@ export default function MapTab() {
   const [center, setCenter] = useState<LatLng | null>(null);
   const [mode, setMode] = useState<Mode>(params.mode === 'food' ? 'food' : 'parkings');
   const [selected, setSelected] = useState<Restaurant | null>(null);
+  const [paramCity, setParamCity] = useState<string | null>(city.id);
 
   const [outside, setOutside] = useState(false);
   /** Another open city the device is in while this one is selected. */
@@ -60,6 +61,7 @@ export default function MapTab() {
     setSeenCity(city.id);
     setCenter(null);
     setSelected(null);
+    setParamCity(null);
     setOutside(false);
     setElsewhere(undefined);
   }
@@ -91,7 +93,7 @@ export default function MapTab() {
   );
 
   // Params from "Haritada gör" override the centre and mode; `ts` makes a repeat visit count.
-  const paramCenter = useMemo<LatLng | null>(
+  const parsedCenter = useMemo<LatLng | null>(
     () => parseLatLng(params.lat, params.lng),
     [params.lat, params.lng],
   );
@@ -100,11 +102,13 @@ export default function MapTab() {
   const [seenKey, setSeenKey] = useState(paramKey);
   if (seenKey !== paramKey) {
     setSeenKey(paramKey);
+    setParamCity(city.id);
     if (params.mode === 'food') setMode('food');
     else if (params.mode === 'parkings') setMode('parkings');
     setSelected(null);
   }
 
+  const paramCenter = paramCity === city.id ? parsedCenter : null;
   const mapCenter = paramCenter ?? center;
 
   // ~1,600 car parks in the province: draw only those around the centre.

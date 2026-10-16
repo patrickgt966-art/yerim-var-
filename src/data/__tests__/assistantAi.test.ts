@@ -19,6 +19,7 @@ import {
 } from '../assistant';
 import { hasWishWords, planWhenIn, wishesIn } from '../intent';
 import { staticParkings } from '../staticParkings';
+import * as restaurants from '../restaurants';
 
 const parkings = staticParkings();
 const baseDeps: AssistantDeps = {
@@ -87,6 +88,28 @@ const closestPick =
   };
 
 const restaurantCards = (cards: ChatCard[]) => cards.filter((c) => c.kind === 'restaurant');
+
+it('clips a candidate name without splitting an emoji into an invalid Unicode surrogate', async () => {
+  const rows = restaurants.allRestaurants().slice(0, 2);
+  const original = restaurants.getRestaurant;
+  const longName = 'a'.repeat(79) + '🍔';
+  const lookup = jest.spyOn(restaurants, 'getRestaurant').mockImplementation((id) => {
+    const record = original(id);
+    return record && id === rows[0]!.id ? { ...record, name: longName } : record;
+  });
+  try {
+    const cards: ChatCard[] = rows.map((r) => ({
+      kind: 'restaurant', id: r.id, name: r.name, distanceM: 100,
+      parkingM: null, open: 'unknown', unverified: true,
+    }));
+    const { ai, deps } = mockAi();
+    await pickFromCards(cards, 'bir yer seç', emptyContext('food'), deps);
+    const sent = ai.pick.mock.calls[0]![0] as { candidates: PickCandidate[] };
+    expect(sent.candidates[0]!.name).toBe('a'.repeat(79));
+  } finally {
+    lookup.mockRestore();
+  }
+});
 
 describe('wish and plan words', () => {
   it.each([
