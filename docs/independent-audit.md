@@ -6,11 +6,12 @@ Worker, istemci ve asistan testlerinde mock kullanıldı. Veri yenileme çalış
 paketlenmiş veriler değiştirilmedi. Sırlar ve `wrangler.toml` değiştirilmedi.
 
 13 bulgu: 2 high, 10 medium, 1 low. 12 bulgu için önce başarısız regresyon üretildi,
-sonra dar kapsamlı düzeltme yapıldı. Dağıtık KV yarışı açık kalıyor.
+sonra dar kapsamlı düzeltme yapıldı. Dağıtık KV yarışı bu denetimde açık kaldı; sonradan
+Durable Object ile kapatıldı (bulgu 1).
 
 ## Bulgular
 
-### 1. high — KV sayaçları eşzamanlı isteklerle aşılabiliyor — AÇIK
+### 1. high — KV sayaçları eşzamanlı isteklerle aşılabiliyor — DÜZELTİLDİ (sonradan)
 
 - **Konum:** `server/yerim-ai/src/quota.ts:62`, `:105`, `:199`, `:221`.
 - **Hata:** Cihaz, IP ve global sayaçları ayrı `get` / `put` işlemleriyle güncelleniyor.
@@ -25,6 +26,9 @@ sonra dar kapsamlı düzeltme yapıldı. Dağıtık KV yarışı açık kalıyor
   da aynı tutarlılık güvencesine ihtiyaç duyar. İzolat içi mutex yeterli değildir.
   Bu değişiklik Worker bağlaması gerektirdiğinden, `wrangler.toml` yasağı altında
   uygulanmadı. Diğer düzeltmeler bu açığı kapatmış gibi değerlendirilmemelidir.
+- **Sonradan düzeltme:** Sayaç adımlarının hepsi `server/yerim-ai/src/store.ts` içinde tek
+  işlem hâline getirildi ve `QuotaCounter` Durable Object'inde sırayla çalışıyor
+  (`wrangler.toml`: `QUOTA_DO`). Testler: `server/yerim-ai/src/__tests__/store.test.ts`.
 
 ### 2. high — Aynı messageId ile farklı sorular ücretsiz çalıştırılabiliyor — DÜZELTİLDİ
 
