@@ -165,6 +165,8 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
  * Keep every sub-schema inline and separate: do not reuse one instance twice.
  */
 export const UnderstandingModelSchema = z.object({
+  // Written first, so the fields below follow the model's own reading; never shown or used.
+  meaning: z.string(),
   kind: z.enum(['search', 'chat', 'unknown']),
   district: z.string(),
   cat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
@@ -336,6 +338,8 @@ export function understandSystem(city?: string): string {
   const c = promptCity(city);
   const place = cityExamples(c).a;
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "${place}" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
+
+Önce meaning alanına mesajın ne demek istediğini kendi kısa cümlenle yaz (en çok 100 karakter, kullanıcıya gösterilmez; örneğin "kas yapmak istiyor, protein ağırlıklı et ya da tavuk yemek istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
 
 Karar (kind):
 - "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "${place}"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.

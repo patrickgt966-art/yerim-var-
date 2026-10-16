@@ -197,6 +197,7 @@ describe('the understanding schema uses no unions at all', () => {
 
 describe('the flat model output becomes the union the apps read', () => {
   const flat = {
+    meaning: 'Bornova’da otoparkı olan bir kebapçı istiyor',
     kind: 'search',
     district: 'Bornova',
     cat: 'none',

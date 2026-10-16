@@ -216,6 +216,15 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
         warnDev('/understand', 'schema', `HTTP 200, first issue at ${issue}`);
         return fail('error', undefined, 'schema');
       }
+      if (__DEV__) {
+        // What the AI made of the message (never the text itself): shows in the expo terminal.
+        const u = parsed.data;
+        console.log(
+          u.kind === 'search'
+            ? `[ai] understood: search cat=${u.cat ?? '-'} dish=${u.dish ?? '-'} food=${u.food} nearMe=${u.nearMe} parking=${u.requireParking}`
+            : `[ai] understood: ${u.kind}${u.kind === 'chat' ? ` action=${u.action}` : ''}`,
+        );
+      }
       return { ok: true, value: parsed.data, remaining: body.remaining };
     },
 
