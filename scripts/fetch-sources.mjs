@@ -1,4 +1,4 @@
-// Collects static parking, place, rail and food data for İzmir, İstanbul, Ankara and Bursa
+// Collects static parking, place, rail and food data for İzmir, İstanbul, Ankara, Bursa and Antalya
 // provinces from open sources and writes data/parkings-static[-<city>].json,
 // places-/rail-/food-<city>.json plus data/sources-report.md.
 //
@@ -157,6 +157,38 @@ const CITIES = [
     railTimeout: 180,
     httpMs: 330_000,
     // Bursaray (subway / light_rail), T1 tram.
+    railTypes: 'subway|light_rail|train|tram',
+  },
+  {
+    id: 'antalya',
+    name: 'Antalya',
+    // Same tiled pattern, OSM only (no live parking API, no municipal parking dataset): 10 + 12 + 8 min.
+    budgetMin: 30,
+    split: true,
+    tiled: {
+      bbox: { s: 36.0, w: 29.25, n: 37.55, e: 32.65 },
+      rows: 3,
+      cols: 4,
+      // South-middle tile (lat < 36.52, lng 30.95-31.8) is the Gulf of Antalya: the coast there
+      // (Side, Alanya's Okurcalar) runs north of it. Margins keep float noise out of the edges.
+      skip: (t) => t.n <= 36.53 && t.w >= 30.9 && t.e <= 31.85,
+      timeout: 90,
+      httpMs: 120_000,
+      rounds: 2,
+      pauseMs: 15_000,
+      minOk: 0.9,
+      foodMinOk: 0.5,
+      gapMs: 5_000,
+      busyMinMs: 30_000,
+      busyMaxMs: 60_000,
+      baseMin: 10,
+      placesMin: 12,
+      foodMin: 8,
+    },
+    queryTimeout: 300,
+    railTimeout: 180,
+    httpMs: 330_000,
+    // Antray (tram, T1).
     railTypes: 'subway|light_rail|train|tram',
   },
 ];

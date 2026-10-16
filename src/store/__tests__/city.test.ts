@@ -6,6 +6,7 @@ const KONAK = { lat: 38.4189, lng: 27.1287 };
 const SARAYBURNU = { lat: 41.0136, lng: 28.9503 };
 const ANKARA = { lat: 39.9334, lng: 32.8597 };
 const BURSA = { lat: 40.1826, lng: 29.0665 };
+const ANTALYA = { lat: 36.8969, lng: 30.7133 };
 
 beforeEach(() => {
   setActiveCity('izmir');
@@ -47,7 +48,7 @@ describe('setCity', () => {
 
   it('ignores a city that is not open', () => {
     useApp.setState({ recentSearches: ['Alsancak otopark'] });
-    useApp.getState().setCity('antalya');
+    useApp.getState().setCity('atlantis');
     expect(useApp.getState().city).toBe('izmir');
     expect(useApp.getState().recentSearches).toEqual(['Alsancak otopark']);
   });
@@ -57,6 +58,12 @@ it('setCity switches to ankara', () => {
   useApp.getState().setCity('ankara');
   expect(useApp.getState().city).toBe('ankara');
   expect(activeCity().id).toBe('ankara');
+});
+
+it('setCity switches to antalya', () => {
+  useApp.getState().setCity('antalya');
+  expect(useApp.getState().city).toBe('antalya');
+  expect(activeCity().id).toBe('antalya');
 });
 
 it('setCity switches to bursa', () => {
@@ -71,10 +78,11 @@ describe('cityAt', () => {
     expect(cityAt(SARAYBURNU)?.id).toBe('istanbul');
     expect(cityAt(ANKARA)?.id).toBe('ankara');
     expect(cityAt(BURSA)?.id).toBe('bursa');
+    expect(cityAt(ANTALYA)?.id).toBe('antalya');
   });
 
-  it('finds nothing in a closed city or at sea', () => {
-    expect(cityAt({ lat: 36.8969, lng: 30.7133 })).toBeUndefined(); // Antalya
+  it('finds nothing outside every open city or at sea', () => {
+    expect(cityAt({ lat: 38.4, lng: 33.0 })).toBeUndefined(); // Konya plain, between Ankara and Antalya
     expect(cityAt({ lat: 0, lng: 0 })).toBeUndefined();
   });
 });
@@ -85,5 +93,6 @@ describe('city names', () => {
     expect(cityById('istanbul').locative).toBe("İstanbul'da");
     expect(cityById('ankara').locative).toBe("Ankara'da");
     expect(cityById('bursa').locative).toBe("Bursa'da");
+    expect(cityById('antalya').locative).toBe("Antalya'da");
   });
 });

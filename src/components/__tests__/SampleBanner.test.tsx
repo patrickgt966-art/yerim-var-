@@ -41,6 +41,16 @@ describe('SampleBanner in a city without a live parking API', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('shows the same calm note in Antalya, with its own name', async () => {
+    useApp.getState().setCity('antalya');
+    await render(<SampleBanner result={staticOnly()} />);
+    expect(
+      screen.getByText("Antalya'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('shows nothing for fresh live data elsewhere, and still the outage text after a real failure', async () => {
     useApp.getState().setCity('istanbul');
     const { rerender } = await render(<SampleBanner result={staticOnly()} />);

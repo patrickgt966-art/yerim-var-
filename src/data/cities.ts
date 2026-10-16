@@ -177,6 +177,29 @@ export const BURSA_DISTRICTS: readonly District[] = [
   { name: 'Yıldırım', lat: 40.1917, lng: 29.0997 },
 ];
 
+/** The 19 districts of Antalya (centres are rough, a few km). */
+export const ANTALYA_DISTRICTS: readonly District[] = [
+  { name: 'Akseki', lat: 37.0475, lng: 31.7897 },
+  { name: 'Aksu', lat: 36.9419, lng: 30.8484 },
+  { name: 'Alanya', lat: 36.5438, lng: 31.9998 },
+  { name: 'Demre', lat: 36.2461, lng: 29.9847 },
+  { name: 'Döşemealtı', lat: 37.0, lng: 30.6 },
+  { name: 'Elmalı', lat: 36.7358, lng: 29.9186 },
+  { name: 'Finike', lat: 36.2975, lng: 30.1469 },
+  { name: 'Gazipaşa', lat: 36.2692, lng: 32.3203 },
+  { name: 'Gündoğmuş', lat: 36.8103, lng: 32.0989 },
+  { name: 'İbradı', lat: 37.0969, lng: 31.5964 },
+  { name: 'Kaş', lat: 36.202, lng: 29.6414 },
+  { name: 'Kemer', lat: 36.6003, lng: 30.5597 },
+  { name: 'Kepez', lat: 36.95, lng: 30.69 },
+  { name: 'Konyaaltı', lat: 36.8836, lng: 30.6339 },
+  { name: 'Korkuteli', lat: 37.0653, lng: 30.1967 },
+  { name: 'Kumluca', lat: 36.3708, lng: 30.2878 },
+  { name: 'Manavgat', lat: 36.7869, lng: 31.4439 },
+  { name: 'Muratpaşa', lat: 36.8841, lng: 30.7056 },
+  { name: 'Serik', lat: 36.9176, lng: 31.1006 },
+];
+
 const names = (list: readonly District[]) => list.map((d) => d.name);
 
 // The boxes of cities that are not open yet are placeholders until their data lands.
@@ -264,14 +287,26 @@ export const CITIES: City[] = [
     id: 'antalya',
     name: 'Antalya',
     locative: "Antalya'da",
-    available: false,
+    examples: {
+      a: 'Konyaaltı',
+      aLoc: "Konyaaltı'nda",
+      b: 'Lara',
+      bLoc: "Lara'da",
+      c: 'Kaleiçi',
+      cLoc: "Kaleiçi'nde",
+      d: 'Muratpaşa',
+      dLoc: "Muratpaşa'da",
+    },
+    available: true,
     center: { lat: 36.8969, lng: 30.7133 },
-    bounds: { minLat: 36.2, maxLat: 37.4, minLng: 29.9, maxLng: 31.6 },
-    radiusKm: 100,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    // The province reaches about 36.0-37.55 N, 29.25-32.65 E; its far corner (Gazipaşa) lies ~200 km from the centre.
+    bounds: { minLat: 36.0, maxLat: 37.55, minLng: 29.25, maxLng: 32.65 },
+    radiusKm: 200,
+    districts: names(ANTALYA_DISTRICTS),
+    districtCenters: ANTALYA_DISTRICTS,
+    // No live parking API: the OSM car parks carry a capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
   {
     id: 'bursa',

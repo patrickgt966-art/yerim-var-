@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import Onboarding from '@/app/onboarding';
-import { setActiveCity } from '@/data/cities';
+import { cityById, setActiveCity } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
 
@@ -65,17 +65,18 @@ describe('onboarding', () => {
     expect(screen.getByLabelText('Adım 1, toplam 4 adım')).toBeTruthy();
   });
 
-  it('lists the open cities as active and the others as "Yakında"', async () => {
+  it('lists every city as active, none as "Yakında"', async () => {
     await mount();
     await press('Başla, uygulamaya geç');
     expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İzmir Büyükşehir')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İSPARK, 243 otopark')).toBeTruthy();
-    // Ankara and Bursa share the static-only line.
+    // Ankara, Bursa and Antalya share the static-only line.
     expect(
       screen.getAllByText('Canlı otopark verisi yok; otoparklar kapasite bilgisiyle'),
-    ).toHaveLength(2);
-    expect(screen.getAllByText('Yakında')).toHaveLength(1);
+    ).toHaveLength(3);
+    // All five cities are open, so no card carries the "Yakında" badge.
+    expect(screen.queryAllByText('Yakında')).toHaveLength(0);
     // The store city is preselected and Devam is available right away.
     expect(screen.getByLabelText(/^İzmir, seçili/)).toBeTruthy();
     expect(screen.getByText('Devam')).toBeTruthy();
@@ -105,11 +106,27 @@ describe('onboarding', () => {
     expect(screen.getByLabelText(/^Bursa, seçili, Canlı otopark verisi yok/)).toBeTruthy();
   });
 
-  it('does not select a city that is not open yet', async () => {
+  it('sets the store city when Antalya is picked and says it has no live car park data', async () => {
     await mount();
     await press('Başla, uygulamaya geç');
-    await tap('Antalya, yakında');
-    expect(useApp.getState().city).toBe('izmir');
+    await tap(/^Antalya, /);
+    expect(useApp.getState().city).toBe('antalya');
+    expect(screen.getByLabelText(/^Antalya, seçili, Canlı otopark verisi yok/)).toBeTruthy();
+  });
+
+  it('shows a city that is not open yet with a "Yakında" badge and does not select it', async () => {
+    // All five cities are open today; close one for this test to keep the badge path covered.
+    const antalya = cityById('antalya');
+    antalya.available = false;
+    try {
+      await mount();
+      await press('Başla, uygulamaya geç');
+      expect(screen.getAllByText('Yakında')).toHaveLength(1);
+      await tap('Antalya, yakında');
+      expect(useApp.getState().city).toBe('izmir');
+    } finally {
+      antalya.available = true;
+    }
   });
 
   it("shows the selected city's example in the chat step", async () => {

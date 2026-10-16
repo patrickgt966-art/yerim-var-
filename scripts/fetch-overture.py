@@ -61,6 +61,8 @@ CITIES = [
      'area_codes': ('312',), 'strict': True, 'min_conf': 0.7},
     {'id': 'bursa', 'name': 'Bursa', 'fold': 'bursa', 'bbox': (28.1, 30.1, 39.5, 40.7),
      'area_codes': ('224',), 'strict': True, 'min_conf': 0.7},
+    {'id': 'antalya', 'name': 'Antalya', 'fold': 'antalya', 'bbox': (29.2, 32.7, 35.95, 37.6),
+     'area_codes': ('242',), 'strict': True, 'min_conf': 0.7},
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')

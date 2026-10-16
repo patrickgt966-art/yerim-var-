@@ -331,6 +331,16 @@ describe('city', () => {
     expect(systemOfLastCall()).not.toContain('İstanbul');
   });
 
+  it('a request with city antalya gets the Antalya prompt', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    const res = await post(env, '/understand', { ...understandBody('m1'), city: 'antalya' });
+    expect(res.status).toBe(200);
+    expect(systemOfLastCall()).toContain('Antalya için');
+    expect(systemOfLastCall()).not.toContain('İzmir');
+    expect(systemOfLastCall()).not.toContain('İstanbul');
+  });
+
   it('pick and plan follow the city too', async () => {
     const env = envOf(fakeKV());
     mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: pickOut });

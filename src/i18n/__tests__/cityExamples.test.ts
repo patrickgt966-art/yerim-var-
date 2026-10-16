@@ -117,6 +117,27 @@ describe('city example texts', () => {
     expect(out).toContain('Selam! Yer adı ya da "Tunalı\'da köfteci" gibi yazabilirsin.');
   });
 
+  it('names the Antalya places while Antalya is active', () => {
+    setActiveCity('antalya');
+    const out = EXAMPLE_KEYS.map(resolve);
+    expect(out.slice(0, 3)).toEqual(['Konyaaltı', 'Lara', 'Kaleiçi']);
+    expect(out).toContain("bir de Muratpaşa'da bak");
+    expect(out).toContain('Selam! Yer adı ya da "Kaleiçi\'nde köfteci" gibi yazabilirsin.');
+  });
+
+  it('has no İzmir place name in any text, chat suggestion or prompt with Antalya active', () => {
+    setActiveCity('antalya');
+    const ctx = { sort: 'distance', freeParking: true, place: null } as unknown as ChatContext;
+    const texts = [
+      ...leaves(tr).map(resolve),
+      ...suggestions(ctx, (k, o) => i18n.t(k, o)),
+      understandSystem('antalya'),
+    ];
+    for (const text of texts) {
+      for (const place of IZMIR_PLACES) expect(text).not.toContain(place);
+    }
+  });
+
   it('names the Bursa places while Bursa is active', () => {
     setActiveCity('bursa');
     const out = EXAMPLE_KEYS.map(resolve);

@@ -29,6 +29,8 @@ export function HomeSkyline() {
         <AnkaraSkyline />
       ) : city === 'bursa' ? (
         <BursaSkyline />
+      ) : city === 'antalya' ? (
+        <AntalyaSkyline />
       ) : (
         <IzmirSkyline />
       )}
@@ -217,6 +219,49 @@ function BursaSkyline() {
         d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"
         fillOpacity={0.3}
       />
+    </G>
+  );
+}
+
+/**
+ * Antalya: the Beydağları ridge behind everything, the Yivli Minare with its mosque dome (the
+ * orange accent: a square base, a fluted shaft drawn as four strips, balcony and cone), Hadrian's
+ * Gate (Hadriyanüs Kapısı: two towers and three arches, cut out with even-odd), the round
+ * Hıdırlık Kulesi on its cliff, a palm in mint and two bands of sea waves along the bottom.
+ * Shapes that overlap share one path (all wound the same way) so the translucent fill does not
+ * double up.
+ */
+function AntalyaSkyline() {
+  return (
+    <G testID="skyline-antalya" fill={brand.white} fillOpacity={0.32}>
+      {/* Beydağları: a jagged ridge behind everything, then nearer foothills */}
+      <Path
+        d="M0 88V52L26 42L52 48L84 30L112 38L150 18L182 28L214 10L240 24L268 16L300 34L334 26L362 40L390 32V88z"
+        fillOpacity={0.12}
+      />
+      <Path
+        d="M0 88V70C40 62 90 66 130 70S220 72 260 66 340 60 390 66V88z"
+        fillOpacity={0.14}
+      />
+      {/* Yivli Minare and the mosque dome beside it, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M44 88V74H68V88zM48 74V30H51.4V74zM52.2 74V30H55.6V74zM56.4 74V30H59.8V74zM60.6 74V30H64V74zM45 30V27H67V30zM52 27V20H60V27zM51 20L56 6L61 20zM55.4 6V1H56.6V6zM72 88V80H98V88zM75 80A10 10 0 0 1 95 80z" />
+      </G>
+      {/* Hadrian's Gate: two towers joined by a low body, three arches cut out (even-odd) */}
+      <Path
+        fillRule="evenodd"
+        d="M108 88V38H124V50H196V38H212V88zM151 88V72A9 9 0 0 1 169 72V88zM128 88V75A7 7 0 0 1 142 75V88zM178 88V75A7 7 0 0 1 192 75V88z"
+      />
+      <Path d="M108 38V34H112V38zM116 38V34H120V38zM200 38V34H204V38zM208 38V34H212V38z" />
+      {/* Hıdırlık Kulesi: cliff, square base, round tower and a crenellated top */}
+      <Path d="M226 88V80L240 74L250 68H282L294 72L306 80V88zM252 68V52H280V68zM257 52V30H275V52zM254 30V26H278V30zM254 26V22H258.8V26zM263.6 26V22H268.4V26zM273.2 26V22H278V26z" />
+      {/* A palm, in mint: trunk, crown and fronds */}
+      <G fill={brand.mint} fillOpacity={0.6}>
+        <Path d="M334 88H338C337 70 339 54 340 40H337C336 54 334 70 334 88zM338 40Q342 30 338 22Q334 30 338 40zM338 40Q326 28 306 36Q326 34 338 44zM338 41Q324 40 312 56Q326 48 338 45zM338 44Q350 36 370 36Q350 28 338 40zM338 45Q350 48 364 56Q352 40 338 41z" />
+      </G>
+      {/* The sea: a back and a front band of waves */}
+      <Path d="M0 85Q7.5 81 15 85T30 85T45 85T60 85T75 85T90 85T105 85T120 85T135 85T150 85T165 85T180 85T195 85T210 85T225 85T240 85T255 85T270 85T285 85T300 85T315 85T330 85T345 85T360 85T375 85T390 85V92H0z" fillOpacity={0.14} />
+      <Path d="M0 89Q7.5 92 15 89T30 89T45 89T60 89T75 89T90 89T105 89T120 89T135 89T150 89T165 89T180 89T195 89T210 89T225 89T240 89T255 89T270 89T285 89T300 89T315 89T330 89T345 89T360 89T375 89T390 89V92H0z" fillOpacity={0.3} />
     </G>
   );
 }

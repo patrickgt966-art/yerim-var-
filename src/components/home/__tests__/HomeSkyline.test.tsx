@@ -41,8 +41,18 @@ describe('HomeSkyline', () => {
     expect(screen.queryByTestId('skyline-ankara')).toBeNull();
   });
 
+  it('draws Antalya when the selected city is Antalya', async () => {
+    useApp.getState().setCity('antalya');
+    await render(<HomeSkyline />);
+    expect(screen.getByTestId('skyline-antalya')).toBeTruthy();
+    expect(screen.queryByTestId('skyline-izmir')).toBeNull();
+    expect(screen.queryByTestId('skyline-istanbul')).toBeNull();
+    expect(screen.queryByTestId('skyline-ankara')).toBeNull();
+    expect(screen.queryByTestId('skyline-bursa')).toBeNull();
+  });
+
   it('falls back to İzmir for a city without a drawing', async () => {
-    useApp.setState({ city: 'antalya' });
+    useApp.setState({ city: 'atlantis' });
     await render(<HomeSkyline />);
     expect(screen.getByTestId('skyline-izmir')).toBeTruthy();
   });

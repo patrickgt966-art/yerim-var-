@@ -5,7 +5,7 @@ import type { StaticRecord } from './staticParkings';
 /**
  * The bundled data files of each city. Every loader `require`s inside a
  * switch, so a city's JSON is only parsed once that city is in use. A city
- * without files (not open yet) gets an empty file. The İstanbul, Ankara and Bursa files are
+ * without files (not open yet) gets an empty file. The İstanbul, Ankara, Bursa and Antalya files are
  * placeholders until the data-refresh workflow fills them, so every field
  * except `items` is optional.
  */
@@ -27,6 +27,8 @@ export function placesFile(id: string = activeCity().id): Items<PlaceRow> {
       return require('../../data/places-ankara.json');
     case 'bursa':
       return require('../../data/places-bursa.json');
+    case 'antalya':
+      return require('../../data/places-antalya.json');
     default:
       return EMPTY;
   }
@@ -43,6 +45,8 @@ export function railFile(id: string = activeCity().id): Items<RailRow> {
       return require('../../data/rail-ankara.json');
     case 'bursa':
       return require('../../data/rail-bursa.json');
+    case 'antalya':
+      return require('../../data/rail-antalya.json');
     default:
       return EMPTY;
   }
@@ -59,6 +63,8 @@ export function foodFile(id: string = activeCity().id): Items<FoodRecord> {
       return require('../../data/food-ankara.json');
     case 'bursa':
       return require('../../data/food-bursa.json');
+    case 'antalya':
+      return require('../../data/food-antalya.json');
     default:
       return EMPTY;
   }
@@ -75,6 +81,8 @@ export function foodOvertureFile(id: string = activeCity().id): Items<FoodRecord
       return require('../../data/food-overture-ankara.json');
     case 'bursa':
       return require('../../data/food-overture-bursa.json');
+    case 'antalya':
+      return require('../../data/food-overture-antalya.json');
     default:
       return EMPTY;
   }
@@ -91,6 +99,8 @@ export function staticParkingsFile(id: string = activeCity().id): StaticFile {
       return require('../../data/parkings-static-ankara.json');
     case 'bursa':
       return require('../../data/parkings-static-bursa.json');
+    case 'antalya':
+      return require('../../data/parkings-static-antalya.json');
     default:
       return {};
   }

@@ -23,7 +23,7 @@ export type LoadOptions = {
 };
 
 /**
- * The live provider of a city; null for a city without a live API (Ankara, Bursa: bundled car parks
+ * The live provider of a city; null for a city without a live API (Ankara, Bursa, Antalya: bundled car parks
  * only). Cities not open yet fall back to İzmir's.
  */
 export function providerFor(cityId: string): ParkingProvider | null {
@@ -32,6 +32,7 @@ export function providerFor(cityId: string): ParkingProvider | null {
       return new IsparkProvider();
     case 'ankara':
     case 'bursa':
+    case 'antalya':
       return null;
     default:
       return new IzmirOpenDataProvider();

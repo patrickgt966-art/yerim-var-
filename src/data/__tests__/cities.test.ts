@@ -7,6 +7,7 @@ import {
   cityById,
   cityExamples,
   hasLiveParking,
+  isAvailableCity,
   isInCityArea,
   setActiveCity,
 } from '../cities';
@@ -52,11 +53,20 @@ describe('active city', () => {
   });
 
   it('ignores unknown and unavailable cities', () => {
-    setActiveCity('antalya');
-    expect(activeCity().id).toBe('izmir');
     setActiveCity('atlantis');
     expect(activeCity().id).toBe('izmir');
-    expect(cityById('antalya').available).toBe(false);
+    expect(isAvailableCity('atlantis')).toBe(false);
+    expect(cityById('atlantis').id).toBe('izmir');
+    // A city that is not open yet is ignored too (all five are open today).
+    const antalya = cityById('antalya');
+    antalya.available = false;
+    try {
+      setActiveCity('antalya');
+      expect(activeCity().id).toBe('izmir');
+      expect(isAvailableCity('antalya')).toBe(false);
+    } finally {
+      antalya.available = true;
+    }
   });
 
   it('opens ankara with its 25 districts and no live parking', () => {
@@ -103,6 +113,34 @@ describe('active city', () => {
     });
   });
 
+  it('opens antalya with its 19 districts and no live parking', () => {
+    const ant = cityById('antalya');
+    expect(ant).toMatchObject({
+      available: true,
+      parkingSource: 'osm',
+      parkingAttribution: 'OpenStreetMap',
+      locative: "Antalya'da",
+      center: { lat: 36.8969, lng: 30.7133 },
+    });
+    expect(ant.districts).toHaveLength(19);
+    expect(ant.districtCenters.map((d) => d.name)).toEqual([...ant.districts]);
+    expect(hasLiveParking(ant)).toBe(false);
+    for (const d of ant.districtCenters) expect(isInCityArea(d, ant)).toBe(true);
+    // Province corners stay inside; Muğla, Konya, İstanbul and the open sea are outside.
+    expect(isInCityArea({ lat: 36.05, lng: 32.6 }, ant)).toBe(true); // Gazipaşa coast
+    expect(isInCityArea({ lat: 37.5, lng: 29.4 }, ant)).toBe(true);
+    expect(isInCityArea({ lat: 36.8, lng: 29.0 }, ant)).toBe(false);
+    expect(isInCityArea({ lat: 38.0, lng: 32.0 }, ant)).toBe(false);
+    expect(isInCityArea({ lat: 35.5, lng: 30.7 }, ant)).toBe(false);
+    expect(isInCityArea({ lat: 41.0082, lng: 28.9784 }, ant)).toBe(false);
+    expect(cityExamples(ant)).toMatchObject({
+      aLoc: "Konyaaltı'nda",
+      bLoc: "Lara'da",
+      cLoc: "Kaleiçi'nde",
+      dLoc: "Muratpaşa'da",
+    });
+  });
+
   it('opens istanbul with its 39 districts', () => {
     const ist = cityById('istanbul');
     expect(ist).toMatchObject({ available: true, parkingSource: 'ispark' });
@@ -112,15 +150,18 @@ describe('active city', () => {
       'izmir',
       'istanbul',
       'ankara',
+      'antalya',
       'bursa',
     ]);
+    // All five cities are open: no city is left for the "Yakında" badge (its code path stays).
+    expect(CITIES.every((c) => c.available)).toBe(true);
   });
 
   it('the store keeps the data layer in step', () => {
     useApp.getState().setCity('istanbul');
     expect(useApp.getState().city).toBe('istanbul');
     expect(activeCity().id).toBe('istanbul');
-    useApp.getState().setCity('antalya');
+    useApp.getState().setCity('atlantis');
     expect(useApp.getState().city).toBe('istanbul');
     expect(activeCity().id).toBe('istanbul');
   });
@@ -236,6 +277,18 @@ describe('districts and names follow the city', () => {
     expect(it2.kind === 'search' && it2.district?.name).toBe('Mudanya');
     const it3 = parseQuery('osmangazi otopark');
     expect(it3.kind === 'search' && it3.district?.name).toBe('Osmangazi');
+    const it4 = parseQuery('Bornova kebap');
+    expect(it4.kind === 'search' && it4.district).toBeNull();
+  });
+
+  it('parses antalya districts', () => {
+    setActiveCity('antalya');
+    const it1 = parseQuery("Konyaaltı'nda balık");
+    expect(it1.kind === 'search' && it1.district?.name).toBe('Konyaaltı');
+    const it2 = parseQuery("Muratpaşa'da kebap");
+    expect(it2.kind === 'search' && it2.district?.name).toBe('Muratpaşa');
+    const it3 = parseQuery('alanya otopark');
+    expect(it3.kind === 'search' && it3.district?.name).toBe('Alanya');
     const it4 = parseQuery('Bornova kebap');
     expect(it4.kind === 'search' && it4.district).toBeNull();
   });
