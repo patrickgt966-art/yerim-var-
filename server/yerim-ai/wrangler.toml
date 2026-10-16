@@ -10,6 +10,17 @@ compatibility_flags = ["nodejs_compat"]
 binding = "QUOTA"
 id = "b430e064b7f14fca89aed460e56dbf5e"
 
+# Sayaçlar tek bir Durable Object'te çalışır: aynı anda gelen istekler sınırları aşamaz (KV tek
+# başına kontrol ile yazma arasında yarışır). Ücretsiz planda SQLite tabanlı sınıf kullanılır.
+# The counters run in one Durable Object so parallel requests cannot race past the limits.
+[[durable_objects.bindings]]
+name = "QUOTA_DO"
+class_name = "QuotaCounter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["QuotaCounter"]
+
 # Limits (strings). Change a value, then `npx wrangler deploy`: no app release is needed.
 # Sınırlar (metin olarak yazılır). Değeri değiştirip `npx wrangler deploy` yapmak yeter;
 # uygulama güncellemesi gerekmez. Boş bırakılırsa varsayılan değer kullanılır.

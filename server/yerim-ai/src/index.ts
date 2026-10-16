@@ -2,7 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 import {
-  FREE_DAILY,
   UnderstandingModelSchema,
   chatOutputSchema,
   chatSystem,
@@ -23,11 +22,6 @@ import {
 } from '../../../src/lib/ai/protocol';
 import {
   aiLimits,
-  cancelUse,
-  ipGuard,
-  peek,
-  releaseUse,
-  takeUse,
   toMessages,
   validCancel,
   validChat,
@@ -36,11 +30,15 @@ import {
   validPlan,
   validQuota,
   validUnderstand,
-  wasCancelled,
 } from './quota';
+import { localQuota, objectQuota, type Quota, type QuotaNamespace } from './store';
+
+export { QuotaCounter } from './store';
 
 export interface Env {
   QUOTA: KVNamespace;
+  /** The quota Durable Object (wrangler.toml); every counter runs there, one call at a time. */
+  QUOTA_DO?: QuotaNamespace;
   ANTHROPIC_API_KEY: string;
   /** Limits from wrangler.toml [vars] (strings); see aiLimits for the defaults. */
   AI_GLOBAL_DAILY?: string;
@@ -49,6 +47,10 @@ export interface Env {
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
 }
+
+/** The counters: the Durable Object when bound, else in-process on KV (tests). */
+const quotaOf = (env: Env): Quota =>
+  env.QUOTA_DO ? objectQuota(env.QUOTA_DO) : localQuota(env.QUOTA);
 
 const MODEL = 'claude-haiku-5-5';
 
@@ -127,9 +129,9 @@ async function quotaRoute(req: Request, env: Env): Promise<Response> {
   if (!parsed) return json({ error: 'bad_request' }, 400);
   const now = new Date();
   const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (!(await ipGuard(env.QUOTA, `quota:${ip}`, now, 500)))
-    return json({ error: 'rate_limited' }, 429);
-  return json({ remaining: await peek(env.QUOTA, parsed.deviceId, now) });
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`quota:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
+  return json({ remaining: await quota.peek(parsed.deviceId, now) });
 }
 
 /**
@@ -147,10 +149,11 @@ async function cancelRoute(req: Request, env: Env): Promise<Response> {
   if (!parsed) return json({ error: 'bad_request' }, 400);
   const now = new Date();
   const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (!(await ipGuard(env.QUOTA, `cancel:${ip}`, now, 500))) {
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`cancel:${ip}`, now, 500))) {
     return json({ error: 'rate_limited' }, 429);
   }
-  const { remaining } = await cancelUse(env.QUOTA, parsed.deviceId, parsed.messageId, now);
+  const { remaining } = await quota.cancel(parsed.deviceId, parsed.messageId, now);
   return json({ remaining });
 }
 
@@ -188,29 +191,28 @@ export default {
     const now = new Date();
     const limits = aiLimits(env);
     const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-    if (!(await ipGuard(env.QUOTA, ip, now, limits.perIp))) {
+    const quota = quotaOf(env);
+    if (!(await quota.ipGuard(ip, now, limits.perIp))) {
       return json(
-        { error: 'rate_limited', reason: 'ip', remaining: await peek(env.QUOTA, deviceId, now) },
+        { error: 'rate_limited', reason: 'ip', remaining: await quota.peek(deviceId, now) },
         429,
       );
     }
 
     // Retries of the same stage may repeat, but a new question needs a new messageId.
-    // Store only a digest, never text/output. Distributed races still need an atomic store.
+    // Store only a digest, never text/output. The check, the use and the digest are one step.
     const callKey = `ai:call:${todayIstanbul(now)}:${deviceId}:${messageId}:${path}`;
     const digest = await crypto.subtle.digest(
-      'SHA-256', new TextEncoder().encode(JSON.stringify(parsed)),
+      'SHA-256',
+      new TextEncoder().encode(JSON.stringify(parsed)),
     );
-    const fingerprint = Array.from(
-      new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0'),
+    const fingerprint = Array.from(new Uint8Array(digest), (b) =>
+      b.toString(16).padStart(2, '0'),
     ).join('');
-    const previous = await env.QUOTA.get(callKey);
-    if (previous && previous !== fingerprint) {
-      return json({ error: 'duplicate_message' }, 409);
-    }
-
     // TODO(subscriptions): check an entitlement here and raise the limit (SUB_DAILY) for subscribers.
-    const q = await takeUse(env.QUOTA, deviceId, messageId, now, limits, FREE_DAILY);
+    const begun = await quota.begin({ deviceId, messageId, callKey, fingerprint, now, limits });
+    if (begun.conflict) return json({ error: 'duplicate_message' }, 409);
+    const { previous, q } = begun;
     if (!q.ok) {
       return json(
         q.reason === 'quota'
@@ -219,13 +221,12 @@ export default {
         429,
       );
     }
-    await env.QUOTA.put(callKey, fingerprint, { expirationTtl: 172800 });
 
     // The use is only kept when the user got an answer: give it back on any failure.
     const giveBack = async (): Promise<number> => {
       if (!q.added) return q.remaining;
       try {
-        return (await releaseUse(env.QUOTA, deviceId, messageId, now)).remaining;
+        return (await quota.release(deviceId, messageId, now)).remaining;
       } catch {
         return q.remaining;
       }
@@ -238,7 +239,7 @@ export default {
       // Failed stages can be retried, whether or not /understand already spent the use.
       if (outcome !== 'ok' && !previous) {
         try {
-          await env.QUOTA.put(callKey, '', { expirationTtl: 172800 });
+          await quota.resetCall(callKey);
         } catch {
           // A storage outage must not swallow the fallback response.
         }
@@ -250,9 +251,10 @@ export default {
       }
       try {
         // The client gave up on this message while we were working: it does not keep the use.
-        if (await wasCancelled(env.QUOTA, deviceId, messageId, now)) {
+        const back = await quota.releaseIfCancelled(deviceId, messageId, now);
+        if (back !== null) {
           logged = 'timeout-cancelled';
-          remaining = (await releaseUse(env.QUOTA, deviceId, messageId, now)).remaining;
+          remaining = back;
           if (body !== null && typeof body === 'object' && 'remaining' in body) {
             body = { ...body, remaining };
           }
