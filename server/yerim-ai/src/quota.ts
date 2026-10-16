@@ -5,6 +5,8 @@ import {
   FREE_DAILY,
   HISTORY_LIMIT,
   MAX_CANDIDATES,
+  MAX_LABEL_CHARS,
+  MAX_PICK_CANDIDATES,
   MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
   MAX_PLAN_PARKINGS,
@@ -466,18 +468,21 @@ function validIds(body: Record<string, unknown>) {
 }
 
 /**
- * /pick: 1..5 candidates, indexed by position, facts only (no names are accepted). All are
- * restaurants or all are car parks; the first one says which.
+ * /pick: indexed by position. Car parks: 1..5, facts only. Restaurants: 1..15, facts plus the
+ * place's public name and type (so the model can judge what fits the request); a name or type that
+ * is not short text is dropped. All are restaurants or all are car parks; the first one says which.
  */
 export function validPick(body: unknown): PickRequest | ParkPickRequest | null {
   if (!isRecord(body)) return null;
   const ids = validIds(body);
   if (!ids) return null;
   const { candidates } = body;
-  if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > MAX_CANDIDATES) {
+  const parking =
+    Array.isArray(candidates) && isRecord(candidates[0]) && candidates[0].kind === 'parking';
+  const most = parking ? MAX_CANDIDATES : MAX_PICK_CANDIDATES;
+  if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > most) {
     return null;
   }
-  const parking = isRecord(candidates[0]) && candidates[0].kind === 'parking';
   const restaurants: PickCandidate[] = [];
   const parkings: ParkPickCandidate[] = [];
   for (let k = 0; k < candidates.length; k++) {
@@ -515,6 +520,8 @@ export function validPick(body: unknown): PickRequest | ParkPickRequest | null {
     if (c.freeSpots !== null && !isCount(c.freeSpots)) return null;
     restaurants.push({
       ...base,
+      ...(isText(c.name, MAX_LABEL_CHARS) ? { name: c.name } : {}),
+      ...(isText(c.type, MAX_LABEL_CHARS) ? { type: c.type } : {}),
       parkingM: c.parkingM as number | null,
       parkingFree: c.parkingFree,
       freeSpots: c.freeSpots as number | null,
