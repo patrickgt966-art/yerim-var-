@@ -93,6 +93,37 @@ const CITIES = [
     // + funicular (Tünel, Kabataş–Taksim); Marmaray and metro are train/subway.
     railTypes: 'subway|light_rail|train|tram|funicular',
   },
+  {
+    id: 'ankara',
+    name: 'Ankara',
+    // Same tiled pattern as İstanbul, sparser data: 12 + 15 + 10 min. No live parking API.
+    budgetMin: 37,
+    split: true,
+    tiled: {
+      bbox: { s: 38.95, w: 31.25, n: 40.65, e: 34.1 },
+      rows: 4,
+      cols: 4,
+      // North-east tile (lat > 40.225, lng > 33.3875) is Çankırı / Kırıkkale: nothing of Ankara province.
+      skip: (t) => t.s >= 40.225 && t.w >= 33.3875,
+      timeout: 90,
+      httpMs: 120_000,
+      rounds: 2,
+      pauseMs: 15_000,
+      minOk: 0.9,
+      foodMinOk: 0.5,
+      gapMs: 5_000,
+      busyMinMs: 30_000,
+      busyMaxMs: 60_000,
+      baseMin: 12,
+      placesMin: 15,
+      foodMin: 10,
+    },
+    queryTimeout: 300,
+    railTimeout: 180,
+    httpMs: 330_000,
+    // Ankaray (light_rail), Ankara metro (subway), Başkentray (train).
+    railTypes: 'subway|light_rail|train|tram',
+  },
 ];
 
 const wantedCities = (process.env.YERIM_CITIES ?? process.argv.slice(2).join(','))

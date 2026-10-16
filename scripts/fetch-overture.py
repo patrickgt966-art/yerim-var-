@@ -57,6 +57,8 @@ CITIES = [
     {'id': 'istanbul', 'name': 'İstanbul', 'fold': 'istanbul', 'bbox': (27.0, 31.0, 40.0, 42.5),
      'area_codes': ('212', '216'), 'strict': True,  # strict: drop weak records below STRICT_CONFIDENCE
      'min_conf': 0.7},  # confidence floor; the THRESHOLDS ladder starts here
+    {'id': 'ankara', 'name': 'Ankara', 'fold': 'ankara', 'bbox': (31.0, 34.5, 38.8, 40.8),
+     'area_codes': ('312',), 'strict': True, 'min_conf': 0.7},
 ]
 
 CLOSED = ('permanently_closed', 'temporarily_closed')
