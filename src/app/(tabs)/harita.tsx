@@ -8,7 +8,7 @@ import { PBadge } from '@/components/PBadge';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
-import { cityAt, cityById, isInCityArea, type City } from '@/data/cities';
+import { cityAt, cityById, hasLiveParking, isInCityArea, type City } from '@/data/cities';
 import { formatClock } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
 import {
@@ -131,6 +131,8 @@ export default function MapTab() {
   const showBanner =
     data?.source === 'mock' ||
     (data?.source === 'static-only' && !!data.fallbackReason) ||
+    // A calm note, not an outage: this city has no live counts.
+    (data?.source === 'static-only' && !hasLiveParking(city)) ||
     data?.offline;
   const pick = (m: Mode) => {
     setMode(m);

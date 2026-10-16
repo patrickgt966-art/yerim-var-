@@ -1,7 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useApp } from '@/store/app';
-import { activeCity, CITIES, cityById, isInCityArea, setActiveCity } from '../cities';
+import {
+  activeCity,
+  CITIES,
+  cityById,
+  cityExamples,
+  hasLiveParking,
+  isInCityArea,
+  setActiveCity,
+} from '../cities';
 import { distanceMeters } from '../geo';
 import { parseQuery } from '../intent';
 import { cleanName } from '../names';
@@ -44,26 +52,48 @@ describe('active city', () => {
   });
 
   it('ignores unknown and unavailable cities', () => {
-    setActiveCity('ankara');
+    setActiveCity('antalya');
     expect(activeCity().id).toBe('izmir');
     setActiveCity('atlantis');
     expect(activeCity().id).toBe('izmir');
-    expect(cityById('ankara').available).toBe(false);
+    expect(cityById('antalya').available).toBe(false);
   });
 
-  it('opens istanbul with its 39 districts, ankara stays closed', () => {
+  it('opens ankara with its 25 districts and no live parking', () => {
+    const ank = cityById('ankara');
+    expect(ank).toMatchObject({
+      available: true,
+      parkingSource: 'osm',
+      parkingAttribution: 'OpenStreetMap',
+      locative: "Ankara'da",
+    });
+    expect(ank.districts).toHaveLength(25);
+    expect(ank.districtCenters.map((d) => d.name)).toEqual([...ank.districts]);
+    expect(hasLiveParking(ank)).toBe(false);
+    expect(hasLiveParking(cityById('izmir'))).toBe(true);
+    expect(hasLiveParking(cityById('istanbul'))).toBe(true);
+    for (const d of ank.districtCenters) expect(isInCityArea(d, ank)).toBe(true);
+    expect(cityExamples(ank).bLoc).toBe("Çankaya'da");
+    expect(cityExamples(ank).dLoc).toBe("Bahçelievler'de");
+  });
+
+  it('opens istanbul with its 39 districts', () => {
     const ist = cityById('istanbul');
     expect(ist).toMatchObject({ available: true, parkingSource: 'ispark' });
     expect(ist.districts).toHaveLength(39);
     expect(ist.districtCenters.map((d) => d.name)).toEqual([...ist.districts]);
-    expect(CITIES.filter((c) => c.available).map((c) => c.id)).toEqual(['izmir', 'istanbul']);
+    expect(CITIES.filter((c) => c.available).map((c) => c.id)).toEqual([
+      'izmir',
+      'istanbul',
+      'ankara',
+    ]);
   });
 
   it('the store keeps the data layer in step', () => {
     useApp.getState().setCity('istanbul');
     expect(useApp.getState().city).toBe('istanbul');
     expect(activeCity().id).toBe('istanbul');
-    useApp.getState().setCity('ankara');
+    useApp.getState().setCity('antalya');
     expect(useApp.getState().city).toBe('istanbul');
     expect(activeCity().id).toBe('istanbul');
   });
@@ -157,6 +187,18 @@ describe('districts and names follow the city', () => {
     expect(it1.kind === 'search' && it1.district?.name).toBe('Kadıköy');
     const it2 = parseQuery('kadıköyde balık');
     expect(it2.kind === 'search' && it2.district?.name).toBe('Kadıköy');
+  });
+
+  it('parses ankara districts', () => {
+    setActiveCity('ankara');
+    const it1 = parseQuery("Kızılay'da döner");
+    expect(it1.kind).toBe('search');
+    const it2 = parseQuery("Çankaya'da otopark");
+    expect(it2.kind === 'search' && it2.district?.name).toBe('Çankaya');
+    const it3 = parseQuery('kecioren kebap');
+    expect(it3.kind === 'search' && it3.district?.name).toBe('Keçiören');
+    const it4 = parseQuery('Bornova kebap');
+    expect(it4.kind === 'search' && it4.district).toBeNull();
   });
 
   it('does not know the districts of another city', () => {

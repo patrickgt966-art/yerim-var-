@@ -19,7 +19,7 @@ import { Icon } from '@/components/Icon';
 import { OnboardingBackdrop } from '@/components/OnboardingBackdrop';
 import { PBadge } from '@/components/PBadge';
 import { Txt } from '@/components/Txt';
-import { cityAt, cityExamples, CITIES, cityById, type City } from '@/data/cities';
+import { cityAt, cityExamples, CITIES, cityById, hasLiveParking, type City } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
 import { asym, brand, fonts, HIT } from '@/theme';
@@ -144,9 +144,11 @@ function CityCard({
   const { t } = useTranslation();
   const source = city.available
     ? t(
-        city.parkingSource === 'ispark'
-          ? 'onboarding.citySourceIspark'
-          : 'onboarding.citySourceIzmir',
+        !hasLiveParking(city)
+          ? 'onboarding.citySourceStatic'
+          : city.parkingSource === 'ispark'
+            ? 'onboarding.citySourceIspark'
+            : 'onboarding.citySourceIzmir',
       )
     : '';
   return (

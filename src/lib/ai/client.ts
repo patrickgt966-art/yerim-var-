@@ -52,6 +52,8 @@ export type AiFailDetail = 'timeout' | 'http' | 'network' | 'schema';
 
 type Failure = {
   failed: 'quota' | 'error';
+  /** HTTP status of a failed reply. */
+  status?: number;
   remaining?: number;
   timedOut?: boolean;
   detail: AiFailDetail;
@@ -101,8 +103,25 @@ function clipHistory(history: ChatTurn[], maxTurns: number, maxChars: number): C
 export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch) {
   const root = baseUrl.replace(/\/+$/, '');
 
-  /** POSTs the body; resolves to the parsed JSON, or a Failure (carrying `remaining` when sent). */
+  /**
+   * POSTs the body; resolves to the parsed JSON, or a Failure (carrying `remaining` when sent).
+   * A worker that predates a city answers 400 (unknown city) and charges nothing: the request is
+   * then repeated once without the city, and that worker answers with its İzmir prompts.
+   */
   async function post(
+    path: string,
+    body: unknown,
+    timeoutMs: number,
+  ): Promise<{ data: unknown } | Failure> {
+    const res = await send(path, body, timeoutMs);
+    if ('failed' in res && res.status === 400 && isRecord(body) && 'city' in body) {
+      const { city: _city, ...withoutCity } = body;
+      return send(path, withoutCity, timeoutMs);
+    }
+    return res;
+  }
+
+  async function send(
     path: string,
     body: unknown,
     timeoutMs: number,
@@ -136,10 +155,16 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
             .map((v) => v.slice(0, 300))
             .join(' — ');
           warnDev(path, 'http', `HTTP ${res.status}`, why);
-          return { failed, remaining: num(err?.remaining), detail: 'http', ...(why ? { why } : {}) };
+          return {
+            failed,
+            status: res.status,
+            remaining: num(err?.remaining),
+            detail: 'http',
+            ...(why ? { why } : {}),
+          };
         } catch {
           warnDev(path, 'http', `HTTP ${res.status}`);
-          return { failed, detail: 'http' };
+          return { failed, status: res.status, detail: 'http' };
         }
       }
       try {

@@ -46,20 +46,27 @@ describe('setCity', () => {
 
   it('ignores a city that is not open', () => {
     useApp.setState({ recentSearches: ['Alsancak otopark'] });
-    useApp.getState().setCity('ankara');
+    useApp.getState().setCity('antalya');
     expect(useApp.getState().city).toBe('izmir');
     expect(useApp.getState().recentSearches).toEqual(['Alsancak otopark']);
   });
+});
+
+it('setCity switches to ankara', () => {
+  useApp.getState().setCity('ankara');
+  expect(useApp.getState().city).toBe('ankara');
+  expect(activeCity().id).toBe('ankara');
 });
 
 describe('cityAt', () => {
   it('finds the open city around a point', () => {
     expect(cityAt(KONAK)?.id).toBe('izmir');
     expect(cityAt(SARAYBURNU)?.id).toBe('istanbul');
+    expect(cityAt(ANKARA)?.id).toBe('ankara');
   });
 
   it('finds nothing in a closed city or at sea', () => {
-    expect(cityAt(ANKARA)).toBeUndefined();
+    expect(cityAt({ lat: 36.8969, lng: 30.7133 })).toBeUndefined(); // Antalya
     expect(cityAt({ lat: 0, lng: 0 })).toBeUndefined();
   });
 });
@@ -68,5 +75,6 @@ describe('city names', () => {
   it('carry the Turkish locative per city', () => {
     expect(cityById('izmir').locative).toBe("İzmir'de");
     expect(cityById('istanbul').locative).toBe("İstanbul'da");
+    expect(cityById('ankara').locative).toBe("Ankara'da");
   });
 });

@@ -23,7 +23,13 @@ export function HomeSkyline() {
       // Ends just above the search card, which overlaps the hero by 34.
       style={{ position: 'absolute', left: 0, right: 0, bottom: 30 }}
     >
-      {city === 'istanbul' ? <IstanbulSkyline /> : <IzmirSkyline />}
+      {city === 'istanbul' ? (
+        <IstanbulSkyline />
+      ) : city === 'ankara' ? (
+        <AnkaraSkyline />
+      ) : (
+        <IzmirSkyline />
+      )}
     </Svg>
   );
 }
@@ -126,6 +132,43 @@ function IstanbulSkyline() {
       {/* Waves of the Boğaz */}
       <Path
         d="M0 90c8-3 16-3 24 0s16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0 16-3 24 0 16 3 24 0v2H0z"
+        fillOpacity={0.3}
+      />
+    </G>
+  );
+}
+
+/**
+ * Ankara: Ankara Kalesi on its hill, Anıtkabir (colonnade on a platform), Atakule (the orange
+ * accent, a slim tower with a disc), Kocatepe Camii (big dome, four minarets) and gentle hills
+ * instead of waves. Shapes that overlap share one path so the translucent fill does not double up.
+ */
+function AnkaraSkyline() {
+  return (
+    <G testID="skyline-ankara" fill={brand.white} fillOpacity={0.32}>
+      {/* Rolling hills behind everything */}
+      <Path
+        d="M0 92V68c40-10 84-10 126-2s72 6 112-2 86-8 120 0c14 3 24 6 32 8V92z"
+        fillOpacity={0.12}
+      />
+      {/* Ankara Kalesi: the hill, then the walls and towers with their battlements */}
+      <Path d="M0 92V74C16 66 30 60 46 58S88 62 104 76S112 86 118 92z" />
+      <Path d="M30 58V46H86V58zM24 58V38H36V58zM52 58V28H66V58zM80 58V36H92V58zM24 38V35h2V38zM28 38V35h2V38zM32 38V35h2V38zM52 28V25h2V28zM56 28V25h2V28zM60 28V25h2V28zM64 28V25h2V28zM80 36V33h2V36zM84 36V33h2V36zM88 36V33h2V36zM38 46V43h2V46zM42 46V43h2V46zM46 46V43h2V46zM70 46V43h2V46zM74 46V43h2V46zM78 46V43h2V46z" />
+      {/* Cypress trees */}
+      <G fill={brand.mint} fillOpacity={0.45}>
+        <Path d="M122 92c-3-8-3-16 0-26 3 10 3 18 0 26zM222 92c-3-7-3-14 0-22 3 8 3 15 0 22zM372 92c-3-8-3-16 0-26 3 10 3 18 0 26z" />
+      </G>
+      {/* Anıtkabir: platform, steps, towers, colonnade with its beam and the Hall of Honour */}
+      <Path d="M128 92V86H214V92zM136 86V82H206V86zM134 82V58H146V82zM196 82V58H208V82zM132.5 58V55H147.5V58zM194.5 58V55H209.5V58zM148 66V61H194V66zM158 61V50H184V61zM156 50L171 43L186 50zM150 82V66h2.4V82zM155 82V66h2.4V82zM160 82V66h2.4V82zM165 82V66h2.4V82zM170 82V66h2.4V82zM175 82V66h2.4V82zM180 82V66h2.4V82zM185 82V66h2.4V82zM190 82V66h2.4V82z" />
+      {/* Atakule, in orange so the city reads at a glance */}
+      <G fill={brand.orangeLight} fillOpacity={0.85}>
+        <Path d="M236 92L240.5 40H245.5L250 92zM229 36H257L253 44H233zM233 36A10 8 0 0 1 253 36zM242.4 28V12H243.6V28z" />
+      </G>
+      {/* Kocatepe Camii: courtyard body, central dome, two half domes and four minarets */}
+      <Path d="M280 92V68H340V92zM293 68A17 17 0 0 1 327 68zM309.4 51V42H310.6V51zM280 68A9 9 0 0 1 298 68zM322 68A9 9 0 0 1 340 68zM272.5 92V36H275.5V92zM270.5 46V43.5H277.5V46zM272 36L274 22L276 36zM284.5 92V36H287.5V92zM282.5 46V43.5H289.5V46zM284 36L286 22L288 36zM332.5 92V36H335.5V92zM330.5 46V43.5H337.5V46zM332 36L334 22L336 36zM344.5 92V36H347.5V92zM342.5 46V43.5H349.5V46zM344 36L346 22L348 36z" />
+      {/* Gentle ground line */}
+      <Path
+        d="M0 90c40-2 84-2 130 0s86 2 130 0 90-2 130 0v2H0z"
         fillOpacity={0.3}
       />
     </G>

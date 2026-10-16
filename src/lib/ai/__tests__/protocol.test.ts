@@ -109,10 +109,19 @@ describe('city in the system prompts', () => {
       expect(make('izmir')).toContain('İzmir');
       expect(make()).toBe(make('izmir'));
       expect(make('nowhere')).toBe(make('izmir'));
-      expect(make('ankara')).toBe(make('izmir'));
     }
     expect(UNDERSTAND_SYSTEM).toBe(understandSystem('izmir'));
     expect(CHAT_SYSTEM).toContain("İzmir'de yemek");
+  });
+
+  it('names Ankara for ankara and never İzmir', () => {
+    for (const make of all) {
+      const text = make('ankara');
+      expect(text).toContain('Ankara');
+      expect(text).not.toContain('İzmir');
+      expect(text).not.toBe(make('izmir'));
+    }
+    expect(chatSystem('ankara')).toContain("Ankara'da yemek");
   });
 
   it('does not call the district an İzmir district', () => {
@@ -124,6 +133,11 @@ describe('CitySchema', () => {
   it('accepts exactly the open cities', () => {
     for (const c of CITIES) expect(CitySchema.safeParse(c.id).success).toBe(c.available);
     expect(CitySchema.safeParse('atlantis').success).toBe(false);
+  });
+
+  it('accepts ankara', () => {
+    expect(CitySchema.safeParse('ankara').success).toBe(true);
+    expect(CitySchema.safeParse('antalya').success).toBe(false);
   });
 });
 

@@ -40,9 +40,9 @@ export type City = {
   /** District names; `districtCenters` holds the same districts with their centres. */
   districts: readonly string[];
   districtCenters: readonly District[];
-  /** Live parking source of the city; null while the city is not open. */
+  /** Parking source of the city; null while the city is not open. 'osm' (or another static kind) means no live API. */
   parkingSource: DataSource | null;
-  /** Credit line for the live parking data. */
+  /** Credit line for the parking data. */
   parkingAttribution: string | null;
 };
 
@@ -127,6 +127,35 @@ export const ISTANBUL_DISTRICTS: readonly District[] = [
   { name: 'Zeytinburnu', lat: 40.99, lng: 28.904 },
 ];
 
+/** The 25 districts of Ankara (centres are rough, a few km). */
+export const ANKARA_DISTRICTS: readonly District[] = [
+  { name: 'Akyurt', lat: 40.1325, lng: 33.0889 },
+  { name: 'Altındağ', lat: 39.9667, lng: 32.8667 },
+  { name: 'Ayaş', lat: 40.0178, lng: 32.3358 },
+  { name: 'Bala', lat: 39.5575, lng: 33.1233 },
+  { name: 'Beypazarı', lat: 40.1675, lng: 31.9208 },
+  { name: 'Çamlıdere', lat: 40.4903, lng: 32.4767 },
+  { name: 'Çankaya', lat: 39.9179, lng: 32.8627 },
+  { name: 'Çubuk', lat: 40.2378, lng: 33.0328 },
+  { name: 'Elmadağ', lat: 39.9233, lng: 33.2336 },
+  { name: 'Etimesgut', lat: 39.9553, lng: 32.6772 },
+  { name: 'Evren', lat: 39.0233, lng: 33.8097 },
+  { name: 'Gölbaşı', lat: 39.7894, lng: 32.8031 },
+  { name: 'Güdül', lat: 40.2111, lng: 32.2486 },
+  { name: 'Haymana', lat: 39.4333, lng: 32.4953 },
+  { name: 'Kahramankazan', lat: 40.2058, lng: 32.6803 },
+  { name: 'Kalecik', lat: 40.1, lng: 33.4103 },
+  { name: 'Keçiören', lat: 39.981, lng: 32.864 },
+  { name: 'Kızılcahamam', lat: 40.4694, lng: 32.6503 },
+  { name: 'Mamak', lat: 39.925, lng: 32.9167 },
+  { name: 'Nallıhan', lat: 40.1861, lng: 31.3519 },
+  { name: 'Polatlı', lat: 39.5772, lng: 32.1411 },
+  { name: 'Pursaklar', lat: 40.0397, lng: 32.9006 },
+  { name: 'Sincan', lat: 39.9667, lng: 32.5833 },
+  { name: 'Şereflikoçhisar', lat: 38.9381, lng: 33.5386 },
+  { name: 'Yenimahalle', lat: 39.9667, lng: 32.8 },
+];
+
 const names = (list: readonly District[]) => list.map((d) => d.name);
 
 // The boxes of cities that are not open yet are placeholders until their data lands.
@@ -189,14 +218,26 @@ export const CITIES: City[] = [
     id: 'ankara',
     name: 'Ankara',
     locative: "Ankara'da",
-    available: false,
-    center: { lat: 39.9334, lng: 32.8597 },
-    bounds: { minLat: 39.3, maxLat: 40.5, minLng: 32.0, maxLng: 33.7 },
-    radiusKm: 100,
-    districts: [],
-    districtCenters: [],
-    parkingSource: null,
-    parkingAttribution: null,
+    examples: {
+      a: 'Kızılay',
+      aLoc: "Kızılay'da",
+      b: 'Çankaya',
+      bLoc: "Çankaya'da",
+      c: 'Tunalı',
+      cLoc: "Tunalı'da",
+      d: 'Bahçelievler',
+      dLoc: "Bahçelievler'de",
+    },
+    available: true,
+    center: { lat: 39.9208, lng: 32.8541 },
+    // The province reaches about 38.6-40.75 N, 30.8-34.3 E; its far points lie ~160 km from the centre.
+    bounds: { minLat: 38.6, maxLat: 40.75, minLng: 30.8, maxLng: 34.3 },
+    radiusKm: 170,
+    districts: names(ANKARA_DISTRICTS),
+    districtCenters: ANKARA_DISTRICTS,
+    // No live parking API: the OSM car parks carry a capacity but never a free count.
+    parkingSource: 'osm',
+    parkingAttribution: 'OpenStreetMap',
   },
   {
     id: 'antalya',
@@ -225,6 +266,13 @@ export const CITIES: City[] = [
     parkingAttribution: null,
   },
 ];
+
+/** Parking sources without occupancy: a city whose source is one of them has no live parking API. */
+const STATIC_PARKING_SOURCES: readonly (DataSource | null)[] = ['osm', 'izelman', 'apple'];
+
+/** False for a city whose car parks are bundled records only (Ankara): no free counts will ever arrive. */
+export const hasLiveParking = (city: City = activeCity()): boolean =>
+  !STATIC_PARKING_SOURCES.includes(city.parkingSource);
 
 /** True only for a known city that is open for use. */
 export const isAvailableCity = (id: unknown): id is string =>

@@ -606,8 +606,8 @@ describe('ai client chat', () => {
 describe('ai client city', () => {
   afterEach(() => setActiveCity('izmir'));
 
-  const sentBody = (f: typeof fetch) => {
-    const init = (f as unknown as jest.Mock).mock.calls[0]![1] as { body: string };
+  const sentBody = (f: typeof fetch, call = 0) => {
+    const init = (f as unknown as jest.Mock).mock.calls[call]![1] as { body: string };
     return JSON.parse(init.body) as Record<string, unknown>;
   };
 
@@ -620,6 +620,28 @@ describe('ai client city', () => {
     const g = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 3 });
     await createAiClient('https://ai.test', g).understand(understandReq);
     expect(sentBody(g).city).toBe('istanbul');
+  });
+
+  it('retries once without the city when an older worker answers 400 (unknown city)', async () => {
+    setActiveCity('ankara');
+    const ok = { understanding: { kind: 'unknown' }, remaining: 3 };
+    const f = jest
+      .fn()
+      .mockResolvedValueOnce({ status: 400, ok: false, json: async () => ({ error: 'bad_request' }) })
+      .mockResolvedValueOnce({ status: 200, ok: true, json: async () => ok }) as unknown as typeof fetch;
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r.ok).toBe(true);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(sentBody(f, 0).city).toBe('ankara');
+    expect('city' in sentBody(f, 1)).toBe(false);
+  });
+
+  it('retries only once: a second 400 is a failure', async () => {
+    setActiveCity('ankara');
+    const f = fakeFetch(400, { error: 'bad_request' });
+    const r = await createAiClient('https://ai.test', f).understand(understandReq);
+    expect(r).toMatchObject({ ok: false, reason: 'error' });
+    expect(f).toHaveBeenCalledTimes(2);
   });
 
   it('keeps a city the caller set', async () => {
