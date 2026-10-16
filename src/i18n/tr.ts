@@ -583,6 +583,7 @@ const tr = {
     dishNamed: 'Adında "{{dish}}" geçen {{count}} yer buldum, onları üste koydum.',
     dishUnknown:
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
+    dishUnknownLong: 'Ne aradığını tam çıkaramadım; yakındaki yerleri gösteriyorum.',
     dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
     reasonNamed: 'Adında {{dish}} geçiyor',

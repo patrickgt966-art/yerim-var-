@@ -108,7 +108,7 @@ describe('ai client', () => {
 
     afterEach(() => jest.useRealTimers());
 
-    it('gives up after ROUTER_TIMEOUT_MS (6 s) and tells the server to cancel the message', async () => {
+    it('gives up after ROUTER_TIMEOUT_MS (9 s) and tells the server to cancel the message', async () => {
       jest.useFakeTimers();
       const f = hang();
       const p = createAiClient('https://ai.test', f).understand(understandReq);

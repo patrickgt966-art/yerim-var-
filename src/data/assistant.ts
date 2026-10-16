@@ -1816,7 +1816,11 @@ function runFood(
             })) +
         ' ';
     } else {
-      dishPrefix = t('chat.dishUnknown', { dish: dishName }) + ' ';
+      // A whole sentence the rules took for a dish is not quoted back as one.
+      dishPrefix =
+        (dishName.trim().split(/\s+/).length > 3
+          ? t('chat.dishUnknownLong')
+          : t('chat.dishUnknown', { dish: dishName })) + ' ';
       // Only the category is known: a place that is typical for it (by name, cuisine, kind) comes first,
       // not just the best-ranked one ("Kasap Fuat" for a kızartma, a juice bar for meyve suyu).
       ordered = typicalFirst(ordered, ctx.cat, stem);
