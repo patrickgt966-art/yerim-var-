@@ -119,7 +119,7 @@ export type FreeTextContext = {
 
 const EMOJI = /\p{Extended_Pictographic}/gu;
 const URL_LIKE =
-  /https?:|:\/\/|www\.|\b[a-z0-9-]+\.(?:com|net|org|tr|io|app|me|co|info|biz)\b|\b[a-z0-9-]+\/[a-z0-9]/i;
+  /https?:|:\/\/|www\.|[\p{L}\p{N}-]+\.[\p{L}]{2,}|\b[a-z0-9-]+\/[a-z0-9]/iu;
 
 function hasWord(padded: string, word: string): boolean {
   return padded.includes(` ${word}`);
@@ -140,7 +140,7 @@ export function validateFreeText(
   const text = raw.trim();
   if (text === '' || text.length > MAX_CHARS[zone]) return null;
   if (/[\r\n\t]/.test(text)) return null;
-  if (/\d/.test(text)) return null;
+  if (/\p{N}/u.test(text)) return null;
   if (/[@#]/.test(text) || URL_LIKE.test(text)) return null;
   if ((text.match(EMOJI) ?? []).length > 1) return null;
   const sentences = text.split(/[.!?…]+/).filter((s) => s.trim() !== '');
@@ -170,13 +170,11 @@ export function validateFreeText(
 
   // Capitalised words: only at the start of a sentence, or a known region / city (not in the tone).
   const words = text.split(/\s+/);
-  const firstSingles = new Set<string>();
   let atStart = true;
   for (const word of words) {
     const bare = word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
     const stem = bare.split(/['’]/)[0] ?? bare;
     const startsUpper = stem !== '' && stem.charAt(0) !== stem.charAt(0).toLocaleLowerCase('tr');
-    if (atStart && stem !== '') firstSingles.add(fold(stem));
     if (startsUpper && !atStart) {
       const f = fold(stem);
       const known =
@@ -190,13 +188,12 @@ export function validateFreeText(
     atStart = /[.!?…]["')]*$/.test(word) || /^\p{Extended_Pictographic}+$/u.test(word);
   }
 
-  // Names from our data. A multi-word name is matched anywhere; a one-word name only as the
-  // first word of a sentence (any other capitalised word was rejected above).
+  // Names from our data, including lowercase mentions in the middle of a sentence.
   const spaced = `${padded} `;
   for (const name of ctx.names ?? []) {
     const n = fold(name);
     if (n.length < 4) continue;
-    if (n.includes(' ') ? spaced.includes(` ${n} `) : firstSingles.has(n)) return null;
+    if (spaced.includes(` ${n} `)) return null;
   }
   if (zone !== 'clarify') {
     for (const d of districts) {

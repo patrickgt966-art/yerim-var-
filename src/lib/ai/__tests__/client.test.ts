@@ -89,7 +89,7 @@ describe('ai client', () => {
   });
 
   it('a 429 for being too fast or a busy server is no empty quota', async () => {
-    for (const reason of ['slow', 'global']) {
+    for (const reason of ['slow', 'global', 'ip']) {
       const f = fakeFetch(429, { error: 'rate_limited', reason, remaining: 6 });
       const r = await createAiClient('https://ai.test', f).understand(understandReq);
       expect(r).toEqual({ ok: false, reason: 'error', remaining: 6, detail: 'http' });
@@ -107,6 +107,65 @@ describe('ai client', () => {
       ) as unknown as typeof fetch;
 
     afterEach(() => jest.useRealTimers());
+
+    it.each([200, 429])(
+      'cancels when HTTP %i headers arrive but the JSON body times out',
+      async (status) => {
+        jest.useFakeTimers();
+        const f = jest.fn((url: string, init?: RequestInit) =>
+          Promise.resolve({
+            ok: status === 200,
+            status,
+            json: url.endsWith('/cancel')
+              ? async () => ({ remaining: 10 })
+              : () =>
+                  new Promise((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+                  }),
+          }),
+        ) as unknown as typeof fetch;
+        const pending = createAiClient('https://ai.test', f).understand(understandReq);
+        await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS);
+        expect(await pending).toEqual({ ok: false, reason: 'error', detail: 'timeout' });
+        expect(f).toHaveBeenCalledWith('https://ai.test/cancel', expect.anything());
+      },
+    );
+
+    it('keeps the city compatibility retry within the original router deadline', async () => {
+      jest.useFakeTimers();
+      let calls = 0;
+      const f = jest.fn((url: string, init?: RequestInit) => {
+        if (url.endsWith('/cancel')) {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ remaining: 10 }) });
+        }
+        if (calls++ === 0) {
+          return new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  ok: false,
+                  status: 400,
+                  json: async () => ({ error: 'bad_request' }),
+                }),
+              ROUTER_TIMEOUT_MS - 100,
+            ),
+          );
+        }
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        });
+      }) as unknown as typeof fetch;
+      let settled = false;
+      const pending = createAiClient('https://ai.test', f).understand(understandReq);
+      void pending.then(() => {
+        settled = true;
+      });
+      await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS + 1);
+      expect(settled).toBe(true);
+      // Let the old implementation finish too, so a failed assertion leaves no pending timer.
+      await jest.advanceTimersByTimeAsync(ROUTER_TIMEOUT_MS);
+      expect(await pending).toMatchObject({ ok: false, detail: 'timeout' });
+    });
 
     it('gives up after ROUTER_TIMEOUT_MS (9 s) and tells the server to cancel the message', async () => {
       jest.useFakeTimers();

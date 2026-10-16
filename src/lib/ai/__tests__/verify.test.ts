@@ -128,6 +128,10 @@ describe('verifyPick', () => {
     expect(verifyPick(res({ pick: 0, reasons: [] }), all)).toBeNull();
   });
 
+  it('rejects a pick when a nonempty fit list contains no valid candidate', () => {
+    expect(verifyPick(res({ pick: 0, fit: [99], reasons: ['open_now'] }), all)).toBeNull();
+  });
+
   it('is rejected for an index out of range or not an integer', () => {
     expect(verifyPick(res({ pick: 3, reasons: ['open_now'] }), all)).toBeNull();
     expect(verifyPick(res({ pick: -1, reasons: ['open_now'] }), all)).toBeNull();

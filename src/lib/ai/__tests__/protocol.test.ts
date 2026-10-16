@@ -215,6 +215,7 @@ describe('total conversions: junk in, a schema-valid shape (or null / unknown) o
 
   it('an unusable pick or plan is null, a usable one is cleaned', () => {
     expect(toPick({ pick: 3, reasons: [] }, 3)).toBeNull();
+    expect(toPick({ pick: 0, fit: [99], reasons: ['closest'] }, 3)).toBeNull();
     expect(toPlan({ restaurant: 0, parking: 9, reasons: [] }, 2, 3)).toBeNull();
     expect(
       toPick({ pick: 1, reasons: ['closest', 'closest', 'x', 'outdoor', 'open_now', 'open_late'], runnerUp: 7, runnerUpWhy: 'bad', tone: '' }, 3),

@@ -660,6 +660,8 @@ export function toPick(
       .filter((v): v is number => v !== null)
       .filter((v, k, all) => all.indexOf(v) === k)
       .slice(0, MAX_FIT);
+    // A malformed nonempty fit list must not become "any candidate will do".
+    if (!park && Array.isArray(raw.fit) && raw.fit.length > 0 && !fit.includes(pick)) return null;
     const out = {
       // Restaurants only: an older worker or a car park pick has no fit.
       ...(park ? {} : { fit, noneFit: raw.noneFit === true }),

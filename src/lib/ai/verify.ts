@@ -95,7 +95,7 @@ export function verifyPick(
     .filter((k, j, all) => all.indexOf(k) === j);
   const noneFit = res.noneFit === true && fit.length === 0;
   // The pick must be one the model itself judged to fit.
-  if (fit.length > 0 && !fit.includes(res.pick)) return null;
+  if (Array.isArray(res.fit) && res.fit.length > 0 && !fit.includes(res.pick)) return null;
   // Nothing fits: no pick is shown, so its reasons do not matter.
   if (noneFit) {
     const tone = validateFreeText('tone', res.tone, text);
