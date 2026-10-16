@@ -659,6 +659,8 @@ const tr = {
     actPick: '✨ Yerim seçsin',
     pickLine: 'Benim seçimim {{name}}: {{reasons}}.',
     pickRunner: 'Alternatif: {{name}}, {{why}}.',
+    pickNoneFit:
+      'Yakında isteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En yakınları gösteriyorum.',
     pickUnavailable: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa ve otoparka göre.',
     why: {
       closest: 'en yakın olanı (~{{count}} dk yürüme)',
@@ -670,6 +672,7 @@ const tr = {
       most_free_spots: 'otoparkında en çok boş yer var ({{count}})',
       dish_named: 'adında {{dish}} geçiyor',
       outdoor: 'açık havada oturma yeri var',
+      fits_request: 'adına ve türüne göre isteğine uygun görünüyor',
     },
     // Wishes we have no data for: said honestly (L4), never guessed.
     and: 've',

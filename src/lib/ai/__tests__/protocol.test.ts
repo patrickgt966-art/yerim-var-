@@ -218,7 +218,9 @@ describe('total conversions: junk in, a schema-valid shape (or null / unknown) o
     expect(toPlan({ restaurant: 0, parking: 9, reasons: [] }, 2, 3)).toBeNull();
     expect(
       toPick({ pick: 1, reasons: ['closest', 'closest', 'x', 'outdoor', 'open_now', 'open_late'], runnerUp: 7, runnerUpWhy: 'bad', tone: '' }, 3),
-    ).toEqual({ pick: 1, reasons: ['closest', 'outdoor', 'open_now'], runnerUp: null, runnerUpWhy: null, tone: null });
+    ).toEqual({ fit: [], noneFit: false, pick: 1, reasons: ['closest', 'outdoor', 'open_now'], runnerUp: null, runnerUpWhy: null, tone: null });
+    // fit keeps valid, unique indices (at most MAX_FIT); noneFit is true only when said.
+    expect(toPick({ fit: [2, 2, 9, 0], noneFit: true, pick: 2, reasons: ['fits_request'] }, 3)).toMatchObject({ fit: [2, 0], noneFit: true, pick: 2, reasons: ['fits_request'] });
     expect(toChat({ reply: 'Selam!', action: 'dance' })).toEqual({ reply: 'Selam!', action: 'none' });
   });
 });

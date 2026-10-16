@@ -34,6 +34,7 @@ import {
   categoryOf,
   cuisineLabels,
   dishStem,
+  kindLabel,
   matchesCategory,
   getRestaurant,
   nearestParking,
@@ -57,6 +58,8 @@ import type { AiResult } from '@/lib/ai/client';
 import { validateFreeText, type FreeTextContext } from '@/lib/ai/freeText';
 import {
   MAX_CANDIDATES,
+  MAX_LABEL_CHARS,
+  MAX_PICK_CANDIDATES,
   MAX_PLAN_PARKINGS,
   MAX_REASONS,
   PARK_REASONS,
@@ -194,6 +197,11 @@ export type BotMessage = {
   notice?: string;
   /** "Park, walk, eat" steps built from our data. */
   plan?: PlanData;
+  /**
+   * The nearby places behind the cards (more than are shown), for the AI pick to judge which fit
+   * the request. Dropped before the reply leaves the assistant.
+   */
+  pool?: ChatCard[];
 };
 
 /** A plan card: the steps are already-rendered templates filled with our data. */
@@ -381,7 +389,12 @@ function variant(
 }
 
 /** Example chips that name a place of the active city. */
-const PLACE_EXAMPLES = new Set(['chat.exAlsancak', 'chat.exKonak', 'chat.exBreakfast', 'chat.exFish']);
+const PLACE_EXAMPLES = new Set([
+  'chat.exAlsancak',
+  'chat.exKonak',
+  'chat.exBreakfast',
+  'chat.exFish',
+]);
 
 function say(t: AssistantDeps['t'], key: string): ChatAction {
   const text = PLACE_EXAMPLES.has(key) ? t(key, cityExamples()) : t(key);
@@ -942,8 +955,10 @@ export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps
 
 /** The reply's cards are what "sence" / "sen seç" refer to next. */
 function remember(r: Result): Result {
+  // The pick's wider pool never leaves the assistant (it is not shown and not stored).
+  const { pool: _pool, ...reply } = r.reply;
   return {
-    reply: r.reply,
+    reply,
     ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
   };
 }
@@ -1120,7 +1135,11 @@ async function answerText(
   if (it.kind === 'greeting') {
     return withNotice(
       plain(
-        { text: variant(t, 'chat.hello', 4, text, cityExamples()), cards: [], actions: examples(ctx.section, t) },
+        {
+          text: variant(t, 'chat.hello', 4, text, cityExamples()),
+          cards: [],
+          actions: examples(ctx.section, t),
+        },
         ctx,
       ),
     );
@@ -1886,7 +1905,7 @@ function runFood(
       // A cuisine-tag match is not "in the name": word it as a likely fit.
       return profile ? t('chat.reasonLikely', { dish: dishName, label: profile.label }) : undefined;
     };
-    const cards: ChatCard[] = list.slice(0, MAX_CARDS).map((row) => {
+    const pool: ChatCard[] = list.slice(0, MAX_PICK_CANDIDATES).map((row) => {
       const reason = reasonOf(row.r.id);
       return {
         kind: 'restaurant',
@@ -1900,6 +1919,7 @@ function runFood(
         narr: cardNarr(row, deps, now, hits.get(row.r.id)),
       };
     });
+    const cards = pool.slice(0, MAX_CARDS);
     const actions: ChatAction[] = [];
     if (deps.ai?.pick && cards.length >= 2) {
       actions.push({ kind: 'pick', label: t('chat.actPick'), cards, query: ctx.query ?? '' });
@@ -1936,7 +1956,12 @@ function runFood(
       label: t('chat.actOther'),
       text: t(ctx.cat !== 'breakfast' ? 'chat.exBreakfast' : 'chat.exFish', cityExamples()),
     });
-    return { text, cards, actions };
+    return {
+      text,
+      cards,
+      actions,
+      ...(deps.ai?.pick && pool.length > cards.length ? { pool } : {}),
+    };
   }
 
   if (freeOnly && withPark.length > 0) {
@@ -2273,6 +2298,25 @@ function pickCandidate(card: Extract<ChatCard, { kind: 'restaurant' }>, i: numbe
   };
 }
 
+/** A candidate's name and type in words, so the AI can judge whether it fits the request. */
+function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): PickCandidate {
+  const r = getRestaurant(card.id);
+  if (!r) return { ...c, name: card.name.slice(0, MAX_LABEL_CHARS) };
+  const cat = categoryOf(r);
+  const tf = t as Parameters<typeof cuisineLabels>[1];
+  const kind = kindLabel(r.kind, tf);
+  const parts = [
+    ...(cat ? [t(`food.cats.${cat}`)] : []),
+    ...(kind ? [kind] : []),
+    ...cuisineLabels(r.cuisines, tf),
+  ].filter((p, k, all) => all.indexOf(p) === k);
+  return {
+    ...c,
+    name: r.name.slice(0, MAX_LABEL_CHARS),
+    ...(parts.length > 0 ? { type: parts.join(', ').slice(0, MAX_LABEL_CHARS) } : {}),
+  };
+}
+
 /** A verified reason code as a sentence part, filled only with the facts that made it true. */
 function reasonText(
   code: PickReason,
@@ -2296,6 +2340,8 @@ function reasonText(
       return t('chat.why.most_free_spots', { count: facts.freeSpots });
     case 'dish_named':
       return t('chat.why.dish_named', { dish });
+    case 'fits_request':
+      return t('chat.why.fits_request');
     default:
       return t(`chat.why.${code}`);
   }
@@ -2305,7 +2351,7 @@ type AiFail = { ok: false; reason: 'quota' | 'error' | 'invalid'; remaining?: nu
 
 type PickDone = {
   ok: true;
-  /** The picked card first (flagged), the others in their order. */
+  /** The picked card first (flagged), the others the AI judged to fit next, then the rest. */
   cards: ChatCard[];
   line: string;
   tone: string | null;
@@ -2324,9 +2370,9 @@ async function askPick(
   if (!ai?.pick) return { ok: false, reason: 'error' };
   const rest = cards
     .filter((c): c is Extract<ChatCard, { kind: 'restaurant' }> => c.kind === 'restaurant')
-    .slice(0, MAX_CANDIDATES);
+    .slice(0, MAX_PICK_CANDIDATES);
   if (rest.length < 2) return { ok: false, reason: 'invalid' };
-  const candidates = rest.map(pickCandidate);
+  const candidates = rest.map((c, k) => withLabel(pickCandidate(c, k), c, deps.t));
   const res = await ai.pick({ text, candidates });
   if (!res.ok) {
     return res.remaining === undefined
@@ -2336,6 +2382,23 @@ async function askPick(
   const v = verifyPick(res.value, candidates, tctx);
   if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
   const t = deps.t;
+  // Asked for something none of the nearby places seems to offer: say so, pick nothing.
+  if (v.noneFit) {
+    return {
+      ok: true,
+      cards: cards.slice(0, MAX_CARDS),
+      line: t('chat.pickNoneFit'),
+      tone: v.tone,
+      remaining: res.remaining,
+    };
+  }
+  // What is shown: the pick, the others judged to fit, then the nearest of the rest.
+  const shown = [
+    v.pick,
+    ...v.fit.filter((k) => k !== v.pick),
+    ...rest.map((_, k) => k).filter((k) => k !== v.pick && !v.fit.includes(k)),
+  ].slice(0, MAX_CARDS);
+  if (v.runnerUp && !shown.includes(v.runnerUp.index)) v.runnerUp = null;
   const why = (code: PickReason, k: number) =>
     reasonText(code, { ...candidates[k]!, freeSpots: candidates[k]!.freeSpots }, dish, t);
   let line = t('chat.pickLine', {
@@ -2350,11 +2413,9 @@ async function askPick(
         why: why(v.runnerUp.why, v.runnerUp.index),
       });
   }
-  const picked = rest[v.pick]!;
-  const ordered: ChatCard[] = [
-    { ...picked, picked: true },
-    ...cards.filter((c) => !(c.kind === 'restaurant' && c.id === picked.id)),
-  ];
+  const ordered: ChatCard[] = shown.map((k) =>
+    k === v.pick ? { ...rest[k]!, picked: true } : rest[k]!,
+  );
   return { ok: true, cards: ordered, line, tone: v.tone, remaining: res.remaining };
 }
 
@@ -2646,7 +2707,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
         sparkle = true;
       }
     } else if (ai?.pick && !meta.quotaOut && meta.ai && restaurants.length >= 2) {
-      const pick = await askPick(reply.cards, meta.text, dish, deps, tctx);
+      const pick = await askPick(reply.pool ?? reply.cards, meta.text, dish, deps, tctx);
       noteQuota(reply, pick, deps);
       if (pick.ok) {
         reply.cards = pick.cards;

@@ -17,6 +17,15 @@ export const MAX_RESULTS = 5;
 export const ROUTER_TIMEOUT_MS = 9000;
 /** /pick and /plan: candidate restaurants per request, and car parks per restaurant (plan). */
 export const MAX_CANDIDATES = 5;
+/**
+ * /pick for restaurants: the model sees this many nearby places (name and type) and judges which
+ * fit the request, so a goal or a diet ("kas yapmak", "vejetaryenim") needs no rule of its own.
+ */
+export const MAX_PICK_CANDIDATES = 15;
+/** At most this many candidates are marked as fitting the request. */
+export const MAX_FIT = 5;
+/** Longest candidate name / type the worker accepts. */
+export const MAX_LABEL_CHARS = 80;
 export const MAX_PLAN_PARKINGS = 3;
 
 /**
@@ -404,6 +413,8 @@ export const PICK_REASONS = [
   'most_free_spots',
   'dish_named',
   'outdoor',
+  // The model judged, from name and type, that the place fits the request; shown as its judgment.
+  'fits_request',
 ] as const;
 export type PickReason = (typeof PICK_REASONS)[number];
 export const MAX_REASONS = 3;
@@ -412,6 +423,10 @@ export const MAX_REASONS = 3;
 export type PickCandidate = {
   i: number;
   kind: 'restaurant';
+  /** The place's name in our data (public business name), for judging fit only. */
+  name?: string;
+  /** Its category, kind and cuisines in words ("Kahvaltı, pastane"), for judging fit only. */
+  type?: string;
   /** Rough walk from the search point. */
   walkMin: number;
   openState: OpenStateCode;
@@ -443,6 +458,10 @@ export function pickOutputSchema(n: number) {
     .min(0)
     .max(Math.max(0, n - 1));
   return z.object({
+    /** Candidates that fit what the user asked for, best first; [] when any place will do. */
+    fit: z.array(idx).max(MAX_FIT),
+    /** The user asked for something none of the candidates seems to offer. */
+    noneFit: z.boolean(),
     pick: idx,
     reasons: z.array(z.enum(PICK_REASONS)).max(MAX_REASONS),
     runnerUp: idx.nullable(),
@@ -460,7 +479,10 @@ export type PickResponse = z.infer<ReturnType<typeof pickOutputSchema>>;
  */
 export function pickModelSchema(n: number) {
   const max = Math.max(0, n - 1);
+  // fit / noneFit come first: the model judges what fits before it picks.
   return z.object({
+    fit: z.array(z.number().int().min(0).max(max)),
+    noneFit: z.boolean(),
     pick: z.number().int().min(0).max(max),
     reasons: z.array(z.enum(PICK_REASONS)),
     runnerUp: z.number().int().min(0).max(max).nullable(),
@@ -633,7 +655,14 @@ export function toPick(
     if (pick === null) return null;
     const allowed: readonly string[] = park ? PARK_REASONS : PICK_REASONS;
     const why = allowed.find((r) => r === raw.runnerUpWhy);
+    const fit = (Array.isArray(raw.fit) ? raw.fit : [])
+      .map((v) => index(v, max))
+      .filter((v): v is number => v !== null)
+      .filter((v, k, all) => all.indexOf(v) === k)
+      .slice(0, MAX_FIT);
     const out = {
+      // Restaurants only: an older worker or a car park pick has no fit.
+      ...(park ? {} : { fit, noneFit: raw.noneFit === true }),
       pick,
       reasons: codes(raw.reasons, allowed, MAX_REASONS),
       runnerUp: index(raw.runnerUp, max),
@@ -676,8 +705,15 @@ export function pickSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve adayların verilerine bakıp en uygun adayı seçersin.
 
-Her aday: i (indeks), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
-Çıktı: pick (seçtiğin aday), reasons (en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor), runnerUp (ikinci tercih ya da null), runnerUpWhy (tek kod ya da null), tone.
+Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
+
+Önce isteğe uygunluğa karar ver: kullanıcı ne istiyor (bir yemek, bir amaç ya da beslenme tarzı: kas yapmak, vejetaryen, hafif, tatlı, çocukla gitmek ...)? Her adayın adına ve türüne bakıp hangilerinin bu isteğe uyduğunu kendi aklınla değerlendir. Menü bilgimiz yok; sadece ad ve türden makul bir çıkarım yap (örneğin vejetaryen için kebapçı, balıkçı, kasap uymaz; protein için pastane, kahveci uymaz).
+Çıktı:
+- fit: isteğe uyan adayların indeksleri, en uygundan başlayarak, en çok 5. Kullanıcı belirli bir şey istemiyorsa (her yer olur) boş dizi.
+- noneFit: kullanıcı belirli bir şey istiyor ama hiçbir aday buna uymuyorsa true, yoksa false.
+- pick: seçtiğin aday; fit boş değilse fit içinden olmalı.
+- reasons: en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor, fits_request (seçtiğin aday fit içindeyse).
+- runnerUp (ikinci tercih ya da null; fit boş değilse fit içinden), runnerUpWhy (tek kod ya da null), tone.
 
 ${LIMITS_TR}`;
 }

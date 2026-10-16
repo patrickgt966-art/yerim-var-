@@ -192,8 +192,13 @@ describe('a wish the rules cannot use: understand, then pick', () => {
     expect(ai.pick).toHaveBeenCalledTimes(1);
     const req = ai.pick.mock.calls[0]![0] as { text: string; candidates: PickCandidate[] };
     expect(req.text).toBe(text);
-    // Facts only: no names in what is sent.
-    for (const c of req.candidates) expect(Object.keys(c)).not.toContain('name');
+    // Facts plus the public name and type (to judge fit); never contact details or addresses.
+    for (const c of req.candidates) {
+      expect(typeof c.name).toBe('string');
+      for (const k of ['phone', 'address', 'website', 'instagram', 'id']) {
+        expect(Object.keys(c)).not.toContain(k);
+      }
+    }
     const cards = restaurantCards(r.reply.cards);
     expect(cards.length).toBeGreaterThanOrEqual(2);
     expect(cards[0]).toMatchObject({ picked: true });
@@ -768,5 +773,56 @@ describe('the chat redirect of the router is checked like the tone', () => {
     expect(r.reply.text.startsWith('chat.offTopic_')).toBe(true);
     expect(r.reply.sparkle).toBeFalsy();
     expect(r.reply.actions.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the AI judges which nearby places fit the request (name and type)', () => {
+  const text = 'Ben vejetaryenim aga';
+  const understand = async () => okU(search({ district: null, nearMe: true }));
+
+  it('sees more places than are shown, and its fitting pick leads even from beyond the first five', async () => {
+    let seen: PickCandidate[] = [];
+    const pick = async (req: { candidates: PickCandidate[] }) => {
+      seen = req.candidates;
+      const last = req.candidates.length - 1;
+      return pickRes({
+        fit: [last, last - 1],
+        noneFit: false,
+        pick: last,
+        reasons: ['fits_request'],
+      });
+    };
+    const { deps } = mockAi({ understand, pick: pick as (req: never) => unknown });
+    const r = await answer(text, emptyContext('food'), deps);
+    expect(seen.length).toBeGreaterThan(5);
+    expect(seen.every((c) => typeof c.type === 'string' || c.type === undefined)).toBe(true);
+    const cards = restaurantCards(r.reply.cards);
+    expect(cards.length).toBeLessThanOrEqual(5);
+    expect(cards[0]).toMatchObject({ picked: true, name: seen[seen.length - 1]!.name });
+    expect(cards[1]!.name).toBe(seen[seen.length - 2]!.name);
+    expect(r.reply.text).toContain('chat.why.fits_request');
+  });
+
+  it('a pick outside its own fit list is not shown', async () => {
+    const pick = async () => pickRes({ fit: [1], noneFit: false, pick: 0, reasons: ['closest'] });
+    const { deps } = mockAi({ understand, pick });
+    const r = await answer(text, emptyContext('food'), deps);
+    expect(restaurantCards(r.reply.cards).some((c) => c.picked)).toBe(false);
+    expect(r.reply.text).not.toContain('chat.pickLine');
+  });
+
+  it('none fits: it says so honestly and picks nothing', async () => {
+    const pick = async () => pickRes({ fit: [], noneFit: true, pick: 0, reasons: ['closest'] });
+    const { deps } = mockAi({ understand, pick });
+    const r = await answer(text, emptyContext('food'), deps);
+    expect(r.reply.text).toContain('chat.pickNoneFit');
+    expect(restaurantCards(r.reply.cards).some((c) => c.picked)).toBe(false);
+    expect(restaurantCards(r.reply.cards).length).toBeGreaterThan(0);
+  });
+
+  it('the wider pool never leaves the assistant', async () => {
+    const { deps } = mockAi({ understand, pick: closestPick() });
+    const r = await answer(text, emptyContext('food'), deps);
+    expect('pool' in r.reply).toBe(false);
   });
 });

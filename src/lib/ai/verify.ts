@@ -36,8 +36,15 @@ function uniqueReasons(codes: unknown): PickReason[] {
 }
 
 /** True when the reason is a fact about this candidate (compared with all candidates). */
-export function pickReasonHolds(code: PickReason, c: PickCandidate, all: PickCandidate[]): boolean {
+export function pickReasonHolds(
+  code: PickReason,
+  c: PickCandidate,
+  all: PickCandidate[],
+  fit: readonly number[] = [],
+): boolean {
   switch (code) {
+    case 'fits_request':
+      return fit.includes(c.i);
     case 'closest':
       return c.walkMin === Math.min(...all.map((x) => x.walkMin));
     case 'open_now':
@@ -69,6 +76,10 @@ export type VerifiedPick = {
   runnerUp: { index: number; why: PickReason } | null;
   /** Z1, only when it passed validateFreeText. */
   tone: string | null;
+  /** Candidates the model judged to fit the request, best first ([] = any place will do). */
+  fit: number[];
+  /** The user asked for something none of the candidates seems to offer. */
+  noneFit: boolean;
 };
 
 export function verifyPick(
@@ -78,20 +89,44 @@ export function verifyPick(
 ): VerifiedPick | null {
   const n = candidates.length;
   if (!isIndex(res?.pick, n)) return null;
+  // An older worker sends no fit: every place may do, as before.
+  const fit = (Array.isArray(res.fit) ? res.fit : [])
+    .filter((k) => isIndex(k, n))
+    .filter((k, j, all) => all.indexOf(k) === j);
+  const noneFit = res.noneFit === true && fit.length === 0;
+  // The pick must be one the model itself judged to fit.
+  if (fit.length > 0 && !fit.includes(res.pick)) return null;
+  // Nothing fits: no pick is shown, so its reasons do not matter.
+  if (noneFit) {
+    const tone = validateFreeText('tone', res.tone, text);
+    return { pick: res.pick, reasons: [], runnerUp: null, tone, fit, noneFit };
+  }
   const chosen = candidates[res.pick]!;
   const reasons = uniqueReasons(res.reasons)
-    .filter((code) => pickReasonHolds(code, chosen, candidates))
+    .filter((code) => pickReasonHolds(code, chosen, candidates, fit))
     .slice(0, MAX_REASONS);
   if (reasons.length === 0) return null;
 
   let runnerUp: VerifiedPick['runnerUp'] = null;
-  if (isIndex(res.runnerUp, n) && res.runnerUp !== res.pick && res.runnerUpWhy) {
+  if (
+    isIndex(res.runnerUp, n) &&
+    res.runnerUp !== res.pick &&
+    res.runnerUpWhy &&
+    (fit.length === 0 || fit.includes(res.runnerUp))
+  ) {
     const other = candidates[res.runnerUp]!;
-    if (pickReasonHolds(res.runnerUpWhy, other, candidates)) {
+    if (pickReasonHolds(res.runnerUpWhy, other, candidates, fit)) {
       runnerUp = { index: res.runnerUp, why: res.runnerUpWhy };
     }
   }
-  return { pick: res.pick, reasons, runnerUp, tone: validateFreeText('tone', res.tone, text) };
+  return {
+    pick: res.pick,
+    reasons,
+    runnerUp,
+    tone: validateFreeText('tone', res.tone, text),
+    fit,
+    noneFit,
+  };
 }
 
 /** Plan facts: the restaurant, one of its car parks, and the claims that hold for them. */

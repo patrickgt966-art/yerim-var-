@@ -418,7 +418,7 @@ describe('ai client pick / plan / understand extras', () => {
       outdoor: null,
     })),
   };
-  const pick = { pick: 1, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null };
+  const pick = { fit: [], noneFit: false, pick: 1, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null };
 
   it('returns a pick that fits the candidates', async () => {
     const f = fakeFetch(200, { pick, remaining: 3 });

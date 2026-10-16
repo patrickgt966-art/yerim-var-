@@ -1,6 +1,8 @@
 import {
   FREE_DAILY,
   MAX_CANDIDATES,
+  MAX_LABEL_CHARS,
+  MAX_PICK_CANDIDATES,
   MAX_PLAN_PARKINGS,
   parkPickOutputSchema,
   pickOutputSchema,
@@ -47,20 +49,27 @@ describe('shared quota constant', () => {
 });
 
 describe('validPick', () => {
-  it('accepts 1..5 restaurant candidates and keeps only known fields', () => {
-    const body = { ...base, candidates: [rest(0, { name: 'Mado' }), rest(1)] };
+  it("keeps a restaurant's short name and type (to judge fit) and drops unknown fields", () => {
+    const body = {
+      ...base,
+      candidates: [
+        rest(0, { name: 'Mado', type: 'Tatlı, dondurma', phone: '+90 232 000 00 00' }),
+        rest(1, { name: 'x'.repeat(MAX_LABEL_CHARS + 1), type: 7 }),
+      ],
+    };
     const v = validPick(body);
     expect(v?.candidates).toHaveLength(2);
-    expect(JSON.stringify(v)).not.toContain('Mado');
+    expect(v?.candidates[0]).toMatchObject({ name: 'Mado', type: 'Tatlı, dondurma' });
+    expect(JSON.stringify(v)).not.toContain('+90');
+    expect(Object.keys(v!.candidates[1]!)).not.toContain('name');
+    expect(Object.keys(v!.candidates[1]!)).not.toContain('type');
   });
 
-  it('rejects more than five candidates, none, and a non-array', () => {
-    expect(
-      validPick({
-        ...base,
-        candidates: Array.from({ length: MAX_CANDIDATES + 1 }, (_, i) => rest(i)),
-      }),
-    ).toBeNull();
+  it('takes up to 15 restaurants and 5 car parks; rejects none and a non-array', () => {
+    const many = (n: number, f: (i: number) => object) => Array.from({ length: n }, (_, i) => f(i));
+    expect(validPick({ ...base, candidates: many(MAX_PICK_CANDIDATES, rest) })).not.toBeNull();
+    expect(validPick({ ...base, candidates: many(MAX_PICK_CANDIDATES + 1, rest) })).toBeNull();
+    expect(validPick({ ...base, candidates: many(MAX_CANDIDATES + 1, (i) => park(i)) })).toBeNull();
     expect(validPick({ ...base, candidates: [] })).toBeNull();
     expect(validPick({ ...base, candidates: 'x' })).toBeNull();
   });
@@ -136,7 +145,11 @@ describe('output schemas are bounded by what was sent', () => {
 
   it('pick', () => {
     const s = pickOutputSchema(3);
-    expect(s.safeParse({ ...ok, pick: 2 }).success).toBe(true);
+    const fit = { fit: [], noneFit: false };
+    expect(s.safeParse({ ...ok, ...fit, pick: 2 }).success).toBe(true);
+    expect(s.safeParse({ ...ok, fit: [2, 0], noneFit: false, pick: 2 }).success).toBe(true);
+    expect(s.safeParse({ ...ok, fit: [3], noneFit: false, pick: 2 }).success).toBe(false);
+    expect(s.safeParse({ ...ok, pick: 2 }).success).toBe(false);
     expect(s.safeParse({ ...ok, pick: 3 }).success).toBe(false);
     expect(s.safeParse({ ...ok, pick: -1 }).success).toBe(false);
     expect(s.safeParse({ ...ok, pick: 1.5 }).success).toBe(false);
