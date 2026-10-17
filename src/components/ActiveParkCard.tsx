@@ -13,6 +13,7 @@ import { useApp, type ActivePark } from '@/store/app';
 import { asym, fonts, useColors } from '@/theme';
 
 import { Button } from './Button';
+import { ParkReminder } from './ParkReminder';
 import { PBadge } from './PBadge';
 import { Txt } from './Txt';
 import { useNow } from '@/lib/useNow';
@@ -109,6 +110,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
   const actions = (
     <View style={{ gap: 8, paddingHorizontal: 4 }}>
       {stale && <StillParkedPrompt />}
+      {!stale && <ParkReminder active={active} />}
       <Button
         label={t('search.goToCar')}
         disabled={busy}

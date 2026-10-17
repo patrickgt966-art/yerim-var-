@@ -19,6 +19,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { warmUpParkings } from '@/data/useParkings';
+import { cancelParkReminder, setUpReminders } from '@/lib/reminders';
 import { useApp } from '@/store/app';
 import { useHydrated } from '@/store/useHydrated';
 import { useColors } from '@/theme';
@@ -31,6 +32,14 @@ const queryClient = new QueryClient();
 const warmHydratedCity = () => void warmUpParkings(queryClient, useApp.getState().city);
 if (useApp.persist.hasHydrated()) warmHydratedCity();
 else useApp.persist.onFinishHydration(warmHydratedCity);
+
+// A park reminder belongs to its park: ending the park, starting another or clearing the reminder
+// cancels the scheduled notification, whichever screen did it.
+setUpReminders();
+useApp.subscribe((s, prev) => {
+  const old = prev.active?.reminder?.id;
+  if (old && old !== s.active?.reminder?.id) void cancelParkReminder(old);
+});
 
 // Pause polling while the app is in the background.
 function onAppStateChange(status: AppStateStatus) {

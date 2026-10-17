@@ -20,7 +20,10 @@ export type ActivePark = {
   confirmedAt?: string;
   /** Where the user is walking to after parking (set from a restaurant page). */
   destination?: ParkDestination;
+  /** A "go back to the car" notification scheduled on this device. */
+  reminder?: ParkReminder;
 } & LatLng;
+export type ParkReminder = { id: string; at: string };
 export type ParkMode = 'now' | 'twoHours';
 
 /** Recent searches kept in the store. */
@@ -60,6 +63,8 @@ type State = {
   startPark: (p: ActivePark) => void;
   endPark: () => void;
   confirmPark: () => void;
+  /** Sets or clears the running park's reminder (the notification itself is scheduled elsewhere). */
+  setParkReminder: (r: ParkReminder | null) => void;
   setMode: (m: ParkMode) => void;
 };
 
@@ -117,6 +122,12 @@ export const useApp = create<State>()(
         set((s) =>
           s.active ? { active: { ...s.active, confirmedAt: new Date().toISOString() } } : {},
         ),
+      setParkReminder: (r) =>
+        set((s) => {
+          if (!s.active) return {};
+          const { reminder: _old, ...rest } = s.active;
+          return { active: r ? { ...rest, reminder: r } : rest };
+        }),
       setMode: (mode) => set({ mode }),
     }),
     {
