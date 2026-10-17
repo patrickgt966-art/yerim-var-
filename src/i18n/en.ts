@@ -430,6 +430,7 @@ const en = {
     walkingRoute: 'Walking directions',
     parkNone: "We couldn't find a car park nearby. You may need to park a bit further and walk.",
     parkLoading: 'Loading car parks…',
+    report: 'Report wrong info / closed',
     footer: 'Data: © OpenStreetMap contributors (ODbL). Info may be incomplete or out of date.',
     footerOverture:
       'Data: Overture Maps (CDLA-Permissive-2.0). Info may be out of date. The place may have closed or moved.',

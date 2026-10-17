@@ -41,7 +41,8 @@ const tr = {
     sampleBanner: 'Bu bilgi deneme, gerçek değil. Belediye verisine ulaşılamıyor.',
     staticOnlyBanner: 'Belediye verisine ulaşılamıyor. Otopark konumları var, boş yer bilgisi yok.',
     // Calm note for a city without a live parking API (Ankara); not an outage.
-    noLiveBanner: '{{place}} canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.',
+    noLiveBanner:
+      '{{place}} canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.',
     offline: 'İnternet yok',
     offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
   },
@@ -241,8 +242,7 @@ const tr = {
     sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
       'İzmir Büyükşehir Belediyesi Açık Veri (CC BY 4.0), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
-    sourceBursa:
-      'Bursa Büyükşehir Belediyesi Açık Yeşil, otopark veri seti. Boş yer bilgisi yok.',
+    sourceBursa: 'Bursa Büyükşehir Belediyesi Açık Yeşil, otopark veri seti. Boş yer bilgisi yok.',
     sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
       '© OpenStreetMap katkıcıları (ODbL). Boş yer bilgisi yok. Bilgileri gönüllüler girdi.',
@@ -414,6 +414,7 @@ const tr = {
     walkingRoute: 'Yürüyüş tarifi',
     parkNone: 'Yakında otopark bulamadık. Biraz uzağa park edip yürümen gerekebilir.',
     parkLoading: 'Otoparklar yükleniyor…',
+    report: 'Yanlış bilgi / kapanmış bildir',
     footer: 'Veri: © OpenStreetMap katkıcıları (ODbL). Bilgi eksik ya da eski olabilir.',
     footerOverture:
       'Veri: Overture Maps (CDLA-Permissive-2.0). Bilgi eski olabilir. Yer kapanmış ya da taşınmış olabilir.',
