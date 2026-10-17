@@ -268,7 +268,6 @@ def cuisines_of(row):
 DIET_BY_TAXONOMY = {
     'vegan_restaurant': 'vegan',
     'vegetarian_restaurant': 'vegetarian',
-    'halal_restaurant': 'halal',
     'gluten_free_restaurant': 'gluten_free',
 }
 

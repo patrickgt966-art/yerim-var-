@@ -858,7 +858,8 @@ function fromPlace(el) {
 
 const yes = (v) => (v === 'yes' ? true : v === 'no' ? false : null);
 
-const DIETS = ['vegetarian', 'vegan', 'pescetarian', 'halal', 'gluten_free'];
+// Not halal: in Türkiye nearly every place is, and the few tagged ones would read as the only ones.
+const DIETS = ['vegetarian', 'vegan', 'pescetarian', 'gluten_free'];
 
 /**
  * Diet tags as codes: "vegan" when the place serves only that (diet:vegan=only, or cuisine=vegan),

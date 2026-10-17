@@ -54,7 +54,7 @@ Son güncelleme: 16 Ekim 2026.
 - `/pick` yakındaki en çok 40 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
 - Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`).
 - Canlı yapay zekâ sınavı (`scripts/ai-eval.ts`, `src/data/eval/aiCases.ts`): argo, dolgu kelime, iki mesaja bölünmüş istek ve seçim kararları; yapay zekâ dosyalarına dokunan her PR'da çalışır (GitHub'da `ANTHROPIC_API_KEY` sırrı gerekir), %85'in altında kırmızı olur.
-- Beslenme verisi: OSM `diet:*` etiketleri (vejetaryen, vegan, pesketaryen, helal, glutensiz) ve Overture vegan/vejetaryen/helal kategorileri; detay sayfasında ve yapay zekâ seçiminde gösterilir.
+- Beslenme verisi: OSM `diet:*` etiketleri (vejetaryen, vegan, pesketaryen, glutensiz) ve Overture vegan/vejetaryen/glutensiz kategorileri; helal bilinçli olarak yok (Türkiye'de neredeyse her yer helal, az sayıda etiketli yer yanlış izlenim verir); detay sayfasında ve yapay zekâ seçiminde gösterilir.
 - Seçim, arama alanının biraz dışındaki 10 yeri de görür; yakında uyan yoksa onları seçer.
 - Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
 

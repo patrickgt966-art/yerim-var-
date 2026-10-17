@@ -207,12 +207,12 @@ export const PICK_CASES: PickCase[] = [
     expect: { pickIn: [3], notFit: [0, 1] },
   },
   {
-    name: 'diet labels are data: the place tagged halal',
-    text: 'helal bir yer istiyor',
+    name: 'diet labels are data: the place tagged gluten-free',
+    text: 'çölyak hastası, glutensiz yemek istiyor',
     candidates: [
-      place(0, 'Meyhane Bizim', 'Meyhane, bar', 2),
-      place(1, 'Karadeniz Lokantası', 'Lokanta, Helal, restoran', 5),
-      place(2, 'Irish Pub', 'Meyhane, pub', 3),
+      place(0, 'Fırın Ekmek', 'Kahvaltı, fırın', 2),
+      place(1, 'Yeşil Mutfak', 'Lokanta, Glutensiz seçenek var, restoran', 5),
+      place(2, 'Pideci Mehmet', 'Fast food, restoran, Pide', 3),
     ],
     expect: { pickIn: [1], notFit: [0, 2] },
   },

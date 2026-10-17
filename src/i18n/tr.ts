@@ -414,12 +414,10 @@ const tr = {
       vegetarian: 'Vejetaryen',
       vegan: 'Vegan',
       pescetarian: 'Pesketaryen',
-      halal: 'Helal',
       gluten_free: 'Glutensiz',
       vegetarian_options: 'Vejetaryen seçenek var',
       vegan_options: 'Vegan seçenek var',
       pescetarian_options: 'Pesketaryen seçenek var',
-      halal_options: 'Helal seçenek var',
       gluten_free_options: 'Glutensiz seçenek var',
     },
     cuisines: {

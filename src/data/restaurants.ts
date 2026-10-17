@@ -237,12 +237,10 @@ const DIET_KEYS = new Set([
   'vegetarian',
   'vegan',
   'pescetarian',
-  'halal',
   'gluten_free',
   'vegetarian_options',
   'vegan_options',
   'pescetarian_options',
-  'halal_options',
   'gluten_free_options',
 ]);
 

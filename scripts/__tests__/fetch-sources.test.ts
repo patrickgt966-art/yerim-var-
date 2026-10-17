@@ -44,13 +44,15 @@ it('keeps diet tags: "only" (or the cuisine) as the diet, "yes" as an option', (
     tags: { name: 'X', amenity: 'restaurant', ...tags },
   });
   expect(food(el({ 'diet:vegan': 'only' }))!.dt).toEqual(['vegan']);
-  expect(food(el({ 'diet:vegetarian': 'yes', 'diet:halal': 'yes' }))!.dt).toEqual([
+  expect(food(el({ 'diet:vegetarian': 'yes', 'diet:gluten_free': 'yes' }))!.dt).toEqual([
     'vegetarian_options',
-    'halal_options',
+    'gluten_free_options',
   ]);
   expect(food(el({ cuisine: 'vegetarian;turkish' }))!.dt).toEqual(['vegetarian']);
   expect(food(el({ 'diet:pescetarian': 'yes' }))!.dt).toEqual(['pescetarian_options']);
   expect(food(el({ 'diet:vegan': 'no' }))).not.toHaveProperty('dt');
+  // Halal is left out: in Türkiye nearly every place is.
+  expect(food(el({ 'diet:halal': 'only' }))).not.toHaveProperty('dt');
 });
 
 it('includes every Ankara district centre in the tiled places/food scan', () => {
