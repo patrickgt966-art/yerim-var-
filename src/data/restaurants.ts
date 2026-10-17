@@ -21,6 +21,8 @@ export type FoodRecord = {
   o: number;
   k: string;
   c?: string[];
+  /** Diet codes: "vegan" serves only that, "vegan_options" offers it (OSM diet:*, Overture category). */
+  dt?: string[];
   h?: string;
   p?: string;
   w?: string;
@@ -52,6 +54,8 @@ export type Restaurant = {
   lng: number;
   kind: string;
   cuisines: string[];
+  /** Diet codes from the data ("vegetarian", "vegan_options", ...); empty when none is known. */
+  diets: string[];
   /** Raw OSM opening_hours text. */
   openingHours: string | null;
   phone: string | null;
@@ -78,6 +82,7 @@ export function toRestaurant(r: FoodRecord): Restaurant {
     lng: r.o,
     kind: r.k,
     cuisines: r.c ?? [],
+    diets: r.dt ?? [],
     openingHours: r.h ?? null,
     phone: r.p ?? null,
     website: r.w ?? null,
@@ -226,6 +231,22 @@ const CUISINE_KEYS: Record<string, string> = {
 export function kindLabel(kind: string, t: TFunction): string | null {
   const key = KIND_KEYS[kind];
   return key ? t(`food.kinds.${key}`) : null;
+}
+
+const DIET_KEYS = new Set([
+  'vegetarian',
+  'vegan',
+  'halal',
+  'gluten_free',
+  'vegetarian_options',
+  'vegan_options',
+  'halal_options',
+  'gluten_free_options',
+]);
+
+/** Turkish labels for the diet codes in our data ("Vegan", "Vejetaryen seçenek var"). */
+export function dietLabels(codes: string[], t: TFunction): string[] {
+  return codes.filter((c) => DIET_KEYS.has(c)).map((c) => t(`food.diets.${c}`));
 }
 
 /** Turkish labels for known cuisine codes; unknown codes are dropped, duplicates merged. */

@@ -264,6 +264,25 @@ def cuisines_of(row):
     return out
 
 
+# taxonomy value -> diet code (as in fetch-sources.mjs: a place of that kind serves only that)
+DIET_BY_TAXONOMY = {
+    'vegan_restaurant': 'vegan',
+    'vegetarian_restaurant': 'vegetarian',
+    'halal_restaurant': 'halal',
+    'gluten_free_restaurant': 'gluten_free',
+}
+
+
+def diets_of(row):
+    tax = row.get('taxonomy') or {}
+    out = []
+    for v in [tax.get('primary'), *(tax.get('alternates') or [])]:
+        d = DIET_BY_TAXONOMY.get(v)
+        if d and d not in out:
+            out.append(d)
+    return out
+
+
 def is_corroborated(row):
     """2+ distinct source datasets other than 'Overture' itself, or confidence >= 0.9."""
     datasets = {s.get('dataset') for s in (row.get('sources') or []) if s}
@@ -284,6 +303,7 @@ def to_record(row, kind, area_codes=(IZMIR_AREA_CODE,)):
         'o': round((bb['xmin'] + bb['xmax']) / 2, 5),
         'k': kind,
         'c': cuisines_of(row),
+        'dt': diets_of(row),
         'p': phone,
         'w': (row.get('websites') or [None])[0],
         'ad': ((row.get('addresses') or [{}])[0] or {}).get('freeform'),

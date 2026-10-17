@@ -14,7 +14,7 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
-import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
+import { cuisineLabels, dietLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { useRanked } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
@@ -77,7 +77,12 @@ export default function RestaurantDetail() {
     );
   }
 
-  const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t), r.address]
+  const meta = [
+    kindLabel(r.kind, t),
+    ...dietLabels(r.diets, t),
+    ...cuisineLabels(r.cuisines, t),
+    r.address,
+  ]
     .filter(Boolean)
     .join(' · ');
   const facts = [
