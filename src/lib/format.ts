@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import { estimateCost, tariffFor } from '@/data/tariffs';
+import { parkCost, tariffFor } from '@/data/tariffs';
 import type { Parking } from '@/data/types';
 import type { ParkMode } from '@/store/app';
 
@@ -15,7 +15,7 @@ export function priceText(
   if (tariff?.hourly != null) {
     if (mode === 'twoHours')
       return t(spoken ? 'common.a11yTwoHourCost' : 'common.twoHourCost', {
-        price: estimateCost(tariff.hourly, 120),
+        price: parkCost(p.id, tariff.hourly, 120),
       });
     return t(spoken ? 'common.a11yPerHour' : 'common.perHour', { price: tariff.hourly });
   }

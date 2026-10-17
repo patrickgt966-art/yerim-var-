@@ -35,7 +35,9 @@ describe('SampleBanner in a city without a live parking API', () => {
     useApp.getState().setCity('bursa');
     await render(<SampleBanner result={staticOnly()} />);
     expect(
-      screen.getByText("Bursa'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor."),
+      screen.getByText(
+        "Bursa'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.",
+      ),
     ).toBeTruthy();
     expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
@@ -45,7 +47,9 @@ describe('SampleBanner in a city without a live parking API', () => {
     useApp.getState().setCity('antalya');
     await render(<SampleBanner result={staticOnly()} />);
     expect(
-      screen.getByText("Antalya'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor."),
+      screen.getByText(
+        "Antalya'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.",
+      ),
     ).toBeTruthy();
     expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();

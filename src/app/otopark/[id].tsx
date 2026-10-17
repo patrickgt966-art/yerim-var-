@@ -232,6 +232,12 @@ export default function ParkingDetail() {
               {tariff.bands.map((b) => (
                 <Row key={b.label} label={b.label} value={`₺${b.price}`} />
               ))}
+              {!!tariff.monthly && <Row label={t('detail.monthly')} value={`₺${tariff.monthly}`} />}
+              {!!tariff.freeMinutes && (
+                <Txt variant="bodyBold" color={c.plenty}>
+                  {t('detail.freeMinutes', { count: tariff.freeMinutes })}
+                </Txt>
+              )}
               <Txt variant="caption" secondary>
                 {t('detail.tariffSource', { source: tariff.source })}
               </Txt>

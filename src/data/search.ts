@@ -197,6 +197,14 @@ function buildIndex(): Entry[] {
 
 const townLists = new Map<string, (LatLng & { name: string })[]>();
 
+/** The neighbourhood a point is in, by the nearest place of kind town; none farther than `maxM`. */
+export function areaName(p: LatLng, maxM = 2500): string | undefined {
+  const name = nearestTown(p);
+  if (!name) return undefined;
+  const t = townLists.get(activeCity().id)?.find((x) => x.name === name);
+  return t && distanceMeters(p, t) <= maxM ? name : undefined;
+}
+
 function nearestTown(p: LatLng): string | undefined {
   const id = activeCity().id;
   let towns = townLists.get(id);

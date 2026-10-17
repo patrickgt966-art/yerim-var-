@@ -1,0 +1,44 @@
+name: Restoran bilgisi yanlış
+description: Bir restoran kapanmış, taşınmış ya da bilgileri yanlış.
+title: 'Restoran bilgisi yanlış: '
+labels: ['veri', 'restoran']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teşekkürler! Uygulamadaki "Yanlış bilgi / kapanmış bildir" butonu restoranın bilgilerini aşağıya önceden doldurur.
+        Restoran verisi OpenStreetMap ve Overture Maps'ten gelir. Kapanmış bir yer bir sonraki veri güncellemesinde listeden çıkarılır.
+  - type: input
+    id: restoran
+    attributes:
+      label: Restoran
+      description: Adı ve uygulamadaki kimliği.
+      placeholder: Kordon Kahve (osm-node-123)
+    validations:
+      required: true
+  - type: dropdown
+    id: tur
+    attributes:
+      label: Ne yanlış?
+      multiple: true
+      options:
+        - Kapanmış / artık yok
+        - Konumu yanlış / taşınmış
+        - Adı yanlış
+        - Telefon / web sitesi
+        - Çalışma saatleri
+        - Türü / mutfağı (ör. kafe değil lokanta)
+        - Diyet bilgisi (vejetaryen, vegan, glutensiz)
+        - Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: dogrusu
+    attributes:
+      label: Doğrusu ne?
+      description: Örneğin "Yerine bir eczane açıldı" ya da "Telefonu 0232 …".
+  - type: input
+    id: tarih
+    attributes:
+      label: Ne zaman gördün?
+      placeholder: 2026-10-17
