@@ -190,6 +190,17 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
+ * The SDK sends an enum or a number range to the model only as a hint in the field's description,
+ * so the model can still write another word or number. The model-facing schemas take such a
+ * value instead of failing the whole answer: one code falls back to its empty value, a list takes
+ * any string (the allowed codes are named in its description), an index becomes -1. The readers (toUnderstanding, toPick, toPlan) keep only known
+ * codes and valid indexes.
+ */
+const looseList = (values: readonly string[]) =>
+  z.array(z.string().describe(`one of: ${values.join(', ')}`));
+const looseIndex = (max: number) => z.number().int().min(0).max(max).catch(-1);
+
+/**
  * What the model is asked to produce for /understand: ONE flat object. Structured outputs reject a
  * `$defs` / `$ref` (a reused sub-schema, or any array with a `.max()`) next to an `anyOf`, and a
  * discriminated union is an `anyOf` of objects, so the model never sees `UnderstandingSchema`.
@@ -203,10 +214,10 @@ export const UnderstandingSchema = z.discriminatedUnion('kind', [
 export const UnderstandingModelSchema = z.object({
   // Written first, so the fields below follow the model's own reading; never shown or used.
   meaning: z.string(),
-  kind: z.enum(['search', 'chat', 'unknown']),
+  kind: z.enum(['search', 'chat', 'unknown']).catch('unknown'),
   district: z.string(),
-  cat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
-  notCat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
+  cat: z.enum([...FOOD_CATEGORY_VALUES, 'none']).catch('none'),
+  notCat: z.enum([...FOOD_CATEGORY_VALUES, 'none']).catch('none'),
   dish: z.string(),
   place: z.string(),
   food: z.boolean(),
@@ -214,15 +225,15 @@ export const UnderstandingModelSchema = z.object({
   appleQuery: z.string(),
   nearMe: z.boolean(),
   dishServes: z.array(z.string()),
-  wishes: z.array(z.enum(WISHES)),
+  wishes: looseList(WISHES),
   partySize: z.number().int(),
-  clarifyAsk: z.enum([...CLARIFY_ASKS, 'none']),
+  clarifyAsk: z.enum([...CLARIFY_ASKS, 'none']).catch('none'),
   clarifyText: z.string(),
-  planWhen: z.enum([...PLAN_WHENS, 'none']),
+  planWhen: z.enum([...PLAN_WHENS, 'none']).catch('none'),
   tone: z.string(),
   dishNote: z.string(),
   reply: z.string(),
-  action: z.enum(CHAT_ACTIONS),
+  action: z.enum(CHAT_ACTIONS).catch('none'),
 });
 export type UnderstandingModel = z.infer<typeof UnderstandingModelSchema>;
 
@@ -393,10 +404,14 @@ Karar (kind):
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
 - search: district (şehrin ilçesi ya da ""), cat (kategori ya da "none"), notCat (kullanıcının istemediğini söylediği kategori, örneğin "kebap olmasın", "tatlı istemem"; yoksa "none"), dish (yemek adı ya da ""), place (ilçe dışında bir yer/mekân adı ya da ""), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da ""), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- Kategoriler (cat, notCat) uygulamadaki mekân türleridir: breakfast kahvaltı salonu; soup çorbacı; meat kebapçı, köfteci, ocakbaşı, et lokantası; lokanta esnaf lokantası, ev yemekleri, tavuk pilav, mantı; fish balıkçı; cafe kafe, kahveci; meyhane meyhane, rakı-balık; fast pide, lahmacun, döner, dürüm, tost, kumpir, burger, pizza; world yabancı mutfaklar (sushi, İtalyan, Uzak Doğu ...); dessert tatlıcı, pastane, baklavacı. Bir yemek için cat, o yemeği asıl satan mekân türü olsun (lahmacun ve pide fast, tavuk pilav ve mantı lokanta). "kebap olmasın" gibi bir şey listede yoksa en yakın türü (meat) yaz.
 - Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes boş dizi olsun.
 - Mesajı kelime kelime değil, anlamıyla oku. Kullanıcı yemek adı yerine bir amaç, ruh hali, beslenme tarzı, durum, argo ya da emoji kullanabilir; ne yemek istediğini kendi aklınla çıkar, food true olsun ve isteği en iyi karşılayan kategoriyi (cat), yemeği (dish) ve dishServes kelimelerini sen seç. Örneğin "kas yapacak bir şey" protein (ızgara, et, tavuk) ister, "hafif bir şey" sağlıklı ve hafif yemek ister, "üşüdüm" sıcak bir çorba olabilir. Bunlar sadece örnek, liste değil: her ifadede aynı akıl yürütmeyi yap. İsteğe uymayan bir kategoriyi (örneğin protein için pastane) asla seçme. Bir istek birçok türde mekânda karşılanabiliyorsa (bir beslenme tarzı, bir amaç, bir durum) cat'i boş bırak, aramayı tek bir kategoriye daraltma; hangi yerin uyduğuna sonraki adımda ad ve türe bakılarak karar verilir. cat'i yalnızca kullanıcı gerçekten o kategoriyi istiyorsa seç.
-- Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler.
-- "yakınımda", "en yakın", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
+- Bir yere gitmekten, bir şey çekmesinden ya da biriyle (çocukla, arkadaşlarla, kalabalık, sevgiliyle) gidilecek bir mekândan söz ediyor ve otopark demiyorsa bu bir yemek yeri isteğidir: food true, cat boş, dilekleri wishes'a yaz.
+- Olumsuzluk ("tatlı istemem", "kebap olmasın") cümlenin geri kalanını silmez: ilçeyi, yeri ve diğer alanları da ayrıca doldur.
+- Sadece otopark arıyorsa food false ve requireParking false olsun; requireParking yalnızca yemek yeri ararken "otoparkı olsun" deniyorsa true.
+- Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler. Anlamsız harfler ya da tek bir ünlem ("Oo", "asdf", "hmm") de unknown.
+- "yakınımda", "en yakın", "daha yakını", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
 - wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy, tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (raylı sistem/metro yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
 - partySize: kaç kişi olduklarını söylediyse sayı, yoksa 0.
 - clarifyAsk / clarifyText: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa clarifyAsk'a sorunun konusunu (district, dish, party, time ya da duration) ve clarifyText'e sorunun cümlesini yaz; aksi halde clarifyAsk "none", clarifyText "" olsun.
@@ -517,12 +532,12 @@ export function pickModelSchema(n: number) {
   const max = Math.max(0, n - 1);
   // fit / noneFit come first: the model judges what fits before it picks.
   return z.object({
-    fit: z.array(z.number().int().min(0).max(max)),
+    fit: z.array(looseIndex(max)),
     noneFit: z.boolean(),
-    pick: z.number().int().min(0).max(max),
-    reasons: z.array(z.enum(PICK_REASONS)),
-    runnerUp: z.number().int().min(0).max(max).nullable(),
-    runnerUpWhy: z.enum(PICK_REASONS).nullable(),
+    pick: looseIndex(max),
+    reasons: looseList(PICK_REASONS),
+    runnerUp: looseIndex(max).nullable(),
+    runnerUpWhy: z.enum(PICK_REASONS).nullable().catch(null),
     tone: z.string().nullable(),
   });
 }
@@ -597,10 +612,10 @@ export type ParkPickResponse = z.infer<ReturnType<typeof parkPickOutputSchema>>;
 export function parkPickModelSchema(n: number) {
   const max = Math.max(0, n - 1);
   return z.object({
-    pick: z.number().int().min(0).max(max),
-    reasons: z.array(z.enum(PARK_REASONS)),
-    runnerUp: z.number().int().min(0).max(max).nullable(),
-    runnerUpWhy: z.enum(PARK_REASONS).nullable(),
+    pick: looseIndex(max),
+    reasons: looseList(PARK_REASONS),
+    runnerUp: looseIndex(max).nullable(),
+    runnerUpWhy: z.enum(PARK_REASONS).nullable().catch(null),
     tone: z.string().nullable(),
   });
 }
@@ -662,17 +677,9 @@ export type PlanResponse = z.infer<ReturnType<typeof planOutputSchema>>;
 /** What the model is asked for in /plan; see pickModelSchema. */
 export function planModelSchema(restaurants: number, parkings: number) {
   return z.object({
-    restaurant: z
-      .number()
-      .int()
-      .min(0)
-      .max(Math.max(0, restaurants - 1)),
-    parking: z
-      .number()
-      .int()
-      .min(0)
-      .max(Math.max(0, parkings - 1)),
-    reasons: z.array(z.enum(PICK_REASONS)),
+    restaurant: looseIndex(Math.max(0, restaurants - 1)),
+    parking: looseIndex(Math.max(0, parkings - 1)),
+    reasons: looseList(PICK_REASONS),
     tone: z.string().nullable(),
   });
 }
@@ -813,7 +820,7 @@ export type ChatRequest = {
 /** Server format schema and client parse: the reply is free text, the action a code. */
 export const chatOutputSchema = z.object({
   reply: z.string(),
-  action: z.enum(CHAT_ACTIONS),
+  action: z.enum(CHAT_ACTIONS).catch('none'),
 });
 export type ChatResponse = z.infer<typeof chatOutputSchema>;
 

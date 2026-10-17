@@ -307,3 +307,61 @@ describe('the flat model output becomes the union the apps read', () => {
     expect(capReasons(null)).toBeNull();
   });
 });
+
+// The SDK sends enums and number ranges only as description hints, so the model can write an
+// unknown code (eval: notCat "kebap"); one bad field must not fail the whole answer.
+describe('a code outside the list does not fail the model answer', () => {
+  const flat = {
+    meaning: 'et istiyor, kebap değil',
+    kind: 'search',
+    district: 'Konak',
+    cat: 'meat',
+    notCat: 'kebap',
+    dish: '',
+    place: 'Alsancak',
+    food: true,
+    requireParking: false,
+    appleQuery: '',
+    nearMe: false,
+    dishServes: [],
+    wishes: ['cheap', 'cozy'],
+    partySize: 0,
+    clarifyAsk: 'when',
+    clarifyText: '',
+    planWhen: 'tomorrow',
+    tone: '',
+    dishNote: '',
+    reply: '',
+    action: 'dance',
+  };
+
+  it('understand: the bad code is empty, the rest is read', () => {
+    const m = UnderstandingModelSchema.parse(flat);
+    expect(m).toMatchObject({
+      notCat: 'none',
+      clarifyAsk: 'none',
+      planWhen: 'none',
+      action: 'none',
+    });
+    const u = toUnderstanding(m);
+    expect(u).toMatchObject({ kind: 'search', cat: 'meat', notCat: null, wishes: ['cheap'] });
+    expect(UnderstandingModelSchema.parse({ ...flat, kind: 'greeting' }).kind).toBe('unknown');
+  });
+
+  it('pick and plan: an index out of range or an unknown reason is dropped later, not thrown', () => {
+    const pick = pickModelSchema(3).parse({
+      fit: [0, 7],
+      noneFit: false,
+      pick: 1,
+      reasons: ['closest', 'magic'],
+      runnerUp: 9,
+      runnerUpWhy: 'magic',
+      tone: null,
+    });
+    expect(pick).toMatchObject({ fit: [0, -1], pick: 1, runnerUp: -1, runnerUpWhy: null });
+    expect(
+      planModelSchema(2, 2).parse({ restaurant: 5, parking: 0, reasons: ['x'], tone: null }),
+    ).toMatchObject({ restaurant: -1, parking: 0 });
+    expect(chatOutputSchema.parse({ reply: 'selam', action: 'dance' }).action).toBe('none');
+  });
+});

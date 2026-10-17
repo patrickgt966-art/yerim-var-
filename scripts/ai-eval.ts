@@ -71,11 +71,17 @@ const NOTHING_SET: Extract<QueryIntent, { kind: 'search' }> = {
   mentionsParking: false,
 };
 
+const TALK = ['greeting', 'abuse', 'offtopic'] as const;
+
 /**
- * Mirrors intentFromUnderstanding in src/data/assistant.ts.
+ * Mirrors intentFromUnderstanding in src/data/assistant.ts. The AI has one "chat" kind where the
+ * rules tell greeting, abuse and off-topic apart; in the app each gets the AI's own reply, so a
+ * chat answer counts as the talk kind the case expects. "unknown" is the AI's "I did not get it",
+ * which is what a gibberish case wants (the app catches gibberish before the AI anyway).
  */
-function intentFromUnderstanding(u: Understanding, text: string): QueryIntent {
-  if (u.kind === 'chat') return { kind: 'offtopic' };
+function intentFromUnderstanding(u: Understanding, text: string, want?: string): QueryIntent {
+  if (u.kind === 'chat') return { kind: TALK.find((k) => k === want) ?? 'offtopic' };
+  if (u.kind === 'unknown' && (want === 'gibberish' || want === 'empty')) return { kind: want };
   if (u.kind === 'unknown') return { ...NOTHING_SET, text: fold(text) };
   const district = u.district
     ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)
@@ -127,7 +133,10 @@ async function main(): Promise<void> {
         response.stop_reason === 'refusal' || !response.parsed_output
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
-      rows.push({ c, ...scoreCase(c, intentFromUnderstanding(understanding, c.text)) });
+      rows.push({
+        c,
+        ...scoreCase(c, intentFromUnderstanding(understanding, c.text, c.expect.kind)),
+      });
     } catch (e) {
       // Message only: never echo request headers / the key.
       const msg = e instanceof Error ? e.message : 'unknown error';
