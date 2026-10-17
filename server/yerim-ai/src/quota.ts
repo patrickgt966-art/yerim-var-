@@ -468,7 +468,7 @@ function validIds(body: Record<string, unknown>) {
 }
 
 /**
- * /pick: indexed by position. Car parks: 1..5, facts only. Restaurants: 1..15, facts plus the
+ * /pick: indexed by position. Car parks: 1..5, facts only. Restaurants: 1..40, facts plus the
  * place's public name and type (so the model can judge what fits the request); a name or type that
  * is not short text is dropped. All are restaurants or all are car parks; the first one says which.
  */
