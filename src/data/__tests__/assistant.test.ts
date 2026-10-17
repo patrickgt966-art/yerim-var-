@@ -502,7 +502,7 @@ describe('assistant', () => {
       expect(r.reply.cards.length).toBeGreaterThan(0);
     });
 
-    it('the AI decides what to eat; a district our data knows stays as the rules read it', async () => {
+    it('the AI decides what to eat and where; the rules only fill what it left empty', async () => {
       const r = await answer(
         'bornovada romantik köfteci',
         emptyContext('food'),
@@ -525,7 +525,7 @@ describe('assistant', () => {
           }),
         }),
       );
-      expect(r.ctx.place?.label).toBe('Bornova');
+      expect(r.ctx.place?.label).toBe('Konak');
       expect(r.ctx.cat).toBe('fish');
       expect(r.ctx.requireParking).toBe(true);
     });
@@ -1035,11 +1035,16 @@ describe('a district plus a word that is no dish, name or place', () => {
     expect(r.reply.notice).toBe('chat.sparkleOut');
   });
 
-  it('a word that names a restaurant or a place stays as the rules read it, whatever the router says', async () => {
-    // The router is asked once per message; its search (district + a category) does not
-    // override the rules' reading of a restaurant or place name.
-    const understand = jest.fn(async () =>
-      search({ district: 'Bornova', cat: 'fish', food: true, nearMe: true }),
+  it('a word that names a restaurant or a place stays as the rules read it when the AI names it too', async () => {
+    // The router is asked once per message. It names the word as a place: the rules' reading of
+    // that restaurant or place name in our data stays.
+    const understand = jest.fn(async (text: string) =>
+      search({
+        district: 'Bornova',
+        place: text.includes('Mado') ? 'Mado' : 'Erzene',
+        food: true,
+        nearMe: false,
+      }),
     );
     const mado = await answer("Bornova'da Mado", emptyContext('food'), withAi({ understand }));
     expect(understand).toHaveBeenCalledTimes(1);
@@ -1047,5 +1052,12 @@ describe('a district plus a word that is no dish, name or place', () => {
     const erzene = await answer("Bornova'da Erzene", emptyContext('food'), withAi({ understand }));
     expect(understand).toHaveBeenCalledTimes(2);
     expect(erzene.ctx.place?.label).toBe('Erzene');
+  });
+
+  it('a word the AI does not read as a place is no place, even when a name in our data has it', async () => {
+    // "Bornova hacı": "hacı" is an address; the rules alone would find a park named "Hacı ...".
+    const understand = jest.fn(async () => search({ district: 'Bornova', food: true }));
+    const r = await answer('Bornova hacı', emptyContext('food'), withAi({ understand }));
+    expect(r.ctx.place?.label).toBe('Bornova');
   });
 });

@@ -71,6 +71,7 @@ const searchOut = {
   plan: null,
   tone: null,
   dishNote: null,
+  meaning: null,
 };
 // What the model returns (the flat schema, sentinels instead of nulls) for `searchOut` above.
 const flatSearch = {

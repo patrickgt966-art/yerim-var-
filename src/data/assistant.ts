@@ -66,6 +66,7 @@ import {
   PICK_REASONS,
   ROUTER_TIMEOUT_MS,
   clipText,
+  MAX_MESSAGE_CHARS,
   type ChatReplyAction,
   type ClarifyAsk,
   type DishMatch,
@@ -456,9 +457,22 @@ function knownPlace(query: string): boolean {
   return !!hit && query.split(' ').every((w) => hasWordStart(fold(hit.name), w));
 }
 
+/** The AI's search names this word as a place, a dish or a business (in any of its fields). */
+function aiNamed(u: Extract<Understanding, { kind: 'search' }>, word: string): boolean {
+  const w = fold(word).trim();
+  if (!w) return false;
+  const said = [u.place, u.dish, u.appleQuery, ...(u.dishServes ?? [])]
+    .filter((v): v is string => !!v)
+    .map((v) => fold(v));
+  return said.some((v) => v.includes(w) || (v.length >= 4 && w.includes(v)));
+}
+
 /**
- * Rule intent + AI intent: the AI decides what to eat, intent and wishes and fills what the rules left empty;
- * a district or a place name that exists in our data stays as the rules read it.
+ * Rule intent + AI intent. The AI reads meaning; the rules only read words (a slang address like
+ * "hacı" can look like a place name to them). So the AI's reading leads: what to eat, and where
+ * when it named a place, a district or "near me". The rules fill only what the AI left empty.
+ * Every result still comes from our own data: a district must be one of the city's, a place is
+ * looked up in our places.
  */
 function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
   // What to eat is the AI's call: it reads the meaning ("kas yapacak bir şey" is protein), the
@@ -468,20 +482,23 @@ function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
   const cat = aiLeads ? ai.cat : (rule.cat ?? ai.cat);
   const food = rule.food || ai.food || cat !== null || !!ai.dish;
   const requireParking = rule.requireParking || ai.requireParking;
+  const aiWhere = ai.district !== null || ai.placeQuery !== '' || ai.nearMe;
   return {
     ...rule,
     cat,
     dish: aiLeads ? ai.dish : rule.cat ? rule.dish : ai.dish,
     dishServes: aiLeads ? ai.dishServes : rule.cat ? null : ai.dishServes,
-    district: rule.district ?? ai.district,
-    // A place name our data knows stays as the rules read it. Leftover words the rules could not
-    // place are what the AI decides: it knows what they meant.
-    placeQuery:
-      rule.placeQuery !== '' && knownPlace(rule.placeQuery) ? rule.placeQuery : ai.placeQuery,
+    district: aiWhere ? ai.district : rule.district,
+    // Without a location from the AI, a place name our data knows stays as the rules read it.
+    placeQuery: aiWhere
+      ? ai.placeQuery
+      : rule.placeQuery !== '' && knownPlace(rule.placeQuery)
+        ? rule.placeQuery
+        : ai.placeQuery,
     requireParking,
     uncertain: false,
     food,
-    nearMe: rule.nearMe || ai.nearMe,
+    nearMe: aiWhere ? ai.nearMe : rule.nearMe || ai.nearMe,
     mentionsParking: rule.mentionsParking || requireParking || (!food && cat === null),
   };
 }
@@ -1072,13 +1089,15 @@ async function answerText(
       ),
     );
   }
-  // The router said search: the AI fills what the rules did not get and decides intent and
-  // wishes; a district or place name from our data stays as the rules read it. Follow-ups, abuse
-  // and gibberish stay with the rules.
+  // The router said search: the AI's reading leads (what to eat, where, wishes) and the rules
+  // only fill what it left empty. Follow-ups, abuse and gibberish stay with the rules.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse' && it.kind !== 'gibberish') {
     const found = routed.out.value;
-    // A district with a word that is a restaurant's or a place's name: the rules read it fully.
-    const ruleSettled = ruleLeft !== null && ruleLeft.kind !== 'unknown';
+    // A word the rules matched to a restaurant or place name in our data ("Bornova'da Mado") is
+    // kept only when the AI read that word as a place or dish too; a word it read as something
+    // else (an address like "hacı") is not a place, whatever a name in our data looks like.
+    const ruleSettled =
+      ruleLeft !== null && ruleLeft.kind !== 'unknown' && aiNamed(found, ruleLeft.x);
     if (!ruleSettled) {
       const fromAi = intentFromUnderstanding(found, text);
       it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
@@ -1554,7 +1573,7 @@ async function run(
       ...ctx,
       wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
       when: undefined,
-      ...(deps.ai ? { query: meta.text } : {}),
+      ...(deps.ai ? { query: requestText(meta) } : {}),
       ...(meta.wishes.includes('quick') ? { sort: 'distance' as const } : {}),
     };
   }
@@ -2203,7 +2222,7 @@ async function clarify(
     ...next,
     section: food || ask === 'dish' || ask === 'party' ? 'food' : next.section,
     wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
-    ...(deps.ai ? { query: meta.text } : {}),
+    ...(deps.ai ? { query: requestText(meta) } : {}),
   };
   return plain({ text, cards: [], actions, sparkle: asked !== null }, ctx);
 }
@@ -2297,6 +2316,16 @@ function pickCandidate(card: Extract<ChatCard, { kind: 'restaurant' }>, i: numbe
     dishMatch: n?.dish ?? 'none',
     outdoor: n?.outdoor ?? null,
   };
+}
+
+/**
+ * What /pick and /plan see as the request: the router's own reading of the message with the
+ * conversation so far, then the words themselves. A clarify answer ("Bornova") alone would lose
+ * what was asked before ("vejetaryenim").
+ */
+function requestText(meta: AnswerMeta): string {
+  const meaning = meta.ai?.meaning;
+  return meaning ? clipText(`${meaning} ("${meta.text}")`, MAX_MESSAGE_CHARS) : meta.text;
 }
 
 /** A candidate's name and type in words, so the AI can judge whether it fits the request. */
@@ -2698,7 +2727,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
 
   if (food) {
     if (ai?.plan && !meta.quotaOut && meta.planWhen) {
-      const plan = await askPlan(reply.cards, meta.text, meta.planWhen, dish, deps, tctx);
+      const plan = await askPlan(reply.cards, requestText(meta), meta.planWhen, dish, deps, tctx);
       noteQuota(reply, plan, deps);
       if (plan.ok) {
         reply.plan = plan.plan;
@@ -2708,7 +2737,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
         sparkle = true;
       }
     } else if (ai?.pick && !meta.quotaOut && meta.ai && restaurants.length >= 2) {
-      const pick = await askPick(reply.pool ?? reply.cards, meta.text, dish, deps, tctx);
+      const pick = await askPick(reply.pool ?? reply.cards, requestText(meta), dish, deps, tctx);
       noteQuota(reply, pick, deps);
       if (pick.ok) {
         reply.cards = pick.cards;
