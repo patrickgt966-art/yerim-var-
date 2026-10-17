@@ -989,7 +989,13 @@ describe('a district plus a word that is no dish, name or place', () => {
 
   it('asks the AI first when it is available, and uses its answer', async () => {
     const understand = jest.fn(async () =>
-      search({ cat: 'lokanta', dish: 'zortlama', dishServes: ['lokanta'], food: true }),
+      search({
+        district: 'Bornova',
+        cat: 'lokanta',
+        dish: 'zortlama',
+        dishServes: ['lokanta'],
+        food: true,
+      }),
     );
     const r = await answer("Bornova'da zortlama", emptyContext('food'), withAi({ understand }));
     expect(understand).toHaveBeenCalledTimes(1);
@@ -1011,14 +1017,14 @@ describe('a district plus a word that is no dish, name or place', () => {
   });
 
   it('falls back to the honest reply when the AI cannot place the word either', async () => {
-    const nothing = jest.fn(async () => search({}));
+    const nothing = jest.fn(async () => ({ ok: true, remaining: 4, value: { kind: 'unknown' } }));
     const a = await answer(
       "Bornova'da zortlama",
       emptyContext('food'),
-      withAi({ understand: nothing }),
+      withAi({ understand: nothing } as never),
     );
     expect(nothing).toHaveBeenCalledTimes(1);
-    expect(a.reply.text.startsWith('chat.districtUnknownThing')).toBe(true);
+    expect(a.reply.text.startsWith('chat.unknown')).toBe(true);
     expect(a.reply.cards).toEqual([]);
 
     const failing = jest.fn(async () => ({ ok: false as const, reason: 'error' as const }));

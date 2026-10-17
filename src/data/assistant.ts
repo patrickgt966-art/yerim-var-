@@ -451,12 +451,6 @@ function intentFromUnderstanding(
 
 type SearchIntent = Extract<QueryIntent, { kind: 'search' }>;
 
-/** A place in our data carries every word of the query in its name. */
-function knownPlace(query: string): boolean {
-  const hit = searchPlacesStrict(query, 1)[0];
-  return !!hit && query.split(' ').every((w) => hasWordStart(fold(hit.name), w));
-}
-
 /** The AI's search names this word as a place, a dish or a business (in any of its fields). */
 function aiNamed(u: Extract<Understanding, { kind: 'search' }>, word: string): boolean {
   const w = fold(word).trim();
@@ -468,38 +462,25 @@ function aiNamed(u: Extract<Understanding, { kind: 'search' }>, word: string): b
 }
 
 /**
- * Rule intent + AI intent. The AI reads meaning; the rules only read words (a slang address like
- * "hacı" can look like a place name to them). So the AI's reading leads: what to eat, and where
- * when it named a place, a district or "near me". The rules fill only what the AI left empty.
- * Every result still comes from our own data: a district must be one of the city's, a place is
- * looked up in our places.
+ * The search when the AI read the message: its reading is the search, and the rules' word
+ * matching neither overrides nor adds to it (rules read words, so slang, filler or an address
+ * like "hacı" looks like a place or a dish to them). The rules only answer when the AI could not.
+ * Two things of ours stay: the rules' dish where the AI named that same dish (it carries our own
+ * dish profile), and the "best" note (we have no ratings). Every result still comes from our own
+ * data: a district must be one of the city's, a place is looked up in our places.
  */
-function mergeIntents(rule: SearchIntent, ai: SearchIntent): SearchIntent {
-  // What to eat is the AI's call: it reads the meaning ("kas yapacak bir şey" is protein), the
-  // rules only read words. Where both land on the same category the rules' dish stays, as it
-  // carries our own dish profile.
-  const aiLeads = (ai.cat !== null || !!ai.dish) && ai.cat !== rule.cat;
-  const cat = aiLeads ? ai.cat : (rule.cat ?? ai.cat);
-  const food = rule.food || ai.food || cat !== null || !!ai.dish;
-  const requireParking = rule.requireParking || ai.requireParking;
-  const aiWhere = ai.district !== null || ai.placeQuery !== '' || ai.nearMe;
+function aiLedIntent(
+  rule: QueryIntent,
+  ai: SearchIntent,
+  u: Extract<Understanding, { kind: 'search' }>,
+): SearchIntent {
+  const r = rule.kind === 'search' ? rule : null;
+  const sameDish = r !== null && !!r.dish && r.cat === ai.cat && aiNamed(u, r.dish);
   return {
-    ...rule,
-    cat,
-    dish: aiLeads ? ai.dish : rule.cat ? rule.dish : ai.dish,
-    dishServes: aiLeads ? ai.dishServes : rule.cat ? null : ai.dishServes,
-    district: aiWhere ? ai.district : rule.district,
-    // Without a location from the AI, a place name our data knows stays as the rules read it.
-    placeQuery: aiWhere
-      ? ai.placeQuery
-      : rule.placeQuery !== '' && knownPlace(rule.placeQuery)
-        ? rule.placeQuery
-        : ai.placeQuery,
-    requireParking,
-    uncertain: false,
-    food,
-    nearMe: aiWhere ? ai.nearMe : rule.nearMe || ai.nearMe,
-    mentionsParking: rule.mentionsParking || requireParking || (!food && cat === null),
+    ...ai,
+    notCat: u.notCat ?? null,
+    ...(sameDish ? { dish: r.dish, dishServes: r.dishServes ?? null } : {}),
+    quality: r?.quality ?? false,
   };
 }
 
@@ -1076,8 +1057,6 @@ async function answerText(
     );
   }
 
-  const ruleIt = it;
-  const ruleLeft = districtLeftover(it, text);
   // Talk about the conversation itself ("emin misin yani"): never a dish-or-place question.
   const convo = !followUp && isConversational(text, it, meta.wishes);
   // The router called it chat but its reply did not pass: the honest template, not a search.
@@ -1089,19 +1068,11 @@ async function answerText(
       ),
     );
   }
-  // The router said search: the AI's reading leads (what to eat, where, wishes) and the rules
-  // only fill what it left empty. Follow-ups, abuse and gibberish stay with the rules.
+  // The router said search: the AI's reading is the search (aiLedIntent). Follow-ups, abuse and
+  // gibberish stay with the rules; so does everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse' && it.kind !== 'gibberish') {
     const found = routed.out.value;
-    // A word the rules matched to a restaurant or place name in our data ("Bornova'da Mado") is
-    // kept only when the AI read that word as a place or dish too; a word it read as something
-    // else (an address like "hacı") is not a place, whatever a name in our data looks like.
-    const ruleSettled =
-      ruleLeft !== null && ruleLeft.kind !== 'unknown' && aiNamed(found, ruleLeft.x);
-    if (!ruleSettled) {
-      const fromAi = intentFromUnderstanding(found, text);
-      it = it.kind === 'search' ? mergeIntents(it, fromAi) : fromAi;
-    }
+    it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
     meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];
     if ((found.partySize ?? 0) >= 3 && !meta.wishes.includes('group')) {
@@ -1220,20 +1191,9 @@ async function answerText(
     }
   }
 
-  // A district plus a word nothing explained (not even the AI): never show the district's
-  // places as if the word had been understood. When the AI read the message as a food request,
-  // the words it left out are filler ("hmm", "bro"), not an unknown place or dish.
-  let left = ruleLeft;
-  if (it !== ruleIt) {
-    const merged = districtLeftover(it, text);
-    const nothing =
-      it.kind === 'search' && !it.cat && !it.dish && !it.placeQuery && !meta.ai?.food;
-    left = merged
-      ? { ...merged, x: ruleLeft?.x ?? merged.x }
-      : ruleLeft?.kind === 'unknown' && nothing
-        ? ruleLeft
-        : null;
-  }
+  // A district plus a word nothing explained: never show the district's places as if the word
+  // had been understood. With the AI, only the place it named counts (its own reading).
+  const left = districtLeftover(it, text);
   if (left && it.kind === 'search' && it.district) {
     const district = it.district;
     const here: ChatPlace = { label: district.name, lat: district.lat, lng: district.lng };
