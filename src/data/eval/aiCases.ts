@@ -36,7 +36,7 @@ const vegAsk: ChatTurn[] = [
   { role: 'user', text: 'Yo hocam ben vejeteryenim kardo ona göre' },
   { role: 'bot', text: 'Hangi semtte vejetaryen yemek istersiniz?' },
 ];
-const VEG = ['vejet', 'vegan', 'etsiz', 'sebze'];
+export const VEG = ['vejet', 'vegan', 'etsiz', 'sebze'];
 
 export const UNDERSTAND_CASES: UnderstandCase[] = [
   {
@@ -149,7 +149,7 @@ export type PickCase = {
   };
 };
 
-const place = (
+export const place = (
   i: number,
   name: string,
   type: string,
