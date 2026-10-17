@@ -51,7 +51,7 @@ Son güncelleme: 16 Ekim 2026.
 - Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 10 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
 - Onay verildiyse her mesaj önce yönlendiriciye (`/understand`) gider; model kısa bir `meaning` yazar, sonra `search` / `chat` / `unknown` döner. Anlamazsa "anlayamadım" der, tahmin etmez.
 - Yönlendirici 9 sn içinde cevap vermezse, ağ hatasında ya da hak bitince uygulama kendi kurallarıyla cevap verir ve bunu söyler.
-- `/pick` yakındaki en çok 15 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
+- `/pick` yakındaki en çok 40 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
 - Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`).
 - Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
 
@@ -75,7 +75,7 @@ Son güncelleme: 16 Ekim 2026.
 - Şehirler: İstanbul tamamlandı (İSPARK canlı doluluk, yer, raylı sistem, restoran verisi); Ankara, Bursa ve Antalya eklendi (canlı veri yok, otoparklar kapasite bilgisiyle; arıza uyarısı yerine sakin not). Şehir onboarding'de ve Profil'de seçiliyor; ana sayfa silueti şehre göre.
 - Veri: aylık görev beş şehri topluyor (300 dk); Overpass kutulara bölündü ve tekrar deniyor; Overture'da her şehirde 0,7 güven eşiği, şehir başına 10 MB sınırı, sıkı zayıf kayıt kuralı
 - Yerim ✨: her mesajı yapay zeka anlıyor (`/understand`, önce gizli `meaning`, düz şema); anlamazsa "anlayamadım" diyor; yönlendirici bekleme süresi 9 sn
-- Yerim ✨ seçim: `/pick` yakındaki 15 yerin adını ve türünü görüp uyanları değerlendiriyor (`fit`, `noneFit`); uyan yoksa söylüyor
+- Yerim ✨ seçim: `/pick` yakındaki 40 yerin adını ve türünü görüp uyanları değerlendiriyor (`fit`, `noneFit`); uyan yoksa söylüyor
 - Arayüz: başlıkta gerçek logo (BrandWordmark); Yerim sekmesi, ✨ hakkı, şehir düğmesi ve arama kartı için tek seferlik ipucu balonları
 - Onboarding: 4 adım (Merhaba, Şehrini seç, Yerim ile konuş, Konum); eski "Dürüst veri" adımı ve Skyline bileşeni kaldırıldı
 - Belgeler: README, gizlilik metni ve veri belgeleri beş şehre göre güncellendi

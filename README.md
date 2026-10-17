@@ -106,7 +106,7 @@ design/           Referans ekranlar (PNG + HTML)
 
 Kullanıcı onay verdiyse her sohbet mesajı önce bir Cloudflare Worker üzerinden Claude Haiku'daki yönlendiriciye gider (`server/yerim-ai`, `/understand`). Model önce mesajın ne demek istediğini kısa ve gizli bir cümleyle (`meaning`) yazar, sonra düz bir yapılandırılmış şemayla `search`, `chat` ya da `unknown` döner. Ne istendiği anlaşılmazsa uygulama tahmin etmek yerine "anlayamadım" der.
 
-Yemek aramalarında `/pick`, bizim veriden yakındaki en çok 15 yeri görür: herkese açık adı ve türü (kategori, tür, mutfak) ile yürüme süresi, otoparka uzaklık, otoparkın ücretsiz olup olmadığı, boş yer ve açık/kapalı bilgisi. Hangilerinin isteğe uyduğunu (`fit`, `noneFit`) değerlendirip birini seçer. Yalnızca sıra numaraları döner; her kart bizim kaydımızdır. Hiçbiri uymuyorsa bunu söyler. Menü verisi yok; uygunluk ad ve türe göre yargılanır.
+Yemek aramalarında `/pick`, bizim veriden yakındaki en çok 40 yeri görür: herkese açık adı ve türü (kategori, tür, mutfak) ile yürüme süresi, otoparka uzaklık, otoparkın ücretsiz olup olmadığı, boş yer ve açık/kapalı bilgisi. Hangilerinin isteğe uyduğunu (`fit`, `noneFit`) değerlendirip birini seçer. Yalnızca sıra numaraları döner; her kart bizim kaydımızdır. Hiçbiri uymuyorsa bunu söyler. Menü verisi yok; uygunluk ad ve türe göre yargılanır.
 
 Cevaplardaki bilgi yalnızca uygulamanın verisinden gelir; modelin serbest metni denetlenir, geçmeyen atılır. Tek sayaç: cihaz başına günde 10 yapay zekâ mesajı (ilk mesaj dahil). Hak bitince, yönlendiriciden 9 sn içinde cevap gelmezse ya da ağ hatası olursa uygulama kendi kurallarıyla cevap verir ve bunu söyler. Geliştirmede expo terminali `[ai] understood: ...` satırını yazar (tür, kategori, yemek; mesaj metni asla).
 
