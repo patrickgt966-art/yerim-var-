@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, View } from 'react-native';
 
 import { appleWalkingUrl, appleWalkToUrl, walkMinutes } from '@/data/geo';
-import { estimateCost } from '@/data/tariffs';
+import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import { currentLocation } from '@/lib/location';
 import { needsStillParkedPrompt } from '@/lib/park';
@@ -66,7 +66,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
   const { t } = useTranslation();
   const now = useNow();
   const elapsed = now - new Date(active.startedAt).getTime();
-  const cost = estimateCost(active.hourly, elapsed / 60000);
+  const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
   const duration = durationText(elapsed, t);
   const sub = [active.note, duration].filter(Boolean).join(' · ');
   const dest = active.destination;

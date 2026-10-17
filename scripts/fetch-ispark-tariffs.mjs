@@ -1,0 +1,125 @@
+// Collects the official İSPARK tariffs (İstanbul) into data/tariffs-ispark.json. The list
+// (api.ibb.gov.tr/ispark/Park) has no prices; each car park's ParkDetay carries its tariff
+// ("0-1 Saat : 110,00;1-2 Saat : 140,00;...;Tam Gün : 370,00"), the free minutes and the
+// monthly fee. A failed or thin run keeps the previous file, so the app never loses prices.
+//
+// Usage: node scripts/fetch-ispark-tariffs.mjs
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const BASE = 'https://api.ibb.gov.tr/ispark';
+const UA = 'yerim-var data refresh (github.com/patrickgt966-art/yerim-var-)';
+const CONCURRENCY = 4;
+/** Below this share of parks with a tariff the run is treated as failed. */
+const MIN_SHARE = 0.5;
+
+/** "0-1 Saat : 110,00;Tam Gün : 370,00" -> [{ label: '0-1 Saat', price: 110 }, ...] */
+function parseTariff(text) {
+  if (typeof text !== 'string') return [];
+  const bands = [];
+  for (const part of text.split(';')) {
+    const i = part.lastIndexOf(':');
+    if (i < 0) continue;
+    const label = part.slice(0, i).trim().replace(/\s+/g, ' ');
+    const amount = part.slice(i + 1).trim();
+    // An empty price is no price (Number('') would read it as free).
+    const price = /\d/.test(amount) ? Number(amount.replace(/\./g, '').replace(',', '.')) : NaN;
+    if (label && Number.isFinite(price) && price >= 0) bands.push({ label, price });
+  }
+  return bands;
+}
+
+/** The first hour's price: the band "0-1 Saat", else null. */
+function firstHour(bands) {
+  return bands.find((b) => /^0\s*-\s*1\s*saat/i.test(b.label))?.price ?? null;
+}
+
+/** One ParkDetay record -> a tariff row, or null without a usable tariff. */
+function toTariff(d, verifiedAt) {
+  const bands = parseTariff(d?.tariff);
+  if (d?.parkID == null || bands.length === 0) return null;
+  const free = Number(d.freeTime);
+  const monthly = Number(d.monthlyFee);
+  return {
+    parkingId: `ispark-${d.parkID}`,
+    hourly: firstHour(bands),
+    currency: 'TRY',
+    bands,
+    freeMinutes: Number.isFinite(free) && free > 0 ? free : 0,
+    monthly: Number.isFinite(monthly) && monthly > 0 ? monthly : null,
+    priceKind: 'official',
+    validFrom: null,
+    source: 'İBB İSPARK',
+    verifiedAt,
+  };
+}
+
+// --- main ---
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const out = path.join(root, 'data/tariffs-ispark.json');
+
+async function get(url) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20_000);
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': UA, Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (res.ok) return await res.json();
+    } catch {
+      // retried once below
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
+const raw = await get(`${BASE}/Park`);
+// An array, or (as seen elsewhere in the İBB API) an object holding one.
+const list = Array.isArray(raw) ? raw : (Object.values(raw ?? {}).find(Array.isArray) ?? []);
+const ids = [...new Set(list.map((r) => r?.parkID).filter((x) => x != null))];
+if (ids.length === 0) {
+  console.warn('İSPARK Park listesi alınamadı; eski tarifeler korunuyor.');
+  process.exit(0);
+}
+
+const verifiedAt = new Date().toISOString().slice(0, 10);
+const tariffs = [];
+let next = 0;
+await Promise.all(
+  Array.from({ length: CONCURRENCY }, async () => {
+    while (next < ids.length) {
+      const id = ids[next++];
+      const detail = await get(`${BASE}/ParkDetay?id=${encodeURIComponent(id)}`);
+      const row = toTariff(Array.isArray(detail) ? detail[0] : detail, verifiedAt);
+      if (row) tariffs.push(row);
+    }
+  }),
+);
+
+if (tariffs.length < ids.length * MIN_SHARE) {
+  console.warn(
+    `İSPARK: ${ids.length} otoparktan yalnız ${tariffs.length} tarife; eski dosya korunuyor.`,
+  );
+  process.exit(0);
+}
+
+tariffs.sort((a, b) => a.parkingId.localeCompare(b.parkingId));
+const previous = await readFile(out, 'utf8').then(JSON.parse, () => null);
+// Same prices as before: keep the file (and its dates) unchanged, so a run without news makes no commit.
+const same = (xs) => JSON.stringify(xs.map(({ verifiedAt: _, ...rest }) => rest));
+if (previous?.tariffs && same(previous.tariffs) === same(tariffs)) {
+  console.log(`İSPARK: ${tariffs.length} tarife, değişiklik yok.`);
+  process.exit(0);
+}
+await writeFile(
+  out,
+  JSON.stringify({ fetchedAt: new Date().toISOString(), parks: ids.length, tariffs }, null, 1) +
+    '\n',
+);
+console.log(`İSPARK: ${ids.length} otopark, ${tariffs.length} tarife yazıldı.`);

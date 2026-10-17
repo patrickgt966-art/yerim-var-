@@ -22,7 +22,7 @@ import {
   parkingInfo,
   type Restaurant,
 } from '@/data/restaurants';
-import { estimateCost } from '@/data/tariffs';
+import { parkCost } from '@/data/tariffs';
 import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { durationText } from '@/lib/format';
@@ -50,7 +50,7 @@ function ActiveSection() {
     );
   }
   const elapsed = now - new Date(active.startedAt).getTime();
-  const cost = estimateCost(active.hourly, elapsed / 60000);
+  const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
   return (
     <Section title={t('favorites.activeTitle')}>
       <Txt style={{ fontFamily: fonts.display, fontSize: 20 }}>{active.name}</Txt>

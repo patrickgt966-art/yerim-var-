@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, View } from 'react-native';
 
-import { estimateCost } from '@/data/tariffs';
+import { parkCost } from '@/data/tariffs';
 import { REMINDER_CHOICES, scheduleParkReminder } from '@/lib/reminders';
 import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
@@ -20,7 +20,7 @@ const clock = (iso: string) => {
 /** What the notification says: the car park, and the estimated cost by then when known. */
 function reminderText(active: ActivePark, minutes: number, t: TFunction) {
   const elapsed = (Date.now() - new Date(active.startedAt).getTime()) / 60000;
-  const cost = estimateCost(active.hourly, elapsed + minutes);
+  const cost = parkCost(active.parkingId, active.hourly, elapsed + minutes);
   return {
     title: t('park.reminderTitle'),
     body:

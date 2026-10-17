@@ -246,6 +246,8 @@ const tr = {
     sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
       '© OpenStreetMap katkıcıları (ODbL). Boş yer bilgisi yok. Bilgileri gönüllüler girdi.',
+    monthly: 'Aylık abonelik',
+    freeMinutes: 'İlk {{count}} dk ücretsiz',
     tariffSource: 'Tarife kaynağı: {{source}}',
     report: 'Yanlış bilgi bildir',
     favoriteAdd: 'Favorilere ekle',

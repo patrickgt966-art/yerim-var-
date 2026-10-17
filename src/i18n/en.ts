@@ -253,6 +253,8 @@ const en = {
       'Bursa Metropolitan Municipality Açık Yeşil, car park dataset. No free-space info.',
     sourceApple: 'Apple Maps. No free-space info.',
     sourceOsm: '© OpenStreetMap contributors (ODbL). No free-space info. Entered by volunteers.',
+    monthly: 'Monthly pass',
+    freeMinutes: 'First {{count}} min free',
     tariffSource: 'Rate source: {{source}}',
     report: 'Report wrong info',
     favoriteAdd: 'Add to favourites',

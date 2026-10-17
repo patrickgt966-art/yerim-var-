@@ -4,7 +4,7 @@ import { Pressable, View } from 'react-native';
 
 import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
 import { Txt } from '@/components/Txt';
-import { estimateCost } from '@/data/tariffs';
+import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
 import { useNow } from '@/lib/useNow';
@@ -21,7 +21,7 @@ export function ActiveStrip() {
   if (!active) return null;
 
   const elapsed = now - new Date(active.startedAt).getTime();
-  const cost = estimateCost(active.hourly, elapsed / 60000);
+  const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
   const duration = durationText(elapsed, t);
   const costText = cost != null ? t('home.activeCost', { cost }) : null;
   const sub = [duration, costText].filter(Boolean).join(' · ');

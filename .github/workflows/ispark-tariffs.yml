@@ -1,0 +1,54 @@
+name: İSPARK tariffs
+
+# Collects the official İSPARK tariffs (İstanbul) into data/tariffs-ispark.json with
+# scripts/fetch-ispark-tariffs.mjs. A few minutes; separate from the slow data refresh.
+
+on:
+  schedule:
+    - cron: '23 5 * * 1' # weekly, Monday 05:23 UTC
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['scripts/fetch-ispark-tariffs.mjs', '.github/workflows/ispark-tariffs.yml']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ispark-tariffs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tariffs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/fetch-ispark-tariffs.mjs
+
+      # Script changes on a working branch: commit the tariffs to that branch.
+      - name: Commit to branch
+        if: github.event_name == 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/tariffs-ispark.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore(data): refresh İSPARK tariffs'
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push
+
+      # Scheduled or manual runs: propose the update as a pull request.
+      - name: Open pull request
+        if: github.event_name != 'push'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: data/ispark-tariffs
+          title: 'chore(data): refresh İSPARK tariffs'
+          commit-message: 'chore(data): refresh İSPARK tariffs'
+          body: 'Automated run of `scripts/fetch-ispark-tariffs.mjs`.'
+          add-paths: data/tariffs-ispark.json
