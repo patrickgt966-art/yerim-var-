@@ -5,6 +5,7 @@ import {
   UnderstandingModelSchema,
   chatOutputSchema,
   chatSystem,
+  langNote,
   narrateSystem,
   parkPickModelSchema,
   parkPickSystem,
@@ -300,8 +301,8 @@ export default {
       if (understandReq) {
         const cards = understandReq.lastCards;
         const system = cards
-          ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-          : understandSystem(understandReq.city);
+          ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
+          : understandSystem(understandReq.city) + langNote(understandReq.lang);
         const unknown = async () =>
           respond('error', {
             understanding: { kind: 'unknown' } satisfies Understanding,
@@ -333,8 +334,8 @@ export default {
       if (chatReq) {
         const cards = chatReq.lastCards;
         const system = cards
-          ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-          : chatSystem(chatReq.city);
+          ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(chatReq.lang)}`
+          : chatSystem(chatReq.city) + langNote(chatReq.lang);
         const response = await readable(() =>
           client.messages.parse({
             model: MODEL,
@@ -368,7 +369,9 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
+            system:
+              (park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city)) +
+              langNote(pickReq.lang),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
@@ -400,7 +403,7 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: planSystem(planReq.city),
+            system: planSystem(planReq.city) + langNote(planReq.lang),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
@@ -433,7 +436,7 @@ export default {
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 1024,
-          system: narrateSystem(narrateReq.city),
+          system: narrateSystem(narrateReq.city) + langNote(narrateReq.lang),
           output_config: { effort: 'low' },
           messages: [
             {

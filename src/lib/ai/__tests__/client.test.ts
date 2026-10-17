@@ -1,7 +1,16 @@
+import '@/i18n';
+
+import { changeLanguage } from 'i18next';
+
 import { setActiveCity } from '@/data/cities';
 
 import { createAiClient } from '../client';
-import { HISTORY_LIMIT, ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
+import {
+  HISTORY_LIMIT,
+  ROUTER_TIMEOUT_MS,
+  type NarrateRequest,
+  type UnderstandRequest,
+} from '../protocol';
 
 // The client warns about failures in dev; the tests that expect them look at the spy themselves.
 beforeEach(() => {
@@ -87,6 +96,22 @@ describe('ai client', () => {
     });
     const body = JSON.parse((f as unknown as jest.Mock).mock.calls[0]![1].body as string);
     expect(body.lastCards).toEqual({ count: 3, kind: 'restaurant' });
+  });
+
+  it('says the app language only when it is English', async () => {
+    const f = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 4 });
+    const client = createAiClient('https://ai.test', f);
+    const sent = (k: number) =>
+      JSON.parse((f as unknown as jest.Mock).mock.calls[k]![1].body as string);
+    await client.understand(understandReq);
+    expect(sent(0)).not.toHaveProperty('lang');
+    await changeLanguage('en');
+    try {
+      await client.understand(understandReq);
+      expect(sent(1).lang).toBe('en');
+    } finally {
+      await changeLanguage('tr');
+    }
   });
 
   it('a 429 for being too fast or a busy server is no empty quota', async () => {
@@ -405,8 +430,13 @@ describe('ai client dev warning for a failed call', () => {
   });
 
   it('prints the detail alone, and ignores a detail or message that is not a string', async () => {
-    await createAiClient('https://ai.test', fakeFetch(502, { detail: 'SyntaxError' })).understand(understandReq);
-    await createAiClient('https://ai.test', fakeFetch(502, { detail: 7, message: { a: 1 } })).understand(understandReq);
+    await createAiClient('https://ai.test', fakeFetch(502, { detail: 'SyntaxError' })).understand(
+      understandReq,
+    );
+    await createAiClient(
+      'https://ai.test',
+      fakeFetch(502, { detail: 7, message: { a: 1 } }),
+    ).understand(understandReq);
     expect(warns()).toEqual([
       '[ai] /understand failed: http (HTTP 502) SyntaxError',
       '[ai] /understand failed: http (HTTP 502)',
@@ -478,7 +508,15 @@ describe('ai client pick / plan / understand extras', () => {
       outdoor: null,
     })),
   };
-  const pick = { fit: [], noneFit: false, pick: 1, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null };
+  const pick = {
+    fit: [],
+    noneFit: false,
+    pick: 1,
+    reasons: ['closest'],
+    runnerUp: null,
+    runnerUpWhy: null,
+    tone: null,
+  };
 
   it('returns a pick that fits the candidates', async () => {
     const f = fakeFetch(200, { pick, remaining: 3 });
@@ -499,12 +537,18 @@ describe('ai client pick / plan / understand extras', () => {
 
   it('keeps a pick whose extras are odd: unknown or extra reasons and an out-of-range runner-up are dropped', async () => {
     const cases: [object, object][] = [
-      [{ ...pick, reasons: ['cheapest'] }, { ...pick, reasons: [] }],
+      [
+        { ...pick, reasons: ['cheapest'] },
+        { ...pick, reasons: [] },
+      ],
       [
         { ...pick, reasons: ['closest', 'open_now', 'outdoor', 'free_parking'] },
         { ...pick, reasons: ['closest', 'open_now', 'outdoor'] },
       ],
-      [{ ...pick, runnerUp: 7, runnerUpWhy: 'closest' }, { ...pick, runnerUp: null, runnerUpWhy: 'closest' }],
+      [
+        { ...pick, runnerUp: 7, runnerUpWhy: 'closest' },
+        { ...pick, runnerUp: null, runnerUpWhy: 'closest' },
+      ],
     ];
     for (const [sent, kept] of cases) {
       const r = await createAiClient(
@@ -687,8 +731,16 @@ describe('ai client city', () => {
     const ok = { understanding: { kind: 'unknown' }, remaining: 3 };
     const f = jest
       .fn()
-      .mockResolvedValueOnce({ status: 400, ok: false, json: async () => ({ error: 'bad_request' }) })
-      .mockResolvedValueOnce({ status: 200, ok: true, json: async () => ok }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        status: 400,
+        ok: false,
+        json: async () => ({ error: 'bad_request' }),
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        json: async () => ok,
+      }) as unknown as typeof fetch;
     const r = await createAiClient('https://ai.test', f).understand(understandReq);
     expect(r.ok).toBe(true);
     expect(f).toHaveBeenCalledTimes(2);

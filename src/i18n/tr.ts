@@ -326,6 +326,8 @@ const tr = {
       'Kod: MIT. Yazı tipleri Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
+    language: 'Dil / Language',
+    langAuto: 'Telefonun dili',
   },
   card: {
     municipal: 'Belediye otoparkı',

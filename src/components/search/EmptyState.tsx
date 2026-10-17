@@ -213,7 +213,10 @@ export function EmptyState({ section, onAsk, onPlace }: SearchProps) {
       {popular.length > 0 && (
         <>
           <SectionTitle
-            text={t('ara.popular', { cityLoc: cityById(city).locative.toLocaleUpperCase('tr') })}
+            text={t('ara.popular', {
+              cityLoc: cityById(city).locative.toLocaleUpperCase('tr'),
+              city: cityById(city).name.toLocaleUpperCase('tr'),
+            })}
           />
           <ChipWrap>
             {popular.map((p) => (

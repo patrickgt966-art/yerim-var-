@@ -59,13 +59,70 @@ export const BANNED_WORDS = [
   'bekci',
   'yuksekl',
   'rezervasyon',
+  // The same claims in English (the app also answers in English).
+  'free',
+  'cheap',
+  'expensive',
+  'price',
+  'pricey',
+  'discount',
+  'deal',
+  'cost',
+  'open',
+  'closed',
+  'hour',
+  'minute',
+  'min ',
+  'meter',
+  'metre',
+  'mile',
+  'spaces',
+  'spots',
+  'vacan',
+  'nearby',
+  'near ',
+  'close by',
+  'far ',
+  'best',
+  'tastiest',
+  'delicious',
+  'famous',
+  'popular',
+  'rating',
+  'rated',
+  'stars',
+  'review',
+  'guarantee',
+  'safe',
+  'security',
+  'camera',
+  'reservation',
+  'booking',
 ];
 /** Banned in the tone and the dish note; the clarify question and the chat reply may talk about parking. */
-export const BANNED_PARK_WORDS = ['otopark', 'park'];
+export const BANNED_PARK_WORDS = ['otopark', 'park', 'car park', 'parking', 'garage'];
 /** Claims about how a place feels: banned in the tone and the dish note. */
-export const BANNED_AMBIANCE_WORDS = ['sakin', 'romantik', 'manzara', 'cocuk dostu'];
+export const BANNED_AMBIANCE_WORDS = [
+  'sakin',
+  'romantik',
+  'manzara',
+  'cocuk dostu',
+  'quiet',
+  'romantic',
+  'view',
+  'kid friendly',
+  'kid-friendly',
+  'cozy',
+];
 /** A dish note is about the food, never about "here". */
-export const BANNED_DISH_NOTE_WORDS = ['burada', 'bu restoran', 'mekan'];
+export const BANNED_DISH_NOTE_WORDS = [
+  'burada',
+  'bu restoran',
+  'mekan',
+  'here',
+  'this restaurant',
+  'this place',
+];
 /** Whole words (not word starts: "yerel" is fine) that make a dish note about a place. */
 const DISH_NOTE_PLACE_TOKENS = /^yer(i|ler|leri|de|lerde|e|in)?$/;
 
@@ -118,8 +175,7 @@ export type FreeTextContext = {
 };
 
 const EMOJI = /\p{Extended_Pictographic}/gu;
-const URL_LIKE =
-  /https?:|:\/\/|www\.|[\p{L}\p{N}-]+\.[\p{L}]{2,}|\b[a-z0-9-]+\/[a-z0-9]/iu;
+const URL_LIKE = /https?:|:\/\/|www\.|[\p{L}\p{N}-]+\.[\p{L}]{2,}|\b[a-z0-9-]+\/[a-z0-9]/iu;
 
 function hasWord(padded: string, word: string): boolean {
   return padded.includes(` ${word}`);
@@ -174,7 +230,9 @@ export function validateFreeText(
   for (const word of words) {
     const bare = word.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
     const stem = bare.split(/['’]/)[0] ?? bare;
-    const startsUpper = stem !== '' && stem.charAt(0) !== stem.charAt(0).toLocaleLowerCase('tr');
+    // English "I" ("I'm", "I'll") is capitalised wherever it stands.
+    const startsUpper =
+      stem !== '' && stem !== 'I' && stem.charAt(0) !== stem.charAt(0).toLocaleLowerCase('tr');
     if (startsUpper && !atStart) {
       const f = fold(stem);
       const known =

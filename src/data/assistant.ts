@@ -1249,7 +1249,10 @@ async function answerText(
             },
         {
           kind: 'refine',
-          label: t('chat.actDistrictFood', { inDistrict: inDistrict(district.name, true) }),
+          label: t('chat.actDistrictFood', {
+            inDistrict: inDistrict(district.name, true),
+            district: district.name,
+          }),
           patch: { section: 'food', cat: null, dish: null, dishServes: null, place: here },
         },
       ];
@@ -1258,6 +1261,7 @@ async function answerText(
           {
             text: t('chat.districtUnknownThing', {
               inDistrict: inDistrict(district.name),
+              district: district.name,
               q: left.x,
             }),
             cards: [],
@@ -1560,7 +1564,7 @@ async function run(
       where = t('chat.nearYou');
     } else {
       target = activeCity().center;
-      where = t('chat.center');
+      where = t('chat.center', { city: activeCity().name });
     }
   }
 

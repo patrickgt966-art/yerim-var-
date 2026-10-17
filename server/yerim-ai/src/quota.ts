@@ -291,6 +291,11 @@ function isNum(v: unknown): v is number {
  * The optional `city` of a request: undefined when absent (an older app, which then gets the
  * İzmir prompts), null when it is not an open city.
  */
+/** The optional app language: only 'en' changes anything; anything else is Turkish. */
+function readLang(body: Record<string, unknown>): { lang?: 'en' } {
+  return body.lang === 'en' ? { lang: 'en' } : {};
+}
+
 function readCity(body: Record<string, unknown>): string | undefined | null {
   if (body.city === undefined) return undefined;
   const parsed = CitySchema.safeParse(body.city);
@@ -340,7 +345,14 @@ export function validUnderstand(body: unknown): UnderstandRequest | null {
   if (!turns) return null;
   const city = readCity(body);
   if (city === null) return null;
-  const req: UnderstandRequest = { deviceId, messageId, text, history: turns, section };
+  const req: UnderstandRequest = {
+    deviceId,
+    messageId,
+    text,
+    history: turns,
+    section,
+    ...readLang(body),
+  };
   if (city) req.city = city;
   if (lastCards !== undefined) {
     if (!isRecord(lastCards)) return null;
@@ -362,7 +374,7 @@ export function validChat(body: unknown): ChatRequest | null {
   if (!turns) return null;
   const city = readCity(body);
   if (city === null) return null;
-  const req: ChatRequest = { deviceId, messageId, text, history: turns };
+  const req: ChatRequest = { deviceId, messageId, text, history: turns, ...readLang(body) };
   if (city) req.city = city;
   if (lastCards !== undefined) {
     if (!isRecord(lastCards)) return null;
@@ -424,6 +436,7 @@ export function validNarrate(body: unknown): NarrateRequest | null {
     deviceId,
     messageId,
     ...(city ? { city } : {}),
+    ...readLang(body),
     text,
     where,
     what,
@@ -464,7 +477,7 @@ function validIds(body: Record<string, unknown>) {
   if (!isText(text, MAX_MESSAGE_CHARS)) return null;
   const city = readCity(body);
   if (city === null) return null;
-  return { deviceId, messageId, text, ...(city ? { city } : {}) };
+  return { deviceId, messageId, text, ...(city ? { city } : {}), ...readLang(body) };
 }
 
 /**

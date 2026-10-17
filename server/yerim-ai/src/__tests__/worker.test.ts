@@ -159,9 +159,14 @@ describe('one counter across the endpoints', () => {
     await post(env, '/understand', understandBody('bound'));
     mockParse.mockRejectedValueOnce(new Error('retry failed'));
     expect((await post(env, '/understand', understandBody('bound'))).status).toBe(502);
-    expect((await post(env, '/understand', {
-      ...understandBody('bound'), text: 'yeni soru',
-    })).status).toBe(409);
+    expect(
+      (
+        await post(env, '/understand', {
+          ...understandBody('bound'),
+          text: 'yeni soru',
+        })
+      ).status,
+    ).toBe(409);
     expect(mockParse).toHaveBeenCalledTimes(2);
   });
 
@@ -170,7 +175,8 @@ describe('one counter across the endpoints', () => {
     mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
     expect((await post(env, '/understand', understandBody('reused'))).status).toBe(200);
     const duplicate = await post(env, '/understand', {
-      ...understandBody('reused'), text: 'tamamen farklı bir soru',
+      ...understandBody('reused'),
+      text: 'tamamen farklı bir soru',
     });
     expect(duplicate.status).toBe(409);
     expect(mockParse).toHaveBeenCalledTimes(1);
@@ -363,6 +369,17 @@ describe('city', () => {
     await post(env, '/understand', understandBody('m2'));
     expect(systemOfLastCall()).toContain('İzmir için');
     expect(systemOfLastCall()).not.toContain('İstanbul');
+  });
+
+  it('an English app gets the free text in English; any other lang is Turkish', async () => {
+    const env = envOf(fakeKV());
+    mockParse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: flatSearch });
+    await post(env, '/understand', { ...understandBody('m1'), lang: 'en' });
+    expect(systemOfLastCall()).toContain('DİL (');
+    await post(env, '/understand', { ...understandBody('m2'), lang: 'de' });
+    expect(systemOfLastCall()).not.toContain('DİL (');
+    await post(env, '/understand', understandBody('m3'));
+    expect(systemOfLastCall()).not.toContain('DİL (');
   });
 
   it('a request with city ankara gets the Ankara prompt', async () => {

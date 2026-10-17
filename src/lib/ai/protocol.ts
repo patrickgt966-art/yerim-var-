@@ -57,6 +57,19 @@ function promptCity(city: string | undefined) {
   return cityById(isAvailableCity(city) ? city : DEFAULT_CITY);
 }
 
+/** The languages the app speaks. */
+export const AI_LANGS = ['tr', 'en'] as const;
+export type AiLang = (typeof AI_LANGS)[number];
+
+/**
+ * Appended to a system prompt when the app is in English: the user may write in either language,
+ * and every text the user sees is written in English. Codes and field names never change.
+ */
+export function langNote(lang?: AiLang): string {
+  if (lang !== 'en') return '';
+  return '\n\nDİL (yukarıdaki "serbest metinleri Türkçe yaz" kuralının yerine geçer): Kullanıcı uygulamayı İngilizce kullanıyor. Kullanıcıya görünen serbest metinleri (reply, clarifyText, tone, dishNote) İngilizce yaz. Alan değerleri (district, dish, place, dishServes) ve kodlar her zamanki gibi standart Türkçe yazımla kalır; meaning Türkçe ya da İngilizce olabilir.';
+}
+
 export type UnderstandRequest = {
   deviceId: string;
   messageId: string;
@@ -66,6 +79,8 @@ export type UnderstandRequest = {
   /** What the last bot reply showed (no names): lets the model answer "pick_from_last". */
   lastCards?: { count: number; kind: 'restaurant' | 'parking' };
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
 };
 
 export type QuotaRequest = { deviceId: string };
@@ -340,6 +355,8 @@ export type NarrateRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   where: string;
   what: string;
@@ -463,6 +480,8 @@ export type PickRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   candidates: PickCandidate[];
 };
@@ -552,6 +571,8 @@ export type ParkPickRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   candidates: ParkPickCandidate[];
 };
@@ -611,6 +632,8 @@ export type PlanRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   when: PlanWhen;
   candidates: PlanCandidate[];
@@ -778,6 +801,8 @@ export type ChatRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   /** The last four turns at most. */
   history: ChatTurn[];
