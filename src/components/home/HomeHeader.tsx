@@ -7,15 +7,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { useCoachTarget } from '@/components/coach/registry';
 import { CityButton } from '@/components/CityPicker';
-import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import { aiBaseUrl } from '@/lib/ai/client';
 import { refreshAiQuota } from '@/lib/ai/refresh';
 import { useAi } from '@/store/ai';
-import { brand, fonts } from '@/theme';
+import { brand, fonts, useColors } from '@/theme';
+
+import { HomeSkyline } from './HomeSkyline';
 
 /** Remaining AI uses, only while the AI layer is on and the user agreed to it. */
 function AiPill() {
+  const c = useColors();
   const { t } = useTranslation();
   const consent = useAi((s) => s.consent);
   const left = useAi((s) => s.remaining());
@@ -33,51 +35,87 @@ function AiPill() {
       accessible
       accessibilityLabel={t('home.a11yAi', { count: left })}
       style={{
-        minHeight: 38,
+        minHeight: 34,
         paddingHorizontal: 12,
-        borderRadius: 19,
+        borderRadius: 17,
         alignItems: 'center',
         justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 6,
-        backgroundColor: brand.peachSoft,
+        backgroundColor: c.badgeInfoBg,
       }}
     >
-      <Icon name="sparkle" size={18} color={brand.peachText} strokeWidth={2} />
       <Txt
         allowFontScaling={false}
-        style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14, lineHeight: 18 }}
-        color={brand.peachText}
+        style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
+        color={c.badgeInfoText}
       >
-        {left}
+        ✨ {left}
       </Txt>
     </View>
   );
 }
 
-/** Light header (design V5): logo, city and the AI pill on the warm page. */
+/** Navy hero: faint skyline, logo, city, AI pill and the title. */
 export function HomeHeader() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const c = useColors();
   const cityCoach = useCoachTarget('city');
   return (
     <View
       style={{
-        paddingTop: insets.top + 12,
+        backgroundColor: c.hero,
+        paddingTop: insets.top + 10,
         paddingHorizontal: 16,
-        paddingBottom: 14,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: 8,
+        // Room for the İzmir skyline between the title and the search card.
+        paddingBottom: 104,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        overflow: 'hidden',
       }}
     >
-      <View style={{ flexGrow: 1, flexShrink: 1 }}>
-        <BrandWordmark layout="inline" tone="onLight" size={26} header />
+      <HomeSkyline />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <View
+          style={{ flexGrow: 1, flexShrink: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
+          <BrandWordmark layout="inline" tone="onDark" size={20} header />
+        </View>
+        <View
+          {...cityCoach}
+          style={{
+            borderRadius: 22,
+            paddingHorizontal: 8,
+            backgroundColor: 'rgba(255,255,255,0.12)',
+          }}
+        >
+          <CityButton />
+        </View>
+        <AiPill />
       </View>
-      <View {...cityCoach}>
-        <CityButton />
-      </View>
-      <AiPill />
+      <Txt
+        variant="display"
+        color={brand.white}
+        style={{ marginTop: 10, fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
+        accessibilityRole="header"
+      >
+        {t('home.title0')}
+        <Txt
+          variant="display"
+          color={brand.orangeLight}
+          style={{ fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
+        >
+          {t('home.titleEat')}
+        </Txt>
+        {t('home.title1')}
+        <Txt
+          variant="display"
+          color={brand.orangeLight}
+          style={{ fontSize: 30, lineHeight: 33, letterSpacing: -0.5 }}
+        >
+          {t('home.title2')}
+        </Txt>
+        {t('home.title3')}
+      </Txt>
     </View>
   );
 }

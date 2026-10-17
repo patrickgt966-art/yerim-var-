@@ -13,20 +13,8 @@ export const brand = {
   white: '#FFFFFF',
   /** Live line on a navy surface (home "Yakınımda otopark"). */
   mint: '#9FE3D2',
-  /** Small text on the orange surface. */
+  /** Small text on the orange surface (home "parkı kolay"). */
   brown: '#5A2A00',
-  /** Warm page background (design V5). */
-  paper: '#FBF7F1',
-  /** Soft green surface: car parks (home "Otopark bul", the active park). */
-  mintSoft: '#E2F1EA',
-  /** Text on mintSoft (5.5:1). */
-  mintText: '#0E6B5A',
-  /** Soft peach surface: food (home "Yemek bul", craving chips). */
-  peachSoft: '#FCE8D5',
-  /** Border of a peach chip. */
-  peachLine: '#F2D6BC',
-  /** Text on peachSoft (6:1). */
-  peachText: '#8A4513',
 } as const;
 
 export const occupancy = {
@@ -69,8 +57,8 @@ export type Palette = {
 };
 
 export const lightPalette: Palette = {
-  bg: brand.paper,
-  surface: '#F4EEE5',
+  bg: brand.white,
+  surface: brand.surface,
   card: brand.white,
   text: brand.navy,
   textSecondary: brand.textSecondary,
@@ -81,7 +69,7 @@ export const lightPalette: Palette = {
   onPrimary: brand.white,
   accent: brand.orange,
   accentStrong: brand.orangeStrong,
-  chipBg: '#EFE8DD',
+  chipBg: '#E6EEF0',
   hero: brand.navy,
   onHero: brand.white,
   plenty: occupancy.plenty,
@@ -89,9 +77,9 @@ export const lightPalette: Palette = {
   full: occupancy.full,
   badgeNearBg: '#FFEBD6',
   badgeNearText: '#92400E',
-  badgeFreshBg: brand.mintSoft,
+  badgeFreshBg: '#D9F5EE',
   badgeFreshText: '#0B5E50',
-  badgeUnknownBg: '#EFE8DD',
+  badgeUnknownBg: '#E6EEF0',
   badgeUnknownText: '#3F5964',
   badgeInfoBg: '#FFF3C4',
   badgeInfoText: brand.navy,

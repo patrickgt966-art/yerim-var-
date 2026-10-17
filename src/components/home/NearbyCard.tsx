@@ -41,7 +41,6 @@ function mix(parks: RankedParking[], foods: RestaurantRow[]): Item[] {
   return out;
 }
 
-/** Hepsi · Otopark · Yemek as text tabs; the chosen one is underlined (design V5). */
 function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -49,7 +48,7 @@ function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) =
     <View
       accessibilityRole="tablist"
       accessibilityLabel={t('home.filterLabel')}
-      style={{ flexDirection: 'row', gap: 4 }}
+      style={{ flexDirection: 'row', padding: 4, borderRadius: 16, backgroundColor: c.chipBg }}
     >
       {FILTERS.map((f) => {
         const selected = value === f.id;
@@ -59,29 +58,26 @@ function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) =
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             onPress={() => onChange(f.id)}
-            style={{ minHeight: HIT, paddingHorizontal: 10, justifyContent: 'center' }}
+            hitSlop={{ top: 2, bottom: 2 }}
+            style={{
+              minHeight: HIT - 8,
+              paddingHorizontal: 11,
+              borderRadius: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: selected ? c.card : 'transparent',
+            }}
           >
             <Txt
               style={{
-                fontFamily: selected ? fonts.bodyExtraBold : fonts.body,
-                fontSize: 14,
-                lineHeight: 19,
+                fontFamily: selected ? fonts.bodyExtraBold : fonts.bodyBold,
+                fontSize: 12,
+                lineHeight: 16,
               }}
               color={selected ? c.text : c.textSecondary}
             >
               {t(f.label)}
             </Txt>
-            <View
-              style={{
-                position: 'absolute',
-                left: 6,
-                right: 6,
-                bottom: 4,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: selected ? c.text : 'transparent',
-              }}
-            />
           </Pressable>
         );
       })}
@@ -114,7 +110,7 @@ function RowShell({
         alignItems: 'center',
         gap: 12,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: c.chipBg,
+        borderBottomColor: c.surface,
       }}
     >
       {children}
@@ -128,7 +124,12 @@ function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
   const f = getFreshness(p);
   const fresh = (f.kind === 'live' || f.kind === 'updated') && p.free != null;
   const level = fresh ? occupancyLevel(p.free, p.capacity) : 'unknown';
-  const tone = level === 'plenty' ? c.plenty : level === 'few' ? c.few : c.full;
+  const tone =
+    level === 'plenty'
+      ? { bg: c.badgeFreshBg, fg: c.plenty }
+      : level === 'few'
+        ? { bg: c.badgeNearBg, fg: c.few }
+        : { bg: c.warnBg, fg: c.full };
   const status =
     fresh && 'at' in f ? t('home.updatedAt', { time: formatClock(f.at) }) : freshnessText(f, t);
   const sub = [t('home.walkMin', { count: p.walk }), status].join(' · ');
@@ -147,13 +148,13 @@ function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
           borderRadius: 12,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: brand.mintSoft,
+          backgroundColor: brand.navy,
         }}
       >
         <Txt
           allowFontScaling={false}
-          style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 22 }}
-          color={brand.mintText}
+          style={{ fontFamily: fonts.display, fontSize: 16, lineHeight: 20 }}
+          color={brand.orange}
         >
           P
         </Txt>
@@ -174,14 +175,32 @@ function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
         </Txt>
       </View>
       {fresh && (
-        <Txt
+        <View
           accessible={false}
-          allowFontScaling={false}
-          style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14, lineHeight: 19 }}
-          color={tone}
+          style={{
+            minWidth: 44,
+            alignItems: 'center',
+            paddingVertical: 4,
+            paddingHorizontal: 8,
+            borderRadius: 12,
+            backgroundColor: tone.bg,
+          }}
         >
-          {t('home.free', { count: p.free ?? 0 })}
-        </Txt>
+          <Txt
+            allowFontScaling={false}
+            style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 20 }}
+            color={tone.fg}
+          >
+            {p.free}
+          </Txt>
+          <Txt
+            allowFontScaling={false}
+            style={{ fontFamily: fonts.bodyBold, fontSize: 10, lineHeight: 12 }}
+            color={tone.fg}
+          >
+            {t('home.free')}
+          </Txt>
+        </View>
       )}
     </RowShell>
   );
@@ -214,7 +233,7 @@ function FoodRow({ row, here, last }: { row: RestaurantRow; here: LatLng; last: 
           borderRadius: 18,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: brand.peachSoft,
+          backgroundColor: c.badgeNearBg,
         }}
       >
         <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={20} color={c.text} />
@@ -272,7 +291,7 @@ function MapPreview({
       accessibilityRole="button"
       accessibilityLabel={t('home.a11yOpenMap')}
       onPress={() => router.navigate('/harita')}
-      style={{ height: 150, backgroundColor: c.chipBg }}
+      style={{ height: 96, backgroundColor: c.chipBg }}
     >
       <View
         pointerEvents="none"
@@ -294,12 +313,10 @@ function MapPreview({
           position: 'absolute',
           right: 10,
           bottom: 10,
-          minHeight: 36,
-          paddingHorizontal: 14,
-          borderRadius: 18,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
+          minHeight: 30,
+          paddingHorizontal: 10,
+          borderRadius: 15,
+          justifyContent: 'center',
           backgroundColor: c.card,
           shadowColor: brand.navy,
           shadowOpacity: 0.15,
@@ -308,16 +325,15 @@ function MapPreview({
           elevation: 3,
         }}
       >
-        <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 17 }}>
+        <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}>
           {t('home.openMap')}
         </Txt>
-        <Icon name="arrow" size={16} color={brand.navy} strokeWidth={2.4} />
       </View>
     </Pressable>
   );
 }
 
-/** "Yakınında" (design V5): tabbed list of the nearest car parks and restaurants with a map preview. */
+/** "Yakınında": segmented list of the nearest car parks and restaurants with a map preview. */
 export function NearbyCard({ nearby }: { nearby: NearbyHome }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -348,7 +364,7 @@ export function NearbyCard({ nearby }: { nearby: NearbyHome }) {
   if (!here && !showPrompt) return null;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingTop: 22 }}>
+    <View style={{ paddingHorizontal: 16, paddingTop: 18 }}>
       <View
         style={{
           flexDirection: 'row',
@@ -360,7 +376,7 @@ export function NearbyCard({ nearby }: { nearby: NearbyHome }) {
       >
         <Txt
           accessibilityRole="header"
-          style={{ fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.4 }}
+          style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 24 }}
         >
           {t('home.nearTitle')}
         </Txt>

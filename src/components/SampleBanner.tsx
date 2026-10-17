@@ -39,9 +39,7 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
   // Keyed by kind: the offline text's age changes every minute.
   useAnnounce(text, 0, text ? `${result?.source}|${result?.offline ?? false}` : undefined);
   if (!text) {
-    return noLive ? (
-      <NoLiveNote text={t('freshness.noLiveBanner', { place: city.locative, city: city.name })} />
-    ) : null;
+    return noLive ? <NoLiveNote text={t('freshness.noLiveBanner', { place: city.locative, city: city.name })} /> : null;
   }
   return (
     <View
