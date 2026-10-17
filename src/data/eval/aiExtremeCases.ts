@@ -954,7 +954,8 @@ const PARK_SCENARIOS: readonly ParkScenario[] = [
     key: 'closest',
     texts: ['en yakın otopark', 'acele ediyorum, en yakını', 'hemen park edeceğim, yakın olsun'],
     facts: (_r, c, t) => {
-      (c[t] as ParkPickCandidate).walkMin = 1;
+      // No tie: every other one is at least three minutes away.
+      for (const x of c) x.walkMin = x.i === t ? 1 : Math.max(x.walkMin, 3);
       return [t];
     },
   },

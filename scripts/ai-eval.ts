@@ -18,6 +18,8 @@ import * as path from 'node:path';
 import Anthropic from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/index.mjs';
 import { zodOutputFormat } from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/helpers/zod.mjs';
 
+import { cityById } from '@/data/cities';
+import { settleDistrict } from '@/data/districtMatch';
 import { PICK_CASES, UNDERSTAND_CASES } from '@/data/eval/aiCases';
 import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
 import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
@@ -200,7 +202,11 @@ async function main(): Promise<void> {
         response.stop_reason === 'refusal' || !response.parsed_output
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
-      return scoreUnderstanding(c, u);
+      // As the app reads it: the district settled against the city's own list.
+      return scoreUnderstanding(
+        c,
+        settleDistrict(u, c.text, cityById(c.city ?? 'izmir').districts),
+      );
     });
   }
   for (const c of PICK_CASES) {

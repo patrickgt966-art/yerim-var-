@@ -103,14 +103,22 @@ describe('the router: every message goes to Haiku first', () => {
     expect(n.ctx.notCat).toBeNull();
   });
 
-  it("a search: the AI's reading is the search; the rules add no district it left out", async () => {
+  it("a search: the AI's reading is the search; only an official district it left out is added", async () => {
     const { deps } = mockAi(async () => searchU({ district: 'Konak', cat: 'fish', nearMe: false }));
     const r = await answer("Bornova'da bir yer", emptyContext('food'), deps);
     expect(r.ctx.place?.label).toBe('Konak');
     expect(r.ctx.cat).toBe('fish');
+    // A district of the city's own list, typed wrong, still counts (settleDistrict).
     const quiet = mockAi(async () => searchU({ district: null, cat: 'fish', nearMe: false }));
-    const q = await answer("Bornova'da bir yer", emptyContext('food'), quiet.deps);
-    expect(q.ctx.place?.label).not.toBe('Bornova');
+    const q = await answer('bornvada bir yer', emptyContext('food'), quiet.deps);
+    expect(q.ctx.place?.label).toBe('Bornova');
+    expect(q.ctx.cat).toBe('fish');
+    // A quarter the AI wrote as a district is not dropped: it is searched as a place.
+    const quarter = mockAi(async () =>
+      searchU({ district: 'Alsancak', cat: 'fish', nearMe: false }),
+    );
+    const a = await answer('alsancakta balık', emptyContext('food'), quarter.deps);
+    expect(a.ctx.place?.label).toMatch(/alsancak/i);
   });
 
   it('a pick after the router search reuses the same call path (one pick call, no second router call)', async () => {
@@ -155,7 +163,11 @@ describe('the router: every message goes to Haiku first', () => {
     });
 
     it('the AI could not tell what is wanted: it says so, no rule guess and no cards', async () => {
-      const { ai, deps } = mockAi(async () => ({ ok: true, remaining: 8, value: { kind: 'unknown' } }));
+      const { ai, deps } = mockAi(async () => ({
+        ok: true,
+        remaining: 8,
+        value: { kind: 'unknown' },
+      }));
       const r = await answer('lahmacun', emptyContext('food'), deps);
       expect(r.reply.cards).toHaveLength(0);
       expect(r.reply.text).toMatch(/^chat.unknown_/);
