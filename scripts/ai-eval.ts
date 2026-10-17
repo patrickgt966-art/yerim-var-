@@ -1,7 +1,10 @@
 /* eslint-disable import/no-unresolved -- SDK lives in server/yerim-ai/node_modules, absent in the main CI job. */
 /**
- * Runs the 50 chat eval cases through the same Haiku "understand" call the Worker makes
- * (server/yerim-ai/src/index.ts, /understand) and scores them with src/data/eval/score.ts.
+ * Runs the chat eval cases through the same Haiku "understand" call the Worker makes
+ * (server/yerim-ai/src/index.ts, /understand) and scores them with src/data/eval/score.ts; then the
+ * hard cases (src/data/eval/aiCases.ts: slang, filler, a request split over two messages, and pick
+ * choices that need judgment) through /understand and /pick, scored with src/data/eval/aiScore.ts.
+ * Exits 1 when fewer than HARD_PASS of the hard cases pass.
  *
  * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval.ts
  * CI: .github/workflows/ai-eval.yml (manual). Writes docs/chat-eval-ai.md.
@@ -15,6 +18,8 @@ import * as path from 'node:path';
 import Anthropic from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/index.mjs';
 import { zodOutputFormat } from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/helpers/zod.mjs';
 
+import { PICK_CASES, UNDERSTAND_CASES } from '@/data/eval/aiCases';
+import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
 import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
 import { scoreCase } from '@/data/eval/score';
 import { IZMIR_DISTRICTS, type QueryIntent } from '@/data/intent';
@@ -22,13 +27,32 @@ import { fold } from '@/data/search';
 import {
   UNDERSTAND_SYSTEM,
   UnderstandingModelSchema,
+  pickModelSchema,
+  pickSystem,
+  toPick,
   toUnderstanding,
+  understandSystem,
+  type ChatTurn,
+  type PickResponse,
   type Understanding,
 } from '@/lib/ai/protocol';
 
 // Keep in sync with MODEL in server/yerim-ai/src/index.ts.
 const MODEL = 'claude-haiku-5-5';
 const DELAY_MS = 500;
+/** Share of the hard cases that must pass; the model is not deterministic, so not all of them. */
+const HARD_PASS = 0.85;
+
+/** As the Worker's toMessages: the history as turns, never starting with the bot. */
+function toMessages(history: ChatTurn[], text: string) {
+  const mapped = history.map((h) => ({
+    role: h.role === 'bot' ? ('assistant' as const) : ('user' as const),
+    content: h.text,
+  }));
+  while (mapped[0]?.role === 'assistant') mapped.shift();
+  mapped.push({ role: 'user', content: text });
+  return mapped;
+}
 
 type Row = { c: ChatCase; pass: boolean; misses: string[]; error?: string };
 
@@ -139,12 +163,71 @@ async function main(): Promise<void> {
   lines.push(
     `Tokens: input ${inputTokens}, output ${outputTokens}, total ${inputTokens + outputTokens}`,
   );
+  // The hard cases: what the app does with real messages now.
+  type Hard = { name: string; pass: boolean; misses: string[] };
+  const hard: Hard[] = [];
+  const run = async (name: string, call: () => Promise<{ pass: boolean; misses: string[] }>) => {
+    await sleep(DELAY_MS);
+    try {
+      hard.push({ name, ...(await call()) });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      hard.push({ name, pass: false, misses: [`error: ${msg}`] });
+    }
+    console.error(`[hard ${hard.length}] ${hard[hard.length - 1]?.pass ? 'ok' : 'FAIL'} ${name}`);
+  };
+  for (const c of UNDERSTAND_CASES) {
+    await run(`understand: ${c.name}`, async () => {
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 2048,
+        system: understandSystem(c.city),
+        output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
+        messages: toMessages(c.history ?? [], c.text),
+      });
+      inputTokens += response.usage.input_tokens;
+      outputTokens += response.usage.output_tokens;
+      const u: Understanding =
+        response.stop_reason === 'refusal' || !response.parsed_output
+          ? { kind: 'unknown' }
+          : toUnderstanding(response.parsed_output);
+      return scoreUnderstanding(c, u);
+    });
+  }
+  for (const c of PICK_CASES) {
+    await run(`pick: ${c.name}`, async () => {
+      const n = c.candidates.length;
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 1024,
+        system: pickSystem('izmir'),
+        output_config: { effort: 'low', format: zodOutputFormat(pickModelSchema(n)) },
+        messages: [
+          { role: 'user', content: JSON.stringify({ text: c.text, candidates: c.candidates }) },
+        ],
+      });
+      inputTokens += response.usage.input_tokens;
+      outputTokens += response.usage.output_tokens;
+      return scorePick(c, toPick(response.parsed_output, n) as PickResponse | null);
+    });
+  }
+  const hardOk = hard.filter((h) => h.pass).length;
+  lines.splice(
+    lines.length - 1,
+    0,
+    `Hard cases (understand + pick): ${hardOk}/${hard.length} (must be ${Math.ceil(HARD_PASS * hard.length)}+)`,
+    ...hard.filter((h) => !h.pass).map((h) => `  FAIL ${h.name} -> ${h.misses.join('; ')}`),
+  );
+  lines[lines.length - 1] =
+    `Tokens: input ${inputTokens}, output ${outputTokens}, total ${inputTokens + outputTokens}`;
+
   const report = lines.join('\n');
   console.log(report);
 
   const date = new Date().toISOString().slice(0, 10);
   const md = `# Chat eval (AI)\n\nDate: ${date}\n\n\`\`\`\n${report}\n\`\`\`\n`;
   fs.writeFileSync(path.resolve(__dirname, '../docs/chat-eval-ai.md'), md);
+  if (hardOk < Math.ceil(HARD_PASS * hard.length)) process.exitCode = 1;
 }
 
 void main();

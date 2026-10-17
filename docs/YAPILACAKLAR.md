@@ -50,9 +50,12 @@ Son güncelleme: 16 Ekim 2026.
 
 - Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 10 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
 - Onay verildiyse her mesaj önce yönlendiriciye (`/understand`) gider; model kısa bir `meaning` yazar, sonra `search` / `chat` / `unknown` döner. Anlamazsa "anlayamadım" der, tahmin etmez.
-- Yönlendirici 9 sn içinde cevap vermezse, ağ hatasında ya da hak bitince uygulama kendi kurallarıyla cevap verir ve bunu söyler.
+- Yönlendirici 12 sn içinde cevap vermezse, ağ hatasında ya da hak bitince uygulama kendi kurallarıyla cevap verir ve bunu söyler.
 - `/pick` yakındaki en çok 40 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
 - Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`).
+- Canlı yapay zekâ sınavı (`scripts/ai-eval.ts`, `src/data/eval/aiCases.ts`): argo, dolgu kelime, iki mesaja bölünmüş istek ve seçim kararları; yapay zekâ dosyalarına dokunan her PR'da çalışır (GitHub'da `ANTHROPIC_API_KEY` sırrı gerekir), %85'in altında kırmızı olur.
+- Beslenme verisi: OSM `diet:*` etiketleri ve Overture vegan/vejetaryen/helal kategorileri; detay sayfasında ve yapay zekâ seçiminde gösterilir.
+- Seçim, arama alanının biraz dışındaki 10 yeri de görür; yakında uyan yoksa onları seçer.
 - Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
 
 ## Apple Developer hesabından sonra

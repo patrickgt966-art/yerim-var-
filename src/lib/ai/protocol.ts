@@ -17,7 +17,7 @@ export const MAX_RESULTS = 5;
  * Haiku with structured output is usually faster, but the first call after a schema change (the
  * API compiles the schema then) and a cold worker took longer than 6 s; a longer wait feels like a hang.
  */
-export const ROUTER_TIMEOUT_MS = 9000;
+export const ROUTER_TIMEOUT_MS = 12000;
 /** /pick and /plan: candidate restaurants per request, and car parks per restaurant (plan). */
 export const MAX_CANDIDATES = 5;
 /**
@@ -727,6 +727,8 @@ export function pickSystem(city?: string): string {
 Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
 
 Önce isteğe uygunluğa karar ver: kullanıcı ne istiyor (bir yemek, bir amaç ya da beslenme tarzı: kas yapmak, vejetaryen, hafif, tatlı, çocukla gitmek ...)? Her adayın adına ve türüne bakıp hangilerinin bu isteğe uyduğunu kendi aklınla değerlendir. Menü bilgimiz yok; sadece ad ve türden makul bir çıkarım yap. Uymak, yalnızca o işe özel bir yer olmak demek değildir: kullanıcının orada isteğine uygun bir şey bulup yiyebileceği her yer uyar; yalnızca isteğe açıkça ters düşen yerler uymaz (örneğin vejetaryen biri ev yemekleri yapan bir lokantada sebze yemeği, pidecide peynirli pide bulabilir ama sadece et yapan bir yer ona uymaz; protein isteyen biri lokantada, pidecide, döner ya da tavuk yapan bir yerde doyabilir ama yalnızca kahve ve tatlı satan bir yerde doyamaz). Bunlar sadece örnek: her istekte aynı akıl yürütmeyi yap. Kullanıcı yemek yemek istiyorsa, doyurucu bir öğün bulabileceği yerleri yalnızca kahve, tatlı ya da atıştırmalık sunan yerlerin önüne koy.
+type içinde "Vegan", "Vejetaryen", "Vejetaryen seçenek var", "Helal" gibi beslenme bilgileri bizim verimizdir, tahmin değildir: varsa ad ve türden yaptığın çıkarımdan önce bunlara güven.
+Adayların bir kısmı arama alanının biraz dışındadır (walkMin daha büyük). İsteğe uyan yakın bir aday varsa onu seç; daha uzaktakini ancak yakındakilerden hiçbiri isteğe uymuyorsa ya da açıkça çok daha iyi uyuyorsa (örneğin vejetaryen için tamamen vejetaryen bir yer) seç.
 Çıktı:
 - fit: isteğe uyan adayların indeksleri, en uygundan başlayarak, en çok 5. Kullanıcı belirli bir şey istemiyorsa (her yer olur) boş dizi.
 - noneFit: kullanıcı belirli bir şey istiyor ama hiçbir aday buna uymuyorsa true, yoksa false.
