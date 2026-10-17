@@ -1,8 +1,9 @@
 name: AI eval (big)
 
 # The big live eval (~590 cases, scripts/ai-eval-big.ts). Calls the Anthropic API and costs
-# roughly $0.5-1 per full run, so it runs only by hand. Without the ANTHROPIC_API_KEY secret it
-# skips. The optional `limit` input runs only the first N cases (a smoke test).
+# roughly $0.5-1 per full run, so it runs by hand, and on a working branch only when the eval
+# itself changes (a workflow must be on main before it can be started by hand). Without the
+# ANTHROPIC_API_KEY secret it skips. The optional `limit` input runs only the first N cases.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +11,12 @@ on:
         description: 'Run only the first N cases (empty = all)'
         required: false
         default: ''
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'src/data/eval/aiBigCases.ts'
+      - 'scripts/ai-eval-big.ts'
+      - '.github/workflows/ai-eval-big.yml'
 
 permissions:
   contents: read
