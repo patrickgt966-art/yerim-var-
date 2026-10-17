@@ -2,48 +2,47 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { Txt } from '@/components/Txt';
-import { brand, fonts, useColors } from '@/theme';
+import { brand, fonts, HIT } from '@/theme';
 
-import { CRAVING_IDS, CravingIcon } from './CravingIcon';
 import { openChat } from './SearchCard';
 
-/** "Canın ne çekiyor?": swipeable dish shortcuts that open the chat. */
+/** Keys of home.cravings, in the order shown. */
+const CRAVING_IDS = [
+  'breakfast',
+  'lahmacun',
+  'kebab',
+  'fish',
+  'soup',
+  'chickenRice',
+  'world',
+  'dessert',
+  'coffee',
+  'meyhane',
+] as const;
+
+/** "Canın ne çekiyor?": a swipeable row of dish chips that open the chat (design V5). */
 export function Cravings() {
-  const c = useColors();
   const { t } = useTranslation();
   return (
     <View>
-      <View
+      <Txt
+        accessibilityRole="header"
         style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: 4,
+          fontFamily: fonts.display,
+          fontSize: 22,
+          lineHeight: 28,
+          letterSpacing: -0.4,
           paddingHorizontal: 16,
-          paddingTop: 18,
+          paddingTop: 20,
           paddingBottom: 10,
         }}
       >
-        <Txt
-          accessibilityRole="header"
-          style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 24 }}
-        >
-          {t('home.cravingTitle')}
-        </Txt>
-        <Txt
-          accessible={false}
-          importantForAccessibility="no"
-          style={{ fontFamily: fonts.bodyBold, fontSize: 12, lineHeight: 16 }}
-          color={c.textSecondary}
-        >
-          {t('home.swipe')}
-        </Txt>
-      </View>
+        {t('home.cravingTitle')}
+      </Txt>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
       >
         {CRAVING_IDS.map((id) => {
           const name = t(`home.cravings.${id}`);
@@ -53,36 +52,17 @@ export function Cravings() {
               accessibilityRole="button"
               accessibilityLabel={t('home.a11yCraving', { name })}
               onPress={() => openChat(name.toLowerCase())}
-              style={{ width: 76, minHeight: 44, alignItems: 'center', gap: 6 }}
+              style={({ pressed }) => ({
+                minHeight: HIT + 4,
+                paddingHorizontal: 18,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: brand.peachLine,
+                justifyContent: 'center',
+                backgroundColor: pressed ? brand.peachLine : brand.peachSoft,
+              })}
             >
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 22,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: c.card,
-                  shadowColor: brand.navy,
-                  shadowOpacity: 0.08,
-                  shadowRadius: 4,
-                  shadowOffset: { width: 0, height: 2 },
-                  elevation: 2,
-                }}
-              >
-                <CravingIcon id={id} color={c.text} size={34} />
-              </View>
-              <Txt
-                numberOfLines={2}
-                style={{
-                  fontFamily: fonts.bodyBold,
-                  fontSize: 13,
-                  lineHeight: 17,
-                  textAlign: 'center',
-                }}
-              >
-                {name}
-              </Txt>
+              <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 18 }}>{name}</Txt>
             </Pressable>
           );
         })}

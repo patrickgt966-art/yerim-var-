@@ -190,7 +190,9 @@ export function suggestions(ctx: ChatContext, t: T): string[] {
   if (!ctx.freeParking) out.push(t('chat.sugFreePark'));
   out.push(t('chat.sugOther'));
   const ex = cityExamples();
-  const inD = (ctx.place?.label ?? '').toLocaleLowerCase('tr').includes(ex.d.toLocaleLowerCase('tr'));
+  const inD = (ctx.place?.label ?? '')
+    .toLocaleLowerCase('tr')
+    .includes(ex.d.toLocaleLowerCase('tr'));
   out.push(t(inD ? 'chat.sugElsewhere_1' : 'chat.sugElsewhere_0', ex));
   return out;
 }
