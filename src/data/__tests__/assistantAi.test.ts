@@ -423,15 +423,11 @@ describe('clarify (job 3)', () => {
     expect(labels).toHaveLength(4);
     expect(labels[3]).toBe('chat.clarifyNear');
     expect(ai.pick).not.toHaveBeenCalled();
-    // A chip tap goes through refine: results, and no AI call.
-    const tap = r.reply.actions[0]!;
-    expect(tap.kind).toBe('refine');
-    const callsBefore = ai.understand.mock.calls.length;
-    const res = await refine(r.ctx, (tap as { patch: object }).patch, deps);
-    expect(res.reply.cards.length).toBeGreaterThan(0);
-    expect(res.ctx.place?.label).toBe(labels[0]);
-    expect(ai.understand.mock.calls.length).toBe(callsBefore);
-    expect(ai.pick).not.toHaveBeenCalled();
+    // A chip is the answer sent as a message, as if typed: it goes through the AI with the
+    // conversation, so the earlier request is not dropped.
+    for (const tap of r.reply.actions) {
+      expect(tap).toEqual({ kind: 'say', label: tap.label, text: tap.label });
+    }
   });
 
   it('uses the template when the wording fails validation', async () => {
