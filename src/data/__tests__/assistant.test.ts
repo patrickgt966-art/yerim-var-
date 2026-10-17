@@ -999,6 +999,17 @@ describe('a district plus a word that is no dish, name or place', () => {
     expect(r.reply.cards.length).toBeGreaterThan(0);
   });
 
+  it('treats words the AI left out of a food request as filler, not an unknown place', async () => {
+    const understand = jest.fn(async () =>
+      search({ district: 'Buca', food: true, meaning: "Buca'da vejetaryen yemek" }),
+    );
+    const r = await answer('Hmmmmmm buca bro', emptyContext('food'), withAi({ understand }));
+    expect(understand).toHaveBeenCalledTimes(1);
+    expect(r.reply.text).not.toContain('chat.districtUnknownThing');
+    expect(r.ctx.place?.label).toBe('Buca');
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+  });
+
   it('falls back to the honest reply when the AI cannot place the word either', async () => {
     const nothing = jest.fn(async () => search({}));
     const a = await answer(

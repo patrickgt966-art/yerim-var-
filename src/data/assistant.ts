@@ -1221,11 +1221,13 @@ async function answerText(
   }
 
   // A district plus a word nothing explained (not even the AI): never show the district's
-  // places as if the word had been understood.
+  // places as if the word had been understood. When the AI read the message as a food request,
+  // the words it left out are filler ("hmm", "bro"), not an unknown place or dish.
   let left = ruleLeft;
   if (it !== ruleIt) {
     const merged = districtLeftover(it, text);
-    const nothing = it.kind === 'search' && !it.cat && !it.dish && !it.placeQuery;
+    const nothing =
+      it.kind === 'search' && !it.cat && !it.dish && !it.placeQuery && !meta.ai?.food;
     left = merged
       ? { ...merged, x: ruleLeft?.x ?? merged.x }
       : ruleLeft?.kind === 'unknown' && nothing
