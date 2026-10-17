@@ -38,7 +38,9 @@ import {
 
 // Keep in sync with MODEL in server/yerim-ai/src/index.ts.
 const MODEL = 'claude-haiku-5-5';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
+/** One call and up to four retries on 429 / 5xx / a dropped connection. */
+const MAX_ATTEMPTS = 5;
 /** Share of all cases that must pass; the model is not deterministic, so not all of them. */
 const BIG_PASS = 0.8;
 /** USD per million tokens (Haiku 5.5), for the cost estimate only. */
@@ -66,6 +68,13 @@ function retryable(e: unknown): boolean {
   if (e instanceof Anthropic.APIConnectionError) return true;
   if (e instanceof Anthropic.RateLimitError) return true;
   return e instanceof Anthropic.APIError && (e.status ?? 0) >= 500;
+}
+
+/** The server's retry-after (seconds) on a 429, in ms, when it sent one. */
+function retryAfterMs(e: unknown): number | undefined {
+  if (!(e instanceof Anthropic.APIError)) return undefined;
+  const v = Number(e.headers?.get?.('retry-after'));
+  return Number.isFinite(v) && v > 0 ? Math.min(v, 60) * 1000 : undefined;
 }
 
 const pct = (ok: number, n: number) => (n === 0 ? '-' : `${((100 * ok) / n).toFixed(1)}%`);
@@ -137,7 +146,7 @@ async function main(): Promise<void> {
       if (!job) return;
       await sleep(Math.floor(Math.random() * 300));
       let row: Row | undefined;
-      for (let attempt = 0; attempt < 2 && !row; attempt++) {
+      for (let attempt = 0; attempt < MAX_ATTEMPTS && !row; attempt++) {
         try {
           row = { job, ...(await call(job)) };
         } catch (e) {
@@ -149,8 +158,9 @@ async function main(): Promise<void> {
             console.error('Authentication failed; aborting.');
             aborted = true;
             row = { job, pass: false, misses: [`error: ${msg}`], error: msg };
-          } else if (attempt === 0 && retryable(e)) {
-            await sleep(3000 + Math.floor(Math.random() * 3000));
+          } else if (attempt < MAX_ATTEMPTS - 1 && retryable(e)) {
+            // The org limit is per minute (input tokens): wait as told, else back off.
+            await sleep(retryAfterMs(e) ?? 5000 * (attempt + 1) + Math.floor(Math.random() * 3000));
           } else {
             row = { job, pass: false, misses: [`error: ${msg}`], error: msg };
           }

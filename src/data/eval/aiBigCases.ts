@@ -114,6 +114,9 @@ const CITY_IDS: readonly AiCityId[] = ['izmir', 'istanbul', 'ankara', 'bursa', '
 
 type Dish = { x: string; cats: FoodCategory[]; has: string[] };
 
+/** The dish words to find, or none for a word that is only a category (balık, kahvaltı, kahve). */
+const hasOf = (d: Dish): string[] | undefined => (d.has.length > 0 ? d.has : undefined);
+
 const DISHES: readonly Dish[] = [
   { x: 'lahmacun', cats: ['fast'], has: ['lahmacun'] },
   { x: 'pide', cats: ['fast'], has: ['pide'] },
@@ -121,11 +124,11 @@ const DISHES: readonly Dish[] = [
   { x: 'köfte', cats: ['meat', 'fast', 'lokanta'], has: ['kofte'] },
   { x: 'kebap', cats: ['meat'], has: ['kebap', 'kebab'] },
   { x: 'iskender', cats: ['meat', 'lokanta'], has: ['iskender'] },
-  { x: 'balık', cats: ['fish', 'meyhane'], has: ['balik'] },
+  { x: 'balık', cats: ['fish', 'meyhane'], has: [] },
   { x: 'midye', cats: ['fish', 'fast'], has: ['midye'] },
   { x: 'mercimek çorbası', cats: ['soup', 'lokanta'], has: ['corba', 'mercimek'] },
   { x: 'işkembe', cats: ['soup'], has: ['iskembe'] },
-  { x: 'serpme kahvaltı', cats: ['breakfast'], has: ['kahvalti'] },
+  { x: 'serpme kahvaltı', cats: ['breakfast'], has: [] },
   { x: 'menemen', cats: ['breakfast', 'lokanta'], has: ['menemen'] },
   { x: 'mantı', cats: ['lokanta', 'world'], has: ['manti'] },
   { x: 'tavuk pilav', cats: ['lokanta', 'fast'], has: ['pilav', 'tavuk'] },
@@ -141,7 +144,7 @@ const DISHES: readonly Dish[] = [
   { x: 'çiğ köfte', cats: ['fast'], has: ['kofte'] },
   { x: 'etli ekmek', cats: ['fast', 'meat'], has: ['etli'] },
   { x: 'cağ kebabı', cats: ['meat'], has: ['cag', 'kebap', 'kebab'] },
-  { x: 'filtre kahve', cats: ['cafe'], has: ['kahve'] },
+  { x: 'filtre kahve', cats: ['cafe'], has: [] },
   { x: 'börek', cats: ['breakfast', 'fast', 'cafe', 'lokanta'], has: ['borek'] },
 ];
 const dishByX = (x: string) => DISHES.find((d) => d.x === x) as Dish;
@@ -297,7 +300,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
         food: true,
         noPlace: true,
         catIn: catsOf(dish),
-        dishHas: dish.has,
+        dishHas: hasOf(dish),
       });
     }
   }
@@ -329,7 +332,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
       nearMe: true,
       district: null,
       food: true,
-      dishHas: e.d.has,
+      dishHas: hasOf(e.d),
     });
   }
 
@@ -566,7 +569,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
         district: d,
         food: true,
         catIn: catsOf(e.d),
-        dishHas: e.d.has,
+        dishHas: hasOf(e.d),
       });
     } else if (form === 1) {
       const ts = [
@@ -636,7 +639,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
           district: d,
           food: true,
           noPlace: true,
-          dishHas: dish.has,
+          dishHas: hasOf(dish),
         },
         history,
       );
@@ -661,7 +664,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
           {
             kind: ['search'],
             district: d2,
-            dishHas: dish.has,
+            dishHas: hasOf(dish),
           },
           history,
         );
@@ -673,12 +676,14 @@ export function buildBigCases(seed: number = BIG_SEED): {
           'en yakını hangisi',
           'daha yakın bi yer yok mu',
         ];
+        const t = r.pick(ts);
         add(
           'multi_turn',
           city,
-          () => mess(r, r.pick(ts), { wrap: false }),
+          () => mess(r, t, { wrap: false }),
           {
-            kind: ['search'],
+            // "Which of these is nearest" may also be answered from the last cards (chat).
+            kind: t === 'en yakını hangisi' ? ['search', 'chat'] : ['search'],
             nearMe: true,
           },
           history,

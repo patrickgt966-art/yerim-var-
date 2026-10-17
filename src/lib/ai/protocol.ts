@@ -404,7 +404,7 @@ Karar (kind):
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
 - search: district (şehrin ilçesi ya da ""), cat (kategori ya da "none"), notCat (kullanıcının istemediğini söylediği kategori, örneğin "kebap olmasın", "tatlı istemem"; yoksa "none"), dish (yemek adı ya da ""), place (ilçe dışında bir yer/mekân adı ya da ""), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da ""), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
-- Kategoriler (cat, notCat) uygulamadaki mekân türleridir: breakfast kahvaltı salonu; soup çorbacı; meat kebapçı, köfteci, ocakbaşı, et lokantası; lokanta esnaf lokantası, ev yemekleri, tavuk pilav, mantı; fish balıkçı; cafe kafe, kahveci; meyhane meyhane, rakı-balık; fast pide, lahmacun, döner, dürüm, tost, kumpir, burger, pizza; world yabancı mutfaklar (sushi, İtalyan, Uzak Doğu ...); dessert tatlıcı, pastane, baklavacı. Bir yemek için cat, o yemeği asıl satan mekân türü olsun (lahmacun ve pide fast, tavuk pilav ve mantı lokanta). "kebap olmasın" gibi bir şey listede yoksa en yakın türü (meat) yaz.
+- Kategoriler (cat, notCat) uygulamadaki mekân türleridir: breakfast kahvaltı salonu; soup çorbacı, işkembeci; meat kebapçı, köfteci, ocakbaşı, et lokantası; lokanta esnaf lokantası, ev yemekleri, tavuk pilav, mantı; fish balıkçı; cafe kafe, kahveci; meyhane meyhane, rakı-balık; fast pide, lahmacun, döner, dürüm, tost, kumpir, burger, pizza, kokoreç, çiğ köfte, midye; world yabancı mutfaklar (sushi, İtalyan, Uzak Doğu ...); dessert tatlıcı, pastane, baklavacı. Bir yemek için cat, o yemeği asıl satan mekân türü olsun (lahmacun ve pide fast, tavuk pilav ve mantı lokanta). "kebap olmasın" gibi bir şey listede yoksa en yakın türü (meat) yaz.
 - Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes boş dizi olsun.
 - Mesajı kelime kelime değil, anlamıyla oku. Kullanıcı yemek adı yerine bir amaç, ruh hali, beslenme tarzı, durum, argo ya da emoji kullanabilir; ne yemek istediğini kendi aklınla çıkar, food true olsun ve isteği en iyi karşılayan kategoriyi (cat), yemeği (dish) ve dishServes kelimelerini sen seç. Örneğin "kas yapacak bir şey" protein (ızgara, et, tavuk) ister, "hafif bir şey" sağlıklı ve hafif yemek ister, "üşüdüm" sıcak bir çorba olabilir. Bunlar sadece örnek, liste değil: her ifadede aynı akıl yürütmeyi yap. İsteğe uymayan bir kategoriyi (örneğin protein için pastane) asla seçme. Bir istek birçok türde mekânda karşılanabiliyorsa (bir beslenme tarzı, bir amaç, bir durum) cat'i boş bırak, aramayı tek bir kategoriye daraltma; hangi yerin uyduğuna sonraki adımda ad ve türe bakılarak karar verilir. cat'i yalnızca kullanıcı gerçekten o kategoriyi istiyorsa seç.
 - Bir yere gitmekten, bir şey çekmesinden ya da biriyle (çocukla, arkadaşlarla, kalabalık, sevgiliyle) gidilecek bir mekândan söz ediyor ve otopark demiyorsa bu bir yemek yeri isteğidir: food true, cat boş, dilekleri wishes'a yaz.
@@ -699,7 +699,9 @@ export function toPick(
   try {
     if (!isObject(raw)) return null;
     const max = Math.max(0, n - 1);
-    const pick = index(raw.pick, max);
+    const noneFit = !park && raw.noneFit === true;
+    // With nothing fitting the pick is not shown, so a missing index does not lose the answer.
+    const pick = index(raw.pick, max) ?? (noneFit ? 0 : null);
     if (pick === null) return null;
     const allowed: readonly string[] = park ? PARK_REASONS : PICK_REASONS;
     const why = allowed.find((r) => r === raw.runnerUpWhy);
@@ -709,10 +711,11 @@ export function toPick(
       .filter((v, k, all) => all.indexOf(v) === k)
       .slice(0, MAX_FIT);
     // A malformed nonempty fit list must not become "any candidate will do".
-    if (!park && Array.isArray(raw.fit) && raw.fit.length > 0 && !fit.includes(pick)) return null;
+    const fitBroken = Array.isArray(raw.fit) && raw.fit.length > 0 && !fit.includes(pick);
+    if (!park && !noneFit && fitBroken) return null;
     const out = {
       // Restaurants only: an older worker or a car park pick has no fit.
-      ...(park ? {} : { fit, noneFit: raw.noneFit === true }),
+      ...(park ? {} : { fit, noneFit }),
       pick,
       reasons: codes(raw.reasons, allowed, MAX_REASONS),
       runnerUp: index(raw.runnerUp, max),
