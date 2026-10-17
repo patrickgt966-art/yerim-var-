@@ -1,7 +1,7 @@
 import { setActiveCity } from '@/data/cities';
 
 import { createAiClient } from '../client';
-import { ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
+import { HISTORY_LIMIT, ROUTER_TIMEOUT_MS, type NarrateRequest, type UnderstandRequest } from '../protocol';
 
 // The client warns about failures in dev; the tests that expect them look at the spy themselves.
 beforeEach(() => {
@@ -38,6 +38,7 @@ const NEW_DEFAULTS = {
   plan: null,
   tone: null,
   dishNote: null,
+  meaning: null,
 };
 
 const fakeFetch = (status: number, body: unknown) =>
@@ -356,11 +357,11 @@ describe('ai client', () => {
 });
 
 describe('ai client history', () => {
-  it('understand sends at most six turns, each clipped to 200 characters, without empty ones', async () => {
+  it('understand sends at most HISTORY_LIMIT turns, each clipped to 200 characters, without empty ones', async () => {
     const f = fakeFetch(200, { understanding: { kind: 'unknown' }, remaining: 4 });
     const history = [
       { role: 'user' as const, text: 'eski' },
-      ...Array.from({ length: 5 }, (_, i) => ({
+      ...Array.from({ length: HISTORY_LIMIT - 1 }, (_, i) => ({
         role: i % 2 ? ('user' as const) : ('bot' as const),
         text: `${i}`.repeat(600),
       })),
@@ -368,7 +369,7 @@ describe('ai client history', () => {
     ];
     await createAiClient('https://ai.test', f).understand({ ...understandReq, history });
     const sent = JSON.parse((f as unknown as jest.Mock).mock.calls[0][1].body as string);
-    expect(sent.history).toHaveLength(5);
+    expect(sent.history).toHaveLength(HISTORY_LIMIT - 1);
     expect(sent.history[0].text).toBe('0'.repeat(200));
     for (const h of sent.history) expect(h.text.length).toBeLessThanOrEqual(200);
   });

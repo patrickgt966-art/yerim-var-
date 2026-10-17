@@ -91,11 +91,14 @@ describe('the router: every message goes to Haiku first', () => {
     expect(bad.ai.understand).toHaveBeenCalledTimes(1);
   });
 
-  it('a search whose rules read a different district keeps the rules district; the AI fills the rest', async () => {
+  it("a search: the AI's district leads; without one the rules' district stays", async () => {
     const { deps } = mockAi(async () => searchU({ district: 'Konak', cat: 'fish', nearMe: false }));
     const r = await answer("Bornova'da bir yer", emptyContext('food'), deps);
-    expect(r.ctx.place?.label).toBe('Bornova');
+    expect(r.ctx.place?.label).toBe('Konak');
     expect(r.ctx.cat).toBe('fish');
+    const quiet = mockAi(async () => searchU({ district: null, cat: 'fish', nearMe: false }));
+    const q = await answer("Bornova'da bir yer", emptyContext('food'), quiet.deps);
+    expect(q.ctx.place?.label).toBe('Bornova');
   });
 
   it('a pick after the router search reuses the same call path (one pick call, no second router call)', async () => {

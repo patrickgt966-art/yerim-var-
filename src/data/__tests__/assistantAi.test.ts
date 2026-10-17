@@ -99,8 +99,13 @@ it('clips a candidate name without splitting an emoji into an invalid Unicode su
   });
   try {
     const cards: ChatCard[] = rows.map((r) => ({
-      kind: 'restaurant', id: r.id, name: r.name, distanceM: 100,
-      parkingM: null, open: 'unknown', unverified: true,
+      kind: 'restaurant',
+      id: r.id,
+      name: r.name,
+      distanceM: 100,
+      parkingM: null,
+      open: 'unknown',
+      unverified: true,
     }));
     const { ai, deps } = mockAi();
     await pickFromCards(cards, 'bir yer seç', emptyContext('food'), deps);
@@ -847,5 +852,23 @@ describe('the AI judges which nearby places fit the request (name and type)', ()
     const { deps } = mockAi({ understand, pick: closestPick() });
     const r = await answer(text, emptyContext('food'), deps);
     expect('pool' in r.reply).toBe(false);
+  });
+});
+
+describe('what was asked before reaches the pick', () => {
+  it('a clarify answer ("Bornova") is sent to /pick with the AI reading of the whole conversation', async () => {
+    const understand = async () =>
+      okU(
+        search({
+          district: 'Bornova',
+          meaning: 'Bornova civarında vejetaryen yemek istiyor',
+        } as Partial<Search>),
+      );
+    const pick = jest.fn(async () => ({ ok: false, reason: 'error' }));
+    const { deps } = mockAi({ understand, pick });
+    await answer('Bornova hacı', emptyContext('food'), deps);
+    const req = (pick.mock.calls as unknown[][])[0]![0] as { text: string };
+    expect(req.text).toContain('vejetaryen');
+    expect(req.text).toContain('Bornova hacı');
   });
 });

@@ -7,7 +7,10 @@ import type { FoodCategory } from '../../data/restaurants';
 export const FREE_DAILY = 10;
 export const SUB_DAILY = 200;
 export const MAX_MESSAGE_CHARS = 200;
-export const HISTORY_LIMIT = 6;
+/** The model's private reading of a message, as far as the app keeps it. */
+export const MAX_MEANING_CHARS = 160;
+/** Recent turns sent with every message, so the router keeps what was asked a few messages back. */
+export const HISTORY_LIMIT = 10;
 export const MAX_RESULTS = 5;
 /**
  * How long the app waits for the router (/understand) before it answers with its own rules.
@@ -149,6 +152,12 @@ const searchExtras = {
   plan: z.object({ when: z.enum(PLAN_WHENS) }).nullable(),
   tone: z.string().nullable(),
   dishNote: z.string().nullable(),
+  /**
+   * The model's own short reading of the message with the conversation so far ("Bornova'da
+   * vejetaryen bir yer istiyor"). Never shown; it goes to /pick so a clarify answer ("Bornova")
+   * keeps what was asked before.
+   */
+  meaning: z.string().nullable(),
 };
 
 /** Server format schema: structured outputs need every field present. */
@@ -275,6 +284,7 @@ export function toUnderstanding(raw: unknown): Understanding {
         plan: when ? { when } : null,
         tone: given(m.tone),
         dishNote: given(m.dishNote),
+        meaning: given(m.meaning, MAX_MEANING_CHARS),
       };
     }
     // The guarantee, checked here and not left to the request path.
@@ -297,6 +307,7 @@ const ClientUnderstandingKinds = z.discriminatedUnion('kind', [
     plan: searchExtras.plan.optional().default(null),
     tone: searchExtras.tone.optional().default(null),
     dishNote: searchExtras.dishNote.optional().default(null),
+    meaning: searchExtras.meaning.optional().default(null),
   }),
   z.object({
     kind: z.literal('chat'),
@@ -349,7 +360,7 @@ export function understandSystem(city?: string): string {
   const place = cityExamples(c).a;
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "${place}" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
 
-Önce meaning alanına mesajın ne demek istediğini kendi kısa cümlenle yaz (en çok 60 karakter, kullanıcıya gösterilmez; örneğin "kas yapmak istiyor, protein ağırlıklı et ya da tavuk yemek istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
+Önce meaning alanına kullanıcının şu an ne istediğini kendi kısa cümlenle yaz (en çok 100 karakter, kullanıcıya gösterilmez). Önceki mesajlardaki isteği de kat: kullanıcı bir soruya kısa cevap verdiyse ("${place}") ya da isteğini sürdürüyorsa, önceki istekle birlikte yaz (örneğin önce "vejetaryenim" dediyse: "${place} civarında vejetaryen yemek istiyor"; "kas yapacak bir şey" için: "kas yapmak istiyor, protein ağırlıklı et ya da tavuk istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
 
 Karar (kind):
 - "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "${place}"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.
