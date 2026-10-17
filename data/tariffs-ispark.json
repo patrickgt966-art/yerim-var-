@@ -1,1 +1,8142 @@
-{ "fetchedAt": null, "parks": 0, "tariffs": [] }
+{
+ "fetchedAt": "2026-10-17T17:06:24.271Z",
+ "parks": 244,
+ "tariffs": [
+  {
+   "parkingId": "ispark-1005",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 240
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1039",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-104",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1088",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1104",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1105",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1127",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1133",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 270
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1138",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 5400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1189",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-3 Saat Kamyon",
+     "price": 120
+    },
+    {
+     "label": "0-3 Saat Minibüs-Kamyonet",
+     "price": 50
+    },
+    {
+     "label": "0-3 Saat Otomobil",
+     "price": 70
+    },
+    {
+     "label": "0-3 Saat Tır",
+     "price": 160
+    },
+    {
+     "label": "3-5 Saat Kamyon",
+     "price": 150
+    },
+    {
+     "label": "3-5 Saat Minibüs-Kamyonet",
+     "price": 100
+    },
+    {
+     "label": "3-5 Saat Otomobil",
+     "price": 90
+    },
+    {
+     "label": "3-5 Saat Tır",
+     "price": 180
+    },
+    {
+     "label": "5-8 Saat Kamyon",
+     "price": 250
+    },
+    {
+     "label": "5-8 Saat Minibüs-Kamyonet",
+     "price": 150
+    },
+    {
+     "label": "5-8 Saat Otomobil",
+     "price": 120
+    },
+    {
+     "label": "5-8 Saat Tır",
+     "price": 300
+    },
+    {
+     "label": "8-12 Saat Kamyon",
+     "price": 350
+    },
+    {
+     "label": "8-12 Saat Minibüs-Kamyonet",
+     "price": 200
+    },
+    {
+     "label": "8-12 Saat Otomobil",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat Tır",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün Kamyon",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün Minibüs-Kamyonet",
+     "price": 300
+    },
+    {
+     "label": "Tam Gün Otomobil",
+     "price": 220
+    },
+    {
+     "label": "Tam Gün Tır",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1192",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1206",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1298",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1303",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    },
+    {
+     "label": "Etkinlik",
+     "price": 350
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1328",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1343",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 350
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1376",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1423",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1446",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 8200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1447",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1452",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1455",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1456",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1461",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1465",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1466",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1467",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 9800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1468",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4300,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1469",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1470",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4300,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1471",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1472",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1474",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1475",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1478",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1486",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1487",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 5100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1503",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1522",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1525",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1529",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4300,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-153",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1546",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 250
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1550",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1568",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-157",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1591",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1595",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1599",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1621",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1628",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1653",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1655",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1663",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1704",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1730",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1751",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1797",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1804",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1811",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1859",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 9800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1879",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1900",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1912",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "1-2 Saat Otobüs",
+     "price": 10
+    },
+    {
+     "label": "2-3 Saat Otobüs",
+     "price": 20
+    },
+    {
+     "label": "3-4 Saat Otobüs",
+     "price": 30
+    },
+    {
+     "label": "4-5 Saat Otobüs",
+     "price": 40
+    },
+    {
+     "label": "5-6 Saat Otobüs",
+     "price": 50
+    },
+    {
+     "label": "6-7 Saat Otobüs",
+     "price": 60
+    },
+    {
+     "label": "7-8 Saat Otobüs",
+     "price": 70
+    },
+    {
+     "label": "8-9 Saat Otobüs",
+     "price": 80
+    },
+    {
+     "label": "9-10 Saat Otobüs",
+     "price": 90
+    },
+    {
+     "label": "10-11 Saat Otobüs",
+     "price": 100
+    },
+    {
+     "label": "11-12 Saat Otobüs",
+     "price": 110
+    },
+    {
+     "label": "12-13 Saat Otobüs",
+     "price": 120
+    },
+    {
+     "label": "13-14 Saat Otobüs",
+     "price": 130
+    },
+    {
+     "label": "14-15 Saat Otobüs",
+     "price": 140
+    },
+    {
+     "label": "15-16 Saat Otobüs",
+     "price": 150
+    },
+    {
+     "label": "16-17 Saat Otobüs",
+     "price": 160
+    },
+    {
+     "label": "17-18 Saat Otobüs",
+     "price": 170
+    },
+    {
+     "label": "18-19 Saat Otobüs",
+     "price": 180
+    },
+    {
+     "label": "19-20 Saat Otobüs",
+     "price": 190
+    },
+    {
+     "label": "20-21 Saat Otobüs",
+     "price": 200
+    },
+    {
+     "label": "21-22 Saat Otobüs",
+     "price": 210
+    },
+    {
+     "label": "22-23 Saat Otobüs",
+     "price": 220
+    },
+    {
+     "label": "23-24 Saat Otobüs",
+     "price": 230
+    }
+   ],
+   "freeMinutes": 60,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1913",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "25 Dk-1 Saat",
+     "price": 70
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 80
+    },
+    {
+     "label": "2-3 Saat",
+     "price": 90
+    },
+    {
+     "label": "3-4 Saat",
+     "price": 100
+    },
+    {
+     "label": "4-5 Saat",
+     "price": 110
+    },
+    {
+     "label": "5-6 Saat",
+     "price": 120
+    },
+    {
+     "label": "6-7 Saat",
+     "price": 130
+    },
+    {
+     "label": "7-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-9 Saat",
+     "price": 150
+    },
+    {
+     "label": "9-10 Saat",
+     "price": 160
+    },
+    {
+     "label": "10-11 Saat",
+     "price": 170
+    },
+    {
+     "label": "11-12 Saat",
+     "price": 180
+    },
+    {
+     "label": "12-13 Saat",
+     "price": 190
+    },
+    {
+     "label": "13-14 Saat",
+     "price": 200
+    },
+    {
+     "label": "14-15 Saat",
+     "price": 210
+    },
+    {
+     "label": "15-16 Saat",
+     "price": 220
+    },
+    {
+     "label": "16-17 Saat",
+     "price": 230
+    },
+    {
+     "label": "17-18 Saat",
+     "price": 240
+    },
+    {
+     "label": "18-19 Saat",
+     "price": 250
+    },
+    {
+     "label": "19-20 Saat",
+     "price": 260
+    },
+    {
+     "label": "20-21 Saat",
+     "price": 270
+    },
+    {
+     "label": "21-22 Saat",
+     "price": 280
+    },
+    {
+     "label": "22-23 Saat",
+     "price": 290
+    },
+    {
+     "label": "23-24 Saat",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 25,
+   "monthly": 975,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1929",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 150
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1958",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1960",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1987",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1988",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-1993",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2030",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2036",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2037",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2053",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2085",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2088",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2089",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2100",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2146",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2147",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 180
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 280
+    },
+    {
+     "label": "Tam Gün",
+     "price": 400
+    }
+   ],
+   "freeMinutes": 60,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2150",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2164",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2175",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-220",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 6300,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2207",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2215",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 225
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2216",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Kamyon",
+     "price": 150
+    },
+    {
+     "label": "Kamyonet/Jeep/Minibüs",
+     "price": 110
+    },
+    {
+     "label": "Tır",
+     "price": 230
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2228",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2237",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2238",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2242",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2243",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2273",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2307",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2332",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2335",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 400
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2338",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2345",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2350",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2366",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2372",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2375",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2391",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2406",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2410",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2424",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2428",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2430",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-2 Saat",
+     "price": 160
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 200
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 240
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 280
+    },
+    {
+     "label": "Tam Gün",
+     "price": 400
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2434",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2439",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2441",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2449",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-3 Saat Kamyon",
+     "price": 120
+    },
+    {
+     "label": "0-3 Saat Minibüs-Kamyonet",
+     "price": 50
+    },
+    {
+     "label": "0-3 Saat Otomobil",
+     "price": 70
+    },
+    {
+     "label": "0-3 Saat Tır",
+     "price": 160
+    },
+    {
+     "label": "3-5 Saat Kamyon",
+     "price": 150
+    },
+    {
+     "label": "3-5 Saat Minibüs-Kamyonet",
+     "price": 100
+    },
+    {
+     "label": "3-5 Saat Otomobil",
+     "price": 90
+    },
+    {
+     "label": "3-5 Saat Tır",
+     "price": 180
+    },
+    {
+     "label": "5-8 Saat Kamyon",
+     "price": 250
+    },
+    {
+     "label": "5-8 Saat Minibüs-Kamyonet",
+     "price": 150
+    },
+    {
+     "label": "5-8 Saat Otomobil",
+     "price": 120
+    },
+    {
+     "label": "5-8 Saat Tır",
+     "price": 300
+    },
+    {
+     "label": "8-12 Saat Kamyon",
+     "price": 350
+    },
+    {
+     "label": "8-12 Saat Minibüs-Kamyonet",
+     "price": 200
+    },
+    {
+     "label": "8-12 Saat Otomobil",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat Tır",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün Kamyon",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün Minibüs-Kamyonet",
+     "price": 300
+    },
+    {
+     "label": "Tam Gün Otomobil",
+     "price": 220
+    },
+    {
+     "label": "Tam Gün Tır",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2452",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2455",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2468",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 8000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-248",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 1500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2554",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2556",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 350
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2562",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2576",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2683",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2685",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 160
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2709",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2787",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2793",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2799",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2802",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2805",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2808",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2811",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2816",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2820",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2822",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2824",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2838",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2848",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2850",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2854",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2855",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2865",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 180
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2866",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 420
+    }
+   ],
+   "freeMinutes": 25,
+   "monthly": 1000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2870",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2873",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2882",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 240
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2885",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 7400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2892",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2898",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2905",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2907",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2909",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2916",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2918",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2920",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2933",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2948",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2960",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2965",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2969",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-297",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2971",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2993",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2994",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-2999",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3011",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3019",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3030",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3036",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3051",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3053",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3057",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 2200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3063",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3068",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3071",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3072",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3073",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 2700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3074",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3082",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 350
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3087",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3127",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-315",
+   "hourly": 120,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 120
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 160
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 220
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 270
+    },
+    {
+     "label": "Tam Gün",
+     "price": 320
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3152",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4300,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3173",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3175",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3184",
+   "hourly": 120,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 120
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 160
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 220
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 270
+    },
+    {
+     "label": "Tam Gün",
+     "price": 320
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3185",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 240
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3187",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3190",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3193",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3201",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3235",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3236",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3239",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3257",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 250
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3261",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3263",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3265",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Vale",
+     "price": 400
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3268",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3273",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 150
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3296",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3299",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3301",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3303",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3306",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 20,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3309",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3328",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 3800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3332",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3382",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3400",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3401",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3404",
+   "hourly": 80,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 80
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 90
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 110
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 140
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 210
+    },
+    {
+     "label": "Tam Gün",
+     "price": 260
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3406",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 5000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3412",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 250
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3434",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3441",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3445",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3447",
+   "hourly": 110,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 110
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 140
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 170
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 220
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 260
+    },
+    {
+     "label": "Tam Gün",
+     "price": 370
+    }
+   ],
+   "freeMinutes": 10,
+   "monthly": 4100,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-346",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 6800,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-3479",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-359",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-36",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-377",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-381",
+   "hourly": 120,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 120
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 160
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 220
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 270
+    },
+    {
+     "label": "Tam Gün",
+     "price": 320
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3400,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-415",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 6000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-459",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 5,
+   "monthly": 6000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-502",
+   "hourly": 140,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 140
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 180
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 230
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 280
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 450
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-507",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 6200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-537",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 6200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-539",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 6200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-569",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-572",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-589",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-595",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4700,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-597",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-609",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 4900,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-758",
+   "hourly": 200,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 200
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 240
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 380
+    },
+    {
+     "label": "8-12 Saat",
+     "price": 450
+    },
+    {
+     "label": "Tam Gün",
+     "price": 550
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-777",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-778",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-782",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-828",
+   "hourly": 170,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 170
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 220
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 300
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 370
+    },
+    {
+     "label": "Tam Gün",
+     "price": 500
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3200,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-905",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 200
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-919",
+   "hourly": 220,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 220
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 300
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 400
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 500
+    },
+    {
+     "label": "Tam Gün",
+     "price": 600
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 3600,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-974",
+   "hourly": null,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "Tam Gün",
+     "price": 300
+    }
+   ],
+   "freeMinutes": 0,
+   "monthly": 5500,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  },
+  {
+   "parkingId": "ispark-987",
+   "hourly": 120,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 120
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 160
+    },
+    {
+     "label": "2-4 Saat",
+     "price": 220
+    },
+    {
+     "label": "4-8 Saat",
+     "price": 270
+    },
+    {
+     "label": "Tam Gün",
+     "price": 320
+    }
+   ],
+   "freeMinutes": 15,
+   "monthly": 4000,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "İBB İSPARK",
+   "verifiedAt": "2026-10-17"
+  }
+ ]
+}
