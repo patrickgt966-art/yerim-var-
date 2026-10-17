@@ -858,7 +858,7 @@ function fromPlace(el) {
 
 const yes = (v) => (v === 'yes' ? true : v === 'no' ? false : null);
 
-const DIETS = ['vegetarian', 'vegan', 'halal', 'gluten_free'];
+const DIETS = ['vegetarian', 'vegan', 'pescetarian', 'halal', 'gluten_free'];
 
 /**
  * Diet tags as codes: "vegan" when the place serves only that (diet:vegan=only, or cuisine=vegan),

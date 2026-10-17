@@ -49,6 +49,7 @@ it('keeps diet tags: "only" (or the cuisine) as the diet, "yes" as an option', (
     'halal_options',
   ]);
   expect(food(el({ cuisine: 'vegetarian;turkish' }))!.dt).toEqual(['vegetarian']);
+  expect(food(el({ 'diet:pescetarian': 'yes' }))!.dt).toEqual(['pescetarian_options']);
   expect(food(el({ 'diet:vegan': 'no' }))).not.toHaveProperty('dt');
 });
 
