@@ -35,14 +35,14 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-type Rng = {
+export type Rng = {
   int: (n: number) => number;
   pick: <T>(a: readonly T[]) => T;
   chance: (p: number) => boolean;
   shuffle: <T>(a: readonly T[]) => T[];
 };
 
-function makeRng(seed: number): Rng {
+export function makeRng(seed: number): Rng {
   const next = mulberry32(seed);
   const int = (n: number) => Math.floor(next() * n);
   return {
@@ -103,21 +103,21 @@ export function asciiFold(s: string): string {
 }
 
 /** Well-known districts per city, spelled as data/cities.ts spells them. */
-const CITY_DISTRICTS: Record<string, readonly string[]> = {
+export const CITY_DISTRICTS: Record<string, readonly string[]> = {
   izmir: ['Bornova', 'Karşıyaka', 'Konak', 'Buca', 'Bayraklı', 'Çiğli', 'Urla', 'Çeşme'],
   istanbul: ['Kadıköy', 'Beşiktaş', 'Şişli', 'Üsküdar', 'Fatih', 'Beyoğlu', 'Bakırköy', 'Ataşehir'],
   ankara: ['Çankaya', 'Keçiören', 'Yenimahalle', 'Etimesgut', 'Mamak', 'Sincan', 'Gölbaşı'],
   bursa: ['Nilüfer', 'Osmangazi', 'Yıldırım', 'Mudanya', 'Gemlik', 'İnegöl', 'Kestel'],
   antalya: ['Muratpaşa', 'Konyaaltı', 'Kepez', 'Alanya', 'Manavgat', 'Kemer', 'Kaş'],
 };
-const CITY_IDS: readonly AiCityId[] = ['izmir', 'istanbul', 'ankara', 'bursa', 'antalya'];
+export const CITY_IDS: readonly AiCityId[] = ['izmir', 'istanbul', 'ankara', 'bursa', 'antalya'];
 
-type Dish = { x: string; cats: FoodCategory[]; has: string[] };
+export type Dish = { x: string; cats: FoodCategory[]; has: string[] };
 
 /** The dish words to find, or none for a word that is only a category (balık, kahvaltı, kahve). */
-const hasOf = (d: Dish): string[] | undefined => (d.has.length > 0 ? d.has : undefined);
+export const hasOf = (d: Dish): string[] | undefined => (d.has.length > 0 ? d.has : undefined);
 
-const DISHES: readonly Dish[] = [
+export const DISHES: readonly Dish[] = [
   { x: 'lahmacun', cats: ['fast'], has: ['lahmacun'] },
   { x: 'pide', cats: ['fast'], has: ['pide'] },
   { x: 'döner', cats: ['fast', 'meat'], has: ['doner'] },
@@ -147,9 +147,9 @@ const DISHES: readonly Dish[] = [
   { x: 'filtre kahve', cats: ['cafe'], has: [] },
   { x: 'börek', cats: ['breakfast', 'fast', 'cafe', 'lokanta'], has: ['borek'] },
 ];
-const dishByX = (x: string) => DISHES.find((d) => d.x === x) as Dish;
+export const dishByX = (x: string) => DISHES.find((d) => d.x === x) as Dish;
 /** The app works from the dish, so no category is fine too. */
-const catsOf = (d: Dish): (FoodCategory | null)[] => [...d.cats, null];
+export const catsOf = (d: Dish): (FoodCategory | null)[] => [...d.cats, null];
 
 /** English names; the model writes the dish in Turkish (or keeps the word). */
 const EN_DISHES: readonly { en: string; d: Dish; has?: string[] }[] = [
@@ -193,7 +193,7 @@ const SLANG: readonly [RegExp, string][] = [
 ];
 
 /** Makes a clean template message look typed: slang, filler, no Turkish letters, sometimes. */
-function mess(r: Rng, text: string, opts: { wrap?: boolean } = {}): string {
+export function mess(r: Rng, text: string, opts: { wrap?: boolean } = {}): string {
   let s = text;
   for (const [re, to] of SLANG) if (r.chance(0.4)) s = s.replace(re, to);
   if (opts.wrap !== false) {
@@ -206,7 +206,7 @@ function mess(r: Rng, text: string, opts: { wrap?: boolean } = {}): string {
 }
 
 /** The district as a place in a sentence: "bornovada", "Bornova'da", "bornova tarafında". */
-function where(r: Rng, d: string): string {
+export function where(r: Rng, d: string): string {
   const x = r.int(20);
   if (x < 12) return locative(d);
   if (x < 15) return locative(d, true);
@@ -216,7 +216,7 @@ function where(r: Rng, d: string): string {
 }
 
 /** Fills {L} (district as a place), {D} (bare district), {X} (dish), {N} (other word). */
-function fill(r: Rng, t: string, v: { d?: string; x?: string; n?: string }): string {
+export function fill(r: Rng, t: string, v: { d?: string; x?: string; n?: string }): string {
   let s = t;
   if (v.d !== undefined) {
     const d = v.d;
@@ -227,7 +227,7 @@ function fill(r: Rng, t: string, v: { d?: string; x?: string; n?: string }): str
   return s;
 }
 
-const districtsOf = (city: AiCityId) => CITY_DISTRICTS[city] ?? [];
+export const districtsOf = (city: AiCityId) => CITY_DISTRICTS[city] ?? [];
 
 /** Every generated case, from one seed. Same seed, same cases (names included). */
 export function buildBigCases(seed: number = BIG_SEED): {
@@ -772,7 +772,7 @@ export function buildBigCases(seed: number = BIG_SEED): {
   return { understand, pick: buildPicks(r) };
 }
 
-type Tag =
+export type Tag =
   | 'kebap'
   | 'izgara'
   | 'kasap'
@@ -788,7 +788,7 @@ type Tag =
   | 'meyhane'
   | 'pide';
 
-const POOL: Record<Tag, { type: string; names: string[] }> = {
+export const POOL: Record<Tag, { type: string; names: string[] }> = {
   kebap: {
     type: 'Et, restoran, Kebap',
     names: [

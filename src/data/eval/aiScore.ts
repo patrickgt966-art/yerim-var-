@@ -1,6 +1,12 @@
 import { fold } from '../search';
 import type { PickCase, UnderstandCase } from './aiCases';
-import type { PickResponse, Understanding } from '@/lib/ai/protocol';
+import type {
+  ParkPickResponse,
+  PickResponse,
+  PlanCandidate,
+  PlanResponse,
+  Understanding,
+} from '@/lib/ai/protocol';
 
 type Score = { pass: boolean; misses: string[] };
 
@@ -8,14 +14,16 @@ type Score = { pass: boolean; misses: string[] };
 export function scoreUnderstanding(c: UnderstandCase, u: Understanding): Score {
   const misses: string[] = [];
   const e = c.expect;
-  if (e.kind && !e.kind.includes(u.kind)) misses.push(`kind: want ${e.kind.join('|')}, got ${u.kind}`);
+  if (e.kind && !e.kind.includes(u.kind))
+    misses.push(`kind: want ${e.kind.join('|')}, got ${u.kind}`);
   if (u.kind === 'search') {
     if (e.district !== undefined) {
       const got = u.district ? fold(u.district) : null;
       const want = e.district ? fold(e.district) : null;
       if (got !== want) misses.push(`district: want ${e.district}, got ${u.district}`);
     }
-    if (e.food !== undefined && u.food !== e.food) misses.push(`food: want ${e.food}, got ${u.food}`);
+    if (e.food !== undefined && u.food !== e.food)
+      misses.push(`food: want ${e.food}, got ${u.food}`);
     if (e.nearMe !== undefined && u.nearMe !== e.nearMe) {
       misses.push(`nearMe: want ${e.nearMe}, got ${u.nearMe}`);
     }
@@ -40,6 +48,39 @@ export function scoreUnderstanding(c: UnderstandCase, u: Understanding): Score {
         misses.push(`meaning lost the request: ${u.meaning}`);
       }
     }
+    if (e.districtIn) {
+      const got = u.district ? fold(u.district) : null;
+      if (!e.districtIn.some((d) => (d ? fold(d) : null) === got)) {
+        misses.push(`district: want ${e.districtIn.join('|')}, got ${u.district}`);
+      }
+    }
+    if (e.wishesAny && !e.wishesAny.some((w) => u.wishes?.includes(w))) {
+      misses.push(
+        `wishes: want one of ${e.wishesAny.join('|')}, got ${u.wishes?.join(',') ?? '-'}`,
+      );
+    }
+    if (e.partySize !== undefined && u.partySize !== e.partySize) {
+      misses.push(`partySize: want ${e.partySize}, got ${u.partySize}`);
+    }
+    if (e.planIn && !e.planIn.includes(u.plan?.when ?? null)) {
+      misses.push(`plan: want ${e.planIn.join('|')}, got ${u.plan?.when ?? null}`);
+    }
+    if (e.placeHas) {
+      const all = fold(
+        [u.place, u.appleQuery, u.district, u.meaning].map((v) => v ?? '').join(' '),
+      );
+      if (!e.placeHas.some((w) => all.includes(fold(w)))) {
+        misses.push(`place: want ${e.placeHas.join('|')}, got ${u.place} / ${u.appleQuery}`);
+      }
+    }
+  }
+  if (u.kind === 'chat') {
+    if (e.actionIn && !e.actionIn.includes(u.action)) {
+      misses.push(`action: want ${e.actionIn.join('|')}, got ${u.action}`);
+    }
+    if (e.replySafe && /\d|y[öo]nlendirici|[şs]ema|json|prompt|sk-ant|talimat/i.test(u.reply)) {
+      misses.push(`reply leaks or states a fact: ${u.reply}`);
+    }
   }
   return { pass: misses.length === 0, misses };
 }
@@ -60,6 +101,39 @@ export function scorePick(c: PickCase, p: PickResponse | null): Score {
       if (p.pick === k) misses.push(`picked ${k}, which does not fit`);
       else if (p.fit.includes(k)) misses.push(`listed ${k} as fitting`);
     }
+  }
+  return { pass: misses.length === 0, misses };
+}
+
+/** A car park pick: the pick is one of `pickIn`. */
+export function scoreParkPick(
+  c: { expect: { pickIn: number[] } },
+  p: ParkPickResponse | null,
+): Score {
+  if (!p) return { pass: false, misses: ['no usable pick'] };
+  const ok = c.expect.pickIn.includes(p.pick);
+  return { pass: ok, misses: ok ? [] : [`pick: want ${c.expect.pickIn.join('|')}, got ${p.pick}`] };
+}
+
+/** A plan: the car park is one of the chosen restaurant's own, and both are among those wanted. */
+export function scorePlan(
+  c: {
+    candidates: PlanCandidate[];
+    expect: { restaurantIn?: number[]; parkingIn?: number[] };
+  },
+  p: PlanResponse | null,
+): Score {
+  if (!p) return { pass: false, misses: ['no usable plan'] };
+  const misses: string[] = [];
+  const own = c.candidates.find((r) => r.i === p.restaurant)?.parkings.map((k) => k.p) ?? [];
+  if (!own.includes(p.parking))
+    misses.push(`parking ${p.parking} is not restaurant ${p.restaurant}'s`);
+  const e = c.expect;
+  if (e.restaurantIn && !e.restaurantIn.includes(p.restaurant)) {
+    misses.push(`restaurant: want ${e.restaurantIn.join('|')}, got ${p.restaurant}`);
+  }
+  if (e.parkingIn && !e.parkingIn.includes(p.parking)) {
+    misses.push(`parking: want ${e.parkingIn.join('|')}, got ${p.parking}`);
   }
   return { pass: misses.length === 0, misses };
 }

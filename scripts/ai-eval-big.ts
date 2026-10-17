@@ -3,10 +3,12 @@
  * The big live AI eval: ~590 generated cases (src/data/eval/aiBigCases.ts) through the same
  * /understand and /pick calls as the hard cases of scripts/ai-eval.ts, a few at a time, scored
  * with src/data/eval/aiScore.ts. Exits 1 when fewer than BIG_PASS of the cases pass.
+ * AI_EVAL_SUITE=extreme runs the ~670 cases of src/data/eval/aiExtremeCases.ts instead, which
+ * also call the car park pick and the plan.
  *
  * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval-big.ts
  * AI_EVAL_LIMIT=20 runs only the first 20 cases (a smoke test).
- * CI: .github/workflows/ai-eval-big.yml (manual). Writes docs/ai-eval-big.md.
+ * CI: .github/workflows/ai-eval-big.yml and ai-eval-extreme.yml. Writes docs/ai-eval-<suite>.md.
  *
  * The SDK is imported from server/yerim-ai/node_modules (pinned, same as the Worker);
  * install it with `npm ci --prefix server/yerim-ai`.
@@ -23,15 +25,29 @@ import {
   type BigPickCase,
   type BigUnderstandCase,
 } from '@/data/eval/aiBigCases';
-import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
+import {
+  EXTREME_PARK_CASES,
+  EXTREME_PICK_CASES,
+  EXTREME_PLAN_CASES,
+  EXTREME_UNDERSTAND_CASES,
+  type ParkCase,
+  type PlanCase,
+} from '@/data/eval/aiExtremeCases';
+import { scoreParkPick, scorePick, scorePlan, scoreUnderstanding } from '@/data/eval/aiScore';
 import {
   UnderstandingModelSchema,
+  parkPickModelSchema,
+  parkPickSystem,
   pickModelSchema,
   pickSystem,
+  planModelSchema,
+  planSystem,
   toPick,
+  toPlan,
   toUnderstanding,
   understandSystem,
   type ChatTurn,
+  type ParkPickResponse,
   type PickResponse,
   type Understanding,
 } from '@/lib/ai/protocol';
@@ -58,7 +74,11 @@ function toMessages(history: ChatTurn[], text: string) {
   return mapped;
 }
 
-type Job = { type: 'understand'; c: BigUnderstandCase } | { type: 'pick'; c: BigPickCase };
+type Job =
+  | { type: 'understand'; c: BigUnderstandCase }
+  | { type: 'pick'; c: BigPickCase }
+  | { type: 'park'; c: ParkCase }
+  | { type: 'plan'; c: PlanCase };
 type Row = { job: Job; pass: boolean; misses: string[]; error?: string };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -90,10 +110,19 @@ async function main(): Promise<void> {
 
   // Our own single retry (below) instead of the SDK's, so the count stays predictable.
   const client = new Anthropic({ apiKey, maxRetries: 0 });
-  let jobs: Job[] = [
-    ...BIG_UNDERSTAND_CASES.map((c): Job => ({ type: 'understand', c })),
-    ...BIG_PICK_CASES.map((c): Job => ({ type: 'pick', c })),
-  ];
+  const suite = process.env.AI_EVAL_SUITE === 'extreme' ? 'extreme' : 'big';
+  let jobs: Job[] =
+    suite === 'extreme'
+      ? [
+          ...EXTREME_UNDERSTAND_CASES.map((c): Job => ({ type: 'understand', c })),
+          ...EXTREME_PICK_CASES.map((c): Job => ({ type: 'pick', c })),
+          ...EXTREME_PARK_CASES.map((c): Job => ({ type: 'park', c })),
+          ...EXTREME_PLAN_CASES.map((c): Job => ({ type: 'plan', c })),
+        ]
+      : [
+          ...BIG_UNDERSTAND_CASES.map((c): Job => ({ type: 'understand', c })),
+          ...BIG_PICK_CASES.map((c): Job => ({ type: 'pick', c })),
+        ];
   const limit = Number(process.env.AI_EVAL_LIMIT);
   if (Number.isFinite(limit) && limit > 0) jobs = jobs.slice(0, Math.floor(limit));
 
@@ -119,6 +148,44 @@ async function main(): Promise<void> {
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
       return scoreUnderstanding(c, u);
+    }
+    if (job.type === 'park') {
+      const c = job.c;
+      const n = c.candidates.length;
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 1024,
+        system: parkPickSystem(city),
+        output_config: { effort: 'low', format: zodOutputFormat(parkPickModelSchema(n)) },
+        messages: [
+          { role: 'user', content: JSON.stringify({ text: c.text, candidates: c.candidates }) },
+        ],
+      });
+      inputTokens += response.usage.input_tokens;
+      outputTokens += response.usage.output_tokens;
+      return scoreParkPick(c, toPick(response.parsed_output, n, true) as ParkPickResponse | null);
+    }
+    if (job.type === 'plan') {
+      const c = job.c;
+      const total = c.candidates.reduce((n, r) => n + r.parkings.length, 0);
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 1024,
+        system: planSystem(city),
+        output_config: {
+          effort: 'low',
+          format: zodOutputFormat(planModelSchema(c.candidates.length, total)),
+        },
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({ text: c.text, when: c.when, candidates: c.candidates }),
+          },
+        ],
+      });
+      inputTokens += response.usage.input_tokens;
+      outputTokens += response.usage.output_tokens;
+      return scorePlan(c, toPlan(response.parsed_output, c.candidates.length, total));
     }
     const c = job.c;
     const n = c.candidates.length;
@@ -181,7 +248,9 @@ async function main(): Promise<void> {
   const cost = (inputTokens * PRICE_IN + outputTokens * PRICE_OUT) / 1e6;
 
   const lines: string[] = [];
-  lines.push(`Big AI eval (${MODEL}): ${passed}/${total} (${pct(passed, total)})`);
+  lines.push(
+    `${suite === 'extreme' ? 'Extreme' : 'Big'} AI eval (${MODEL}): ${passed}/${total} (${pct(passed, total)})`,
+  );
   lines.push(
     `Pass bar: ${Math.round(BIG_PASS * 100)}% -> ${rate >= BIG_PASS ? 'PASS' : 'FAIL'}` +
       (total < jobs.length ? ` (stopped early: ${total}/${jobs.length} ran)` : ''),
@@ -227,8 +296,8 @@ async function main(): Promise<void> {
   console.log(report);
 
   const date = new Date().toISOString().slice(0, 10);
-  const md = `# AI eval (big)\n\nDate: ${date}\n\n${report}\n`;
-  fs.writeFileSync(path.resolve(__dirname, '../docs/ai-eval-big.md'), md);
+  const md = `# AI eval (${suite})\n\nDate: ${date}\n\n${report}\n`;
+  fs.writeFileSync(path.resolve(__dirname, `../docs/ai-eval-${suite}.md`), md);
   if (rate < BIG_PASS) process.exitCode = 1;
 }
 
