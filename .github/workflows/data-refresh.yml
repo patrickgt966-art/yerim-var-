@@ -1,7 +1,7 @@
 name: Data refresh
 
-# Collects static parking, place, rail and food data for İzmir and İstanbul
-# (OpenStreetMap + İzmir open data portal + Overture Maps).
+# Collects static parking, place, rail and food data (with diet tags) for the five cities:
+# İzmir, İstanbul, Ankara, Bursa and Antalya (OpenStreetMap, city open data portals, Overture Maps).
 # The app bundles the result; it never calls these services itself.
 
 on:

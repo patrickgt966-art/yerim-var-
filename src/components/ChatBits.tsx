@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { cardModel, understoodChips } from '@/components/chat/model';
 import { PlanCard } from '@/components/chat/PlanCard';
 import { ResultCard } from '@/components/chat/ResultCard';
 import { BOT_INSET, softShadow } from '@/components/chat/style';
+import { ThinkingBar, ThinkingSparkle } from '@/components/chat/ThinkingFx';
 import { TypingDots } from '@/components/chat/TypingDots';
 import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
@@ -65,22 +66,56 @@ const botCorners = {
   borderBottomLeftRadius: 20,
 } as const;
 
-/** After this long the waiting text changes, so a slow answer does not look frozen. */
-const THINKING_LONG_MS = 2500;
+/**
+ * What the bubble says while the AI works, and from when (ms): the text moves on as the wait
+ * grows, so a slow answer reads as progress and never as frozen.
+ */
+const THINKING_STEPS = [
+  { at: 0, key: 'chat.thinking' },
+  { at: 2500, key: 'chat.thinkingSearch' },
+  { at: 6000, key: 'chat.thinkingLong' },
+  { at: 10000, key: 'chat.thinkingAlmost' },
+] as const;
 
-/** `thinking`: the reply waits for the AI, so a short text sits next to the dots. */
+/** `thinking`: the reply waits for the AI; a sparkle, a changing line and a slow bar show it. */
 export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
   const { t } = useTranslation();
   const c = useColors();
-  const [long, setLong] = useState(false);
+  const [step, setStep] = useState(0);
+  const [fade] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (!thinking) return;
-    const id = setTimeout(() => setLong(true), THINKING_LONG_MS);
-    return () => clearTimeout(id);
+    const ids = THINKING_STEPS.slice(1).map((s, k) => setTimeout(() => setStep(k + 1), s.at));
+    return () => ids.forEach(clearTimeout);
   }, [thinking]);
-  // Spoken once, when the wait starts; the later text change is not announced again.
+  useEffect(() => {
+    if (step === 0) return;
+    fade.setValue(0);
+    Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+  }, [step, fade]);
+  // Spoken once, when the wait starts; the later text changes are not announced again.
   useAnnounce(thinking ? t('chat.thinking') : null);
-  const label = thinking ? t(long ? 'chat.thinkingLong' : 'chat.thinking') : t('chat.typing');
+  const label = thinking ? t(THINKING_STEPS[step]!.key) : t('chat.typing');
+  if (!thinking) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={label}
+        style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
+      >
+        <YAvatar />
+        <View
+          style={[
+            botCorners,
+            { paddingVertical: 14, paddingHorizontal: 14, backgroundColor: c.card },
+            softShadow(),
+          ]}
+        >
+          <TypingDots />
+        </View>
+      </View>
+    );
+  }
   return (
     <View
       accessible
@@ -92,26 +127,32 @@ export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
         style={[
           botCorners,
           {
-            paddingVertical: 14,
+            minWidth: 220,
+            maxWidth: '78%',
+            paddingTop: 12,
+            paddingBottom: 12,
             paddingHorizontal: 14,
-            backgroundColor: c.card,
-            flexDirection: 'row',
-            alignItems: 'center',
             gap: 10,
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.chipBg,
           },
           softShadow(),
         ]}
       >
-        <TypingDots />
-        {thinking ? (
-          <Txt
-            color={c.textSecondary}
-            accessible={false}
-            style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
-          >
-            {label}
-          </Txt>
-        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <ThinkingSparkle />
+          <Animated.View style={{ flexShrink: 1, opacity: fade }}>
+            <Txt
+              color={c.text}
+              accessible={false}
+              style={{ fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 19 }}
+            >
+              {label}
+            </Txt>
+          </Animated.View>
+        </View>
+        <ThinkingBar />
       </View>
     </View>
   );

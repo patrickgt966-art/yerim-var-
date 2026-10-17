@@ -627,3 +627,29 @@ describe('world cuisine category', () => {
     expect(categoryForQuery('makarna')).toBe('world');
   });
 });
+
+describe('every food place gets a category', () => {
+  const place = (n: string, k: string, c?: string[]) =>
+    toRestaurant({ id: 'osm-n1', n, a: 38.4, o: 27.1, k, ...(c ? { c } : {}) });
+
+  it('maps tags we did not know before', () => {
+    expect(categoryOf(place('Konakbay Çibörek-Mantı', 'restaurant', ['mantı']))).toBe('lokanta');
+    expect(categoryOf(place('Kımız Çiftliği', 'restaurant', ['kımız']))).toBe('lokanta');
+    expect(categoryOf(place('Deniz', 'restaurant', ['mediterranean']))).toBe('world');
+    expect(categoryOf(place('Afghan Faryab', 'restaurant', ['afghan']))).toBe('world');
+    expect(categoryOf(place('Simit Sarayı Bagel', 'restaurant', ['bagel']))).toBe('breakfast');
+    expect(categoryOf(place('Dunkin', 'restaurant', ['donut']))).toBe('dessert');
+    expect(categoryOf(place('Lara Fish', 'restaurant', ['fish_and_chips']))).toBe('fish');
+  });
+
+  it('a café named for sweets is a dessert place', () => {
+    expect(categoryOf(place('4K Cafe & Patisserie', 'cafe'))).toBe('dessert');
+    expect(categoryOf(place('Çadır Cafe Künefe', 'cafe'))).toBe('dessert');
+    expect(categoryOf(place('Kahve Sokağı', 'cafe'))).toBe('cafe');
+  });
+
+  it('still leaves out places that are not a meal stop', () => {
+    expect(categoryOf(place('Bıyık Nargile Evi', 'cafe'))).toBeNull();
+    expect(categoryOf(place('Asur Hotel', 'restaurant'))).toBeNull();
+  });
+});

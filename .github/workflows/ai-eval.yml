@@ -1,7 +1,16 @@
 name: AI eval
 
-# Manual only: calls the Anthropic API (costs tokens).
-on: workflow_dispatch
+# Calls the Anthropic API (costs tokens, a few cents a run): on pull requests that change what the
+# AI is told or how its answer is used, and by hand. Without the ANTHROPIC_API_KEY secret it skips.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/lib/ai/**'
+      - 'src/data/assistant.ts'
+      - 'src/data/eval/**'
+      - 'scripts/ai-eval.ts'
+      - 'server/yerim-ai/src/**'
 
 permissions:
   contents: read
@@ -10,24 +19,32 @@ jobs:
   eval:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
+      - name: Skip without the API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret is not set; AI eval skipped." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
       - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
       # The Worker's pinned Anthropic SDK (0.133.0) and zod; scripts/ai-eval.ts imports them from here.
-      - run: npm ci --prefix server/yerim-ai
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
       - name: Run AI eval
+        if: env.ANTHROPIC_API_KEY != ''
         run: npx --yes tsx@4.23.15 scripts/ai-eval.ts
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Publish summary
-        if: always()
+        if: always() && env.ANTHROPIC_API_KEY != ''
         run: '[ -f docs/chat-eval-ai.md ] && cat docs/chat-eval-ai.md >> "$GITHUB_STEP_SUMMARY" || true'
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && env.ANTHROPIC_API_KEY != ''
         with:
           name: chat-eval-ai
           path: docs/chat-eval-ai.md

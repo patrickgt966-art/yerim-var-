@@ -84,9 +84,12 @@ describe('validateFreeText', () => {
     expect(validateFreeText('tone', 'Afiyet olsun, madem buradasın.', ctx)).not.toBeNull();
   });
 
-  it.each(['Detaylar için ornek.xyz adresine bak.', 'Detaylar için ornek.dev adresine bak.', 'Bedel ٣₺.'])(
-    'rejects URLs and Unicode digits outside the original ASCII/domain allowlist: %s',
-    (text) => expect(validateFreeText('tone', text, ctx)).toBeNull(),
+  it.each([
+    'Detaylar için ornek.xyz adresine bak.',
+    'Detaylar için ornek.dev adresine bak.',
+    'Bedel ٣₺.',
+  ])('rejects URLs and Unicode digits outside the original ASCII/domain allowlist: %s', (text) =>
+    expect(validateFreeText('tone', text, ctx)).toBeNull(),
   );
 
   it('allows park words only in the clarify question', () => {
@@ -207,5 +210,26 @@ describe('validateFreeText and the city', () => {
 
   it('accepts any city name in a clarify question', () => {
     expect(validateFreeText('clarify', 'İstanbul mu İzmir mi?')).toBe('İstanbul mu İzmir mi?');
+  });
+});
+
+describe('validateFreeText in English', () => {
+  it('keeps a plain English line, with "I"', () => {
+    expect(validateFreeText('tone', "Sounds good, I think you'll like it")).not.toBeNull();
+    expect(validateFreeText('clarify', 'Which part of town are you in?')).not.toBeNull();
+  });
+
+  it('drops the same claims as in Turkish', () => {
+    for (const s of [
+      'It is cheap and close',
+      'The best kebab around',
+      'Open until late tonight',
+      'Plenty of free spaces',
+      'A quiet and romantic spot',
+      'Great reviews from locals',
+    ]) {
+      expect(validateFreeText('tone', s)).toBeNull();
+    }
+    expect(validateFreeText('dishNote', 'This place makes it fresh')).toBeNull();
   });
 });

@@ -58,6 +58,12 @@ function sanitizeActive(a: unknown, nowMs: number): Record<string, unknown> | nu
     if (confirmed == null || confirmed > nowMs) delete out.confirmedAt;
   }
   if ('destination' in out && !validDestination(out.destination)) delete out.destination;
+  if ('reminder' in out) {
+    const r = out.reminder as Record<string, unknown> | null;
+    if (!r || typeof r !== 'object' || typeof r.id !== 'string' || timeOf(r.at) == null) {
+      delete out.reminder;
+    }
+  }
   return out;
 }
 
@@ -96,6 +102,7 @@ export function sanitizeAppState(persisted: unknown): unknown {
   }
   if ('mode' in s && s.mode !== 'now' && s.mode !== 'twoHours') s.mode = 'now';
   if ('city' in s && !isAvailableCity(s.city)) s.city = DEFAULT_CITY;
+  if ('lang' in s && s.lang !== 'tr' && s.lang !== 'en' && s.lang !== 'auto') s.lang = 'auto';
   return s;
 }
 
@@ -108,6 +115,7 @@ const DATA_KEYS = [
   'active',
   'mode',
   'city',
+  'lang',
   'recentSearches',
 ] as const;
 

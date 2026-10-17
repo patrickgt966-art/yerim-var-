@@ -17,7 +17,7 @@ export const MAX_RESULTS = 5;
  * Haiku with structured output is usually faster, but the first call after a schema change (the
  * API compiles the schema then) and a cold worker took longer than 6 s; a longer wait feels like a hang.
  */
-export const ROUTER_TIMEOUT_MS = 9000;
+export const ROUTER_TIMEOUT_MS = 12000;
 /** /pick and /plan: candidate restaurants per request, and car parks per restaurant (plan). */
 export const MAX_CANDIDATES = 5;
 /**
@@ -57,6 +57,19 @@ function promptCity(city: string | undefined) {
   return cityById(isAvailableCity(city) ? city : DEFAULT_CITY);
 }
 
+/** The languages the app speaks. */
+export const AI_LANGS = ['tr', 'en'] as const;
+export type AiLang = (typeof AI_LANGS)[number];
+
+/**
+ * Appended to a system prompt when the app is in English: the user may write in either language,
+ * and every text the user sees is written in English. Codes and field names never change.
+ */
+export function langNote(lang?: AiLang): string {
+  if (lang !== 'en') return '';
+  return '\n\nDİL (yukarıdaki "serbest metinleri Türkçe yaz" kuralının yerine geçer): Kullanıcı uygulamayı İngilizce kullanıyor. Kullanıcıya görünen serbest metinleri (reply, clarifyText, tone, dishNote) İngilizce yaz. Alan değerleri (district, dish, place, dishServes) ve kodlar her zamanki gibi standart Türkçe yazımla kalır; meaning Türkçe ya da İngilizce olabilir.';
+}
+
 export type UnderstandRequest = {
   deviceId: string;
   messageId: string;
@@ -66,6 +79,8 @@ export type UnderstandRequest = {
   /** What the last bot reply showed (no names): lets the model answer "pick_from_last". */
   lastCards?: { count: number; kind: 'restaurant' | 'parking' };
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
 };
 
 export type QuotaRequest = { deviceId: string };
@@ -340,6 +355,8 @@ export type NarrateRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   where: string;
   what: string;
@@ -463,6 +480,8 @@ export type PickRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   candidates: PickCandidate[];
 };
@@ -552,6 +571,8 @@ export type ParkPickRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   candidates: ParkPickCandidate[];
 };
@@ -611,6 +632,8 @@ export type PlanRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   when: PlanWhen;
   candidates: PlanCandidate[];
@@ -727,6 +750,8 @@ export function pickSystem(city?: string): string {
 Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
 
 Önce isteğe uygunluğa karar ver: kullanıcı ne istiyor (bir yemek, bir amaç ya da beslenme tarzı: kas yapmak, vejetaryen, hafif, tatlı, çocukla gitmek ...)? Her adayın adına ve türüne bakıp hangilerinin bu isteğe uyduğunu kendi aklınla değerlendir. Menü bilgimiz yok; sadece ad ve türden makul bir çıkarım yap. Uymak, yalnızca o işe özel bir yer olmak demek değildir: kullanıcının orada isteğine uygun bir şey bulup yiyebileceği her yer uyar; yalnızca isteğe açıkça ters düşen yerler uymaz (örneğin vejetaryen biri ev yemekleri yapan bir lokantada sebze yemeği, pidecide peynirli pide bulabilir ama sadece et yapan bir yer ona uymaz; protein isteyen biri lokantada, pidecide, döner ya da tavuk yapan bir yerde doyabilir ama yalnızca kahve ve tatlı satan bir yerde doyamaz). Bunlar sadece örnek: her istekte aynı akıl yürütmeyi yap. Kullanıcı yemek yemek istiyorsa, doyurucu bir öğün bulabileceği yerleri yalnızca kahve, tatlı ya da atıştırmalık sunan yerlerin önüne koy.
+type içinde "Vegan", "Vejetaryen", "Vejetaryen seçenek var", "Pesketaryen", "Glutensiz seçenek var" gibi beslenme bilgileri bizim verimizdir, tahmin değildir: varsa ad ve türden yaptığın çıkarımdan önce bunlara güven.
+Adayların bir kısmı arama alanının biraz dışındadır (walkMin daha büyük). İsteğe uyan yakın bir aday varsa onu seç; daha uzaktakini ancak yakındakilerden hiçbiri isteğe uymuyorsa ya da açıkça çok daha iyi uyuyorsa (örneğin vejetaryen için tamamen vejetaryen bir yer) seç.
 Çıktı:
 - fit: isteğe uyan adayların indeksleri, en uygundan başlayarak, en çok 5. Kullanıcı belirli bir şey istemiyorsa (her yer olur) boş dizi.
 - noneFit: kullanıcı belirli bir şey istiyor ama hiçbir aday buna uymuyorsa true, yoksa false.
@@ -776,6 +801,8 @@ export type ChatRequest = {
   deviceId: string;
   messageId: string;
   city?: AiCityId;
+  /** The app's language; 'en' asks for the free text in English. Absent: Turkish. */
+  lang?: AiLang;
   text: string;
   /** The last four turns at most. */
   history: ChatTurn[];

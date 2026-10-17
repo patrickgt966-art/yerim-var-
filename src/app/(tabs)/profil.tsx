@@ -4,17 +4,23 @@ import { Linking, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { Chip } from '@/components/Chip';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { activeCity, hasLiveParking } from '@/data/cities';
 import { formatClock } from '@/data/freshness';
 import { useParkings } from '@/data/useParkings';
+import type { LangPref } from '@/i18n';
 import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
 import { useAi } from '@/store/ai';
 import { useApp } from '@/store/app';
 import { useColors, useTabBarSpace } from '@/theme';
+
+const LANG_CHOICES: LangPref[] = ['auto', 'tr', 'en'];
+/** Each language in its own words, so it can be found whatever the app shows now. */
+const LANG_NAMES = { tr: 'Türkçe', en: 'English' } as const;
 
 export default function ProfileScreen() {
   const c = useColors();
@@ -23,6 +29,8 @@ export default function ProfileScreen() {
   const tabSpace = useTabBarSpace();
   const { data } = useParkings();
   const setOnboarded = useApp((s) => s.setOnboarded);
+  const lang = useApp((s) => s.lang);
+  const setLang = useApp((s) => s.setLang);
   const consent = useAi((s) => s.consent);
   const setConsent = useAi((s) => s.setConsent);
 
@@ -48,7 +56,10 @@ export default function ProfileScreen() {
             </Txt>
           ) : !hasLiveParking(activeCity()) ? (
             <Txt variant="caption" secondary>
-              {t('freshness.noLiveBanner', { place: activeCity().locative })}
+              {t('freshness.noLiveBanner', {
+                place: activeCity().locative,
+                city: activeCity().name,
+              })}
             </Txt>
           ) : null
         ) : data ? (
@@ -57,6 +68,18 @@ export default function ProfileScreen() {
             {data.offline ? ` · ${t('freshness.offline')}` : ''}
           </Txt>
         ) : null}
+      </Section>
+      <Section title={t('profile.language')}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {LANG_CHOICES.map((l) => (
+            <Chip
+              key={l}
+              label={l === 'auto' ? t('profile.langAuto') : LANG_NAMES[l]}
+              selected={lang === l}
+              onPress={() => setLang(l)}
+            />
+          ))}
+        </View>
       </Section>
       {aiBaseUrl() ? (
         <Section title={t('chat.aiSetting')}>

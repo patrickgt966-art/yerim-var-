@@ -21,6 +21,8 @@ export type FoodRecord = {
   o: number;
   k: string;
   c?: string[];
+  /** Diet codes: "vegan" serves only that, "vegan_options" offers it (OSM diet:*, Overture category). */
+  dt?: string[];
   h?: string;
   p?: string;
   w?: string;
@@ -52,6 +54,8 @@ export type Restaurant = {
   lng: number;
   kind: string;
   cuisines: string[];
+  /** Diet codes from the data ("vegetarian", "vegan_options", ...); empty when none is known. */
+  diets: string[];
   /** Raw OSM opening_hours text. */
   openingHours: string | null;
   phone: string | null;
@@ -78,6 +82,7 @@ export function toRestaurant(r: FoodRecord): Restaurant {
     lng: r.o,
     kind: r.k,
     cuisines: r.c ?? [],
+    diets: r.dt ?? [],
     openingHours: r.h ?? null,
     phone: r.p ?? null,
     website: r.w ?? null,
@@ -228,6 +233,22 @@ export function kindLabel(kind: string, t: TFunction): string | null {
   return key ? t(`food.kinds.${key}`) : null;
 }
 
+const DIET_KEYS = new Set([
+  'vegetarian',
+  'vegan',
+  'pescetarian',
+  'gluten_free',
+  'vegetarian_options',
+  'vegan_options',
+  'pescetarian_options',
+  'gluten_free_options',
+]);
+
+/** Turkish labels for the diet codes in our data ("Vegan", "Vejetaryen seçenek var"). */
+export function dietLabels(codes: string[], t: TFunction): string[] {
+  return codes.filter((c) => DIET_KEYS.has(c)).map((c) => t(`food.diets.${c}`));
+}
+
 /** Turkish labels for known cuisine codes; unknown codes are dropped, duplicates merged. */
 export function cuisineLabels(codes: string[], t: TFunction): string[] {
   const keys = new Set<string>();
@@ -350,7 +371,7 @@ export function hasWordForm(name: string, kw: string): boolean {
 const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   breakfast: {
     kinds: ['bakery'],
-    cuisines: ['breakfast'],
+    cuisines: ['breakfast', 'bagel', 'bread', 'bakery', 'fırın', 'firin'],
     names: [
       'kahvalti',
       'borek',
@@ -368,7 +389,7 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   },
   soup: { cuisines: ['soup'], names: ['corba', 'iskembe', 'kelle paca', 'paca'] },
   meat: {
-    cuisines: ['steak_house', 'kebab', 'grill', 'barbecue', 'meat', 'meatball'],
+    cuisines: ['steak_house', 'kebab', 'grill', 'barbecue', 'meat', 'meatball', 'köfte', 'kofte'],
     names: [
       'kebap',
       'kebab',
@@ -400,7 +421,7 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'japon mutfagi',
     ],
   },
-  fish: { cuisines: ['seafood', 'fish'], names: ['balik', 'alabalik', 'midye'] },
+  fish: { cuisines: ['seafood', 'fish', 'fish_and_chips'], names: ['balik', 'alabalik', 'midye'] },
   // Juice bars are often mapped as a plain restaurant ("Energy Vitamin"): the name makes them a café.
   cafe: {
     kinds: ['cafe'],
@@ -422,7 +443,23 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   meyhane: { kinds: ['bar', 'pub', 'biergarten'], cuisines: ['meyhane'], names: ['meyhane'] },
   fast: {
     kinds: ['fast_food'],
-    cuisines: ['burger', 'pizza', 'chicken', 'sandwich', 'doner'],
+    cuisines: [
+      'burger',
+      'pizza',
+      'chicken',
+      'sandwich',
+      'doner',
+      'tost',
+      'toast',
+      'shawarma',
+      'lahmacun',
+      'pide',
+      'hot_dog',
+      'wrap',
+      'kumpir',
+      'cig_kofte',
+      'çiğköfte',
+    ],
     names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun', 'cig kofte', 'cigkofte'],
   },
   world: {
@@ -458,6 +495,28 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'international',
       'peruvian',
       'latin_american',
+      // Not Turkish home cooking either: "Akdeniz mutfağı" places, and cuisines from abroad.
+      'mediterranean',
+      'american',
+      'european',
+      'german',
+      'british',
+      'portuguese',
+      'balkan',
+      'moroccan',
+      'persian',
+      'iranian',
+      'afghan',
+      'uzbek',
+      'kazak',
+      'tatar',
+      'turkmen',
+      'indonesian',
+      'malaysian',
+      'oriental',
+      'african',
+      'brazilian',
+      'argentinian',
     ],
     names: [
       'sushi',
@@ -492,7 +551,7 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
   },
   dessert: {
     kinds: ['ice_cream', 'pastry', 'confectionery'],
-    cuisines: ['dessert', 'ice_cream', 'cake', 'pastry'],
+    cuisines: ['dessert', 'ice_cream', 'cake', 'pastry', 'donut', 'waffle', 'pancake', 'crepe'],
     names: ['tatli', 'pastane', 'patisserie', 'dondurma', 'baklava', 'kunefe'],
   },
 };
@@ -544,7 +603,15 @@ function isPubName(r: Restaurant): boolean {
 }
 
 const COFFEE_NAMES = ['coffee', 'kahve', 'cafe', 'kafe'];
-const SWEET_NAMES = ['tatli', 'dondurma', 'pastane'];
+const SWEET_NAMES = [
+  'tatli',
+  'dondurma',
+  'pastane',
+  'patisserie',
+  'patiserie',
+  'baklava',
+  'kunefe',
+];
 
 function matchesRule(r: Restaurant, cat: Exclude<FoodCategory, 'lokanta'>): boolean {
   const rule = CATEGORY_RULES[cat];
@@ -570,7 +637,23 @@ function matchesRule(r: Restaurant, cat: Exclude<FoodCategory, 'lokanta'>): bool
  * Pubs/bars (by name) belong to Meyhane only; hotels, markets, hookah and
  * club places belong to no family category.
  */
-const LOKANTA_CUISINES = ['turkish', 'regional', 'homestyle', 'local'];
+const LOKANTA_CUISINES = [
+  'turkish',
+  'regional',
+  'homestyle',
+  'local',
+  'ev_yemekleri',
+  'home_cooking',
+  'mantı',
+  'manti',
+  'çi_börek',
+  'pilav',
+];
+
+/** Cuisine tags that belong to a category other than lokanta. */
+const OTHER_CUISINES = new Set(
+  Object.values(CATEGORY_RULES).flatMap((rule) => rule.cuisines ?? []),
+);
 
 export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
   if (cat === 'meyhane') return isPubName(r) || matchesRule(r, 'meyhane');
@@ -579,8 +662,9 @@ export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
   // Lokanta: named like one, or a plain sit-down place that fits nothing else.
   if (nameCategories(r).includes('lokanta')) return true;
   if (r.kind !== 'restaurant' && r.kind !== 'food_court') return false;
-  // Only untagged or Turkish home-style places: an Italian or sushi tag is not a lokanta.
-  if (r.cuisines.some((c) => !LOKANTA_CUISINES.includes(c))) return false;
+  // A tag of another category (Italian, sushi) is not a lokanta; a tag we do not know yet
+  // ("kımız", "mushrooms") does not keep a sit-down place out of every category.
+  if (r.cuisines.some((c) => !LOKANTA_CUISINES.includes(c) && OTHER_CUISINES.has(c))) return false;
   return !FOOD_CATEGORIES.some((k) => k !== 'lokanta' && matchesCategory(r, k));
 }
 

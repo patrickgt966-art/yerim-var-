@@ -25,14 +25,35 @@ const ctx = {
   clearTimeout,
   fetch: jest.fn(),
 };
-const { cities, tiles, tiled } = runInNewContext(
-  `${definitions}\noverpassDeadline = Infinity;\n({ cities: CITIES, tiles: makeTiles, tiled: overpassTiled })`,
+const { cities, tiles, tiled, food } = runInNewContext(
+  `${definitions}\noverpassDeadline = Infinity;\n({ cities: CITIES, tiles: makeTiles, tiled: overpassTiled, food: fromFood })`,
   ctx,
 ) as {
   cities: { id: string; tiled?: Config }[];
   tiles: (cfg: Config) => Box[];
   tiled: (city: unknown, query: unknown, label: string) => Promise<unknown>;
+  food: (el: unknown) => Record<string, unknown> | null;
 };
+
+it('keeps diet tags: "only" (or the cuisine) as the diet, "yes" as an option', () => {
+  const el = (tags: Record<string, string>) => ({
+    type: 'node',
+    id: 1,
+    lat: 38.4,
+    lon: 27.1,
+    tags: { name: 'X', amenity: 'restaurant', ...tags },
+  });
+  expect(food(el({ 'diet:vegan': 'only' }))!.dt).toEqual(['vegan']);
+  expect(food(el({ 'diet:vegetarian': 'yes', 'diet:gluten_free': 'yes' }))!.dt).toEqual([
+    'vegetarian_options',
+    'gluten_free_options',
+  ]);
+  expect(food(el({ cuisine: 'vegetarian;turkish' }))!.dt).toEqual(['vegetarian']);
+  expect(food(el({ 'diet:pescetarian': 'yes' }))!.dt).toEqual(['pescetarian_options']);
+  expect(food(el({ 'diet:vegan': 'no' }))).not.toHaveProperty('dt');
+  // Halal is left out: in Türkiye nearly every place is.
+  expect(food(el({ 'diet:halal': 'only' }))).not.toHaveProperty('dt');
+});
 
 it('includes every Ankara district centre in the tiled places/food scan', () => {
   const config = cities.find((city) => city.id === 'ankara')!.tiled!;

@@ -14,7 +14,8 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
-import { cuisineLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
+import { cuisineLabels, dietLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
+import { placeShareText, shareText } from '@/lib/share';
 import { useRanked } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
@@ -77,7 +78,12 @@ export default function RestaurantDetail() {
     );
   }
 
-  const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t), r.address]
+  const meta = [
+    kindLabel(r.kind, t),
+    ...dietLabels(r.diets, t),
+    ...cuisineLabels(r.cuisines, t),
+    r.address,
+  ]
     .filter(Boolean)
     .join(' · ');
   const facts = [
@@ -278,6 +284,14 @@ export default function RestaurantDetail() {
         >
           {r.name}
         </Txt>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('share.a11y', { name: r.name })}
+          onPress={() => void shareText(placeShareText(r, t))}
+          style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Icon name="share" size={24} color={c.text} />
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={isFav ? t('food.favoriteRemove') : t('food.favoriteAdd')}

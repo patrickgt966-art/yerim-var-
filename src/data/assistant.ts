@@ -33,6 +33,7 @@ import {
   allRestaurants,
   categoryOf,
   cuisineLabels,
+  dietLabels,
   dishStem,
   kindLabel,
   matchesCategory,
@@ -252,6 +253,13 @@ export type AssistantDeps = {
 type Result = { reply: BotMessage; ctx: ChatContext };
 
 const MAX_CARDS = 5;
+/**
+ * /pick also sees this many places just beyond the search radius (up to FAR_PICK_M), so a place
+ * that fits the request a little further out ("vejetaryenim": a vegan café at 1.2 km) is not
+ * missed; the AI takes one of them only when nothing nearby fits.
+ */
+const FAR_PICK = 10;
+const FAR_PICK_M = 3000;
 /** Folded seller / possessive / plural endings a name word may add to a typed dish word. */
 const NAME_SUFFIXES = [
   '',
@@ -1241,7 +1249,10 @@ async function answerText(
             },
         {
           kind: 'refine',
-          label: t('chat.actDistrictFood', { inDistrict: inDistrict(district.name, true) }),
+          label: t('chat.actDistrictFood', {
+            inDistrict: inDistrict(district.name, true),
+            district: district.name,
+          }),
           patch: { section: 'food', cat: null, dish: null, dishServes: null, place: here },
         },
       ];
@@ -1250,6 +1261,7 @@ async function answerText(
           {
             text: t('chat.districtUnknownThing', {
               inDistrict: inDistrict(district.name),
+              district: district.name,
               q: left.x,
             }),
             cards: [],
@@ -1552,7 +1564,7 @@ async function run(
       where = t('chat.nearYou');
     } else {
       target = activeCity().center;
-      where = t('chat.center');
+      where = t('chat.center', { city: activeCity().name });
     }
   }
 
@@ -1887,7 +1899,12 @@ function runFood(
       // A cuisine-tag match is not "in the name": word it as a likely fit.
       return profile ? t('chat.reasonLikely', { dish: dishName, label: profile.label }) : undefined;
     };
-    const pool: ChatCard[] = list.slice(0, MAX_PICK_CANDIDATES).map((row) => {
+    const far =
+      deps.ai?.pick && !ctx.wide && hits.size === 0
+        ? fartherRows(target, searchRadiusM, new Set(list.map((row) => row.r.id)), ctx, deps, now)
+        : [];
+    const poolRows = [...list.slice(0, MAX_PICK_CANDIDATES - far.length), ...far];
+    const pool: ChatCard[] = poolRows.map((row) => {
       const reason = reasonOf(row.r.id);
       return {
         kind: 'restaurant',
@@ -2295,8 +2312,10 @@ function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): Pic
   const cat = categoryOf(r);
   const tf = t as Parameters<typeof cuisineLabels>[1];
   const kind = kindLabel(r.kind, tf);
+  // Diets come right after the category: they are data, not a guess, and must not be clipped.
   const parts = [
     ...(cat ? [t(`food.cats.${cat}`)] : []),
+    ...dietLabels(r.diets, tf),
     ...(kind ? [kind] : []),
     ...cuisineLabels(r.cuisines, tf),
   ].filter((p, k, all) => all.indexOf(p) === k);
@@ -2347,6 +2366,39 @@ type PickDone = {
   tone: string | null;
   remaining: number;
 };
+
+/**
+ * The nearest places beyond the search radius that pass the same filters (category, ruled-out
+ * category, parking), for the pick only.
+ */
+function fartherRows(
+  target: LatLng,
+  radiusM: number,
+  have: Set<string>,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+  now: Date,
+): RestaurantRow[] {
+  const notCat = ctx.notCat;
+  const items = restaurantsNear(target, FAR_PICK_M, 3000)
+    .filter(
+      (r) =>
+        r.distanceM > radiusM &&
+        !have.has(r.id) &&
+        categoryOf(r) !== null &&
+        (!ctx.cat || matchesCategory(r, ctx.cat)) &&
+        (!notCat || !matchesCategory(r, notCat)),
+    )
+    .slice(0, FAR_PICK * 4);
+  let rows = buildRestaurantRows(items, deps.parkings, target, now);
+  if (ctx.requireParking) {
+    rows = withParkingWithin(rows, ctx.parkM);
+    if (ctx.freeParking) {
+      rows = rows.filter((row) => nearestParking(row.r, deps.parkings)?.parking.isPaid === false);
+    }
+  }
+  return rows.slice(0, FAR_PICK);
+}
 
 /** Asks the AI to pick among the restaurant cards; shows nothing unless every claim checks out. */
 async function askPick(

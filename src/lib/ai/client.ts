@@ -1,3 +1,4 @@
+import i18next from 'i18next';
 import Constants from 'expo-constants';
 
 import { activeCity } from '@/data/cities';
@@ -73,7 +74,9 @@ const fail = (
 /** Dev only (shows in the `expo start` terminal). Never the message text. */
 function warnDev(path: string, detail: AiFailDetail, extra?: string, why?: string): void {
   if (__DEV__) {
-    console.warn(`[ai] ${path} failed: ${detail}${extra ? ` (${extra})` : ''}${why ? ` ${why}` : ''}`);
+    console.warn(
+      `[ai] ${path} failed: ${detail}${extra ? ` (${extra})` : ''}${why ? ` ${why}` : ''}`,
+    );
   }
 }
 
@@ -83,10 +86,14 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 
-/** The request for the selected city. A worker that predates the field ignores it. */
-const forCity = <T extends { city?: string }>(req: T): T => ({
+/**
+ * The request for the selected city, and the app's language when it is English (the model then
+ * writes its free text in English). A worker that predates the fields ignores them.
+ */
+const forCity = <T extends { city?: string; lang?: string }>(req: T): T => ({
   ...req,
   city: req.city ?? activeCity().id,
+  ...(i18next.language === 'en' ? { lang: 'en' } : {}),
 });
 
 /**
@@ -211,12 +218,18 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       // An odd field (an unknown wish, a list too long, a code from a newer worker) must not cost
       // the answer: the tolerant conversion keeps what is usable. Only an unreadable one fails.
       let parsed = UnderstandingClientSchema.safeParse(body?.understanding);
-      if (!parsed.success && isRecord(body?.understanding) && body.understanding.kind !== 'unknown') {
+      if (
+        !parsed.success &&
+        isRecord(body?.understanding) &&
+        body.understanding.kind !== 'unknown'
+      ) {
         const again = UnderstandingClientSchema.safeParse(toUnderstanding(body.understanding));
         if (again.success && again.data.kind !== 'unknown') parsed = again;
       }
       if (!parsed.success || typeof body?.remaining !== 'number') {
-        const issue = parsed.success ? 'remaining' : parsed.error.issues[0]?.path.join('.') || '(root)';
+        const issue = parsed.success
+          ? 'remaining'
+          : parsed.error.issues[0]?.path.join('.') || '(root)';
         warnDev('/understand', 'schema', `HTTP 200, first issue at ${issue}`);
         return fail('error', undefined, 'schema');
       }

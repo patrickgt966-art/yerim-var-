@@ -7,6 +7,7 @@ import type {
   PlanCandidate,
   Understanding,
 } from '@/lib/ai/protocol';
+import { MAX_PICK_CANDIDATES } from '@/lib/ai/protocol';
 import { parkReasonHolds, pickReasonHolds } from '@/lib/ai/verify';
 
 import {
@@ -206,6 +207,28 @@ describe('plain searches: the router first, the rules when it gives nothing', ()
     expect(understand).toHaveBeenCalledTimes(1);
     expect(r.reply.sparkle).toBeFalsy();
     expect(r.reply.actions.some((a) => a.kind === 'pick')).toBe(false);
+  });
+});
+
+describe('the pick also sees a few places beyond the search radius', () => {
+  it('sends them after the nearby ones and can pick one when nothing nearby fits', async () => {
+    const understand = async () =>
+      okU(search({ meaning: "Bornova'da vejetaryen yemek", food: true }));
+    let far = -1;
+    const pick = jest.fn(async (req: { candidates: PickCandidate[] }) => {
+      far = req.candidates.length - 1;
+      return pickRes({ pick: far, fit: [far], reasons: ['fits_request'] });
+    });
+    const { ai, deps } = mockAi({ understand, pick });
+    const r = await answer('vejetaryenim, Bornova', emptyContext('food'), deps);
+    const req = ai.pick.mock.calls[0]![0] as { candidates: PickCandidate[] };
+    expect(req.candidates.length).toBeLessThanOrEqual(MAX_PICK_CANDIDATES);
+    const near = req.candidates.slice(0, -10);
+    const beyond = req.candidates.slice(-10);
+    const nearMax = Math.max(...near.map((c) => c.walkMin));
+    for (const c of beyond) expect(c.walkMin).toBeGreaterThanOrEqual(nearMax - 1);
+    const cards = restaurantCards(r.reply.cards);
+    expect(cards[0]).toMatchObject({ picked: true, name: req.candidates[far]!.name });
   });
 });
 
