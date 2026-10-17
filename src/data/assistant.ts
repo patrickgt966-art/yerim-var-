@@ -2138,20 +2138,18 @@ async function clarify(
     const nearest = [...activeCity().districtCenters]
       .sort((a, b) => distanceMeters(here, a) - distanceMeters(here, b))
       .slice(0, 3);
+    // An answer to "where" or "what" is sent as a message, as if typed: it goes through the AI
+    // with the conversation, so the request asked before ("vejetaryenim") still leads the search
+    // and the pick. A chip that only patched the search would drop it.
     actions = [
-      ...nearest.map((d): ChatAction => ({
-        kind: 'refine',
-        label: d.name,
-        patch: { place: { label: d.name, lat: d.lat, lng: d.lng } },
-      })),
-      { kind: 'refine', label: t('chat.clarifyNear'), patch: { place: null } },
+      ...nearest.map((d): ChatAction => ({ kind: 'say', label: d.name, text: d.name })),
+      { kind: 'say', label: t('chat.clarifyNear'), text: t('chat.clarifyNear') },
     ];
   } else if (ask === 'dish') {
-    actions = CLARIFY_CATS.map((cat): ChatAction => ({
-      kind: 'refine',
-      label: t(`food.cats.${cat}`),
-      patch: { section: 'food', cat, dish: null },
-    }));
+    actions = CLARIFY_CATS.map((cat): ChatAction => {
+      const label = t(`food.cats.${cat}`);
+      return { kind: 'say', label, text: label };
+    });
   } else if (ask === 'party') {
     actions = [
       { kind: 'refine', label: t('chat.party_1'), patch: { party: 2 } },
