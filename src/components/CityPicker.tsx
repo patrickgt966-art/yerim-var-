@@ -10,6 +10,7 @@ import { useApp } from '@/store/app';
 import { asym, brand, HIT, useColors } from '@/theme';
 
 /** Compact "İzmir ▾" button for the hero; opens the city sheet. */
+/** The active city with a chevron, on the light home header. */
 export function CityButton() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -29,11 +30,11 @@ export function CityButton() {
           gap: 4,
         }}
       >
-        <Icon name="pin" size={16} color={brand.orangeLight} />
-        <Txt variant="bodyBold" color={brand.white} style={{ fontSize: 15 }}>
+        <Icon name="pin" size={18} color={brand.navy} />
+        <Txt variant="bodyBold" color={brand.navy} style={{ fontSize: 15 }}>
           {name}
         </Txt>
-        <Icon name="chevronDown" size={16} color={brand.white} />
+        <Icon name="chevronDown" size={16} color={brand.textSecondary} />
       </Pressable>
       <CitySheet visible={open} onClose={() => setOpen(false)} />
     </>
