@@ -226,6 +226,7 @@ const tr = {
     parkConfirmYes: 'Başlat ve yol tarifi al',
     parkConfirmMapsOnly: 'Sadece yol tarifi',
     parkReplaceBody: 'Başlatırsan şu anki parkın ({{name}}) biter ve yenisi başlar.',
+    parkReplaceYes: 'Yeni parkı başlat',
     mapsFailed: 'Apple Haritalar açılamadı.',
   },
   detail: {
@@ -262,6 +263,7 @@ const tr = {
       sunday: 'Pazar',
     },
     notFound: 'Otopark bulunamadı.',
+    noLive: 'Canlı bilgi yok',
     staticTitle: 'Bu otopark anlık doluluk paylaşmıyor',
     staticBodyMunicipal:
       'Belediye kayıtlı otopark. Boş yer bilgisi yok. Gitmeden önce yakında bilgisi olan otoparklara da bak.',
@@ -292,6 +294,8 @@ const tr = {
     freeAt: '{{count}} boş yer · {{time}}',
     noCount: 'Bilgi yok',
     a11yFav: '{{name}}. {{status}}',
+    activeLabel: 'AKTİF PARK',
+    fullAt: 'Dolu · {{time}}',
   },
   share: {
     button: 'Paylaş',
@@ -506,6 +510,13 @@ const tr = {
     detail: 'Detay',
     goParking: 'Otoparka git',
     nearestParking: 'En yakın otopark {{distance}} m',
+    directions: 'Yol tarifi',
+    a11yDirections: '{{name}} için yol tarifi',
+    parkedHere: 'Buraya park ettim',
+    a11yParkedHere: '{{name}}: buraya park ettim',
+    a11yOpenDetail: 'Otoparkın detayını açar',
+    closeParkingA11y: 'Otopark kartını kapat',
+    freeUnit: 'boş',
   },
   a11y: {
     disabledCount: 'Engelli yeri: {{free}} boş ({{capacity}} yerden)',
@@ -845,6 +856,12 @@ const tr = {
     nearestWalk: 'en yakın {{walk}} dk',
     cravingTitle: 'Canın ne çekiyor?',
     a11yCraving: '{{name}} ara',
+    cravingSlot: {
+      morning: 'Günaydın · kahvaltı saati',
+      noon: 'Öğle yemeği vakti',
+      evening: 'İyi akşamlar · akşam yemeği',
+      night: 'Gece acıkanlara',
+    },
     cravings: {
       breakfast: 'Kahvaltı',
       lahmacun: 'Lahmacun',

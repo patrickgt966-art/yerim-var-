@@ -314,7 +314,7 @@ function Chat({ first }: { first: boolean }) {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
-      style={{ flex: 1, backgroundColor: c.surface }}
+      style={{ flex: 1, backgroundColor: c.bg }}
     >
       <ChatHeader
         top={insets.top + 4}

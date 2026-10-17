@@ -32,7 +32,6 @@ export type ChatMessage = {
 
 export function UserBubble({ text }: { text: string }) {
   const { t } = useTranslation();
-  const c = useColors();
   return (
     <View
       style={{
@@ -41,7 +40,9 @@ export function UserBubble({ text }: { text: string }) {
         maxWidth: '76%',
         paddingVertical: 10,
         paddingHorizontal: 14,
-        backgroundColor: c.hero,
+        backgroundColor: brand.peachSoft,
+        borderWidth: 1,
+        borderColor: brand.peachLine,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 6,
         borderBottomRightRadius: 20,
@@ -49,7 +50,7 @@ export function UserBubble({ text }: { text: string }) {
       }}
     >
       <Txt
-        color={c.onHero}
+        color={brand.navy}
         style={{ fontSize: 14, lineHeight: 20 }}
         accessibilityLabel={t('chat.a11yUser', { text })}
       >

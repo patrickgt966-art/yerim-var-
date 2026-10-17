@@ -232,6 +232,7 @@ const en = {
     parkConfirmYes: 'Start and get directions',
     parkConfirmMapsOnly: 'Directions only',
     parkReplaceBody: 'Starting this ends your current parking ({{name}}) and starts a new one.',
+    parkReplaceYes: 'Start the new park',
     mapsFailed: "Couldn't open Apple Maps.",
   },
   detail: {
@@ -269,6 +270,7 @@ const en = {
       sunday: 'Sunday',
     },
     notFound: 'Car park not found.',
+    noLive: 'No live data',
     staticTitle: "This car park doesn't share live occupancy",
     staticBodyMunicipal:
       'Registered municipal car park. No free-space info. Before you go, check nearby car parks that have it too.',
@@ -300,6 +302,8 @@ const en = {
     freeAt_other: '{{count}} free spaces · {{time}}',
     noCount: 'No info',
     a11yFav: '{{name}}. {{status}}',
+    activeLabel: 'ACTIVE PARK',
+    fullAt: 'Full · {{time}}',
   },
   share: {
     button: 'Share',
@@ -522,6 +526,13 @@ const en = {
     detail: 'Details',
     goParking: 'Go to car park',
     nearestParking: 'Closest car park {{distance}} m',
+    directions: 'Directions',
+    a11yDirections: 'Directions to {{name}}',
+    parkedHere: 'I parked here',
+    a11yParkedHere: '{{name}}: I parked here',
+    a11yOpenDetail: 'Opens the car park details',
+    closeParkingA11y: 'Close the car park card',
+    freeUnit: 'free',
   },
   a11y: {
     disabledCount: 'Accessible spaces: {{free}} free (out of {{capacity}})',
@@ -877,6 +888,12 @@ const en = {
     nearestWalk: 'closest {{walk}} min',
     cravingTitle: 'What are you craving?',
     a11yCraving: 'Search {{name}}',
+    cravingSlot: {
+      morning: 'Good morning · breakfast time',
+      noon: 'Lunchtime',
+      evening: 'Good evening · dinner time',
+      night: 'For late-night hunger',
+    },
     cravings: {
       breakfast: 'Breakfast',
       lahmacun: 'Lahmacun',

@@ -7,10 +7,9 @@ import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import { fonts, HIT, useColors } from '@/theme';
 
-import { softShadow } from './style';
 import { YAvatar } from './YAvatar';
 
-/** White header: back, Y tile, title + green status line, and an optional right-hand pill. */
+/** Paper header: back, Y tile, title + green status line, and an optional right-hand pill. */
 export function ChatHeader({ top, right }: { top: number; right?: ReactNode }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -25,9 +24,10 @@ export function ChatHeader({ top, right }: { top: number; right?: ReactNode }) {
           paddingBottom: 10,
           paddingLeft: 8,
           paddingRight: 12,
-          backgroundColor: c.card,
+          backgroundColor: c.bg,
+          borderBottomWidth: 1,
+          borderBottomColor: c.chipBg,
         },
-        softShadow(0.06, 2, 10),
       ]}
     >
       <Pressable

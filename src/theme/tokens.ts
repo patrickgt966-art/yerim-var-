@@ -29,10 +29,23 @@ export const brand = {
   peachText: '#8A4513',
 } as const;
 
+/**
+ * Occupancy status colours (design V5.1 "tek renk dili"): the same four everywhere a car park
+ * shows how full it is. Each `fg` is >= 4.5:1 on its `bg`, on white and on paper; see statusTone.
+ */
 export const occupancy = {
-  plenty: '#0E7C6B',
-  few: '#B45309',
+  /** Bol yer: 5.5:1 on mintSoft, 6.4:1 on white. */
+  plenty: brand.mintText,
+  plentyBg: brand.mintSoft,
+  /** Az kaldı: 4.9:1 on peachSoft, 5.9:1 on white (#B45309 was 4.2:1 on peachSoft). */
+  few: '#A54A07',
+  fewBg: brand.peachSoft,
+  /** Dolu: 5.3:1 on its pink, 6.5:1 on white. */
   full: '#B91C1C',
+  fullBg: '#FBE3E1',
+  /** Bilgi yok / no live count: 6.1:1 on its sand, 7.4:1 on white. */
+  unknown: '#3F5964',
+  unknownBg: '#EFE8DD',
 } as const;
 
 export type Palette = {

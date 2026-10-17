@@ -1,12 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import { occupancyLevel } from '@/data/freshness';
-import { brand, fonts, useColors } from '@/theme';
+import { brand, fonts, statusTone, useColors } from '@/theme';
 
 import { Txt } from './Txt';
 
 /**
- * Map pin shaped like a parking bay: P badge over the free count.
+ * Map pin: a white "P 24" pill whose count uses the shared status colour.
  * `quiet`: a car park without a live count; a smaller brand-navy bay with
  * just the P, so live pins stand out and no "?" suggests an error.
  */
@@ -22,6 +23,7 @@ export function PPin({
   quiet?: boolean;
 }) {
   const c = useColors();
+  const { t } = useTranslation();
   if (quiet) {
     const s = selected ? 1.15 : 1;
     // Transparent 44 pt box: the visible bay is small, the tap target is not.
@@ -55,70 +57,44 @@ export function PPin({
     );
   }
   const level = occupancyLevel(free, capacity);
-  const bg =
-    level === 'plenty' ? c.plenty : level === 'few' ? c.few : level === 'full' ? c.full : '#5C7580';
-  const scale = selected ? 1.15 : 1;
-  // Full pins are hollow with an "×" instead of relying on red alone.
-  const full = level === 'full';
+  const { fg } = statusTone(level);
+  const k = selected ? 1.15 : 1;
+  // White pill "P 24" (design V5.1): the count carries the status colour, "Dolu" says full in
+  // words as well. The selected pin gets a navy ring.
   return (
-    <View
-      style={{
-        width: 34 * scale,
-        height: 48 * scale,
-        borderRadius: 10,
-        backgroundColor: full ? '#FFFFFF' : bg,
-        borderWidth: full ? 3 : 2,
-        borderColor: full ? bg : '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#0B3C49',
-        shadowOpacity: 0.28,
-        shadowRadius: 5,
-        shadowOffset: { width: 0, height: 4 },
-      }}
-    >
+    <View style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
       <View
         style={{
-          position: 'absolute',
-          top: 3,
-          left: 3,
-          right: 3,
-          bottom: 3,
-          borderRadius: 6,
-          borderWidth: 1.5,
-          borderStyle: 'dashed',
-          borderColor: full ? bg : 'rgba(255,255,255,0.75)',
-        }}
-      />
-      <View
-        style={{
-          width: 16,
-          height: 16,
-          borderTopLeftRadius: 5,
-          borderTopRightRadius: 5,
-          borderBottomRightRadius: 5,
-          borderBottomLeftRadius: 2,
-          backgroundColor: full ? bg : '#FFFFFF',
+          minHeight: 30 * k,
+          paddingHorizontal: 9 * k,
+          borderRadius: 12 * k,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 1,
+          gap: 5,
+          backgroundColor: brand.white,
+          borderWidth: selected ? 2.5 : 1,
+          borderColor: selected ? brand.navy : c.chipBg,
+          shadowColor: brand.navy,
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 2 },
         }}
       >
         <Txt
           allowFontScaling={false}
-          style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 15 }}
-          color={full ? '#FFFFFF' : '#0B3C49'}
+          style={{ fontFamily: fonts.display, fontSize: 13 * k, lineHeight: 17 * k }}
+          color={brand.navy}
         >
-          {full ? '×' : 'P'}
+          P
+        </Txt>
+        <Txt
+          allowFontScaling={false}
+          style={{ fontFamily: fonts.display, fontSize: 15 * k, lineHeight: 19 * k }}
+          color={fg}
+        >
+          {level === 'full' ? t('a11y.levelFull') : free == null ? '?' : String(free)}
         </Txt>
       </View>
-      <Txt
-        allowFontScaling={false}
-        style={{ fontFamily: fonts.display, fontSize: 16, lineHeight: 19 }}
-        color={full ? bg : '#FFFFFF'}
-      >
-        {free == null ? '?' : String(free)}
-      </Txt>
     </View>
   );
 }

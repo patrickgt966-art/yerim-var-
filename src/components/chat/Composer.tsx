@@ -7,7 +7,7 @@ import { brand, fonts, useColors } from '@/theme';
 
 import { softShadow } from './style';
 
-/** White input bar: suggestion pills above a rounded grey field and a round orange send button. */
+/** Paper input bar: suggestion pills above a white rounded field and a round orange send button. */
 export function Composer({
   value,
   onChange,
@@ -28,7 +28,7 @@ export function Composer({
   return (
     <View
       style={[
-        { paddingTop: 10, paddingHorizontal: 12, paddingBottom: bottom, backgroundColor: c.card },
+        { paddingTop: 10, paddingHorizontal: 12, paddingBottom: bottom, backgroundColor: c.bg },
         softShadow(0.06, -2, 10),
       ]}
     >
@@ -53,9 +53,9 @@ export function Composer({
                 paddingHorizontal: 12,
                 borderRadius: 16,
                 justifyContent: 'center',
-                backgroundColor: pressed ? c.chipBg : c.surface,
+                backgroundColor: pressed ? brand.peachSoft : c.card,
                 borderWidth: 1.5,
-                borderColor: c.chipBg,
+                borderColor: brand.peachLine,
               })}
             >
               <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}>{s}</Txt>
@@ -80,7 +80,9 @@ export function Composer({
             fontFamily: fonts.body,
             fontSize: 15,
             color: c.text,
-            backgroundColor: c.surface,
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: brand.peachLine,
           }}
         />
         <Pressable
