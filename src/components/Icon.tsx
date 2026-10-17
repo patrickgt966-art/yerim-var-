@@ -33,6 +33,7 @@ export type IconName =
   | 'edit'
   | 'pin'
   | 'check'
+  | 'share'
   | 'chevronDown';
 
 type Props = { name: IconName; size?: number; color: string; strokeWidth?: number };
@@ -72,6 +73,12 @@ export function Icon({ name, size = 24, color, strokeWidth = 2 }: Props) {
       )}
       {name === 'back' && <Path d="M15 5l-7 7 7 7" {...common} />}
       {name === 'check' && <Path d="M5 12.5l4.5 4.5L19 7.5" {...common} />}
+      {name === 'share' && (
+        <Path
+          d="M12 3.5v11M8 7.5l4-4 4 4M7.5 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5h-1.5"
+          {...common}
+        />
+      )}
       {name === 'chevronDown' && <Path d="M6 9l6 6 6-6" {...common} />}
       {name === 'edit' && (
         <Path d="M4 20l1-4L16.5 4.5a2 2 0 013 3L8 19l-4 1zM14.5 6.5l3 3" {...common} />

@@ -1,3 +1,11 @@
+import * as Notifications from 'expo-notifications';
+
+import { cancelParkReminder, scheduleParkReminder } from '@/lib/reminders';
+
+import { useApp, type ActivePark } from '../app';
+import { migrateAppState } from '../migrate';
+
+// Hoisted above the imports by jest.
 jest.mock('expo-notifications', () => ({
   SchedulableTriggerInputTypes: { DATE: 'date' },
   setNotificationHandler: jest.fn(),
@@ -6,13 +14,6 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(async () => 'notif-1'),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
 }));
-
-import * as Notifications from 'expo-notifications';
-
-import { cancelParkReminder, scheduleParkReminder } from '@/lib/reminders';
-
-import { useApp, type ActivePark } from '../app';
-import { migrateAppState } from '../migrate';
 
 const N = Notifications as unknown as Record<string, jest.Mock>;
 const park: ActivePark = {

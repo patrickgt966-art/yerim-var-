@@ -291,6 +291,12 @@ const tr = {
     noCount: 'Bilgi yok',
     a11yFav: '{{name}}. {{status}}',
   },
+  share: {
+    button: 'Paylaş',
+    a11y: '{{name}} paylaş',
+    a11yPlan: 'Planı paylaş',
+    footer: 'Yerim Var ile bulundu 📍',
+  },
   park: {
     reminderAsk: 'Arabana dönmeni hatırlatayım mı?',
     inMinutes: '{{count}} dk sonra',

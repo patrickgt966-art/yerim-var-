@@ -24,6 +24,7 @@ import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { reportWrongData } from '@/lib/report';
+import { placeShareText, shareText } from '@/lib/share';
 import { isStatic } from '@/lib/staticInfo';
 import { useApp, useIsFavorite } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
@@ -89,22 +90,37 @@ export default function ParkingDetail() {
           title={p.name}
           back
           right={
-            // Apple results live only in memory, so a favourite would go stale.
-            p.source === 'apple' ? undefined : (
+            <View style={{ flexDirection: 'row' }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
-                accessibilityState={{ selected: isFav }}
-                onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
+                accessibilityLabel={t('share.a11y', { name: p.name })}
+                onPress={() => void shareText(placeShareText(p, t))}
                 style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Icon
-                  name={isFav ? 'starFilled' : 'star'}
-                  size={26}
-                  color={isFav ? c.accentStrong : c.text}
-                />
+                <Icon name="share" size={24} color={c.text} />
               </Pressable>
-            )
+              {/* Apple results live only in memory, so a favourite would go stale. */}
+              {p.source !== 'apple' && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isFav ? t('detail.favoriteRemove') : t('detail.favoriteAdd')}
+                  accessibilityState={{ selected: isFav }}
+                  onPress={() => toggleFavorite({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })}
+                  style={{
+                    width: HIT,
+                    height: HIT,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon
+                    name={isFav ? 'starFilled' : 'star'}
+                    size={26}
+                    color={isFav ? c.accentStrong : c.text}
+                  />
+                </Pressable>
+              )}
+            </View>
           }
         />
       </View>

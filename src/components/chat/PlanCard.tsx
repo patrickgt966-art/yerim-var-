@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import type { PlanData } from '@/data/assistant';
+import { planShareText, shareText } from '@/lib/share';
 import { brand, fonts, HIT, useColors } from '@/theme';
 
 import { softShadow } from './style';
@@ -71,27 +73,54 @@ export function PlanCard({
           </Txt>
         )}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('chat.directionsLabel', { name: plan.dest.name })}
-        onPress={() => onDirections(plan.dest)}
-        style={({ pressed }) => ({
-          minHeight: HIT,
-          borderRadius: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: c.hero,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Txt
-          accessible={false}
-          color={c.onHero}
-          style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.directionsLabel', { name: plan.dest.name })}
+          onPress={() => onDirections(plan.dest)}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: HIT,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: c.hero,
+            opacity: pressed ? 0.85 : 1,
+          })}
         >
-          {t('chat.directions')}
-        </Txt>
-      </Pressable>
+          <Txt
+            accessible={false}
+            color={c.onHero}
+            style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
+          >
+            {t('chat.directions')}
+          </Txt>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('share.a11yPlan')}
+          onPress={() => void shareText(planShareText(plan, t))}
+          style={({ pressed }) => ({
+            minHeight: HIT,
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            borderWidth: 1.5,
+            borderColor: c.line,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Icon name="share" size={18} color={c.text} />
+          <Txt
+            accessible={false}
+            style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
+          >
+            {t('share.button')}
+          </Txt>
+        </Pressable>
+      </View>
     </View>
   );
 }
