@@ -91,14 +91,26 @@ describe('the router: every message goes to Haiku first', () => {
     expect(bad.ai.understand).toHaveBeenCalledTimes(1);
   });
 
-  it("a search: the AI's district leads; without one the rules' district stays", async () => {
+  it('a category the user ruled out comes from the AI, not from the words', async () => {
+    const said = mockAi(async () =>
+      searchU({ district: 'Bornova', nearMe: false, notCat: 'meat' }),
+    );
+    const r = await answer("Bornova'da bir şey, et istemem", emptyContext('food'), said.deps);
+    expect(r.ctx.notCat).toBe('meat');
+    // The rules read "kebap olmasın" as a negation, but the AI read none: nothing is ruled out.
+    const none = mockAi(async () => searchU({ district: 'Bornova', nearMe: false }));
+    const n = await answer("Bornova'da kebap olmasın", emptyContext('food'), none.deps);
+    expect(n.ctx.notCat).toBeNull();
+  });
+
+  it("a search: the AI's reading is the search; the rules add no district it left out", async () => {
     const { deps } = mockAi(async () => searchU({ district: 'Konak', cat: 'fish', nearMe: false }));
     const r = await answer("Bornova'da bir yer", emptyContext('food'), deps);
     expect(r.ctx.place?.label).toBe('Konak');
     expect(r.ctx.cat).toBe('fish');
     const quiet = mockAi(async () => searchU({ district: null, cat: 'fish', nearMe: false }));
     const q = await answer("Bornova'da bir yer", emptyContext('food'), quiet.deps);
-    expect(q.ctx.place?.label).toBe('Bornova');
+    expect(q.ctx.place?.label).not.toBe('Bornova');
   });
 
   it('a pick after the router search reuses the same call path (one pick call, no second router call)', async () => {

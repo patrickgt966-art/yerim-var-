@@ -72,12 +72,14 @@ const searchOut = {
   tone: null,
   dishNote: null,
   meaning: null,
+  notCat: null,
 };
 // What the model returns (the flat schema, sentinels instead of nulls) for `searchOut` above.
 const flatSearch = {
   kind: 'search',
   district: '',
   cat: 'none',
+  notCat: 'none',
   dish: '',
   place: '',
   food: true,

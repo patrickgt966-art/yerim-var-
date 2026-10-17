@@ -201,6 +201,7 @@ describe('the flat model output becomes the union the apps read', () => {
     kind: 'search',
     district: 'Bornova',
     cat: 'none',
+    notCat: 'none',
     dish: 'köfte',
     place: '',
     food: true,

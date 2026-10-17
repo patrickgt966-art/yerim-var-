@@ -158,6 +158,8 @@ const searchExtras = {
    * keeps what was asked before.
    */
   meaning: z.string().nullable(),
+  /** A category the user ruled out ("kebap olmasın"). */
+  notCat: z.enum(FOOD_CATEGORY_VALUES).nullable(),
 };
 
 /** Server format schema: structured outputs need every field present. */
@@ -189,6 +191,7 @@ export const UnderstandingModelSchema = z.object({
   kind: z.enum(['search', 'chat', 'unknown']),
   district: z.string(),
   cat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
+  notCat: z.enum([...FOOD_CATEGORY_VALUES, 'none']),
   dish: z.string(),
   place: z.string(),
   food: z.boolean(),
@@ -285,6 +288,7 @@ export function toUnderstanding(raw: unknown): Understanding {
         tone: given(m.tone),
         dishNote: given(m.dishNote),
         meaning: given(m.meaning, MAX_MEANING_CHARS),
+        notCat: FOOD_CATEGORY_VALUES.find((c) => c === m.notCat) ?? null,
       };
     }
     // The guarantee, checked here and not left to the request path.
@@ -308,6 +312,8 @@ const ClientUnderstandingKinds = z.discriminatedUnion('kind', [
     tone: searchExtras.tone.optional().default(null),
     dishNote: searchExtras.dishNote.optional().default(null),
     meaning: searchExtras.meaning.optional().default(null),
+    // No default: an older server does not read negations, and the app must not take that as "none".
+    notCat: searchExtras.notCat.optional(),
   }),
   z.object({
     kind: z.literal('chat'),
@@ -369,7 +375,7 @@ Karar (kind):
 
 Kurallar:
 - Soruları ASLA gerçek bilgiyle cevaplama. Sen bilgi vermezsin, sadece mesajı şemaya çevirirsin.
-- search: district (şehrin ilçesi ya da ""), cat (kategori ya da "none"), dish (yemek adı ya da ""), place (ilçe dışında bir yer/mekân adı ya da ""), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da ""), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
+- search: district (şehrin ilçesi ya da ""), cat (kategori ya da "none"), notCat (kullanıcının istemediğini söylediği kategori, örneğin "kebap olmasın", "tatlı istemem"; yoksa "none"), dish (yemek adı ya da ""), place (ilçe dışında bir yer/mekân adı ya da ""), food (yemek mi arıyor), requireParking (yanında otopark şart mı), appleQuery (Apple Haritalar'da aranacak kısa bir işletme/yer ifadesi ya da ""), nearMe (kullanıcı kendi çevresini mi istiyor), dishServes (aşağıya bak).
 - Kullanıcı bir yemek ya da yiyecek adı veriyorsa food true olsun; dish alanına yemeği standart Türkçe yazımıyla yaz; cat alanına en yakın kategoriyi koy; dishServes alanına bu yemeği sunan yerlerin ADINDA geçebilecek en çok 5 kısa, küçük harfli Türkçe kelime yaz (dükkân türü kelimeleri: "börekçi", "kumpirci", "kebapçı", "pide" gibi, ya da yemeğin kendi adı). Asla işletme adı yazma; genel kelimeler (restoran, cafe, lokanta, yemek, mutfak) yazma. Yemek değilse dishServes boş dizi olsun.
 - Mesajı kelime kelime değil, anlamıyla oku. Kullanıcı yemek adı yerine bir amaç, ruh hali, beslenme tarzı, durum, argo ya da emoji kullanabilir; ne yemek istediğini kendi aklınla çıkar, food true olsun ve isteği en iyi karşılayan kategoriyi (cat), yemeği (dish) ve dishServes kelimelerini sen seç. Örneğin "kas yapacak bir şey" protein (ızgara, et, tavuk) ister, "hafif bir şey" sağlıklı ve hafif yemek ister, "üşüdüm" sıcak bir çorba olabilir. Bunlar sadece örnek, liste değil: her ifadede aynı akıl yürütmeyi yap. İsteğe uymayan bir kategoriyi (örneğin protein için pastane) asla seçme. Bir istek birçok türde mekânda karşılanabiliyorsa (bir beslenme tarzı, bir amaç, bir durum) cat'i boş bırak, aramayı tek bir kategoriye daraltma; hangi yerin uyduğuna sonraki adımda ad ve türe bakılarak karar verilir. cat'i yalnızca kullanıcı gerçekten o kategoriyi istiyorsa seç.
 - Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler.
@@ -379,7 +385,7 @@ Kurallar:
 - clarifyAsk / clarifyText: ancak yeri (district), yemeği (dish), kişi sayısını (party), zamanı (time) ya da otoparkta ne kadar kalacağını (duration) bilmeden iyi bir arama yapılamayacaksa clarifyAsk'a sorunun konusunu (district, dish, party, time ya da duration) ve clarifyText'e sorunun cümlesini yaz; aksi halde clarifyAsk "none", clarifyText "" olsun.
 - plan: kullanıcı önce park edip sonra yemek yemekten, bir yere gidip arabayı nereye bırakacağını sormaktan ya da belli bir zaman için (şimdi, bu akşam, öğle, akşam yemeği, birazdan) planlamaktan söz ediyorsa planWhen (now, tonight, lunch, dinner, later_today), değilse "none".
 - chat: reply (1-2 kısa, sıcak, hafif esprili cümle, en çok 140 karakter) ve action (none, ask_food_or_park, suggest_examples, pick_from_last). Selama, teşekküre ve vedaya aynı türde karşılık ver ("iyi günler" -> "Size de iyi günler!"); konu dışı laflara kısaca gülümseyip yemek ya da otoparka dön. ask_food_or_park: ne arandığı belli değilse. suggest_examples: nasıl kullanılacağı sorulduysa. pick_from_last: kullanıcı seçimi sana bırakıyorsa VE aşağıda son cevapta kart olduğu yazıyorsa. Diğer durumlarda none. reply HİÇBİR olgu içermesin (skor, sonuç, hava durumu, haber yok); rakam, mekân adı, fiyat, "ücretsiz", otopark, mesafe, açık/kapalı iddiası, link, @, # içermesin, en çok bir emoji olsun, cümle ortasında büyük harfle başlayan sözcük (özel ad) olmasın; uygulama bu cevabı denetler ve kurala uymayanı atar.
-- Şema tek düzdür: tüm alanlar her zaman yazılır; "verilmedi" demek için metinlerde "", kategori/clarifyAsk/planWhen/action alanlarında "none", partySize için 0, food/requireParking/nearMe için false, dishServes ve wishes için [] kullan. O kind'a ait olmayan alanlar bu boş değerlerde kalır. chat için reply ve action, search için diğer alanlar doldurulur.
+- Şema tek düzdür: tüm alanlar her zaman yazılır; "verilmedi" demek için metinlerde "", kategori (cat, notCat)/clarifyAsk/planWhen/action alanlarında "none", partySize için 0, food/requireParking/nearMe için false, dishServes ve wishes için [] kullan. O kind'a ait olmayan alanlar bu boş değerlerde kalır. chat için reply ve action, search için diğer alanlar doldurulur.
 - Sadece şemaya uygun JSON döndür.
 
 SERBEST METİN: search için sadece şu üç alanda kendi cümleni yazabilirsin, hepsi boş ("") olabilir. Başka hiçbir alana metin yazma (chat reply yukarıdaki kurallara tabidir).

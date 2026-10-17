@@ -198,6 +198,7 @@ describe('output schemas are bounded by what was sent', () => {
       tone: null,
       dishNote: null,
       meaning: null,
+      notCat: null,
     };
     expect(UnderstandingSchema.safeParse(search).success).toBe(true);
     expect(UnderstandingSchema.safeParse({ ...search, wishes: ['spacey'] }).success).toBe(false);
