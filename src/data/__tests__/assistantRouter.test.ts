@@ -40,7 +40,7 @@ const fail = async () => ({ ok: false as const, reason: 'error' as const });
 
 function mockAi(
   understand: (text: string) => Promise<unknown> = async () => ({ ok: false, reason: 'error' }),
-  extra: { usesLeft?: () => number } = {},
+  extra: { usesLeft?: () => number; earlier?: () => string[] } = {},
 ) {
   const ai = {
     understand: jest.fn(understand),
@@ -136,6 +136,14 @@ describe('the router: every message goes to Haiku first', () => {
     );
     const a = await answer('alsancakta balık', emptyContext('food'), quarter.deps);
     expect(a.ctx.place?.label).toMatch(/alsancak/i);
+  });
+
+  it('a district the AI invents yields to the one the user said earlier in the chat', async () => {
+    const { deps } = mockAi(async () => searchU({ district: 'Bornova', nearMe: false }), {
+      earlier: () => ['buca', 'ben vejetaryenim'],
+    });
+    const r = await answer('peki tatlı da yiyebilcem bir yer?', emptyContext('food'), deps);
+    expect(r.ctx.place?.label).toBe('Buca');
   });
 
   it('a pick after the router search reuses the same call path (one pick call, no second router call)', async () => {

@@ -236,6 +236,8 @@ export type AssistantDeps = {
       text: string,
       lastCards?: { count: number; kind: 'restaurant' | 'parking' },
     ): Promise<AiResult<Understanding>>;
+    /** The user's earlier messages of this conversation, newest first, without the current one. */
+    earlier?(): string[];
     /** Uses left today. At 0 the router is not called at all; leave it out and the AI is always tried. */
     usesLeft?(): number;
     /** Jobs 2 and 4; an AI layer without them simply never picks or plans. */
@@ -1139,6 +1141,7 @@ async function answerText(
       text,
       activeCity().districts,
       quartersOf(activeCity().id),
+      deps.ai?.earlier?.() ?? [],
     );
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;

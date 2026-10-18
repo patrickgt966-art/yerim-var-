@@ -165,7 +165,16 @@ async function main(): Promise<void> {
       // As the app reads it: the district settled against the city's own list.
       return scoreUnderstanding(
         c,
-        settleDistrict(u, c.text, cityById(city).districts, quartersOf(city)),
+        settleDistrict(
+          u,
+          c.text,
+          cityById(city).districts,
+          quartersOf(city),
+          (c.history ?? [])
+            .filter((h) => h.role === 'user')
+            .map((h) => h.text)
+            .reverse(),
+        ),
       );
     }
     if (job.type === 'park') {

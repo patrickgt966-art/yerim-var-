@@ -173,15 +173,21 @@ function mentions(text: string, district: string): boolean {
  * the AI named is never overridden by another word of the sentence ("Karşıyaka'dan geçiyorum,
  * Alsancak'ta balık"). A well-known quarter of the city (`quarters`) written bare in the text
  * ("lara balık") is the place when the AI named none. Other kinds pass through.
+ *
+ * `earlier` is the user's earlier messages of the conversation, newest first. A district the AI
+ * invents (said neither in the text nor in any earlier message, with no place named) yields to the
+ * district the user said most recently there ("vejetaryenim" / "buca" / "tatlı da olur mu": Buca,
+ * not the AI's Bornova). A district the user did say earlier is kept.
  */
 export function settleDistrict<T extends Understanding>(
   u: T,
   text: string,
   districts: readonly string[],
   quarters: readonly Quarter[] = [],
+  earlier: readonly string[] = [],
 ): T {
   if (u.kind !== 'search') return u;
-  return settled(u as Search, text, districts, quarters) as T;
+  return settled(u as Search, text, districts, quarters, earlier) as T;
 }
 
 function settled(
@@ -189,6 +195,7 @@ function settled(
   text: string,
   districts: readonly string[],
   quarters: readonly Quarter[],
+  earlier: readonly string[],
 ): Search {
   // appleQuery often repeats the district, so it does not count.
   const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
@@ -201,6 +208,11 @@ function settled(
     if (!s.place && !mentions(text, hit)) {
       const said = districtInText(text, districts, skip);
       if (said && said !== hit) return { ...s, district: said };
+      // Nor in an earlier message of the user: the district they said last wins over the invented one.
+      if (!said && !earlier.some((m) => mentions(m, hit))) {
+        const before = earlier.map((m) => districtInText(m, districts, [])).find(Boolean);
+        if (before && before !== hit) return { ...s, district: before };
+      }
     }
     return { ...s, district: hit };
   }

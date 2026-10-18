@@ -134,4 +134,72 @@ describe('settleDistrict', () => {
     const chat: Understanding = { kind: 'chat', reply: 'Selam!', action: 'none' };
     expect(settleDistrict(chat, 'bornova', izmir)).toBe(chat);
   });
+
+  describe('with the earlier messages of the conversation', () => {
+    const tatli = 'peki tatlı da yiyebilcem bir yer?';
+    const earlier = ['buca', 'ben vejetaryenim'];
+
+    it('lets the district the user said before win over one the AI invented', () => {
+      const u = settleDistrict(search({ district: 'Bornova' }), tatli, izmir, [], earlier);
+      expect(u).toMatchObject({ district: 'Buca' });
+    });
+
+    it('takes the one said most recently', () => {
+      const u = settleDistrict(
+        search({ district: 'Bornova' }),
+        tatli,
+        izmir,
+        [],
+        ['karşıyaka', 'buca'],
+      );
+      expect(u).toMatchObject({ district: 'Karşıyaka' });
+    });
+
+    it('keeps the AI district when the user said it earlier', () => {
+      const u = settleDistrict(
+        search({ district: 'Bornova' }),
+        tatli,
+        izmir,
+        [],
+        ['buca', 'bornova tarafı'],
+      );
+      expect(u).toMatchObject({ district: 'Bornova' });
+    });
+
+    it('keeps the AI district when it named a place', () => {
+      const u = settleDistrict(
+        search({ district: 'Bornova', place: 'Ege Üniversitesi' }),
+        tatli,
+        izmir,
+        [],
+        earlier,
+      );
+      expect(u).toMatchObject({ district: 'Bornova', place: 'Ege Üniversitesi' });
+    });
+
+    it('keeps the AI district when no district was said anywhere', () => {
+      const u = settleDistrict(
+        search({ district: 'Bornova' }),
+        tatli,
+        izmir,
+        [],
+        ['ben vejetaryenim'],
+      );
+      expect(u).toMatchObject({ district: 'Bornova' });
+      expect(settleDistrict(search({ district: 'Bornova' }), tatli, izmir)).toMatchObject({
+        district: 'Bornova',
+      });
+    });
+
+    it('still lets the district in the current text win first', () => {
+      const u = settleDistrict(
+        search({ district: 'Bornova' }),
+        'karşıyakada tatlı',
+        izmir,
+        [],
+        earlier,
+      );
+      expect(u).toMatchObject({ district: 'Karşıyaka' });
+    });
+  });
 });

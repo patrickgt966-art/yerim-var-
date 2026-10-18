@@ -233,6 +233,10 @@ async function main(): Promise<void> {
           c.text,
           cityById(c.city ?? 'izmir').districts,
           quartersOf(c.city ?? 'izmir'),
+          (c.history ?? [])
+            .filter((h) => h.role === 'user')
+            .map((h) => h.text)
+            .reverse(),
         ),
       );
     });

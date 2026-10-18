@@ -147,6 +147,13 @@ function Chat({ first }: { first: boolean }) {
                 };
                 return trackAi(await aiClient.understand(req));
               },
+              // The user's earlier messages, newest first: bindAi runs before the current message
+              // is added, so the history never holds it.
+              earlier: () =>
+                aiMsgRef.current.history
+                  .filter((h) => h.role === 'user')
+                  .map((h) => h.text)
+                  .reverse(),
               usesLeft: () => useAi.getState().remaining(),
               // One id per user message: understand, pick and plan share one daily use.
               pick: async (rest) => {
