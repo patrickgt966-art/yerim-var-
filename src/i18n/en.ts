@@ -384,6 +384,8 @@ const en = {
     searchWider: 'Search a wider area',
     dropParking: 'Drop the parking filter',
     emptyCat: "We couldn't find any {{cat}} places within 6 km. Try another category.",
+    exceptChip: 'Except {{cat}}  ✕',
+    freeParkingChip: 'Free parking  ✕',
     pointOutside: 'That place is outside {{city}}; showing restaurants around the {{city}} centre.',
     widened: 'Not much nearby, so we searched within {{km}} km.',
     a11yRow: '{{name}}. {{meta}}. {{parking}}',

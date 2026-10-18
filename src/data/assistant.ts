@@ -2050,6 +2050,9 @@ function runFood(
         ...(ctx.requireParking ? { park: '1' } : {}),
         ...(ctx.parkM === 500 ? { parkm: '500' } : {}),
         ...(ctx.wide ? { wide: '1' } : {}),
+        // What the chat ruled out and the free-parking wish go along, so the list shows the same.
+        ...(ctx.notCat ? { notcat: ctx.notCat } : {}),
+        ...(ctx.requireParking && ctx.freeParking ? { free: '1' } : {}),
       },
     });
     actions.push({

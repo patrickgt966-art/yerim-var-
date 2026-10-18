@@ -103,6 +103,20 @@ describe('the router: every message goes to Haiku first', () => {
     expect(n.ctx.notCat).toBeNull();
   });
 
+  it('"Listede aç" carries what the chat ruled out and the free-parking wish', async () => {
+    const said = mockAi(async () =>
+      searchU({ district: 'Bornova', nearMe: false, notCat: 'meat' }),
+    );
+    const r = await answer("Bornova'da bir şey, kebap olmasın", emptyContext('food'), said.deps);
+    const open = r.reply.actions.find((a) => a.kind === 'open' && a.pathname === '/restoranlar');
+    expect(open).toMatchObject({ params: { notcat: 'meat' } });
+    const free = await refine(r.ctx, { requireParking: true, freeParking: true }, said.deps);
+    const open2 = free.reply.actions.find(
+      (a) => a.kind === 'open' && a.pathname === '/restoranlar',
+    );
+    if (open2) expect(open2).toMatchObject({ params: { notcat: 'meat', free: '1', park: '1' } });
+  });
+
   it("a search: the AI's reading is the search; only an official district it left out is added", async () => {
     const { deps } = mockAi(async () => searchU({ district: 'Konak', cat: 'fish', nearMe: false }));
     const r = await answer("Bornova'da bir yer", emptyContext('food'), deps);

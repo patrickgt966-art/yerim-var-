@@ -369,6 +369,8 @@ const tr = {
     searchWider: 'Daha geniş alanda ara',
     dropParking: 'Otopark şartını kaldır',
     emptyCat: '6 km içinde {{cat}} yeri bulamadık. Başka bir kategori dene.',
+    exceptChip: '{{cat}} hariç  ✕',
+    freeParkingChip: 'Ücretsiz otopark  ✕',
     pointOutside: 'Seçtiğin yer {{city}} dışında; {{city}} merkezindeki restoranları gösteriyoruz.',
     widened: 'Yakında az olduğu için {{km}} km içinde arandı.',
     a11yRow: '{{name}}. {{meta}}. {{parking}}',
