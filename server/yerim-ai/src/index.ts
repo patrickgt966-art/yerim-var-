@@ -125,6 +125,22 @@ function unreadableOutput(err: unknown): boolean {
   );
 }
 
+/**
+ * The system prompt as blocks: the city's fixed instructions, cached (each endpoint sends the same
+ * text for every message of the city, so after the first message it is read from the prompt cache
+ * at a tenth of the price, and cache reads do not count toward the input-tokens-per-minute limit),
+ * then what changes per request (the cards line, the language note) after the cache breakpoint.
+ */
+export function cachedSystem(
+  fixed: string,
+  rest = '',
+): { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }[] {
+  return [
+    { type: 'text', text: fixed, cache_control: { type: 'ephemeral' } },
+    ...(rest ? [{ type: 'text' as const, text: rest }] : []),
+  ];
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -340,6 +356,18 @@ export default {
     // One log line per AI call (visible with `npx wrangler tail`): endpoint, duration, outcome,
     // uses left. Never the user's text or the device id.
     const started = Date.now();
+    /** Input tokens of the AI call, for the log line: read from the prompt cache, written, uncached. */
+    let tokens: { cacheRead: number; cacheWrite: number; uncached: number } | null = null;
+    const noteTokens = <T>(res: T): T => {
+      const u = (res as { usage?: Record<string, unknown> } | null)?.usage;
+      if (u)
+        tokens = {
+          cacheRead: Number(u.cache_read_input_tokens) || 0,
+          cacheWrite: Number(u.cache_creation_input_tokens) || 0,
+          uncached: Number(u.input_tokens) || 0,
+        };
+      return res;
+    };
     const respond = async (outcome: Outcome, body: unknown, status = 200): Promise<Response> => {
       let logged: Outcome | 'timeout-cancelled' = outcome;
       let remaining = q.remaining;
@@ -360,7 +388,13 @@ export default {
         // The use stays charged; the user still gets the answer.
       }
       console.log(
-        JSON.stringify({ endpoint: path, ms: Date.now() - started, outcome: logged, remaining }),
+        JSON.stringify({
+          endpoint: path,
+          ms: Date.now() - started,
+          outcome: logged,
+          remaining,
+          ...(tokens ?? {}),
+        }),
       );
       return json(body, status);
     };
@@ -396,7 +430,7 @@ export default {
     /** The SDK call, or null when the API answered but the output could not be read. */
     const readable = async <T>(call: () => Promise<T>): Promise<T | null> => {
       try {
-        return await call();
+        return noteTokens(await call());
       } catch (err) {
         if (!unreadableOutput(err)) throw err;
         console.error('output unreadable', errorDetail(err));
@@ -410,10 +444,12 @@ export default {
 
       if (understandReq) {
         const cards = understandReq.lastCards;
-        const system = cards
-          ? `${understandSystem(understandReq.city, understandReq.section)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
-          : understandSystem(understandReq.city, understandReq.section) +
-            langNote(understandReq.lang);
+        const system = cachedSystem(
+          understandSystem(understandReq.city, understandReq.section),
+          (cards
+            ? `\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+            : '') + langNote(understandReq.lang),
+        );
         // An unusable answer was billed: "unknown", and the use is kept.
         const unknown = async (outcome: Outcome = 'error') =>
           respond(outcome, {
@@ -442,9 +478,12 @@ export default {
 
       if (chatReq) {
         const cards = chatReq.lastCards;
-        const system = cards
-          ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(chatReq.lang)}`
-          : chatSystem(chatReq.city) + langNote(chatReq.lang);
+        const system = cachedSystem(
+          chatSystem(chatReq.city),
+          (cards
+            ? `\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+            : '') + langNote(chatReq.lang),
+        );
         const response = await readable(() =>
           client.messages.parse({
             model: MODEL,
@@ -476,9 +515,10 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system:
-              (park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city)) +
+            system: cachedSystem(
+              park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
               langNote(pickReq.lang),
+            ),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
@@ -510,7 +550,7 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: planSystem(planReq.city) + langNote(planReq.lang),
+            system: cachedSystem(planSystem(planReq.city), langNote(planReq.lang)),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
@@ -540,18 +580,20 @@ export default {
 
       if (narrateReq) {
         const { text, where, what, total, withParking, results } = narrateReq;
-        const response = await client.messages.create({
-          model: MODEL,
-          max_tokens: 1024,
-          system: narrateSystem(narrateReq.city) + langNote(narrateReq.lang),
-          output_config: { effort: 'low' },
-          messages: [
-            {
-              role: 'user',
-              content: JSON.stringify({ text, where, what, total, withParking, results }),
-            },
-          ],
-        });
+        const response = noteTokens(
+          await client.messages.create({
+            model: MODEL,
+            max_tokens: 1024,
+            system: cachedSystem(narrateSystem(narrateReq.city), langNote(narrateReq.lang)),
+            output_config: { effort: 'low' },
+            messages: [
+              {
+                role: 'user',
+                content: JSON.stringify({ text, where, what, total, withParking, results }),
+              },
+            ],
+          }),
+        );
         if (response.stop_reason === 'refusal') return billedFail('refusal', noOutput('refusal'));
         let reply = '';
         for (const block of response.content) {

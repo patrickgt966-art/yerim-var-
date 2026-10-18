@@ -126,13 +126,17 @@ const searchOut = (district: string, food: boolean) => ({
   action: 'none',
 });
 
+type SystemBlock = { text: string; cache_control?: unknown };
+/** The cached block (the city's fixed prompt) alone, as the tests compare it. */
+const fixedPart = (system: SystemBlock[]) => system[0]!.text;
 const anthropicCalls: { system: string; content: unknown }[] = [];
 let routerDistrict = { district: 'Bornova', food: true };
 
 mockParse.mockImplementation(
-  async (args: { system: string; max_tokens: number; messages: { content: string }[] }) => {
+  async (args: { system: SystemBlock[]; max_tokens: number; messages: { content: string }[] }) => {
     const last = args.messages[args.messages.length - 1]!.content;
-    anthropicCalls.push({ system: args.system, content: last });
+    expect(args.system[0]!.cache_control).toEqual({ type: 'ephemeral' });
+    anthropicCalls.push({ system: fixedPart(args.system), content: last });
     const asked = ((): { candidates?: unknown; when?: unknown } | null => {
       try {
         return JSON.parse(last) as { candidates?: unknown; when?: unknown } | null;
@@ -615,10 +619,12 @@ describe('the phone request that failed with a 502', () => {
     const r = await ask({ lastCards: { count: 3, kind: 'restaurant' } });
     expect(r).toMatchObject({ ok: true, value: { kind: 'search', nearMe: true, wishes: ['healthy'] } });
     const sent = mockParse.mock.calls.at(-1)![0] as {
-      system: string;
+      system: SystemBlock[];
       messages: { role: string; content: string }[];
     };
-    expect(sent.system).toContain(understandSystem('izmir', 'food'));
+    // The fixed prompt is cached; the cards line comes after the breakpoint, so it never breaks it.
+    expect(fixedPart(sent.system)).toBe(understandSystem('izmir', 'food'));
+    expect(sent.system[1]!.text).toContain('3 restoran');
     expect(sent.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant', 'user']);
     expect(sent.messages.every((m) => m.content.trim() !== '')).toBe(true);
     noRejections();
