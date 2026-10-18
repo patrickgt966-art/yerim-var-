@@ -1416,6 +1416,21 @@ async function answerText(
         );
       }
     }
+    // The AI named a place we only know under a longer name ("Bebek" -> "Bebek Parkı" in İzmir):
+    // ask before searching there; the chip sends the full name back, which then matches exactly.
+    if (
+      h &&
+      meta.ai?.place &&
+      meta.ai.clarify?.ask !== 'place' &&
+      fold(h.name) !== fold(it.placeQuery)
+    ) {
+      return withNotice(
+        await clarify('place', next, it.food, deps, {
+          ...meta,
+          ai: { ...meta.ai, place: h.name, clarify: { ask: 'place', text: null } },
+        }),
+      );
+    }
     if (h) {
       next.place = { label: h.name, lat: h.lat, lng: h.lng };
     } else {

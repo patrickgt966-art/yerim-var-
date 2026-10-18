@@ -740,7 +740,7 @@ const tr = {
     planWalkTo: '~{{count}} dk yürü: {{place}}',
     // Clarify (job 3)
     ask_district: 'Hangi semtte arayayım?',
-    ask_place: '“{{place}}” derken bir yeri mi kastettiniz?',
+    ask_place: 'Şunu mu kastettiniz: {{place}}?',
     ask_dish: 'Ne yemek istersin?',
     ask_party: 'Kaç kişisiniz?',
     ask_time: 'Ne zaman gitmek istersin?',
