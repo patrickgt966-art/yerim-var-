@@ -19,6 +19,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { warmUpParkings } from '@/data/useParkings';
+import { watchParkActivity } from '@/lib/parkActivity';
 import { refreshHiddenPlaces } from '@/lib/placeReports';
 import { cancelParkReminder, setUpReminders } from '@/lib/reminders';
 import { useApp } from '@/store/app';
@@ -53,6 +54,10 @@ useApp.subscribe((s, prev) => {
   if (old && old !== s.active?.reminder?.id) void cancelParkReminder(old);
   if (s.city !== prev.city) refreshHidden();
 });
+
+// The running park on the lock screen and in the Dynamic Island (iOS Live Activity). A no-op in
+// Expo Go and wherever the native module is missing.
+watchParkActivity();
 
 // Pause polling while the app is in the background.
 function onAppStateChange(status: AppStateStatus) {

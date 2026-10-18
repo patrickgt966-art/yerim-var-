@@ -873,6 +873,7 @@ const tr = {
     staleInfo: 'bilgi eski olabilir',
     empty: 'Yakınında gösterecek yer bulamadık.',
   },
+  liveActivity: { parked: 'Park hâlinde', nextCost: '{{time}} sonrası {{cost}}' },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },
 };
 

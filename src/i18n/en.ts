@@ -912,6 +912,7 @@ const en = {
     staleInfo: 'info may be out of date',
     empty: "We couldn't find anything to show near you.",
   },
+  liveActivity: { parked: 'Parked', nextCost: '{{cost}} after {{time}}' },
   activePark: { duration: '{{h}} h {{m}} min', durationMin: '{{m}} min' },
 };
 
