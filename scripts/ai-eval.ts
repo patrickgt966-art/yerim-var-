@@ -82,7 +82,7 @@ const TALK = ['greeting', 'abuse', 'offtopic'] as const;
  * district settled first as the app's router does (settleDistrict). The AI has one "chat" kind where the
  * rules tell greeting, abuse and off-topic apart; in the app each gets the AI's own reply, so a
  * chat answer counts as the talk kind the case expects. "unknown" is the AI's "I did not get it",
- * which is what a gibberish case wants (the app catches gibberish before the AI anyway).
+ * which is what a gibberish case wants.
  */
 function intentFromUnderstanding(u: Understanding, text: string, want?: string): QueryIntent {
   if (u.kind === 'chat') return { kind: TALK.find((k) => k === want) ?? 'offtopic' };
