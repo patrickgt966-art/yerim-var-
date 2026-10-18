@@ -528,6 +528,9 @@ const isCount = (v: unknown): v is number =>
 const isBoolOrNull = (v: unknown): v is boolean | null => v === null || typeof v === 'boolean';
 const isOpenState = (v: unknown): v is OpenStateCode =>
   typeof v === 'string' && (OPEN_STATES as readonly string[]).includes(v);
+/** The optional metres of a candidate (newer apps): a count, or absent. Null when malformed. */
+const readDistM = (v: unknown): { distM?: number } | null =>
+  v === undefined ? {} : isCount(v) ? { distM: v } : null;
 const isDishMatch = (v: unknown): v is DishMatch =>
   typeof v === 'string' && (DISH_MATCHES as readonly string[]).includes(v);
 
@@ -537,10 +540,13 @@ function restaurantFacts(c: Record<string, unknown>, index: number) {
   if (!isCount(c.walkMin)) return null;
   if (!isOpenState(c.openState) || typeof c.closesLate !== 'boolean') return null;
   if (!isDishMatch(c.dishMatch) || !isBoolOrNull(c.outdoor)) return null;
+  const distM = readDistM(c.distM);
+  if (!distM) return null;
   return {
     i: index,
     kind: 'restaurant' as const,
     walkMin: c.walkMin,
+    ...distM,
     openState: c.openState,
     closesLate: c.closesLate,
     dishMatch: c.dishMatch,
@@ -588,10 +594,13 @@ export function validPick(body: unknown): PickRequest | ParkPickRequest | null {
       }
       if (c.freeSpots !== null && !isCount(c.freeSpots)) return null;
       if (c.capacity !== null && !isCount(c.capacity)) return null;
+      const distM = readDistM(c.distM);
+      if (!distM) return null;
       parkings.push({
         i: k,
         kind: 'parking',
         walkMin: c.walkMin,
+        ...distM,
         openState: c.openState,
         nonstop: c.nonstop,
         free: c.free,
@@ -651,9 +660,12 @@ export function validPlan(body: unknown): PlanRequest | null {
       if (raw.p !== nextP || !isCount(raw.walkMin)) return null;
       if (!isBoolOrNull(raw.parkingFree) || !isOpenState(raw.openState)) return null;
       if (raw.freeSpots !== null && !isCount(raw.freeSpots)) return null;
+      const distM = readDistM(raw.distM);
+      if (!distM) return null;
       ps.push({
         p: nextP,
         walkMin: raw.walkMin,
+        ...distM,
         parkingFree: raw.parkingFree,
         freeSpots: raw.freeSpots as number | null,
         openState: raw.openState,

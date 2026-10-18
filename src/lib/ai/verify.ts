@@ -27,6 +27,21 @@ export function walkMinFromMeters(m: number): number {
   return Math.max(1, Math.round((m * 1.3) / 80));
 }
 
+/** Metres as the AI sees them: to 10 m, enough to break walkMin ties without false precision. */
+export function distMOf(m: number): number {
+  return Math.max(0, Math.round(m / 10) * 10);
+}
+
+/**
+ * True when `c` is the nearest of `all`: by metres when every candidate carries them (minutes are
+ * rounded, so a car park 80 m farther can tie on them), else by minutes (an older request).
+ */
+function isNearest<T extends { walkMin: number; distM?: number }>(c: T, all: T[]): boolean {
+  if (c.distM !== undefined && all.every((x) => x.distM !== undefined))
+    return c.distM === Math.min(...all.map((x) => x.distM!));
+  return c.walkMin === Math.min(...all.map((x) => x.walkMin));
+}
+
 const isIndex = (v: unknown, n: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < n;
 
@@ -46,7 +61,7 @@ export function pickReasonHolds(
     case 'fits_request':
       return fit.includes(c.i);
     case 'closest':
-      return c.walkMin === Math.min(...all.map((x) => x.walkMin));
+      return isNearest(c, all);
     case 'open_now':
       return c.openState === 'open';
     case 'open_late':
@@ -139,7 +154,7 @@ export function planReasonHolds(
 ): boolean {
   switch (code) {
     case 'closest':
-      return r.walkMin === Math.min(...all.map((x) => x.walkMin));
+      return isNearest(r, all);
     case 'open_now':
       return when === 'now' && r.openState === 'open';
     case 'open_late':
@@ -208,7 +223,7 @@ export function parkReasonHolds(
 ): boolean {
   switch (code) {
     case 'closest':
-      return c.walkMin === Math.min(...all.map((x) => x.walkMin));
+      return isNearest(c, all);
     case 'free':
       return c.free === true;
     case 'nonstop':

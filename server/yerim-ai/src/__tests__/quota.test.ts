@@ -10,6 +10,7 @@ import {
   validNarrate,
   validQuota,
   validUnderstand,
+  validPick,
 } from '../quota';
 
 function fakeKV() {
@@ -350,5 +351,37 @@ describe('toMessages', () => {
       { role: 'assistant', content: 'b' },
       { role: 'user', content: 'c' },
     ]);
+  });
+});
+
+describe('distM on candidates', () => {
+  const parking = (i: number, extra: Record<string, unknown> = {}) => ({
+    i,
+    kind: 'parking',
+    walkMin: 1,
+    openState: 'open',
+    nonstop: false,
+    free: null,
+    tariffKnown: false,
+    covered: null,
+    freeSpots: null,
+    nearRail: false,
+    capacity: null,
+    ...extra,
+  });
+  const body = (cands: unknown[]) => ({
+    deviceId: 'd',
+    messageId: 'm',
+    text: 'park',
+    candidates: cands,
+  });
+
+  it('passes metres through, accepts their absence and rejects a bad value', () => {
+    const ok = validPick(body([parking(0, { distM: 40 }), parking(1)])) as {
+      candidates: { distM?: number }[];
+    } | null;
+    expect(ok?.candidates.map((c) => c.distM)).toEqual([40, undefined]);
+    expect(validPick(body([parking(0, { distM: -5 }), parking(1)]))).toBeNull();
+    expect(validPick(body([parking(0, { distM: 'far' }), parking(1)]))).toBeNull();
   });
 });

@@ -495,6 +495,8 @@ export type PickCandidate = {
   type?: string;
   /** Rough walk from the search point. */
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   openState: OpenStateCode;
   /** Closes at 22:00 or later, or is open 24 hours. */
   closesLate: boolean;
@@ -585,6 +587,8 @@ export type ParkPickCandidate = {
   i: number;
   kind: 'parking';
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   openState: OpenStateCode;
   nonstop: boolean;
   /** Free of charge (null = unknown). */
@@ -642,6 +646,8 @@ export type PlanParking = {
   p: number;
   /** Rough walk from the car park to the restaurant. */
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   parkingFree: boolean | null;
   /** Only sent for "now": a count is not known for a later time. */
   freeSpots: number | null;
@@ -652,6 +658,8 @@ export type PlanCandidate = {
   i: number;
   kind: 'restaurant';
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   /** Open state at the planned time. */
   openState: OpenStateCode;
   closesLate: boolean;
@@ -774,10 +782,11 @@ export function pickSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve adayların verilerine bakıp en uygun adayı seçersin.
 
-Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
+Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), distM (metre), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
 
 Önce isteğe uygunluğa karar ver: kullanıcı ne istiyor (bir yemek, bir amaç ya da beslenme tarzı: kas yapmak, vejetaryen, hafif, tatlı, çocukla gitmek ...)? Her adayın adına ve türüne bakıp hangilerinin bu isteğe uyduğunu kendi aklınla değerlendir. Menü bilgimiz yok; sadece ad ve türden makul bir çıkarım yap. Uymak, yalnızca o işe özel bir yer olmak demek değildir: kullanıcının orada isteğine uygun bir şey bulup yiyebileceği her yer uyar; yalnızca isteğe açıkça ters düşen yerler uymaz (örneğin vejetaryen biri ev yemekleri yapan bir lokantada sebze yemeği, pidecide peynirli pide bulabilir ama sadece et yapan bir yer ona uymaz; protein isteyen biri lokantada, pidecide, döner ya da tavuk yapan bir yerde doyabilir ama yalnızca kahve ve tatlı satan bir yerde doyamaz). Bunlar sadece örnek: her istekte aynı akıl yürütmeyi yap. Kullanıcı yemek yemek istiyorsa, doyurucu bir öğün bulabileceği yerleri yalnızca kahve, tatlı ya da atıştırmalık sunan yerlerin önüne koy.
 type içinde "Vegan", "Vejetaryen", "Vejetaryen seçenek var", "Pesketaryen", "Glutensiz seçenek var" gibi beslenme bilgileri bizim verimizdir, tahmin değildir: varsa ad ve türden yaptığın çıkarımdan önce bunlara güven.
+Yakınlığı distM ile karşılaştır (yoksa walkMin ile): walkMin yuvarlanmış dakikadır, farklı uzaklıktaki iki aday aynı görünebilir.
 Adayların bir kısmı arama alanının biraz dışındadır (walkMin daha büyük). İsteğe uyan yakın bir aday varsa onu seç; daha uzaktakini ancak yakındakilerden hiçbiri isteğe uymuyorsa ya da açıkça çok daha iyi uyuyorsa (örneğin vejetaryen için tamamen vejetaryen bir yer) seç.
 Çıktı:
 - fit: isteğe uyan adayların indeksleri, en uygundan başlayarak, en çok 5. Kullanıcı belirli bir şey istemiyorsa (her yer olur) boş dizi.
@@ -796,8 +805,8 @@ export function parkPickSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve otoparkların verilerine bakıp en uygun otoparkı seçersin.
 
-Her aday: i (indeks), walkMin (hedefe yürüme dk), openState (open/closed/unknown), nonstop (24 saat), free (ücretsiz mi), tariffKnown, covered (kapalı/katlı mı), freeSpots (güncel boş yer), nearRail (raylı sisteme yakın mı), capacity.
-Kullanıcının dileğini karşılayan adayı yakınlıktan önce tut: ücretsiz isterse free, gece ya da sabaha kadar kalacaksa nonstop, yağmur, kar ya da güneş için covered, metro ya da tramvayla devam edecekse nearRail, boş yer ya da dolu olmamasını isterse freeSpots'u en yüksek olan (null bilinmiyor demektir); dilek yoksa ya da yakınlık isteniyorsa walkMin en küçük olan. Şimdi park edecekse kapalı (openState closed) bir otoparkı seçme.
+Her aday: i (indeks), walkMin (hedefe yürüme dk), distM (hedefe metre), openState (open/closed/unknown), nonstop (24 saat), free (ücretsiz mi), tariffKnown, covered (kapalı/katlı mı), freeSpots (güncel boş yer), nearRail (raylı sisteme yakın mı), capacity.
+Kullanıcının dileğini karşılayan adayı yakınlıktan önce tut: ücretsiz isterse free, gece ya da sabaha kadar kalacaksa nonstop, yağmur, kar ya da güneş için covered, metro ya da tramvayla devam edecekse nearRail, boş yer ya da dolu olmamasını isterse freeSpots'u en yüksek olan (null bilinmiyor demektir); dilek yoksa ya da yakınlık isteniyorsa distM'i en küçük olan (distM yoksa walkMin; walkMin yuvarlanmış dakikadır, eşit görünebilir). Şimdi park edecekse kapalı (openState closed) bir otoparkı seçme.
 Çıktı: pick (seçtiğin aday), reasons (en çok 3 kod: closest, free, nonstop, open_now, most_free_spots, near_rail, covered, big_capacity), runnerUp (ikinci tercih ya da null), runnerUpWhy (tek kod ya da null), tone.
 - openState o saatteki durumdur: "closed" olan bir otoparkı asla seçme (pick ya da runnerUp olarak).
 
@@ -812,8 +821,8 @@ export function planSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) planlayıcısısın. Kullanıcı bir saatte arabayı bırakıp yemek yemek istiyor. Verilen restoranlardan ve her birinin otopark seçeneklerinden birer tane seçersin.
 
-Her restoran: i, walkMin (kullanıcıdan yürüme dk), openState (planlanan saatte), closesLate, dishMatch, outdoor, parkings (p: otopark indeksi, walkMin: otoparktan restorana yürüme dk, parkingFree, freeSpots, openState).
-Kullanıcının dileğini karşıla: az yürümek isterse (yaşlı, sakat, çocuklu) otoparktan restorana walkMin en küçük otoparkı, ücretsiz isterse parkingFree olanı, boş yer isterse freeSpots'u en yüksek olanı seç; planlanan saatte kapalı (openState closed) bir restoranı ya da otoparkı seçme.
+Her restoran: i, walkMin (kullanıcıdan yürüme dk), distM (kullanıcıdan metre), openState (planlanan saatte), closesLate, dishMatch, outdoor, parkings (p: otopark indeksi, walkMin: otoparktan restorana yürüme dk, distM: otoparktan restorana metre, parkingFree, freeSpots, openState).
+Kullanıcının dileğini karşıla: az yürümek isterse (yaşlı, sakat, çocuklu) otoparktan restorana distM'i en küçük otoparkı (distM yoksa walkMin), ücretsiz isterse parkingFree olanı, boş yer isterse freeSpots'u en yüksek olanı seç; planlanan saatte kapalı (openState closed) bir restoranı ya da otoparkı seçme.
 Çıktı: restaurant (restoran indeksi i), parking (o restoranın kendi otoparklarından birinin p değeri; başka restoranın otoparkını seçme), reasons (en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor), tone.
 
 ${LIMITS_TR}`;
