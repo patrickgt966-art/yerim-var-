@@ -4,6 +4,7 @@ import {
   cancelUse,
   peek,
   releaseUse,
+  takeCancelMark,
   takeUse,
   wasCancelled,
   type AiLimits,
@@ -151,32 +152,46 @@ describe('cancel (the app gave up waiting)', () => {
     expect(kv.store.get('ai:global:2026-10-09')).toBe('0');
   });
 
-  it('before the call finished: refunds now and marks the message, so the running handler refunds again without double counting', async () => {
+  it('before the call finished: refunds now and marks the message, so the running handler sees it without refunding twice', async () => {
     const kv = fakeKV();
     await takeUse(kv, 'dev', 'm1', T0, free);
     await takeUse(kv, 'dev', 'm2', T0, free);
-    expect(await wasCancelled(kv, 'dev', 'm1', T0)).toBe(false);
+    expect(await wasCancelled(kv, 'dev', 'm1')).toBe(false);
     await cancelUse(kv, 'dev', 'm1', later(6000));
-    expect(await wasCancelled(kv, 'dev', 'm1', T0)).toBe(true);
-    expect(await wasCancelled(kv, 'dev', 'm2', T0)).toBe(false);
-    // The handler finishes and releases because it sees the mark: nothing is released twice.
-    expect(await releaseUse(kv, 'dev', 'm1', later(9000))).toEqual({
-      removed: false,
-      remaining: 9,
-    });
+    expect(await wasCancelled(kv, 'dev', 'm1')).toBe(true);
+    expect(await wasCancelled(kv, 'dev', 'm2')).toBe(false);
+    // The handler finishes: it learns the client left, and nothing is released twice.
+    expect(await takeCancelMark(kv, 'dev', 'm1', later(9000))).toBe(9);
     expect(kv.store.get('ai:global:2026-10-09')).toBe('1');
+    expect(await wasCancelled(kv, 'dev', 'm1')).toBe(false);
   });
 
   it('before the handler even charged: the mark is there, the late charge is released at the end', async () => {
     const kv = fakeKV();
     expect(await cancelUse(kv, 'dev', 'm1', T0)).toEqual({ removed: false, remaining: 10 });
     await takeUse(kv, 'dev', 'm1', later(50), free);
-    expect(await wasCancelled(kv, 'dev', 'm1', T0)).toBe(true);
-    expect(await releaseUse(kv, 'dev', 'm1', later(2000))).toEqual({
-      removed: true,
-      remaining: 10,
-    });
+    expect(await wasCancelled(kv, 'dev', 'm1')).toBe(true);
+    expect(await takeCancelMark(kv, 'dev', 'm1', later(2000))).toBe(10);
     expect(kv.store.get('ai:global:2026-10-09')).toBe('0');
+    expect(await takeCancelMark(kv, 'dev', 'm1', later(2100))).toBeNull();
+  });
+
+  it('one cancel gives one refund: later calls with the cancelled messageId are charged and kept', async () => {
+    const kv = fakeKV();
+    await takeUse(kv, 'dev', 'm1', T0, free);
+    await takeCancelMark(kv, 'dev', 'm1', T0);
+    expect((await cancelUse(kv, 'dev', 'm1', later(1000))).remaining).toBe(10);
+    // A repeated cancel does not refund again.
+    await takeUse(kv, 'dev', 'm1', later(2000), free);
+    expect((await cancelUse(kv, 'dev', 'm1', later(2100))).removed).toBe(false);
+    // The same message sent again is charged; its handler uses the mark up, without a refund.
+    expect(await takeCancelMark(kv, 'dev', 'm1', later(3000))).toBe(9);
+    for (let i = 0; i < 3; i++) {
+      expect((await takeUse(kv, 'dev', 'm1', later(4000 + i), free)).ok).toBe(true);
+      expect(await takeCancelMark(kv, 'dev', 'm1', later(4000 + i))).toBeNull();
+    }
+    expect(await peek(kv, 'dev', later(5000))).toBe(9);
+    expect(kv.store.get('ai:global:2026-10-09')).toBe('1');
   });
 
   it('refunds at most MAX_CANCELS_PER_DAY messages a day per device', async () => {
@@ -186,7 +201,45 @@ describe('cancel (the app gave up waiting)', () => {
       expect((await cancelUse(kv, 'dev', `m${i}`, T0)).removed).toBe(true);
     }
     expect((await cancelUse(kv, 'dev', `m${MAX_CANCELS_PER_DAY}`, T0)).removed).toBe(false);
-    expect(await wasCancelled(kv, 'dev', `m${MAX_CANCELS_PER_DAY}`, T0)).toBe(false);
+    expect(await wasCancelled(kv, 'dev', `m${MAX_CANCELS_PER_DAY}`)).toBe(false);
     expect(await peek(kv, 'dev', T0)).toBe(10 - 1);
+  });
+});
+
+describe('a message across Istanbul midnight', () => {
+  // 00:00 in Istanbul is 21:00 UTC.
+  const before = new Date('2026-10-09T20:59:59.500Z');
+  const after = new Date('2026-10-09T21:00:00.200Z');
+
+  it('its later stages are free on the next day, even within the interval', async () => {
+    const kv = fakeKV();
+    expect((await takeUse(kv, 'dev', 'm1', before, limits)).remaining).toBe(9);
+    expect(await takeUse(kv, 'dev', 'm1', after, limits)).toEqual({
+      ok: true,
+      remaining: 10,
+      added: false,
+    });
+    expect(kv.store.get('ai:global:2026-10-09')).toBe('1');
+    expect(kv.store.get('ai:global:2026-10-10')).toBeUndefined();
+    expect(await peek(kv, 'dev', after)).toBe(10);
+  });
+
+  it('a cancel after midnight refunds the day it was charged on', async () => {
+    const kv = fakeKV();
+    await takeUse(kv, 'dev', 'm1', before, free);
+    expect(await cancelUse(kv, 'dev', 'm1', after)).toEqual({ removed: true, remaining: 10 });
+    expect(await peek(kv, 'dev', before)).toBe(10);
+    expect(kv.store.get('ai:global:2026-10-09')).toBe('0');
+    // The handler that started before midnight still finds the mark.
+    expect(await takeCancelMark(kv, 'dev', 'm1', before)).toBe(10);
+  });
+
+  it('an outage refund after midnight also goes to that day', async () => {
+    const kv = fakeKV();
+    await takeUse(kv, 'dev', 'm1', before, free);
+    await takeUse(kv, 'dev', 'm2', after, free);
+    expect(await releaseUse(kv, 'dev', 'm1', after)).toEqual({ removed: true, remaining: 9 });
+    expect(kv.store.get('ai:global:2026-10-09')).toBe('0');
+    expect(kv.store.get('ai:global:2026-10-10')).toBe('1');
   });
 });

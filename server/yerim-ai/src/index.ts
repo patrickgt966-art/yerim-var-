@@ -23,6 +23,7 @@ import {
 } from '../../../src/lib/ai/protocol';
 import {
   aiLimits,
+  ipKey,
   toMessages,
   validCancel,
   validChat,
@@ -129,7 +130,7 @@ async function quotaRoute(req: Request, env: Env): Promise<Response> {
   const parsed = validQuota(raw);
   if (!parsed) return json({ error: 'bad_request' }, 400);
   const now = new Date();
-  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
   const quota = quotaOf(env);
   if (!(await quota.ipGuard(`quota:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
   return json({ remaining: await quota.peek(parsed.deviceId, now) });
@@ -149,7 +150,7 @@ async function cancelRoute(req: Request, env: Env): Promise<Response> {
   const parsed = validCancel(raw);
   if (!parsed) return json({ error: 'bad_request' }, 400);
   const now = new Date();
-  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
   const quota = quotaOf(env);
   if (!(await quota.ipGuard(`cancel:${ip}`, now, 500))) {
     return json({ error: 'rate_limited' }, 429);
@@ -191,7 +192,7 @@ export default {
 
     const now = new Date();
     const limits = aiLimits(env);
-    const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
+    const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
     const quota = quotaOf(env);
     if (!(await quota.ipGuard(ip, now, limits.perIp))) {
       return json(
@@ -223,7 +224,9 @@ export default {
       );
     }
 
-    // The use is only kept when the user got an answer: give it back on any failure.
+    // A call Anthropic did not bill (an HTTP error, a lost connection) gives the use back. A call
+    // it answered and billed keeps it, even when the answer is unusable (cut off, refused, empty):
+    // the text decides that, so a refund would make such calls free and endlessly repeatable.
     const giveBack = async (): Promise<number> => {
       if (!q.added) return q.remaining;
       try {
@@ -237,14 +240,6 @@ export default {
     // uses left. Never the user's text or the device id.
     const started = Date.now();
     const respond = async (outcome: Outcome, body: unknown, status = 200): Promise<Response> => {
-      // Failed stages can be retried, whether or not /understand already spent the use.
-      if (outcome !== 'ok' && !previous) {
-        try {
-          await quota.resetCall(callKey);
-        } catch {
-          // A storage outage must not swallow the fallback response.
-        }
-      }
       let logged: Outcome | 'timeout-cancelled' = outcome;
       let remaining = q.remaining;
       if (body !== null && typeof body === 'object' && 'remaining' in body) {
@@ -275,6 +270,15 @@ export default {
     ) => {
       console.error('upstream failed', detail, message ?? '');
       const remaining = await giveBack();
+      // An outage leaves the stage open for a retry, whether or not /understand spent the use. A
+      // billed stage (billedFail and the unusable answers below) stays bound to its content.
+      if (!previous) {
+        try {
+          await quota.resetCall(callKey);
+        } catch {
+          // A storage outage must not swallow the fallback response.
+        }
+      }
       return respond(
         outcome,
         message === undefined
@@ -282,6 +286,11 @@ export default {
           : { error: 'upstream', remaining, detail, message },
         502,
       );
+    };
+    /** Anthropic answered (and billed) but the answer cannot be used: the same 502, use kept. */
+    const billedFail = async (outcome: Outcome, detail: string) => {
+      console.error('upstream failed', detail, '');
+      return respond(outcome, { error: 'upstream', remaining: q.remaining, detail }, 502);
     };
     /** The SDK call, or null when the API answered but the output could not be read. */
     const readable = async <T>(call: () => Promise<T>): Promise<T | null> => {
@@ -303,10 +312,11 @@ export default {
         const system = cards
           ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
           : understandSystem(understandReq.city) + langNote(understandReq.lang);
-        const unknown = async () =>
-          respond('error', {
+        // An unusable answer was billed: "unknown", and the use is kept.
+        const unknown = async (outcome: Outcome = 'error') =>
+          respond(outcome, {
             understanding: { kind: 'unknown' } satisfies Understanding,
-            remaining: await giveBack(),
+            remaining: q.remaining,
           });
         const response = await readable(() =>
           client.messages.parse({
@@ -319,10 +329,7 @@ export default {
         );
         if (!response) return unknown();
         if (response.stop_reason === 'refusal' || !response.parsed_output) {
-          return respond(response.stop_reason === 'refusal' ? 'refusal' : 'error', {
-            understanding: { kind: 'unknown' } satisfies Understanding,
-            remaining: await giveBack(),
-          });
+          return unknown(response.stop_reason === 'refusal' ? 'refusal' : 'error');
         }
         // The model answers one flat object; the app reads the union it always read. The
         // conversion is total: whatever the model wrote, the result fits the union (at worst
@@ -339,25 +346,22 @@ export default {
         const response = await readable(() =>
           client.messages.parse({
             model: MODEL,
-            max_tokens: 200,
+            max_tokens: 1024,
             system,
             output_config: { effort: 'low', format: zodOutputFormat(chatOutputSchema) },
             messages: toMessages(chatReq.history, chatReq.text),
           }),
         );
         if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
-          return upstreamFail(
+          return billedFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
         // Older apps read the bare reply; they never see the count. An unreadable or empty reply
-        // is an empty reply (the app then uses its own template) and the use is given back.
+        // is an empty reply (the app then uses its own template); it was billed, so the use stays.
         const said = toChat(response?.parsed_output);
-        if (said.reply === '') {
-          await giveBack();
-          return respond('error', said);
-        }
+        if (said.reply === '') return respond('error', said);
         return respond('ok', said);
       }
 
@@ -385,15 +389,15 @@ export default {
           }),
         );
         if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
-          return upstreamFail(
+          return billedFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
-        // Total: an unusable pick (no valid index) is `pick: null` with a 200 and the use given
-        // back; the app then answers with its own rules.
+        // Total: an unusable pick (no valid index) is `pick: null` with a 200 (billed, so the use
+        // stays); the app then answers with its own rules.
         const out = toPick(response?.parsed_output, n, park);
-        if (!out) return respond('error', { pick: null, remaining: await giveBack() });
+        if (!out) return respond('error', { pick: null, remaining: q.remaining });
         return respond('ok', { pick: out, remaining: q.remaining });
       }
 
@@ -421,13 +425,13 @@ export default {
           }),
         );
         if (response && (response.stop_reason === 'refusal' || !response.parsed_output)) {
-          return upstreamFail(
+          return billedFail(
             response.stop_reason === 'refusal' ? 'refusal' : 'error',
             noOutput(response.stop_reason),
           );
         }
         const out = toPlan(response?.parsed_output, planReq.candidates.length, total);
-        if (!out) return respond('error', { plan: null, remaining: await giveBack() });
+        if (!out) return respond('error', { plan: null, remaining: q.remaining });
         return respond('ok', { plan: out, remaining: q.remaining });
       }
 
@@ -445,13 +449,13 @@ export default {
             },
           ],
         });
-        if (response.stop_reason === 'refusal') return upstreamFail('refusal', noOutput('refusal'));
+        if (response.stop_reason === 'refusal') return billedFail('refusal', noOutput('refusal'));
         let reply = '';
         for (const block of response.content) {
           if (block.type === 'text') reply += block.text;
         }
         reply = reply.trim();
-        if (!reply) return upstreamFail('error', 'empty_reply');
+        if (!reply) return billedFail('error', 'empty_reply');
         return respond('ok', { reply, remaining: q.remaining });
       }
 

@@ -2,9 +2,11 @@
   "compilerOptions": {
     "strict": true,
     "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["@cloudflare/workers-types"]
+    "types": ["@cloudflare/workers-types"],
+    "skipLibCheck": true
   },
   "include": ["src"],
   "exclude": ["src/__tests__"]

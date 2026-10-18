@@ -145,7 +145,8 @@ mockParse.mockImplementation(
     if (asked?.candidates) {
       return done({ pick: 0, reasons: [], runnerUp: null, runnerUpWhy: null, tone: null });
     }
-    if (args.max_tokens === 200) return done({ reply: 'Selam!', action: 'none' });
+    // Only /understand asks for 2048 tokens; the remaining JSON call without candidates is /chat.
+    if (args.max_tokens !== 2048) return done({ reply: 'Selam!', action: 'none' });
     return done(searchOut(routerDistrict.district, routerDistrict.food));
   },
 );
