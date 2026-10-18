@@ -5,19 +5,20 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { FreshnessBadge, Tag } from '@/components/FreshnessBadge';
+import { cityOfPlace } from '@/components/favoriteCity';
+import { FreshnessBadge, StatusBadge, Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
 import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
+import { tariffBandLabel, tariffSourceLabel } from '@/components/tariffLabel';
 import { Txt } from '@/components/Txt';
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { findAppleParking } from '@/data/appleParkings';
 import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
-import { levelWord } from '@/lib/a11y';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
@@ -27,7 +28,7 @@ import { reportWrongData } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
 import { isStatic } from '@/lib/staticInfo';
 import { useApp, useIsFavorite } from '@/store/app';
-import { asym, fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, statusTone, useColors } from '@/theme';
 
 const DAY_ORDER: (keyof OpeningHours)[] = [
   'monday',
@@ -52,6 +53,12 @@ export default function ParkingDetail() {
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  // A saved car park of another city is not in this city's data: offer its city, no dead end.
+  const savedFav = useApp((s) => s.favorites.find((f) => f.id === id));
+  const savedIn = savedFav ? cityOfPlace(savedFav) : undefined;
+  const otherCity = savedIn && savedIn.id !== cityId ? savedIn : undefined;
 
   if (!p) {
     return (
@@ -67,7 +74,22 @@ export default function ParkingDetail() {
         {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
         ) : (
-          <Txt secondary>{t('detail.notFound')}</Txt>
+          <View style={{ gap: 12 }}>
+            <Txt secondary>
+              {otherCity
+                ? t('favorites.otherCityBody', {
+                    city: otherCity.name,
+                    cityLoc: otherCity.locative,
+                  })
+                : t('detail.notFound')}
+            </Txt>
+            {otherCity && (
+              <Button
+                label={t('favorites.switchCity', { city: otherCity.name })}
+                onPress={() => setCity(otherCity.id)}
+              />
+            )}
+          </View>
         )}
       </View>
     );
@@ -75,6 +97,7 @@ export default function ParkingDetail() {
 
   const freshness = getFreshness(p);
   const free = visibleFree(p);
+  const level = occupancyLevel(free, p.capacity);
   const disabled = disabledInfo(p);
   // When isOpen is false the meta line already says "Şu an kapalı".
   const maybeClosed =
@@ -187,7 +210,11 @@ export default function ParkingDetail() {
             }}
           >
             <View style={{ gap: 8, flex: 1 }}>
-              <FreshnessBadge freshness={freshness} />
+              {/* The status pill says the level in words as well as colour, for colour-blind users. */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                <StatusBadge level={level} free={free} />
+                {freshness.kind !== 'unknown' && <FreshnessBadge freshness={freshness} />}
+              </View>
               <SlotStrip free={free} capacity={p.capacity} />
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -197,18 +224,13 @@ export default function ParkingDetail() {
                   fontSize: free == null ? 20 : 44,
                   lineHeight: free == null ? 26 : 48,
                 }}
+                color={statusTone(level).fg}
               >
                 {free == null ? t('common.unknown') : String(free)}
               </Txt>
               <Txt variant="label" secondary>
                 {t('common.free')}
               </Txt>
-              {/* A word as well as a colour, for colour-blind users. */}
-              {levelWord(occupancyLevel(free, p.capacity), t) && (
-                <Txt variant="label" style={{ fontFamily: fonts.bodyBold }}>
-                  {levelWord(occupancyLevel(free, p.capacity), t)}
-                </Txt>
-              )}
             </View>
           </View>
         )}
@@ -230,7 +252,7 @@ export default function ParkingDetail() {
           {tariff ? (
             <>
               {tariff.bands.map((b) => (
-                <Row key={b.label} label={b.label} value={`₺${b.price}`} />
+                <Row key={b.label} label={tariffBandLabel(b.label, t)} value={`₺${b.price}`} />
               ))}
               {!!tariff.monthly && <Row label={t('detail.monthly')} value={`₺${tariff.monthly}`} />}
               {!!tariff.freeMinutes && (
@@ -239,7 +261,7 @@ export default function ParkingDetail() {
                 </Txt>
               )}
               <Txt variant="caption" secondary>
-                {t('detail.tariffSource', { source: tariff.source })}
+                {t('detail.tariffSource', { source: tariffSourceLabel(tariff.source, t) })}
               </Txt>
             </>
           ) : (

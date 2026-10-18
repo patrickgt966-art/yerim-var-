@@ -1,6 +1,8 @@
 import '@/i18n';
+import { changeLanguage } from 'i18next';
 
 import { getFreshness, visibleFree } from '../freshness';
+import { setActiveCity } from '../cities';
 import { staticParkings, toParking, withStatic } from '../staticParkings';
 import type { Parking } from '../types';
 import { MAX_STATIC_RESULTS, rankByDistance } from '../useParkings';
@@ -84,6 +86,55 @@ describe('static parkings', () => {
     const dup = osm('osm-way-1', 38.4161, 27.1294); // ~20 m away
     const other = osm('osm-way-2', 38.43, 27.14);
     expect(withStatic([live], [dup, other]).map((p) => p.id)).toEqual([live.id, other.id]);
+  });
+
+  it('keeps a differently named car park next to a live one', () => {
+    // Like the izmir-live fixture vs data/parkings-static.json: the live garage's twin lies
+    // ~40 m away, a separate kerbside car park ~70 m away.
+    const twin = { ...osm('izelman-342e739365', 38.4163, 27.1292), name: 'Konak Katlı Otoparkı', genericName: false };
+    const nextDoor = {
+      ...osm('izelman-2e6eebcf66', 38.4165, 27.1298),
+      name: 'Konak Doğum Hastanesi (Karşısı) Yol Kenarı Otoparkı',
+      genericName: false,
+    };
+    const unnamed = osm('osm-way-3', 38.4162, 27.1299);
+    expect(withStatic([live], [twin, nextDoor, unnamed]).map((p) => p.id)).toEqual([
+      live.id,
+      nextDoor.id,
+    ]);
+    // The namesake is the twin even when another car park lies nearer.
+    const sameName = {
+      ...osm('osm-way-4', 38.4166, 27.1296),
+      name: 'Konak Katlı Otopark',
+      genericName: false,
+    };
+    expect(withStatic([live], [nextDoor, sameName]).map((p) => p.id)).toEqual([
+      live.id,
+      nextDoor.id,
+    ]);
+  });
+
+  it('leaves bus and truck parks out', () => {
+    setActiveCity('istanbul');
+    try {
+      const names = staticParkings().map((p) => p.name);
+      expect(names.length).toBeGreaterThan(100);
+      expect(names.some((n) => /tır parkı|otobüs park/i.test(n))).toBe(false);
+    } finally {
+      setActiveCity('izmir');
+    }
+  });
+
+  it('builds generic names in the current language', async () => {
+    const generic = () => staticParkings().find((p) => p.genericName)!;
+    expect(generic().name).toMatch(/^Otopark/);
+    await changeLanguage('en');
+    try {
+      expect(generic().name).toMatch(/^Car park/);
+    } finally {
+      await changeLanguage('tr');
+    }
+    expect(generic().name).toMatch(/^Otopark/);
   });
 
   it('caps static results but keeps every live one', () => {

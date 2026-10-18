@@ -2,6 +2,7 @@ import { FREE_DAILY, HISTORY_LIMIT, MAX_MESSAGE_CHARS } from '../../../../src/li
 import {
   charge,
   ipGuard,
+  ipKey,
   peek,
   refund,
   toMessages,
@@ -167,6 +168,30 @@ describe('ipGuard', () => {
     expect(await ipGuard(kv, '1.2.3.4', DAY1, 2)).toBe(true);
     expect(await ipGuard(kv, '1.2.3.4', DAY1, 2)).toBe(false);
     expect(await ipGuard(kv, '5.6.7.8', DAY1, 2)).toBe(true);
+  });
+});
+
+describe('ipKey', () => {
+  it('keeps an IPv4 address whole', () => {
+    expect(ipKey('203.0.113.7')).toBe('203.0.113.7');
+    expect(ipKey('::ffff:203.0.113.7')).toBe('203.0.113.7');
+  });
+
+  it('counts an IPv6 address by its /64, however it is written', () => {
+    const key = '2001:db8:0:1::/64';
+    expect(ipKey('2001:db8:0:1::1')).toBe(key);
+    expect(ipKey('2001:0DB8:0000:0001:ffff:ffff:ffff:ffff')).toBe(key);
+    expect(ipKey('2001:db8::1:0:0:0:5')).toBe(key);
+    expect(ipKey('2001:db8:0:1:a:b:c:d%eth0')).toBe(key);
+    expect(ipKey('2001:db8:0:2::1')).not.toBe(key);
+    expect(ipKey('::1')).toBe('0:0:0:0::/64');
+  });
+
+  it('keeps anything it cannot read as it is', () => {
+    expect(ipKey('unknown')).toBe('unknown');
+    expect(ipKey('1::2::3')).toBe('1::2::3');
+    expect(ipKey('1:2:3')).toBe('1:2:3');
+    expect(ipKey('2001:db8:zz::1')).toBe('2001:db8:zz::1');
   });
 });
 

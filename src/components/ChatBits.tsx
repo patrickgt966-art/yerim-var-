@@ -12,7 +12,9 @@ import { TypingDots } from '@/components/chat/TypingDots';
 import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
 import type { ChatAction, ChatCard, ChatContext, PlanData } from '@/data/assistant';
+import { UPDATED_MAX_AGE_MS } from '@/data/freshness';
 import { useAnnounce } from '@/lib/a11y';
+import { useNow } from '@/lib/useNow';
 import { brand, fonts, useColors } from '@/theme';
 
 export type ChatMessage = {
@@ -32,7 +34,6 @@ export type ChatMessage = {
 
 export function UserBubble({ text }: { text: string }) {
   const { t } = useTranslation();
-  const c = useColors();
   return (
     <View
       style={{
@@ -41,7 +42,9 @@ export function UserBubble({ text }: { text: string }) {
         maxWidth: '76%',
         paddingVertical: 10,
         paddingHorizontal: 14,
-        backgroundColor: c.hero,
+        backgroundColor: brand.peachSoft,
+        borderWidth: 1,
+        borderColor: brand.peachLine,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 6,
         borderBottomRightRadius: 20,
@@ -49,7 +52,7 @@ export function UserBubble({ text }: { text: string }) {
       }}
     >
       <Txt
-        color={c.onHero}
+        color={brand.navy}
         style={{ fontSize: 14, lineHeight: 20 }}
         accessibilityLabel={t('chat.a11yUser', { text })}
       >
@@ -224,6 +227,9 @@ export function BotBubble({
   const { t } = useTranslation();
   const cards = message.cards ?? [];
   const actions = message.actions ?? [];
+  // Free counts were fresh when the reply was written; an old reply stops showing them.
+  const now = useNow(60_000);
+  const countsStale = message.at != null && now - message.at > UPDATED_MAX_AGE_MS;
   const openCard = (card: ChatCard) =>
     card.kind === 'restaurant'
       ? router.push({ pathname: '/restoran/[id]', params: { id: card.id } })
@@ -289,7 +295,7 @@ export function BotBubble({
             <ResultCard
               key={`${card.kind}-${card.id}`}
               card={card}
-              model={cardModel(card, i, message.ctx?.sort, t)}
+              model={cardModel(card, i, message.ctx?.sort, t, countsStale)}
               onOpen={openCard}
               onDirections={onDirections}
             />

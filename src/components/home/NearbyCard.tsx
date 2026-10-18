@@ -15,7 +15,7 @@ import { categoryOf, formatDistance, type RestaurantRow } from '@/data/restauran
 import { areaName } from '@/data/search';
 import type { RankedParking } from '@/data/useParkings';
 import { useApp } from '@/store/app';
-import { brand, fonts, HIT, useColors } from '@/theme';
+import { brand, fonts, HIT, statusTone, useColors } from '@/theme';
 
 import type { NearbyHome } from './useNearbyHome';
 
@@ -125,12 +125,11 @@ function RowShell({
 }
 
 function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
-  const c = useColors();
   const { t } = useTranslation();
   const f = getFreshness(p);
   const fresh = (f.kind === 'live' || f.kind === 'updated') && p.free != null;
   const level = fresh ? occupancyLevel(p.free, p.capacity) : 'unknown';
-  const tone = level === 'plenty' ? c.plenty : level === 'few' ? c.few : c.full;
+  const tone = statusTone(level).fg;
   const status =
     fresh && 'at' in f ? t('home.updatedAt', { time: formatClock(f.at) }) : freshnessText(f, t);
   const sub = [t('home.walkMin', { count: p.walk }), status].join(' · ');
@@ -182,7 +181,7 @@ function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
           style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14, lineHeight: 19 }}
           color={tone}
         >
-          {t('home.free', { count: p.free ?? 0 })}
+          {level === 'full' ? t('a11y.levelFull') : t('home.free', { count: p.free ?? 0 })}
         </Txt>
       )}
     </RowShell>

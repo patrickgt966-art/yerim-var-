@@ -149,6 +149,30 @@ describe('city in the system prompts', () => {
   });
 });
 
+describe('the router prompt and the chat section', () => {
+  it('tells the router which chat the user is in', () => {
+    const food = understandSystem('izmir', 'food');
+    const park = understandSystem('izmir', 'park');
+    expect(food.startsWith(understandSystem('izmir'))).toBe(true);
+    expect(food).toContain('yemek bölümünde');
+    expect(food).toMatch(/ilçe adı .* yemek aramasıdır: food true/);
+    expect(park).toContain('otopark bölümünde');
+    expect(park).toMatch(/otopark aramasıdır: food false/);
+    expect(understandSystem('izmir')).not.toContain('BÖLÜM');
+  });
+
+  it('lets the chat reply steer back to parking by name', () => {
+    const p = understandSystem('izmir');
+    expect(p).toContain('yemek ya da otoparka dön');
+    expect(p).not.toMatch(/"ücretsiz", otopark,/);
+    expect(p).toContain('"otopark" sözcüklerini kullanabilirsin');
+  });
+
+  it('tells the car park picker never to pick a closed one', () => {
+    expect(parkPickSystem('izmir')).toContain('"closed" olan bir otoparkı asla seçme');
+  });
+});
+
 describe('CitySchema', () => {
   it('accepts exactly the open cities', () => {
     for (const c of CITIES) expect(CitySchema.safeParse(c.id).success).toBe(c.available);
@@ -162,7 +186,6 @@ describe('CitySchema', () => {
   });
 });
 
-
 describe('clipText', () => {
   it('never ends in half of a surrogate pair', () => {
     const s = `${'a'.repeat(199)}🍽️x`;
@@ -175,12 +198,28 @@ describe('clipText', () => {
 
 describe('total conversions: junk in, a schema-valid shape (or null / unknown) out', () => {
   const junk: unknown[] = [
-    undefined, null, 0, 1, 'x', '', [], [1], {}, { kind: 5 }, { pick: 'a' }, { kind: 'search' },
+    undefined,
+    null,
+    0,
+    1,
+    'x',
+    '',
+    [],
+    [1],
+    {},
+    { kind: 5 },
+    { pick: 'a' },
+    { kind: 'search' },
     { kind: 'search', wishes: 'cheap', dishServes: { a: 1 }, partySize: NaN, cat: 7 },
     { kind: 'search', partySize: Infinity, clarifyAsk: 'district', clarifyText: 7 },
-    { kind: 'chat', reply: 7 }, { kind: 'chat', reply: ['a'] },
-    { pick: 1.5 }, { pick: -1 }, { pick: 0, reasons: 'closest' }, { pick: 0, reasons: [null, {}, 'x'] },
-    { restaurant: 0, parking: 0, reasons: {} }, { reply: null, action: null },
+    { kind: 'chat', reply: 7 },
+    { kind: 'chat', reply: ['a'] },
+    { pick: 1.5 },
+    { pick: -1 },
+    { pick: 0, reasons: 'closest' },
+    { pick: 0, reasons: [null, {}, 'x'] },
+    { restaurant: 0, parking: 0, reasons: {} },
+    { reply: null, action: null },
   ];
 
   it('never throws', () => {
@@ -197,19 +236,36 @@ describe('total conversions: junk in, a schema-valid shape (or null / unknown) o
 
   it('keeps what is usable of a search and drops the rest', () => {
     const u = toUnderstanding({
-      kind: 'search', district: 'Bornova', cat: 'nope', wishes: ['cheap', 'teleport', 'cheap'],
-      partySize: 5000, dishServes: ['a', 'a', '', 'b', 'c', 'd', 'e', 'f'], clarifyAsk: 'district',
-      clarifyText: '', planWhen: 'tomorrow', food: true,
+      kind: 'search',
+      district: 'Bornova',
+      cat: 'nope',
+      wishes: ['cheap', 'teleport', 'cheap'],
+      partySize: 5000,
+      dishServes: ['a', 'a', '', 'b', 'c', 'd', 'e', 'f'],
+      clarifyAsk: 'district',
+      clarifyText: '',
+      planWhen: 'tomorrow',
+      food: true,
     });
     expect(u).toMatchObject({
-      kind: 'search', district: 'Bornova', cat: null, wishes: ['cheap'], partySize: null,
-      dishServes: ['a', 'b', 'c', 'd', 'e'], clarify: { ask: 'district', text: null }, plan: null,
+      kind: 'search',
+      district: 'Bornova',
+      cat: null,
+      wishes: ['cheap'],
+      partySize: null,
+      dishServes: ['a', 'b', 'c', 'd', 'e'],
+      clarify: { ask: 'district', text: null },
+      plan: null,
     });
   });
 
   it('reads the union shape too (clarify and plan objects)', () => {
     expect(
-      toUnderstanding({ kind: 'search', clarify: { ask: 'party', text: 'Kaç kişi?' }, plan: { when: 'now' } }),
+      toUnderstanding({
+        kind: 'search',
+        clarify: { ask: 'party', text: 'Kaç kişi?' },
+        plan: { when: 'now' },
+      }),
     ).toMatchObject({ clarify: { ask: 'party', text: 'Kaç kişi?' }, plan: { when: 'now' } });
   });
 
@@ -218,10 +274,38 @@ describe('total conversions: junk in, a schema-valid shape (or null / unknown) o
     expect(toPick({ pick: 0, fit: [99], reasons: ['closest'] }, 3)).toBeNull();
     expect(toPlan({ restaurant: 0, parking: 9, reasons: [] }, 2, 3)).toBeNull();
     expect(
-      toPick({ pick: 1, reasons: ['closest', 'closest', 'x', 'outdoor', 'open_now', 'open_late'], runnerUp: 7, runnerUpWhy: 'bad', tone: '' }, 3),
-    ).toEqual({ fit: [], noneFit: false, pick: 1, reasons: ['closest', 'outdoor', 'open_now'], runnerUp: null, runnerUpWhy: null, tone: null });
+      toPick(
+        {
+          pick: 1,
+          reasons: ['closest', 'closest', 'x', 'outdoor', 'open_now', 'open_late'],
+          runnerUp: 7,
+          runnerUpWhy: 'bad',
+          tone: '',
+        },
+        3,
+      ),
+    ).toEqual({
+      fit: [],
+      noneFit: false,
+      pick: 1,
+      reasons: ['closest', 'outdoor', 'open_now'],
+      runnerUp: null,
+      runnerUpWhy: null,
+      tone: null,
+    });
     // fit keeps valid, unique indices (at most MAX_FIT); noneFit is true only when said.
-    expect(toPick({ fit: [2, 2, 9, 0], noneFit: true, pick: 2, reasons: ['fits_request'] }, 3)).toMatchObject({ fit: [2, 0], noneFit: true, pick: 2, reasons: ['fits_request'] });
-    expect(toChat({ reply: 'Selam!', action: 'dance' })).toEqual({ reply: 'Selam!', action: 'none' });
+    expect(
+      toPick({ fit: [2, 2, 9, 0], noneFit: true, pick: 2, reasons: ['fits_request'] }, 3),
+    ).toMatchObject({ fit: [2, 0], noneFit: true, pick: 2, reasons: ['fits_request'] });
+    // Nothing fits: the pick is not shown, so a missing index (-1 from the loose schema) still counts.
+    expect(toPick({ fit: [], noneFit: true, pick: -1, reasons: [] }, 3)).toMatchObject({
+      noneFit: true,
+      pick: 0,
+    });
+    expect(toPick({ fit: [], noneFit: false, pick: -1, reasons: [] }, 3)).toBeNull();
+    expect(toChat({ reply: 'Selam!', action: 'dance' })).toEqual({
+      reply: 'Selam!',
+      action: 'none',
+    });
   });
 });

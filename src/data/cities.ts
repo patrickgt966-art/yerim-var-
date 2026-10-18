@@ -223,11 +223,13 @@ export const CITIES: City[] = [
     bounds: { minLat: 37.8, maxLat: 39.4, minLng: 26.2, maxLng: 28.5 },
     radiusKm: 120,
     // Keeps out the open Aegean (and Chios / Lesbos) while Çeşme, Alaçatı, Karaburun, Foça, Dikili stay in.
+    // Chios's east coast lies west of 26.2 E. Çeşme-Dalyan (38.36-38.37 N, 26.28 E) and Karaburun's
+    // west coast (38.43 N 26.34 E, Karareis 38.48 N 26.43 E) stay in; the strait between them is out.
     westLimits: [
       [38.75, 26.7], // Foça, Dikili, Bergama
-      [38.5, 26.33], // Karaburun
-      [38.36, 26.45], // sea between Karaburun and Çeşme
-      [38.2, 26.2], // Çeşme peninsula
+      [38.5, 26.33], // Karaburun's north (Oinousses stays out)
+      [38.38, 26.32], // Karaburun's west coast; the strait north of Dalyan stays out
+      [38.2, 26.2], // Çeşme peninsula with Dalyan
       [0, 26.6], // Seferihisar, Özdere and south
     ],
     districts: names(IZMIR_DISTRICTS),
@@ -324,8 +326,9 @@ export const CITIES: City[] = [
     },
     available: true,
     center: { lat: 40.1885, lng: 29.061 },
-    // The province reaches about 39.55-40.65 N, 28.25-30.0 E; its far corners lie ~105 km from the centre.
-    bounds: { minLat: 39.55, maxLat: 40.65, minLng: 28.25, maxLng: 30.0 },
+    // The province reaches about 39.55-40.65 N, 27.95-30.0 E (western Karacabey: Dağkadı, Çavuşköy
+    // near 28.1 E); its far corners lie ~105 km from the centre.
+    bounds: { minLat: 39.55, maxLat: 40.65, minLng: 27.95, maxLng: 30.0 },
     radiusKm: 110,
     districts: names(BURSA_DISTRICTS),
     districtCenters: BURSA_DISTRICTS,

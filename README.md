@@ -33,18 +33,19 @@ npx expo export --platform ios
 ```
 src/app/          Expo Router ekranları: onboarding, (tabs)/{index,harita,favoriler,profil}, sohbet, sonuc,
                   otopark/[id], restoranlar, restoran/[id], ara, yer-ara, konum-sec
-src/components/   BrandWordmark, CityPicker, ParkingCard, SlotStrip, PPin, TabBar, home/ (HomeSkyline…),
+src/components/   BrandWordmark, CityPicker, ParkingCard, SlotStrip, PPin, TabBar, home/ (HomeHeader, SearchCard, NearbyCard…),
                   chat/, coach/ (ilk açılış ipuçları)…
 src/data/         cities.ts (şehirler), cityData.ts (şehir başına gömülü dosyalar), repository.ts,
                   IzmirOpenDataProvider, IsparkProvider, MockProvider, tazelik kuralları, tarifeler
 src/lib/ai/       Yerim ✨ istemcisi ve sunucuyla ortak protokol
 src/store/        Zustand (persist + AsyncStorage): favoriler, Ev/İş, aktif park, şehir, ✨ hakkı, ipuçları
-src/theme/        Tasarım tokenları (açık + karanlık palet)
-src/i18n/         Türkçe metinler
-data/             Şehir başına otopark, yer, raylı istasyon ve restoran dosyaları; tariffs.json
+src/theme/        Tasarım tokenları (uygulama açık paleti kullanır; karanlık palet yalnızca saklanıyor)
+src/i18n/         Arayüz metinleri: tr.ts (Türkçe) ve en.ts (İngilizce)
+data/             Şehir başına otopark, yer, raylı istasyon ve restoran dosyaları; tariffs.json, tariffs-ispark.json
 server/yerim-ai/  Yerim ✨ için Cloudflare Worker
 modules/          yerim-mapkit (Apple Haritalar araması, yerel modül)
-scripts/          build-icons.mjs, fetch-sources.mjs, fetch-overture.py, fetch-ispark-sample.mjs, ai-eval.ts
+scripts/          build-icons.mjs, fetch-sources.mjs, fetch-overture.py, fetch-ispark-sample.mjs,
+                  fetch-ispark-tariffs.mjs, ai-eval.ts, ai-eval-big.ts
 design/           Referans ekranlar (PNG + HTML)
 ```
 
@@ -54,12 +55,13 @@ design/           Referans ekranlar (PNG + HTML)
 
 | Şehir    | Canlı doluluk                            | Otopark |   Yer | Raylı istasyon | Restoran (OSM + Overture) |
 | -------- | ---------------------------------------- | ------: | ----: | -------------: | ------------------------: |
-| İzmir    | İzmir BB açık veri (sensörlü ~7 otopark) |   1.489 | 3.510 |            165 |            2.435 + 12.809 |
-| İstanbul | İBB / İSPARK (~243 otopark)              |   4.681 | 7.259 |            296 |            5.055 + 36.412 |
-| Ankara   | yok                                      |   2.526 | 3.825 |            167 |               798 + 9.678 |
+| İzmir    | İzmir BB açık veri (sensörlü ~7 otopark) |   1.489 | 3.510 |            165 |            2.436 + 12.807 |
+| İstanbul | İBB / İSPARK (~244 otopark)              |   4.682 | 7.259 |            296 |            5.055 + 36.412 |
+| Ankara   | yok                                      |   2.526 | 3.825 |            156 |               798 + 9.678 |
 | Bursa    | yok                                      |     560 | 1.716 |             89 |               263 + 6.965 |
 | Antalya  | yok                                      |   1.204 | 3.034 |             70 |             1.220 + 9.092 |
 
+- Sayılar gömülü dosyalardaki kayıt sayısıdır (`data/*.json`, 18 Ekim 2026); her veri yenilemesinde değişir.
 - Ankara, Bursa ve Antalya'da canlı kaynak yok. Otoparklar OpenStreetMap'ten kapasite bilgisiyle gelir; uygulama arıza uyarısı yerine sakin bir not gösterir ve doluluk için ağa istek atmaz. Bursa için Bursa BB açık veri portalındaki (Açık Yeşil, CKAN) "otopark" veri seti isteğe bağlı kaynak olarak denenir; son çalışmada alınamadı.
 - Gömülü dosyalar `scripts/fetch-sources.mjs` (OpenStreetMap, İzmir açık veri, Bursa Açık Yeşil) ve `scripts/fetch-overture.py` (Overture Maps restoranları) ile üretilir. GitHub Actions bunları her ayın 1'inde çalıştırır (`.github/workflows/data-refresh.yml`); rapor `data/sources-report.md`. Overpass sorguları şehir başına kutulara bölünür ve tekrar denenir.
 - **Overture restoranları:** her şehirde güven eşiği 0,7; şehir dosyası en fazla 10 MB; zayıf kayıtlar için sıkı kural (şehrin kendi alan kodlu telefonu, web sitesi, sosyal hesap ya da ikinci kaynak); web sitesi kontrolü; kara liste (`data/overture-blocklist.json`). Her Overture yerinde "Bilgi eski olabilir" yazar.
@@ -74,7 +76,7 @@ design/           Referans ekranlar (PNG + HTML)
   - **Fiyat tutarı yok**, yalnızca `isPaid`. Tarifeler ayrı ve 2022 tarihli bir CKAN kaynağında, otopark adıyla eşleşiyor.
   - `accessories.covered` güvenilmez (katlı otoparklarda da `false`); yalnızca `true` dikkate alınır.
   - Henüz doğrulanmayanlar: güncelleme sıklığı, yanıt başlıkları/CORS, veri lisansı.
-- **Kapsama (tüm İzmir ili):** Anlık doluluk verisi yalnızca belediye sensörlü 7 otoparkta var. Diğerleri uygulamaya gömülü bir listeden gelir ve kartlarında "Doluluk bilgisi yok" yazar:
+- **Kapsama (tüm İzmir ili):** Anlık doluluk verisi yalnızca belediye sensörlü 7 otoparkta var. Diğerleri uygulamaya gömülü bir listeden gelir ve kartlarında "Boş yer bilgisi yok" yazar:
   - İzelman otopark envanteri (İzmir BB açık veri, 2022): yaklaşık 80 resmi otopark; kapasite ve çalışma saatleriyle.
   - OpenStreetMap (ODbL): ilde herkese açık yaklaşık 1.400 otopark (30 m içindeki çiftler ve izinli/özel otoparklar ayıklanmış). Çoğunun adı ve kapasitesi yok.
   - Liste `scripts/fetch-sources.mjs` ile oluşturulur ve GitHub Actions'ta her ay yenilenir (`data/sources-report.md`). Uygulama bu kaynaklara bağlanmaz; otopark için ağa giden tek istek seçili şehrin doluluk API'sidir.
@@ -83,28 +85,28 @@ design/           Referans ekranlar (PNG + HTML)
 
 ### İstanbul
 
-- İBB Açık Veri / İSPARK otopark doluluğu (`GET https://api.ibb.gov.tr/ispark/Park`): ~243 otopark, boş yer sayısıyla. İstanbul seçildiğinde boş yer sayıları buradan gelir. Şema açık kaynak istemcilerden alındı; GitHub Actions'tan çekilen canlı örnekle (`data/raw/ispark-sample.json`) uyuşuyor.
-- `ParkDetay?id=` uç noktası tarife ve aylık abonelik ücretini de veriyor (`data/raw/ispark-detail-sample.json`); uygulama henüz kullanmıyor.
-- Diğer otoparklar OpenStreetMap'ten gelir (4.681).
+- İBB Açık Veri / İSPARK otopark doluluğu (`GET https://api.ibb.gov.tr/ispark/Park`): ~244 otopark, boş yer sayısıyla. İstanbul seçildiğinde boş yer sayıları buradan gelir. Şema açık kaynak istemcilerden alındı; GitHub Actions'tan çekilen canlı örnekle (`data/raw/ispark-sample.json`) uyuşuyor.
+- **Resmi İSPARK tarifeleri:** `ParkDetay?id=` uç noktası tarife ve aylık abonelik ücretini veriyor. `scripts/fetch-ispark-tariffs.mjs` bunu her otopark için çekip `data/tariffs-ispark.json` dosyasına yazar (244 otopark); GitHub Actions bunu her pazartesi yeniler (`.github/workflows/ispark-tariffs.yml`). Uygulama bu tarifeleri gömülü olarak taşır ve otopark detayında saat dilimleri ve aylık ücretle "Resmi tarife" olarak gösterir.
+- Diğer otoparklar OpenStreetMap'ten gelir (4.682).
 
 ### Ortak
 
 - **Arama:** Apple'ın cihaz içi geocoder'ı yalnızca adres çözer; "İstinye" gibi AVM ve mekân adlarını bulamaz. Bu yüzden önce seçili şehrin gömülü yer listesinde (İzmir'de yaklaşık 3.500 yer: ilçe, semt, AVM, hastane, üniversite, iskele, istasyon, önemli yer; OpenStreetMap, `data/places-<şehir>.json`) ve adı olan otoparklarda aranır. Eşleşme büyük/küçük harf, Türkçe karakter ve boşluktan bağımsızdır. Bulunamazsa adres geocoder'ı devreye girer.
-- **Apple Haritalar otopark araması:** Uygulamanın kendi derlemesinde (Expo Go'da değil) sonuç ekranı, hedefin 1,5 km çevresindeki otoparkları da Apple Haritalar'dan ister (`modules/yerim-mapkit`, `MKLocalPointsOfInterestRequest`). Gelen sonuçlarda yalnızca ad, konum ve adres var; "Apple Haritalar" etiketi ve "Canlı sayım yok" ile gösterilir. Bilinen bir otoparka 60 m'den yakın olanlar çıkarılır. Sonuçlar yalnızca bellekte bir saat tutulur. Expo Go'da modül olmadığı için özellik kendiliğinden kapalıdır.
+- **Apple Haritalar otopark araması:** Uygulamanın kendi derlemesinde (Expo Go'da değil) sonuç ekranı, hedefin 1,5 km çevresindeki otoparkları da Apple Haritalar'dan ister (`modules/yerim-mapkit`, `MKLocalPointsOfInterestRequest`). Gelen sonuçlarda yalnızca ad, konum ve adres var; "Apple Haritalar" etiketi ve "Boş yer bilgisi yok" ile gösterilir. Bilinen bir otoparka 60 m'den yakın olanlar çıkarılır. Sonuçlar yalnızca bellekte bir saat tutulur. Expo Go'da modül olmadığı için özellik kendiliğinden kapalıdır.
   - **Henüz cihazda denenmedi.** Derlendiğini doğrulamak için: expo.dev'den bir erişim anahtarı (Access token) oluşturup repoya `EXPO_TOKEN` sırrı olarak ekle, sonra Actions → "iOS build check" → Run workflow. Bu, Apple hesabı gerektirmeyen bir simülatör derlemesi yapar. Cihazda denemek için Apple Developer hesabı gerekir.
 - **Tazelik kuralları** (`src/data/freshness.ts`, testli):
   - Kaynak zaman damgası vermediği için tazelik, verinin cihaza indiği an (`fetchedAt`) ile ölçülür. Kartlarda "Güncellendi: HH:mm" yazar.
   - Veri 15 dakikadan eskiyse veya alınamadıysa boş yer sayısı yerine "Bilinmiyor" yazar.
-  - API'ye ulaşılamazsa 3 kez denenir (1 sn ve 3 sn arayla). Yine olmazsa cihazda saklanan son gerçek veri "Çevrimdışı · Son veri: HH:mm" uyarısıyla gösterilir. Hiç kayıt yoksa İzmir'de örnek veriye düşülür ve "Örnek veri gösteriliyor" uyarısı görünür; diğer şehirlerde yalnızca gömülü otoparklar gösterilir.
+  - API'ye ulaşılamazsa en çok 3 kez denenir (1 sn ve 3 sn arayla); 30 sn geçtikten sonra yeni deneme başlamaz, bu yüzden API takılı kalırsa (20 sn + 30 sn zaman aşımı) yalnızca 2 deneme olur. Yine olmazsa cihazda saklanan son gerçek veri "İnternet yok. Son veri HH:mm (… önce). Eski sayılar gizlendi." uyarısıyla gösterilir. Hiç kayıt yoksa İzmir'de deneme verisine düşülür; kartlarda "Deneme bilgisi", üstte "Bu bilgi deneme, gerçek değil. Belediye verisine ulaşılamıyor." yazar; diğer şehirlerde yalnızca gömülü otoparklar gösterilir.
   - Açılışta kayıtlı veri hemen gösterilir, yenisi arkadan gelir. Kayıt yalnızca cihazda tutulur.
   - İndirme sonuç ekranını beklemeden uygulama açılır açılmaz başlar; API ~15 sn sürdüğü için kullanıcı yer ararken genelde tamamlanır.
   - "Canlı" etiketi yalnızca kaynak gerçek bir ölçüm zamanı verirse kullanılır.
-- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; 30 sn zaman aşımı, 2 yeniden deneme. Bozuk kayıtlar Zod ile atılır.
-- **Tarifeler:** `data/tariffs.json`. Her kayıtta `validFrom`, `source` ve `verifiedAt` var. Şu an hiçbiri doğrulanmadığı için hepsi "Tahmini" görünür. Resmî kaynaktan doğrulanmadan "Resmi tarife" yazılmaz.
+- **Çekme:** ~120 sn aralıkla, yalnızca uygulama ön plandayken; pull-to-refresh; zaman aşımı ilk denemede 20 sn, yeniden denemelerde 30 sn; en çok 2 yeniden deneme (30 sn dolduktan sonra yenisi başlamaz). Bozuk kayıtlar Zod ile atılır.
+- **Tarifeler:** `data/tariffs.json` (4 kayıt) ve `data/tariffs-ispark.json` (244 İSPARK otoparkı). Her kayıtta `priceKind`, `validFrom`, `source` ve `verifiedAt` var. İSPARK'ın kendi uç noktasından gelen tarifeler `official` ve "Resmi tarife" görünür; `data/tariffs.json` içindekiler doğrulanmadığı için "Tahmini" görünür. Resmî kaynaktan gelmeyen tarifeye "Resmi tarife" yazılmaz.
 
 ## Yapay zekâ (isteğe bağlı)
 
-Kullanıcı onay verdiyse her sohbet mesajı önce bir Cloudflare Worker üzerinden Claude Haiku'daki yönlendiriciye gider (`server/yerim-ai`, `/understand`). Model önce mesajın ne demek istediğini kısa ve gizli bir cümleyle (`meaning`) yazar, sonra düz bir yapılandırılmış şemayla `search`, `chat` ya da `unknown` döner. Ne istendiği anlaşılmazsa uygulama tahmin etmek yerine "anlayamadım" der.
+Kullanıcı onay verdiyse her sohbet mesajı önce bir Cloudflare Worker üzerinden Claude'daki yönlendiriciye gider (`server/yerim-ai`, `/understand`). Model önce mesajın ne demek istediğini kısa ve gizli bir cümleyle (`meaning`) yazar, sonra düz bir yapılandırılmış şemayla `search`, `chat` ya da `unknown` döner. Ne istendiği anlaşılmazsa uygulama tahmin etmek yerine "anlayamadım" der.
 
 Yemek aramalarında `/pick`, bizim veriden en çok 40 yeri görür (yakındakiler ve arama alanının biraz dışındaki 10 yer): herkese açık adı ve türü (kategori, beslenme etiketi, tür, mutfak) ile yürüme süresi, otoparka uzaklık, otoparkın ücretsiz olup olmadığı, boş yer ve açık/kapalı bilgisi. Hangilerinin isteğe uyduğunu (`fit`, `noneFit`) değerlendirip birini seçer. Yalnızca sıra numaraları döner; her kart bizim kaydımızdır. Hiçbiri uymuyorsa bunu söyler. Menü verisi yok; uygunluk ad, tür ve varsa beslenme etiketine (OSM `diet:*`: vejetaryen, vegan, pesketaryen, glutensiz; Overture vegan/vejetaryen/glutensiz kategorileri) göre yargılanır. Canlı yapay zekâ sınavı `scripts/ai-eval.ts` yapay zekâ dosyalarına dokunan her PR'da çalışır (GitHub'da `ANTHROPIC_API_KEY` sırrı gerekir).
 
@@ -114,7 +116,7 @@ Sunucudaki her değişiklik `cd server/yerim-ai && npx wrangler deploy` ile yay�
 
 ## Gizlilik
 
-Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Tek sunucumuz isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare): kullanıcı onay verirse sohbet mesajı, son birkaç mesaj ve seçili şehrin kimliği yapay zekâya gider; yer seçiminde buna uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı, türü ve şu bilgiler (yürüme süresi, otopark uzaklığı, ücretsiz mi, boş yer, açık mı) eklenir. Koordinat gitmez, hesap yoktur. Sunucu metni kaydetmez; günlük hak sayımı için rastgele bir cihaz kimliğine ve IP adresine bağlı sayaçları en fazla iki gün tutar. Diğer ağ istekleri: seçili şehrin canlı doluluk API'si (İzmir için İzmir Büyükşehir Belediyesi, İstanbul için İBB / İSPARK; Ankara, Bursa ve Antalya'da doluluk isteği yok) ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge (konum ~100 m'ye yuvarlanır) gider. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde.
+Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park yalnızca cihazda saklanır. Konum hiçbir zaman bizim sunucumuza gitmez. Tek sunucumuz isteğe bağlı Yerim ✨ içindir (`server/yerim-ai`, Cloudflare): kullanıcı onay verirse sohbet mesajı, son birkaç mesaj ve seçili şehrin kimliği yapay zekâya (Anthropic, Worker üzerinden) gider; restoran seçiminde buna uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı, türü ve yürüme süresi, açık mı, otopark uzaklığı, ücretsiz mi, boş yer bilgileri eklenir; otopark seçiminde ve planda otoparkların bilgileri (yürüme süresi, ücretsiz/açık mı, boş yer, kapasite, kapalı mı, raylı sisteme yakın mı) ve planlanan zaman eklenir. Yer adlarından ve yürüme sürelerinden yaklaşık bölge çıkarılabilir; koordinat asla gitmez, hesap yoktur. Sunucu metni kaydetmez; günlük hak sayımı için rastgele bir cihaz kimliği kullanılır. Cihaz kimliğine ya da IP adresine (IPv6'da /64 bloğuna) bağlı sayaçlar ilk yazıldıktan sonra en geç 49 saat içinde silinir. Diğer ağ istekleri: seçili şehrin canlı doluluk API'si (İzmir için İzmir Büyükşehir Belediyesi, İstanbul için İBB / İSPARK; Ankara, Bursa ve Antalya'da doluluk isteği yok) ve iOS'un Apple Haritalar servisleri (adres arama; uygulamanın kendi derlemesinde yakındaki otopark araması). Apple'a yalnızca aranan metin veya yaklaşık bölge gider: otopark aramasında ve adres bulmada konum ~100 m'ye yuvarlanır. Brifteki "ağa giden tek istek açık veri API'sidir" kuralından bu nedenle bilerek sapıldı. Yalnızca "uygulamayı kullanırken" konum izni istenir. İzin verilmezse uygulama aramayla çalışmaya devam eder. Gizlilik manifesti `app.json` → `ios.privacyManifests` içinde: toplanan veri olarak cihaz kimliği ve sohbet metni (diğer kullanıcı içeriği), ikisi de uygulamanın çalışması için, kimliğe bağlı değil, takip yok. Konum izni metni Türkçe ve İngilizce (`app.json` → `locales`).
 
 ## Tasarımı olmayan ekranlar
 
@@ -125,7 +127,8 @@ Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park y
 - Harita sekmesi (`src/app/(tabs)/harita.tsx`)
 - Profil (`src/app/(tabs)/profil.tsx`)
 - Onboarding'in dört adımı (Merhaba, Şehrini seç, Yerim ile konuş, Konum) ve ana sayfadaki tek seferlik ipucu balonları
-- Karanlık mod (tüm ekranlar)
+
+Karanlık mod yok: marka kararıyla uygulama her sistem görünümünde açık paleti kullanır (`app.json` → `userInterfaceStyle: "light"`, `src/theme/index.ts`).
 
 ## Varsayımlar ve küçük kararlar
 
@@ -133,7 +136,7 @@ Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park y
 - `com.yerimvar.app` taslak bundle ID'dir.
 - v1 yalnızca iOS (`platforms: ["ios"]`). Android ön plan ikonu `design/` içinde saklanıyor ve bağlanmadı.
 - "Bildir" butonu `veri-yanlis.yml` issue formunu açar ve "Otopark" alanını doldurur. Issue formları `body` parametresini yok saydığı için alanlar `id` ile doldurulur.
-- Zaman aşımı brifteki 10 sn yerine 30 sn: belediye API'si telefonda (LTE) ~15 sn'de cevap verdi, 10 sn'de uygulama her seferinde örnek veriye düşüyordu.
+- Zaman aşımı brifteki 10 sn yerine ilk denemede 20 sn, yeniden denemede 30 sn: belediye API'si telefonda (LTE) ~15 sn'de cevap verdi, 10 sn'de uygulama her seferinde örnek veriye düşüyordu.
 
 ## App Store öncesi eksikler
 
@@ -143,9 +146,10 @@ Hesap, analitik, reklam veya crash SDK'sı yok. Konum, favoriler ve aktif park y
 - [ ] App Store ekran görüntüleri (6.9" ve 6.5")
 - [ ] İzmir API'sinin güncelleme sıklığı ve yanıt başlıkları (bkz. `docs/data-source.md`)
 - [ ] Veri lisansının portal üzerinden doğrulanması
-- [ ] Doğrulanmamış tarifeler: `data/tariffs.json` içindeki tüm kayıtlar "Tahmini"
-- [ ] Gerçek cihazda test (konum izni, Apple Haritalar devri, Reduce Motion, Dynamic Type, karanlık mod)
-- [ ] EAS ile imzalı derleme (`npx eas-cli@latest build -p ios`)
+- [ ] Doğrulanmamış tarifeler: `data/tariffs.json` içindeki 4 kayıt "Tahmini" (İSPARK tarifeleri resmi)
+- [ ] Gerçek cihazda test (konum izni Türkçe ve İngilizce, Apple Haritalar devri, Reduce Motion, Dynamic Type)
+- [ ] App Store Connect'teki gizlilik cevapları (App Privacy): cihaz kimliği ve diğer kullanıcı içeriği, uygulamanın çalışması için, kimliğe bağlı değil, takip yok (manifestle aynı)
+- [ ] EAS ile imzalı derleme (`npx eas-cli@latest build -p ios --profile production`; build numarası EAS'ta tutulur ve her production derlemesinde kendiliğinden artar)
 
 ## Katkı
 

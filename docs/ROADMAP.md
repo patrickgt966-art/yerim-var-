@@ -1,8 +1,8 @@
 # Yol haritası
 
-Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya. Her değişiklik bir alt ajana ayrıca kontrol ettirilir.
+Son güncelleme: 2026-10-09. Öncelik sırası yukarıdan aşağıya.
 
-> Not (2026-10-16): Güncel iş listesi [`YAPILACAKLAR.md`](YAPILACAKLAR.md) içinde. Bu belge 9 Ekim'deki plandır; o tarihten sonra uygulama beş şehre (İzmir, İstanbul, Ankara, Bursa, Antalya) açıldı, Overture restoranları ve Yerim ✨ (Cloudflare sunucusu, Claude Haiku) eklendi. Aşağıdaki İzmir'e, sunucusuz yapıya ve veri sayılarına dair ifadeler o günün durumunu anlatır.
+> Not (2026-10-16): Güncel iş listesi [`YAPILACAKLAR.md`](YAPILACAKLAR.md) içinde. Bu belge 9 Ekim'deki plandır; o tarihten sonra uygulama beş şehre (İzmir, İstanbul, Ankara, Bursa, Antalya) açıldı, Overture restoranları ve Yerim ✨ (Cloudflare sunucusu, Claude) eklendi. Aşağıdaki İzmir'e, sunucusuz yapıya, veri sayılarına ve alt ajanlara dair ifadeler o günün durumunu anlatır; güncel alt ajanlar aşağıdaki çalışma kuralında.
 
 ## 1. Sıradaki işler
 
@@ -102,11 +102,11 @@ Sıra:
 ## Bekleyenler ve çalışma kuralı
 
 - [x] PR'lar birleştirildi (#3–#7).
-- Çalışma kuralı: lider Opus planlar ve karar verir; işler `.claude/agents/` altındaki üç Sonnet ajanına dağıtılır:
-  - `sonnet-researcher`: kodda ve web'de araştırma (dosya değiştirmez).
-  - `sonnet-worker`: kodu yazar, kontrolleri çalıştırır (commit etmez).
-  - `sonnet-reviewer`: değişikliği inceler (dosya değiştirmez).
-  Her değişiklik `sonnet-reviewer`'a kontrol ettirilir; bulgular düzeltilip öyle kaydedilir. Limit sıkışıkken küçük işleri lider kendisi yapar, büyük parçalar yazıcı + kontrolcüye bölünür.
+- Çalışma kuralı: lider ajan planlar ve karar verir; işler `.claude/agents/` altındaki üç ajana dağıtılır:
+  - `code-explore`: verilen iş için ilgili dosya ve satırları bulur (dosya değiştirmez).
+  - `command-runner`: lint, tip kontrolü, derleme ve testleri çalıştırır, yalnızca sonucu bildirir.
+  - `spec-coder`: yazılı bir tarifi kodlar ve durur.
+- Ayrı bir inceleme ajanı yok; değişikliği lider inceler ve kontrollerin (`command-runner`) geçtiğini görmeden kaydetmez. Limit sıkışıkken küçük işleri lider kendisi yapar.
 
 ## 3. App Store öncesi
 

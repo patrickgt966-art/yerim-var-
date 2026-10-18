@@ -14,7 +14,8 @@ Uygulamanın kodu MIT lisanslıdır. Uygulamayla birlikte dağıtılan ve uygula
 ## İBB Açık Veri / İSPARK (İstanbul)
 
 - Kaynak: https://api.ibb.gov.tr/ispark/Park (İstanbul seçiliyken uygulama tarafından çekilir; anlık boş yer sayısı).
-- Lisans: portal üzerinden henüz doğrulanmadı.
+- Gömülü veri: `data/tariffs-ispark.json`, İSPARK otoparklarının resmi tarifeleri ve aylık abonelik ücretleri (`source: "İBB İSPARK"`). `scripts/fetch-ispark-tariffs.mjs` bunları `https://api.ibb.gov.tr/ispark/ParkDetay?id=` uç noktasından toplar; GitHub Actions her hafta yeniler (`.github/workflows/ispark-tariffs.yml`). Uygulama otopark detayında "Resmi tarife" olarak gösterir.
+- Lisans: portal üzerinden henüz doğrulanmadı. Bu, uygulamayla dağıtılan tarife dosyası için de geçerlidir.
 - Atıf: "İBB Açık Veri / İSPARK". Uygulamada Profil ekranında gösterilir.
 
 ## Bursa Büyükşehir Belediyesi Açık Veri (Açık Yeşil)
@@ -33,4 +34,4 @@ Uygulamanın kodu MIT lisanslıdır. Uygulamayla birlikte dağıtılan ve uygula
 - `data/food-overture-<şehir>.json`: Overture Maps Foundation yer verisinden restoranlar.
 - Lisans: CDLA-Permissive-2.0. Uygulamada restoran sayfasında "Veri: Overture Maps (CDLA-Permissive-2.0)" ve Profil ekranında gösterilir.
 
-Veriyi yenilemek için: `node scripts/fetch-sources.mjs` ve `python scripts/fetch-overture.py` (GitHub Actions'ta her ay otomatik çalışır, bkz. `.github/workflows/data-refresh.yml`).
+Veriyi yenilemek için: `node scripts/fetch-sources.mjs` ve `python scripts/fetch-overture.py` (GitHub Actions'ta her ay otomatik çalışır, bkz. `.github/workflows/data-refresh.yml`); İSPARK tarifeleri için `node scripts/fetch-ispark-tariffs.mjs` (her hafta, bkz. `.github/workflows/ispark-tariffs.yml`).

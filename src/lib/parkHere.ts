@@ -14,6 +14,18 @@ async function openMaps(p: Parking) {
   }
 }
 
+function startTimer(p: Parking, destination?: ParkDestination) {
+  useApp.getState().startPark({
+    parkingId: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    startedAt: new Date().toISOString(),
+    hourly: tariffFor(p.id)?.hourly ?? null,
+    ...(destination ? { destination } : {}),
+  });
+}
+
 /** "Buraya park et": optionally start the local parking timer, then hand off to Apple Maps. */
 export function parkHere(p: Parking, destination?: ParkDestination) {
   const t = i18n.t.bind(i18n);
@@ -25,19 +37,28 @@ export function parkHere(p: Parking, destination?: ParkDestination) {
     {
       text: t('results.parkConfirmYes'),
       onPress: () => {
-        useApp.getState().startPark({
-          parkingId: p.id,
-          name: p.name,
-          lat: p.lat,
-          lng: p.lng,
-          startedAt: new Date().toISOString(),
-          hourly: tariffFor(p.id)?.hourly ?? null,
-          ...(destination ? { destination } : {}),
-        });
+        startTimer(p, destination);
         void openMaps(p);
       },
     },
     { text: t('results.parkConfirmMapsOnly'), onPress: () => void openMaps(p) },
+    { text: t('common.cancel'), style: 'cancel' },
+  ]);
+}
+
+/**
+ * "Buraya park ettim": the user is already there, so the timer starts without directions. Only
+ * replacing a running park asks first.
+ */
+export function parkedHere(p: Parking) {
+  const t = i18n.t.bind(i18n);
+  const current = useApp.getState().active;
+  if (!current) {
+    startTimer(p);
+    return;
+  }
+  Alert.alert(t('results.parkConfirmTitle'), t('results.parkReplaceBody', { name: current.name }), [
+    { text: t('results.parkReplaceYes'), onPress: () => startTimer(p) },
     { text: t('common.cancel'), style: 'cancel' },
   ]);
 }

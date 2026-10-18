@@ -10,17 +10,34 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.yerimvar.app",
-      "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDisplayName": "Yerim Var",
+        "CFBundleAllowMixedLocalizations": true,
         "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
         "NSPrivacyTrackingDomains": [],
-        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ],
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
@@ -39,6 +56,18 @@
             "NSPrivacyAccessedAPITypeReasons": ["E174.1"]
           }
         ]
+      }
+    },
+    "locales": {
+      "tr": {
+        "ios": {
+          "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız."
+        }
+      },
+      "en": {
+        "ios": {
+          "NSLocationWhenInUseUsageDescription": "We use your location to show restaurants and car parks near you."
+        }
       }
     },
     "extra": {

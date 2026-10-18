@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import { Txt } from '@/components/Txt';
 import type { ChatCard } from '@/data/assistant';
-import { fonts, HIT, useColors } from '@/theme';
+import { brand, fonts, HIT, useColors } from '@/theme';
 
 import type { CardModel } from './model';
 import { softShadow } from './style';
@@ -26,7 +26,7 @@ export function ResultCard({
   const { t } = useTranslation();
   const badge =
     model.badge === 'picked'
-      ? { text: t('chat.badgePicked'), bg: c.hero, fg: c.onHero }
+      ? { text: t('chat.badgePicked'), bg: brand.mintSoft, fg: brand.mintText }
       : model.badge === 'easy'
         ? { text: t('chat.badgeEasy'), bg: c.badgeFreshBg, fg: c.badgeFreshText }
         : model.badge === 'likely'
@@ -88,7 +88,7 @@ export function ResultCard({
               paddingVertical: 6,
               paddingHorizontal: 8,
               borderRadius: 10,
-              backgroundColor: c.surface,
+              backgroundColor: c.bg,
             }}
           >
             {model.pillMark && (
@@ -99,12 +99,12 @@ export function ResultCard({
                   borderRadius: 6,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: c.hero,
+                  backgroundColor: brand.mintSoft,
                 }}
               >
                 <Txt
                   allowFontScaling={false}
-                  color={c.accent}
+                  color={brand.mintText}
                   style={{ fontFamily: fonts.display, fontSize: 11, lineHeight: 14 }}
                 >
                   P
@@ -135,13 +135,13 @@ export function ResultCard({
             borderRadius: 12,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: c.hero,
+            backgroundColor: c.accent,
             opacity: pressed ? 0.85 : 1,
           })}
         >
           <Txt
             accessible={false}
-            color={c.onHero}
+            color={brand.navy}
             style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}
           >
             {t('chat.directions')}

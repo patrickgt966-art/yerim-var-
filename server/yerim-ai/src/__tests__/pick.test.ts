@@ -65,7 +65,7 @@ describe('validPick', () => {
     expect(Object.keys(v!.candidates[1]!)).not.toContain('type');
   });
 
-  it('takes up to 15 restaurants and 5 car parks; rejects none and a non-array', () => {
+  it('takes up to MAX_PICK_CANDIDATES (40) restaurants and 5 car parks; rejects none and a non-array', () => {
     const many = (n: number, f: (i: number) => object) => Array.from({ length: n }, (_, i) => f(i));
     expect(validPick({ ...base, candidates: many(MAX_PICK_CANDIDATES, rest) })).not.toBeNull();
     expect(validPick({ ...base, candidates: many(MAX_PICK_CANDIDATES + 1, rest) })).toBeNull();

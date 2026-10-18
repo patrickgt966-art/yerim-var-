@@ -400,3 +400,44 @@ describe('repository picks the provider per city', () => {
     expect((await loadParkings(undefined, undefined, fast)).source).toBe('mock');
   });
 });
+
+describe('province outlines hold the bundled data', () => {
+  type Row = { a?: number; o?: number; lat?: number; lng?: number };
+  const points = (file: { items?: Row[]; parkings?: Row[] }) =>
+    [...(file.items ?? []), ...(file.parkings ?? [])].map((r) => ({
+      lat: (r.lat ?? r.a)!,
+      lng: (r.lng ?? r.o)!,
+    }));
+  const outside = (city: string, files: { items?: Row[]; parkings?: Row[] }[]) =>
+    files.flatMap(points).filter((p) => !isInCityArea(p, cityById(city)));
+
+  it('keeps Çeşme-Dalyan and western Karaburun inside İzmir', () => {
+    const izmir = cityById('izmir');
+    expect(isInCityArea({ lat: 38.3619, lng: 26.2881 }, izmir)).toBe(true); // Dalyan
+    expect(isInCityArea({ lat: 38.48412, lng: 26.42632 }, izmir)).toBe(true); // Karareis
+    expect(isInCityArea({ lat: 38.37, lng: 26.14 }, izmir)).toBe(false); // Chios town
+    expect(isInCityArea({ lat: 38.52, lng: 26.25 }, izmir)).toBe(false); // Oinousses
+    expect(
+      outside('izmir', [
+        require('../../../data/parkings-static.json'),
+        require('../../../data/places-izmir.json'),
+        require('../../../data/rail-izmir.json'),
+        require('../../../data/food-izmir.json'),
+        require('../../../data/food-overture-izmir.json'),
+      ]),
+    ).toEqual([]);
+  });
+
+  it('keeps western Karacabey inside Bursa', () => {
+    expect(isInCityArea({ lat: 40.24172, lng: 28.21009 }, cityById('bursa'))).toBe(true); // Dağkadı
+    expect(
+      outside('bursa', [
+        require('../../../data/parkings-static-bursa.json'),
+        require('../../../data/places-bursa.json'),
+        require('../../../data/rail-bursa.json'),
+        require('../../../data/food-bursa.json'),
+        require('../../../data/food-overture-bursa.json'),
+      ]),
+    ).toEqual([]);
+  });
+});

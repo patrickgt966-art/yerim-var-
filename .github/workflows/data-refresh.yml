@@ -34,6 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - run: node scripts/fetch-sources.mjs
       # Live İSPARK response sample for review (data/raw/); must never fail the run.
       - name: İSPARK sample
@@ -47,6 +48,13 @@ jobs:
         env:
           YERIM_WEB_CHECK: '1'
       - run: cat data/sources-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The app's checks on the new data, here: a push or pull request made with GITHUB_TOKEN
+      # does not start other workflows, so ci.yml never runs on it. Failing checks stop the run
+      # before anything is committed or proposed.
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test -- --ci
 
       # Script changes on a working branch: commit the data to that branch.
       - name: Commit to branch
@@ -69,5 +77,8 @@ jobs:
           branch: data/refresh
           title: 'chore(data): refresh static parking data'
           commit-message: 'chore(data): refresh static parking data'
-          body: 'Automated run of `scripts/fetch-sources.mjs`. See `data/sources-report.md`.'
+          body: |
+            Automated run of `scripts/fetch-sources.mjs`. See `data/sources-report.md`.
+
+            Typecheck and tests already passed on this data in the Data refresh run. CI does not start on its own for this pull request (it was opened with the workflow token); close and reopen it to run CI.
           add-paths: data/

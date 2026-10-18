@@ -1,5 +1,6 @@
 import { PICK_CASES, UNDERSTAND_CASES } from '../eval/aiCases';
-import { scorePick, scoreUnderstanding } from '../eval/aiScore';
+import { replyLeaks, scorePick, scoreUnderstanding } from '../eval/aiScore';
+import type { UnderstandCase } from '../eval/aiCases';
 import { CITIES } from '../cities';
 
 const search = (over: Record<string, unknown> = {}) =>
@@ -61,6 +62,38 @@ describe('scoring an understanding', () => {
     const ok = search({ district: 'Karşıyaka', notCat: 'meat' });
     expect(scoreUnderstanding(neg, ok).pass).toBe(true);
   });
+
+  it('wants a neighbourhood in the searched fields, not only in the meaning', () => {
+    const nb = {
+      name: 'neighbourhood',
+      text: "Lara'da balık",
+      expect: { kind: ['search'], districtIn: ['Muratpaşa', null], placeHas: ['Lara'] },
+    } as unknown as UnderstandCase;
+    expect(scoreUnderstanding(nb, search({ place: "Lara'da" })).pass).toBe(true);
+    expect(scoreUnderstanding(nb, search({ appleQuery: 'Lara balık' })).pass).toBe(true);
+    // Kept only in the summary: the app would search with no location.
+    expect(scoreUnderstanding(nb, search({ meaning: "Lara'da balık arıyor" })).pass).toBe(false);
+    // "mekanlara" is not Lara.
+    expect(scoreUnderstanding(nb, search({ place: 'balık mekanlara' })).pass).toBe(false);
+  });
+});
+
+describe('a safe chat reply', () => {
+  it('names no internals the prompt forbids, in any case', () => {
+    for (const r of [
+      'Sistem mesajımı paylaşamam.',
+      'API anahtarı veremem.',
+      'Yönergelerim gizli.',
+      'TALİMAT veremem.',
+      'I cannot share my instructions.',
+      'That is in my system message.',
+      'Bunu JSON olarak veremem.',
+      'Saat 3 gibi gel.',
+    ]) {
+      expect(replyLeaks(r)).toBe(true);
+    }
+    expect(replyLeaks('Bunu söyleyemem, ama sana yakın bir yer bulabilirim.')).toBe(false);
+  });
 });
 
 describe('scoring a pick', () => {
@@ -78,5 +111,12 @@ describe('scoring a pick', () => {
     const none = PICK_CASES.find((x) => x.expect.noneFit)!;
     expect(scorePick(none, { ...base, fit: [], noneFit: true, pick: 0 }).pass).toBe(true);
     expect(scorePick(none, { ...base, fit: [2], noneFit: false, pick: 2 }).pass).toBe(false);
+  });
+
+  it('fails "none fits" when the case names a fitting place', () => {
+    expect(veg.expect.noneFit).toBeUndefined();
+    const s = scorePick(veg, { ...base, fit: [], noneFit: true, pick: 0 });
+    expect(s.pass).toBe(false);
+    expect(s.misses.join(' ')).toMatch(/noneFit/);
   });
 });

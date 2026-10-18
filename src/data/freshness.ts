@@ -1,3 +1,5 @@
+import { t } from 'i18next';
+
 import type { Parking } from './types';
 
 /** Source measurement older than this is no longer "live". */
@@ -47,6 +49,24 @@ export function getFreshness(
   return { kind: 'unknown' };
 }
 
+/**
+ * True while a momentary source flag (the live open/closed state) may still be trusted: the
+ * measurement, else the download, is at most UPDATED_MAX_AGE_MS old, the same limit as a free
+ * count. A cached or offline record past it says nothing about now. A value with no timestamp
+ * at all is taken as of this moment.
+ */
+export function liveFlagFresh(
+  p: Partial<Pick<Parking, 'updatedAt' | 'fetchedAt'>>,
+  now: Date = new Date(),
+): boolean {
+  const iso = p.updatedAt ?? p.fetchedAt;
+  if (iso == null) return true;
+  const at = parse(iso);
+  if (!at) return false;
+  const age = now.getTime() - at.getTime();
+  return age >= 0 && age <= UPDATED_MAX_AGE_MS;
+}
+
 /** Free-space count that may be shown, or null when it must read "Bilinmiyor". */
 export function visibleFree(p: Parking, now: Date = new Date()): number | null {
   const f = getFreshness(p, now);
@@ -69,13 +89,13 @@ export function formatClock(d: Date): string {
   return `${hh}:${mm}`;
 }
 
-/** Short Turkish age such as "5 dk", "2 sa", "3 gün" (for "… önce"). */
+/** Short age in the UI language: "5 dk" / "5 min", "2 sa" / "2 h", "3 gün" / "3 days". */
 export function formatAge(ms: number): string {
   const min = Math.max(1, Math.round(ms / 60_000));
-  if (min < 60) return `${min} dk`;
+  if (min < 60) return t('freshness.ageMinutes', { count: min });
   const hours = Math.round(min / 60);
-  if (hours < 24) return `${hours} sa`;
-  return `${Math.round(hours / 24)} gün`;
+  if (hours < 24) return t('freshness.ageHours', { count: hours });
+  return t('freshness.ageDays', { count: Math.round(hours / 24) });
 }
 
 /**
@@ -98,7 +118,7 @@ export function lacksFreshCounts(list: Parking[], now: Date = new Date()): boole
   );
 }
 
-/** Age of an ISO timestamp as short Turkish text; "" if it cannot be read. */
+/** Age of an ISO timestamp as short text (see formatAge); "" if it cannot be read. */
 export function ageSince(iso: string, now: Date = new Date()): string {
   const t = new Date(iso).getTime();
   return Number.isNaN(t) ? '' : formatAge(now.getTime() - t);

@@ -284,6 +284,29 @@ describe('car park picks', () => {
     expect(verifyParkPick(pr({ pick: 4, reasons: ['free'] }), all)).toBeNull();
   });
 
+  it('never picks a car park that is closed at that time', () => {
+    const shut = [park(0, { walkMin: 1, openState: 'closed', free: true }), all[1]!];
+    expect(verifyParkPick(pr({ pick: 0, reasons: ['closest', 'free'] }), shut)).toBeNull();
+    expect(verifyParkPick(pr({ pick: 0, reasons: ['closest'] }), shut, {}, 'dinner')).toBeNull();
+    // A closed runner-up is dropped, the pick stands.
+    const v = verifyParkPick(
+      pr({ pick: 1, reasons: ['big_capacity'], runnerUp: 0, runnerUpWhy: 'free' }),
+      [park(0, { walkMin: 1, openState: 'closed', free: true }), park(1, { capacity: 500 })],
+    );
+    expect(v?.pick).toBe(1);
+    expect(v?.runnerUp).toBeNull();
+  });
+
+  it('"open_now" holds only for a pick about now (openState is at the planned time)', () => {
+    expect(parkReasonHolds('open_now', all[0]!, all)).toBe(true);
+    expect(parkReasonHolds('open_now', all[0]!, all, 'now')).toBe(true);
+    expect(parkReasonHolds('open_now', all[0]!, all, 'dinner')).toBe(false);
+    expect(verifyParkPick(pr({ pick: 0, reasons: ['open_now'] }), all, {}, 'tonight')).toBeNull();
+    expect(
+      verifyParkPick(pr({ pick: 0, reasons: ['open_now', 'free'] }), all, {}, 'tonight')?.reasons,
+    ).toEqual(['free']);
+  });
+
   it('drops a "güvenli" tone line', () => {
     const v = verifyParkPick(pr({ pick: 0, reasons: ['free'], tone: 'Güvenli bir seçim!' }), all);
     expect(v?.tone).toBeNull();

@@ -47,19 +47,14 @@ export function ConsentCard({ onChoose }: { onChoose: (v: 'yes' | 'no') => void 
                 borderRadius: 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: primary
-                  ? pressed
-                    ? c.primary
-                    : c.hero
-                  : pressed
-                    ? c.surface
-                    : c.card,
+                backgroundColor: primary ? c.accent : pressed ? c.surface : c.card,
+                opacity: primary && pressed ? 0.85 : 1,
                 borderWidth: primary ? 0 : 1.5,
                 borderColor: brand.orangeLight,
               })}
             >
               <Txt
-                color={primary ? c.onHero : c.text}
+                color={primary ? brand.navy : c.text}
                 style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14 }}
               >
                 {label}

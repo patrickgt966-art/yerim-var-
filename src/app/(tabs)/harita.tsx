@@ -1,16 +1,24 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { Button } from '@/components/Button';
+import { FreshnessBadge, freshnessText, Tag } from '@/components/FreshnessBadge';
 import { PBadge } from '@/components/PBadge';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { cityAt, cityById, hasLiveParking, isInCityArea, type City } from '@/data/cities';
-import { formatClock } from '@/data/freshness';
-import { distanceMeters, type LatLng } from '@/data/geo';
+import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
+import { appleMapsUrl, distanceMeters, type LatLng } from '@/data/geo';
 import {
   cuisineLabels,
   kindLabel,
@@ -19,13 +27,21 @@ import {
   restaurantsForMap,
   type Restaurant,
 } from '@/data/restaurants';
-import { rankByDistance, useParkings } from '@/data/useParkings';
-import { useAnnounce, useScreenReader } from '@/lib/a11y';
+import { rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
+import { levelWord, useAnnounce, useScreenReader } from '@/lib/a11y';
+import { disabledInfo } from '@/lib/disabledSpots';
+import { metaLine } from '@/lib/format';
 import { currentLocation } from '@/lib/location';
 import { parseLatLng } from '@/lib/params';
+import { parkedHere } from '@/lib/parkHere';
+import { isStatic } from '@/lib/staticInfo';
+import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
-import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
+import { asym, brand, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** Same short wait as the pin picker; the next visit checks again. */
+const LOCATION_TIMEOUT_MS = 3000;
 
 type Mode = 'parkings' | 'food';
 
@@ -49,6 +65,8 @@ export default function MapTab() {
   const [center, setCenter] = useState<LatLng | null>(null);
   const [mode, setMode] = useState<Mode>(params.mode === 'food' ? 'food' : 'parkings');
   const [selected, setSelected] = useState<Restaurant | null>(null);
+  /** The car park whose card is open (tap a P pin); its detail is one more tap away. */
+  const [selectedPark, setSelectedPark] = useState<RankedParking | null>(null);
   const [paramCity, setParamCity] = useState<string | null>(city.id);
 
   const [outside, setOutside] = useState(false);
@@ -61,6 +79,7 @@ export default function MapTab() {
     setSeenCity(city.id);
     setCenter(null);
     setSelected(null);
+    setSelectedPark(null);
     setParamCity(null);
     setOutside(false);
     setElsewhere(undefined);
@@ -71,7 +90,8 @@ export default function MapTab() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      void currentLocation(false).then((loc) => {
+      // Never wait long for a fix: without one the map opens at the city centre.
+      void currentLocation(false, LOCATION_TIMEOUT_MS).then((loc) => {
         if (cancelled) return;
         const inside = !!loc && isInCityArea(loc, city);
         setOutside(!!loc && !inside);
@@ -106,6 +126,7 @@ export default function MapTab() {
     if (params.mode === 'food') setMode('food');
     else if (params.mode === 'parkings') setMode('parkings');
     setSelected(null);
+    setSelectedPark(null);
   }
 
   const paramCenter = paramCity === city.id ? parsedCenter : null;
@@ -129,7 +150,15 @@ export default function MapTab() {
       : null,
   );
 
-  if (!mapCenter) return <View style={{ flex: 1 }} />;
+  if (!mapCenter) {
+    return (
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}
+      >
+        <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
+      </View>
+    );
+  }
 
   const bigText = fontScale > 1.2;
   const showBanner =
@@ -141,6 +170,7 @@ export default function MapTab() {
   const pick = (m: Mode) => {
     setMode(m);
     setSelected(null);
+    setSelectedPark(null);
     // A manual choice ends the "Haritada gör" visit: back to the user's own centre.
     if (paramCenter)
       router.setParams({ mode: undefined, lat: undefined, lng: undefined, ts: undefined });
@@ -159,10 +189,17 @@ export default function MapTab() {
           parkings={nearby}
           center={mapCenter}
           delta={0.06}
-          onSelect={(p) => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
+          onSelect={(p) => {
+            setSelected(null);
+            setSelectedPark(nearby.find((x) => x.id === p.id) ?? null);
+          }}
+          selectedId={selectedPark?.id}
           restaurants={restaurants}
           selectedRestaurantId={selected?.id}
-          onSelectRestaurant={setSelected}
+          onSelectRestaurant={(r) => {
+            setSelectedPark(null);
+            setSelected(r);
+          }}
           quietParkings={mode === 'food'}
         />
       </View>
@@ -259,6 +296,14 @@ export default function MapTab() {
             )
           }
           style={{ position: 'absolute', left: 16, right: 16, bottom: tabSpace }}
+        />
+      )}
+      {selectedPark && (
+        <ParkingSheetCard
+          parking={selectedPark}
+          // Walking minutes only make sense from the user's own position.
+          fromYou={!paramCenter && !outside}
+          onClose={() => setSelectedPark(null)}
         />
       )}
       {mode === 'food' && selected && (
@@ -376,6 +421,184 @@ function RestaurantCard({
             }
           />
         )}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The tapped car park (design V5.1): name, meta, the free count big in its status colour,
+ * freshness, then "Yol tarifi" and "Buraya park ettim". Tapping the info opens the detail.
+ */
+function ParkingSheetCard({
+  parking: p,
+  fromYou,
+  onClose,
+}: {
+  parking: RankedParking;
+  fromYou: boolean;
+  onClose: () => void;
+}) {
+  const c = useColors();
+  const { t } = useTranslation();
+  const tabSpace = useTabBarSpace(12);
+  const mode = useApp((s) => s.mode);
+  const now = new Date(useNow());
+  const shown = fromYou ? p : { ...p, walk: undefined };
+  const meta = metaLine(shown, t, mode);
+  const staticCard = isStatic(p);
+  const freshness = getFreshness(p, now);
+  const free = visibleFree(p, now);
+  const level = occupancyLevel(free, p.capacity);
+  const disabled = disabledInfo(p, now);
+  const word = staticCard ? null : levelWord(level, t);
+  const count = staticCard || free == null ? null : free;
+  const openDetail = () => router.push({ pathname: '/otopark/[id]', params: { id: p.id } });
+  const directions = () =>
+    Linking.openURL(appleMapsUrl(p, p.name)).catch(() => Alert.alert(t('food.openFailed')));
+
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: tabSpace,
+        padding: 14,
+        gap: 10,
+        borderRadius: 22,
+        backgroundColor: c.bg,
+        shadowColor: brand.navy,
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={[
+            p.name,
+            metaLine(shown, t, mode, true),
+            staticCard
+              ? freshnessText(freshness, t)
+              : `${count == null ? t('common.unknown') : `${count} ${t('common.free')}`}${word ? `, ${word}` : ''}`,
+          ]
+            .filter(Boolean)
+            .join('. ')}
+          accessibilityHint={t('map.a11yOpenDetail')}
+          onPress={openDetail}
+          style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: brand.mintSoft,
+            }}
+          >
+            <Txt
+              allowFontScaling={false}
+              style={{ fontFamily: fonts.display, fontSize: 21, lineHeight: 26 }}
+              color={brand.mintText}
+            >
+              P
+            </Txt>
+          </View>
+          <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
+            <Txt
+              style={{ fontFamily: fonts.display, fontSize: 17, lineHeight: 22 }}
+              numberOfLines={2}
+            >
+              {p.name}
+            </Txt>
+            {!!meta && (
+              <Txt variant="caption" secondary numberOfLines={2}>
+                {meta}
+              </Txt>
+            )}
+          </View>
+          {!staticCard && (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Txt
+                style={{
+                  fontFamily: fonts.display,
+                  fontSize: count == null || level === 'full' ? 17 : 30,
+                  lineHeight: count == null || level === 'full' ? 22 : 34,
+                  letterSpacing: -0.5,
+                }}
+                color={statusTone(level).fg}
+                maxFontSizeMultiplier={1.4}
+              >
+                {count == null
+                  ? t('common.unknown')
+                  : level === 'full'
+                    ? (word ?? '')
+                    : String(count)}
+              </Txt>
+              {count != null && level !== 'full' && (
+                <Txt variant="label" color={statusTone(level).fg}>
+                  {t('map.freeUnit')}
+                </Txt>
+              )}
+            </View>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('map.closeParkingA11y')}
+          onPress={onClose}
+          style={{
+            width: HIT,
+            height: HIT,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: -8,
+            marginRight: -8,
+          }}
+        >
+          <Txt style={{ fontSize: 26, lineHeight: 30 }} secondary>
+            ×
+          </Txt>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {staticCard ? (
+          <Tag text={t('freshness.noData')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
+        ) : (
+          <FreshnessBadge freshness={freshness} />
+        )}
+        {disabled && (
+          <Tag
+            text={
+              disabled.kind === 'count'
+                ? t('a11y.disabledCount', { free: disabled.free, capacity: disabled.capacity })
+                : t('a11y.disabledExists')
+            }
+            bg={c.chipBg}
+            fg={c.text}
+          />
+        )}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button
+          kind="secondary"
+          label={t('map.directions')}
+          accessibilityLabel={t('map.a11yDirections', { name: p.name })}
+          onPress={() => void directions()}
+          style={{ flex: 1 }}
+        />
+        <Button
+          kind="accent"
+          label={t('map.parkedHere')}
+          accessibilityLabel={t('map.a11yParkedHere', { name: p.name })}
+          onPress={() => parkedHere(p)}
+          style={{ flex: 1.4 }}
+        />
       </View>
     </View>
   );

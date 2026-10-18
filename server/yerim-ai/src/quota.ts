@@ -36,6 +36,11 @@ import {
 
 export interface KV {
   get(key: string): Promise<string | null>;
+  /**
+   * The quota object's storage (storageKV) sets the expiry when a key is first written and never
+   * extends it on later writes, so a counter tied to an IP or device is gone at most TTL_SECONDS
+   * (plus the hourly sweep) after it was created.
+   */
   put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
 }
 
@@ -97,6 +102,30 @@ export async function peek(
 ): Promise<number> {
   const ids = parseIds(await kv.get(`q:${todayIstanbul(now)}:${deviceId}`));
   return Math.max(0, limit - ids.length);
+}
+
+/**
+ * The key a client's address is counted under: an IPv4 address as it is, an IPv6 address by its
+ * /64 prefix (one subscriber or server usually holds a whole /64 and can rotate inside it). An
+ * IPv4-mapped IPv6 address counts as its IPv4 address; anything unparsable is kept as it is.
+ */
+export function ipKey(ip: string): string {
+  const addr = ip.trim().toLowerCase().split('%')[0];
+  if (!addr.includes(':')) return addr;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(addr);
+  if (mapped) return mapped[1];
+  const halves = addr.split('::');
+  if (halves.length > 2) return addr;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return addr;
+  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
+  if (!groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return addr;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(':')}::/64`;
 }
 
 /** Per-IP daily call counter; false when over max (stops device-id rotation abuse). */
@@ -167,10 +196,29 @@ async function readCount(kv: KV, key: string): Promise<number> {
 }
 
 /**
+ * The Istanbul day on which this message was charged: today, or yesterday for a message that
+ * started before midnight (its later stages and its refund belong to that day). Null when it is
+ * not charged.
+ */
+async function chargedDay(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+): Promise<string | null> {
+  const today = todayIstanbul(now);
+  const yesterday = todayIstanbul(now.getTime() - 86_400_000);
+  for (const day of [today, yesterday]) {
+    if (parseIds(await kv.get(`q:${day}:${deviceId}`)).includes(messageId)) return day;
+  }
+  return null;
+}
+
+/**
  * Takes one use for a message, or says which limit stopped it. A messageId already charged today
- * (the /pick or /plan after its /understand) passes for free and skips the interval and the
- * global cap. For a new message, checked in this order: too fast (a rejected call does not
- * count), global cap, the device's daily uses.
+ * or yesterday (the /pick or /plan after its /understand, also across midnight) passes for free
+ * and skips the interval and the global cap. For a new message, checked in this order: too fast
+ * (a rejected call does not count), global cap, the device's daily uses.
  */
 export async function takeUse(
   kv: KV,
@@ -183,8 +231,11 @@ export async function takeUse(
   const day = todayIstanbul(now);
   const globalKey = `ai:global:${day}`;
   const lastKey = `ai:last:${deviceId}`;
-  const known = parseIds(await kv.get(`q:${day}:${deviceId}`)).includes(messageId);
-  if (!known) {
+  const charged = await chargedDay(kv, deviceId, messageId, now);
+  if (charged !== null && charged !== day) {
+    return { ok: true, remaining: await peek(kv, deviceId, now, limit), added: false };
+  }
+  if (charged === null) {
     const last = Number((await kv.get(lastKey)) ?? '0');
     if (Number.isFinite(last) && last > 0 && now.getTime() - last < limits.minIntervalMs) {
       return { ok: false, reason: 'slow', remaining: await peek(kv, deviceId, now, limit) };
@@ -199,16 +250,18 @@ export async function takeUse(
     await kv.put(globalKey, String((await readCount(kv, globalKey)) + 1), {
       expirationTtl: TTL_SECONDS,
     });
-    // KV keeps a key for at least 60 s.
-    await kv.put(lastKey, String(now.getTime()), { expirationTtl: 60 });
+    // Its expiry is not extended by later messages: a new message in the moment it expires
+    // skips the interval once an hour.
+    await kv.put(lastKey, String(now.getTime()), { expirationTtl: 3600 });
   }
   return { ok: true, remaining: q.remaining, added: q.added };
 }
 
 /**
  * Gives back the use of a message (device list and global counter) when Anthropic failed, or the
- * client gave up. Idempotent: only the call that really removes the messageId lowers the global
- * counter, and it never goes below zero.
+ * client gave up, on the day it was charged (yesterday for a message that started before
+ * midnight). Idempotent: only the call that really removes the messageId lowers the global
+ * counter, and it never goes below zero. The remaining count is today's.
  */
 export async function releaseUse(
   kv: KV,
@@ -217,27 +270,32 @@ export async function releaseUse(
   now: Date,
   limit = FREE_DAILY,
 ): Promise<{ removed: boolean; remaining: number }> {
-  const day = todayIstanbul(now);
-  const ids = parseIds(await kv.get(`q:${day}:${deviceId}`));
-  if (!ids.includes(messageId)) {
-    return { removed: false, remaining: Math.max(0, limit - ids.length) };
-  }
-  const remaining = await refund(kv, deviceId, messageId, now, limit);
+  const day = await chargedDay(kv, deviceId, messageId, now);
+  if (day === null) return { removed: false, remaining: await peek(kv, deviceId, now, limit) };
+  const key = `q:${day}:${deviceId}`;
+  const kept = parseIds(await kv.get(key)).filter((id) => id !== messageId);
+  await kv.put(key, JSON.stringify(kept), { expirationTtl: TTL_SECONDS });
   const globalKey = `ai:global:${day}`;
   const n = await readCount(kv, globalKey);
   await kv.put(globalKey, String(Math.max(0, n - 1)), { expirationTtl: TTL_SECONDS });
-  return { removed: true, remaining };
+  return { removed: true, remaining: await peek(kv, deviceId, now, limit) };
 }
 
 /** A device may cancel this many messages per day; stops "ask, cancel, ask again" for free. */
 export const MAX_CANCELS_PER_DAY = 5;
 const CANCEL_MARK_TTL_SECONDS = 3600;
 
+/** The mark cancelUse leaves; not tied to a day, so a cancel after midnight still finds it. */
+const cancelKey = (deviceId: string, messageId: string) => `cancel:${deviceId}:${messageId}`;
+/** The mark's values: the refund is still owed (nothing was charged yet), or already given. */
+const OWED = 'owed';
+const GIVEN = 'given';
+
 /**
  * The client gave up waiting for a message (timeout / abort). Gives its use back right away when
- * it was charged, and marks the messageId cancelled so a handler that is still running (or one
- * that has not charged yet) gives it back again, idempotently, when it finishes. Beyond
- * MAX_CANCELS_PER_DAY nothing is refunded.
+ * it was charged; otherwise marks the refund as owed, so a handler that has not charged yet gives
+ * it back when it finishes. Either way the mark tells the running handler that the client left
+ * (see takeCancelMark). One refund per cancel; beyond MAX_CANCELS_PER_DAY nothing is refunded.
  */
 export async function cancelUse(
   kv: KV,
@@ -253,20 +311,39 @@ export async function cancelUse(
     return { removed: false, remaining: await peek(kv, deviceId, now, limit) };
   }
   await kv.put(countKey, String(count + 1), { expirationTtl: TTL_SECONDS });
-  await kv.put(`cancel:${day}:${deviceId}:${messageId}`, '1', {
-    expirationTtl: CANCEL_MARK_TTL_SECONDS,
-  });
-  return releaseUse(kv, deviceId, messageId, now, limit);
+  const key = cancelKey(deviceId, messageId);
+  if ((await kv.get(key)) === GIVEN) {
+    return { removed: false, remaining: await peek(kv, deviceId, now, limit) };
+  }
+  const released = await releaseUse(kv, deviceId, messageId, now, limit);
+  await kv.put(key, released.removed ? GIVEN : OWED, { expirationTtl: CANCEL_MARK_TTL_SECONDS });
+  return released;
 }
 
-/** True when the client cancelled this message (see cancelUse). */
-export async function wasCancelled(
+/** True when the client cancelled this message and the mark is not used up yet (see cancelUse). */
+export async function wasCancelled(kv: KV, deviceId: string, messageId: string): Promise<boolean> {
+  const mark = await kv.get(cancelKey(deviceId, messageId));
+  return mark === OWED || mark === GIVEN;
+}
+
+/**
+ * Called when a handler has its answer. When the client cancelled this message, uses the mark up
+ * (gives the owed refund, if any) and returns the remaining uses; otherwise null. The mark is then
+ * cleared, so a later call with the same messageId is charged and kept as usual.
+ */
+export async function takeCancelMark(
   kv: KV,
   deviceId: string,
   messageId: string,
   now: Date,
-): Promise<boolean> {
-  return (await kv.get(`cancel:${todayIstanbul(now)}:${deviceId}:${messageId}`)) !== null;
+  limit = FREE_DAILY,
+): Promise<number | null> {
+  const key = cancelKey(deviceId, messageId);
+  const mark = await kv.get(key);
+  if (mark !== OWED && mark !== GIVEN) return null;
+  await kv.put(key, '', { expirationTtl: CANCEL_MARK_TTL_SECONDS });
+  if (mark === GIVEN) return peek(kv, deviceId, now, limit);
+  return (await releaseUse(kv, deviceId, messageId, now, limit)).remaining;
 }
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;

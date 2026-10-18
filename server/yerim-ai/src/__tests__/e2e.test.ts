@@ -145,7 +145,8 @@ mockParse.mockImplementation(
     if (asked?.candidates) {
       return done({ pick: 0, reasons: [], runnerUp: null, runnerUpWhy: null, tone: null });
     }
-    if (args.max_tokens === 200) return done({ reply: 'Selam!', action: 'none' });
+    // Only /understand asks for 2048 tokens; the remaining JSON call without candidates is /chat.
+    if (args.max_tokens !== 2048) return done({ reply: 'Selam!', action: 'none' });
     return done(searchOut(routerDistrict.district, routerDistrict.food));
   },
 );
@@ -555,7 +556,7 @@ describe('city', () => {
       section: 'food',
     });
     expect(u).toMatchObject({ ok: true, remaining: 9 });
-    expect(anthropicCalls[0]!.system).toBe(understandSystem('istanbul'));
+    expect(anthropicCalls[0]!.system).toBe(understandSystem('istanbul', 'food'));
     tick();
     const c = await client.chat({
       deviceId: DEVICE(),
@@ -579,7 +580,7 @@ describe('city', () => {
     });
     expect(res.status).toBe(200);
     expect(((await res.json()) as { remaining: number }).remaining).toBe(9);
-    expect(anthropicCalls[0]!.system).toBe(understandSystem());
+    expect(anthropicCalls[0]!.system).toBe(understandSystem(undefined, 'food'));
     tick();
     const q = await rawPost('/quota', { deviceId: DEVICE() });
     expect(((await q.json()) as { remaining: number }).remaining).toBe(9);
@@ -617,7 +618,7 @@ describe('the phone request that failed with a 502', () => {
       system: string;
       messages: { role: string; content: string }[];
     };
-    expect(sent.system).toContain(understandSystem('izmir'));
+    expect(sent.system).toContain(understandSystem('izmir', 'food'));
     expect(sent.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant', 'user']);
     expect(sent.messages.every((m) => m.content.trim() !== '')).toBe(true);
     noRejections();

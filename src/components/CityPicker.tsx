@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
-import { cityById, CITIES } from '@/data/cities';
+import { cityById, CITIES, hasLiveParking } from '@/data/cities';
 import { useApp } from '@/store/app';
 import { asym, brand, HIT, useColors } from '@/theme';
 
@@ -99,13 +99,16 @@ function CitySheet({ visible, onClose }: { visible: boolean; onClose: () => void
           <View style={{ marginTop: 8 }}>
             {CITIES.map((item) => {
               const selected = item.available && item.id === city;
+              // Ankara, Antalya, Bursa: bundled car parks only, never a free count.
+              const live = item.available && hasLiveParking(item);
+              const rowKey = selected ? 'city.a11ySelected' : 'city.a11yRow';
               return (
                 <Pressable
                   key={item.id}
                   accessibilityRole="button"
                   accessibilityLabel={
                     item.available
-                      ? t(selected ? 'city.a11ySelected' : 'city.a11yRow', { name: item.name })
+                      ? t(live ? rowKey : `${rowKey}Static`, { name: item.name })
                       : t('city.a11ySoon', { name: item.name })
                   }
                   accessibilityState={{ disabled: !item.available, selected }}
@@ -140,14 +143,11 @@ function CitySheet({ visible, onClose }: { visible: boolean; onClose: () => void
                       paddingHorizontal: 10,
                       paddingVertical: 4,
                       borderRadius: 999,
-                      backgroundColor: item.available ? c.badgeFreshBg : c.badgeUnknownBg,
+                      backgroundColor: live ? c.badgeFreshBg : c.badgeUnknownBg,
                     }}
                   >
-                    <Txt
-                      variant="label"
-                      color={item.available ? c.badgeFreshText : c.badgeUnknownText}
-                    >
-                      {t(item.available ? 'city.live' : 'city.soon')}
+                    <Txt variant="label" color={live ? c.badgeFreshText : c.badgeUnknownText}>
+                      {t(live ? 'city.live' : item.available ? 'city.staticOnly' : 'city.soon')}
                     </Txt>
                   </View>
                 </Pressable>

@@ -15,6 +15,7 @@ import {
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
 import { activeCity, CITIES, cityExamples } from '@/data/cities';
+import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
@@ -95,6 +96,7 @@ import {
   walkMinFromMeters,
 } from '@/lib/ai/verify';
 import { disabledInfo } from '@/lib/disabledSpots';
+import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { tariffFor } from '@/data/tariffs';
 
@@ -382,6 +384,17 @@ function districtLeftover(it: QueryIntent, text: string): Leftover | null {
   return { kind: 'unknown', x };
 }
 
+/** A known place in or near the district whose name carries every word of `placeQuery`. */
+function placeInDistrict(placeQuery: string, district: LatLng): ChatPlace | null {
+  const qWords = placeQuery.split(' ').filter(Boolean);
+  const h = searchPlacesStrict(placeQuery, 6).find(
+    (hit) =>
+      distanceMeters(district, hit) <= DISTRICT_REACH_M &&
+      qWords.every((w) => hasWordStart(fold(hit.name), w)),
+  );
+  return h ? { label: h.name, lat: h.lat, lng: h.lng } : null;
+}
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -419,12 +432,23 @@ function examples(section: 'park' | 'food', t: AssistantDeps['t']): ChatAction[]
   return keys.map((k) => say(t, k));
 }
 
-function pickOnMap(text: string, t: AssistantDeps['t']): ChatAction {
+/** The map picker; in a food chat the picked point opens restaurants, not car parks. */
+function pickOnMap(
+  text: string,
+  t: AssistantDeps['t'],
+  ctx: Pick<ChatContext, 'section' | 'cat'>,
+): ChatAction {
+  const food = ctx.section === 'food';
   return {
     kind: 'open',
     label: t('chat.actPickMap'),
     pathname: '/konum-sec',
-    params: { purpose: 'search', q: text },
+    params: pickerParams({
+      purpose: 'search',
+      q: text,
+      food,
+      ...(food && ctx.cat ? { cat: ctx.cat } : {}),
+    }),
   };
 }
 
@@ -486,7 +510,8 @@ function aiLedIntent(
   const sameDish = r !== null && !!r.dish && r.cat === ai.cat && aiNamed(u, r.dish);
   return {
     ...ai,
-    notCat: u.notCat ?? null,
+    // Ruling out the category that was picked excludes nothing (köfte and kebap are both meat).
+    notCat: u.notCat && u.notCat !== ai.cat ? u.notCat : null,
     ...(sameDish ? { dish: r.dish, dishServes: r.dishServes ?? null } : {}),
     quality: r?.quality ?? false,
   };
@@ -511,6 +536,8 @@ const WIDER_WORDS = new Set([
   'peki',
 ]);
 const LOCATIVE = ['de', 'da', 'te', 'ta'];
+/** Words of the "daha yakın" / "ücretsiz otopark" follow-ups that the rules leave as a place. */
+const FOLLOW_UP_WORDS = new Set(['daha', 'ucretsiz']);
 
 /** A short follow-up that refers to the previous search ("daha yakın", "bir de Konak'ta bak"). */
 function detectFollowUp(folded: string, it: QueryIntent): FollowUp | null {
@@ -518,11 +545,23 @@ function detectFollowUp(folded: string, it: QueryIntent): FollowUp | null {
   if (tokens.length === 0) return null;
   // A named category or district is a new search, not a follow-up.
   const sameTarget = it.kind !== 'search' || (!it.cat && !it.district);
-
-  if (sameTarget && /\botopark\w*\s+ucretsiz\b|\bucretsiz\s+(?:otopark|park)\w*/.test(folded)) {
-    return { kind: 'freePark' };
+  const isFollowWord = (w: string) =>
+    FOLLOW_UP_WORDS.has(w) || WIDER_WORDS.has(w) || w.startsWith('yakin');
+  // A place named with it ("Alsancak ücretsiz otopark"): not the previous place; the rest of
+  // the words are the search there.
+  const newPlace =
+    it.kind === 'search' && it.placeQuery.split(' ').some((w) => w && !isFollowWord(w));
+  const free = /\botopark\w*\s+ucretsiz\b|\bucretsiz\s+(?:otopark|park)\w*/.test(folded);
+  const nearer = /\bdaha yakin\w*/.test(folded);
+  if (sameTarget && newPlace && (free || nearer)) {
+    const xi = parseQuery(tokens.filter((w) => !isFollowWord(w)).join(' '));
+    return xi.kind === 'search' && !xi.cat && !xi.food && (xi.district || xi.placeQuery)
+      ? { kind: 'elsewhere', intent: xi }
+      : null;
   }
-  if (sameTarget && /\bdaha yakin\w*/.test(folded)) return { kind: 'nearer' };
+
+  if (sameTarget && free) return { kind: 'freePark' };
+  if (sameTarget && nearer) return { kind: 'nearer' };
   if (sameTarget && tokens.includes('baska') && tokens.every((t) => WIDER_WORDS.has(t))) {
     return { kind: 'wider' };
   }
@@ -742,17 +781,21 @@ function isConversational(text: string, it: QueryIntent, wishes: Wish[]): boolea
   if (it.cat || it.dish || it.food || it.district || it.nearMe || it.mentionsParking) return false;
   if (wishes.length > 0 || !it.placeQuery) return false;
   const toks = fold(text).split(' ').filter(Boolean);
-  const strong = toks.some(
-    (w) => CONVO_STRONG.has(w) || (CONVO_VERB.test(w) && !w.startsWith('bulvar')),
-  );
-  const weak = toks.filter((w) => CONVO_WEAK.has(w)).length;
-  if (!strong && weak === 0) return false;
-  if (strong || weak >= 2) return true;
-  // One weak word ("Mado var mı"): chit-chat only when nothing is called that.
   const qWords = it.placeQuery.split(' ').filter(Boolean);
-  const hit = searchPlacesStrict(it.placeQuery, 1)[0];
-  if (hit && qWords.every((w) => hasWordStart(fold(hit.name), w))) return false;
-  return !allRestaurants().some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
+  // A place or restaurant that is really called that ("Girne", "Bulgurlu", "Mado").
+  const named = () => {
+    const hit = searchPlacesStrict(it.placeQuery, 1)[0];
+    if (hit && qWords.every((w) => hasWordStart(fold(hit.name), w))) return true;
+    return allRestaurants().some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
+  };
+  if (toks.some((w) => CONVO_STRONG.has(w))) return true;
+  // A verb stem ("gireceğime", "bulamadım") is chit-chat, unless a name only starts like one.
+  const verb = toks.some((w) => CONVO_VERB.test(w) && !w.startsWith('bulvar'));
+  const weak = toks.filter((w) => CONVO_WEAK.has(w)).length;
+  if (!verb && weak === 0) return false;
+  if (weak >= 2) return true;
+  // One weak word ("Mado var mı") or a verb stem: chit-chat only when nothing is called that.
+  return !named();
 }
 
 /** Folded text of the pure "sen seç" family, and the rule or AI pick among the last cards. */
@@ -948,7 +991,14 @@ async function route(
   return { out: { kind: 'unknown' }, ...notice };
 }
 
-export async function answer(text: string, ctx: ChatContext, deps: AssistantDeps): Promise<Result> {
+export async function answer(
+  typed: string,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+): Promise<Result> {
+  // The rules read what the AI reads: the first MAX_MESSAGE_CHARS (a long paste would also block
+  // the JS thread while it is parsed).
+  const text = clipText(typed, MAX_MESSAGE_CHARS);
   const meta: AnswerMeta = {
     text,
     wishes: wishesIn(text),
@@ -1076,10 +1126,12 @@ async function answerText(
       ),
     );
   }
-  // The router said search: the AI's reading is the search (aiLedIntent). Follow-ups, abuse and
-  // gibberish stay with the rules; so does everything when the AI could not answer.
-  if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse' && it.kind !== 'gibberish') {
-    const found = routed.out.value;
+  // The router said search: the AI's reading is the search (aiLedIntent), also for words the rules
+  // take for gibberish ("KFC nerede"). Follow-ups and abuse stay with the rules; so does
+  // everything when the AI could not answer.
+  if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse') {
+    // The district against the city's own list: a typo fixed, a quarter moved to place.
+    const found = settleDistrict(routed.out.value, text, activeCity().districts);
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
     meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];
@@ -1146,14 +1198,14 @@ async function answerText(
   if (it.kind === 'abuse') {
     return plain({ text: t('chat.calm_0'), cards: [], actions: examples(ctx.section, t) }, ctx);
   }
-  // 'gibberish' (too short / no vowel) never reaches the AI above: ask again, no search.
+  // 'gibberish' (too short / no vowel) the AI did not read as a search: ask again, no search.
   if (it.kind === 'empty' || it.kind === 'gibberish') {
     return withNotice(
       plain(
         {
           text: variant(t, 'chat.unknown', 2, text, cityExamples()),
           cards: [],
-          actions: [pickOnMap(text, t), ...examples(ctx.section, t)],
+          actions: [pickOnMap(text, t, ctx), ...examples(ctx.section, t)],
         },
         ctx,
       ),
@@ -1161,7 +1213,15 @@ async function answerText(
   }
 
   const folded = fold(text);
-  if (folded.split(' ').length >= 2) {
+  // The start of a restaurant's name ("Köfteci Yusuf", "Tire Köftecisi"): those places, wherever
+  // they are. Not when the words are only a dish our data knows ("adana kebap", "çiğ köfte"): the
+  // dish search finds the places nearby that serve it, whatever a far business is called.
+  const knownDish =
+    it.kind === 'search' &&
+    !it.placeQuery &&
+    !!it.dish &&
+    dishProfile(fold(it.dish), false) !== null;
+  if (!knownDish && folded.split(' ').length >= 2) {
     const matches = allRestaurants().filter((r) => fold(r.name).startsWith(folded));
     const first = matches[0];
     if (first) {
@@ -1234,7 +1294,7 @@ async function answerText(
         .some((w) => PLACE_WORDS.some((p) => fold(w).startsWith(p)));
       const actions: ChatAction[] = [
         streetLike
-          ? pickOnMap(text, t)
+          ? pickOnMap(text, t, ctx)
           : {
               kind: 'refine',
               label: t('chat.actAsDish'),
@@ -1298,17 +1358,32 @@ async function answerText(
     if (ctx.section === 'food') next.requireParking = true;
     else next.section = 'park';
   }
+  // The AI read the whole conversation: for a food search its reading also drops an exclusion or
+  // the parking need said before ("kebap da olur", "otopark şart değil").
+  if (meta.ai && (it.cat || it.food)) {
+    next.notCat = it.notCat ?? null;
+    next.requireParking = it.requireParking;
+  }
 
   if (it.district) {
+    // The AI named a place in the district as well ("Alsancak'ta balık"): search there, not at
+    // the district's centre.
+    const aiPlace =
+      left?.kind !== 'place' && meta.ai?.place && it.placeQuery
+        ? placeInDistrict(it.placeQuery, it.district)
+        : null;
     next.place =
       left?.kind === 'place'
         ? left.place
-        : { label: it.district.name, lat: it.district.lat, lng: it.district.lng };
+        : (aiPlace ?? { label: it.district.name, lat: it.district.lat, lng: it.district.lng });
   } else if (it.placeQuery) {
     const typedRaw = typedPlaceText(text, it.placeQuery);
-    // One to three unknown words: maybe a dish rather than a place.
+    // One to three unknown words: maybe a dish rather than a place. Not when the food is already
+    // named ("Çukurcuma civarında kahvaltı"): then the words are the place.
     const qWords = it.placeQuery.split(' ').filter(Boolean);
     const maybeDish =
+      !it.cat &&
+      !it.dish &&
       qWords.length <= 3 &&
       it.placeQuery.length >= 4 &&
       !qWords.some((w) => PLACE_WORDS.some((p) => w.startsWith(p)));
@@ -1373,7 +1448,7 @@ async function answerText(
                       place: null,
                     },
                   },
-                  pickOnMap(text, t),
+                  pickOnMap(text, t, ctx),
                 ],
               },
               ctx,
@@ -1381,11 +1456,15 @@ async function answerText(
           );
         }
 
-        // 1. A dish or cuisine the user named: show restaurants matching it.
+        // 1. A dish or cuisine the user named: show restaurants matching it (a named category
+        // makes the words a place: 1b below).
         const hasAll = (hay: string) => qWords.every((w) => hasWordStart(hay, w));
-        const named = allRestaurants().filter(
-          (r) => hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
-        );
+        const named = it.cat
+          ? []
+          : allRestaurants().filter(
+              (r) =>
+                hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
+            );
         if (named.length > 0) {
           const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
           const nearest = named
@@ -1467,7 +1546,7 @@ async function answerText(
                     label: t('chat.actLokanta'),
                     patch: { section: 'food', cat: 'lokanta', dish: null },
                   },
-                  pickOnMap(text, t),
+                  pickOnMap(text, t, { section: 'food', cat: null }),
                 ],
               },
               { ...ctx, section: 'food' },
@@ -1481,13 +1560,19 @@ async function answerText(
             {
               text: t('chat.placeNotFound', { q: typedRaw }),
               cards: [],
-              actions: [pickOnMap(text, t), ...examples(next.section, t)],
+              actions: [pickOnMap(text, t, next), ...examples(next.section, t)],
             },
             ctx,
           ),
         );
       }
-      next.place = { label: text.trim(), lat: p.lat, lng: p.lng };
+      // The place words, not the whole message: the AI's place as it wrote it, or the typed words.
+      const shown = meta.ai?.place?.trim() || typedRaw;
+      next.place = {
+        label: shown.charAt(0).toLocaleUpperCase('tr') + shown.slice(1),
+        lat: p.lat,
+        lng: p.lng,
+      };
     }
   } else if (it.nearMe) {
     next.place = null;
@@ -1516,7 +1601,9 @@ async function answerText(
         ctx.party === undefined &&
         !meta.ai?.partySize) ||
       (ask === 'time' && ctx.when === undefined && meta.planWhen === null) ||
-      (ask === 'duration' && next.section === 'park'))
+      (ask === 'duration' && next.section === 'park') ||
+      // A word that may be a place or not ("bebek", "kas"): ask before searching anywhere.
+      (ask === 'place' && !!(meta.ai?.place ?? meta.ai?.district)))
   ) {
     return withNotice(await clarify(ask, next, it.food, deps, meta));
   }
@@ -2148,10 +2235,18 @@ async function clarify(
   const { t } = deps;
   const here = (await deps.here()) ?? activeCity().center;
   const asked = validateFreeText('clarify', meta.ai?.clarify?.text, textContext(deps, here));
-  const text = asked ?? t(`chat.ask_${ask}`);
+  const placeName = meta.ai?.place ?? meta.ai?.district ?? '';
+  const text =
+    asked ?? (ask === 'place' ? t('chat.ask_place', { place: placeName }) : t(`chat.ask_${ask}`));
   const group = [...new Set<Wish>([...meta.wishes, 'group'])];
   let actions: ChatAction[];
-  if (ask === 'district') {
+  if (ask === 'place') {
+    // Yes sends the place as an answer (the AI reads it with the request before); no searches nearby.
+    actions = [
+      { kind: 'say', label: placeName, text: placeName },
+      { kind: 'say', label: t('chat.clarifyNotPlace'), text: t('chat.clarifyNear') },
+    ];
+  } else if (ask === 'district') {
     const nearest = [...activeCity().districtCenters]
       .sort((a, b) => distanceMeters(here, a) - distanceMeters(here, b))
       .slice(0, 3);
@@ -2239,9 +2334,10 @@ function noInfoNote(
     names.length === 1
       ? names[0]!
       : `${names.slice(0, -1).join(', ')} ${t('chat.and')} ${names[names.length - 1]}`;
-  const first = what.charAt(0).toLocaleUpperCase('tr') + what.slice(1);
   const key = section === 'park' ? 'chat.noInfoPark' : 'chat.noInfo';
-  return t(`${key}${aiPicked ? 'Ai' : 'Rule'}`, { what: first });
+  // Capitalised only where the topics open the sentence (Turkish), not mid-sentence (English).
+  const note = t(`${key}${aiPicked ? 'Ai' : 'Rule'}`, { what });
+  return note.startsWith(what) ? note.charAt(0).toLocaleUpperCase('tr') + note.slice(1) : note;
 }
 
 /** Lines saying which wishes really changed the order, written only from the shown cards. */
@@ -2657,7 +2753,7 @@ async function askParkPick(
       ? { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error' }
       : { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error', remaining: res.remaining };
   }
-  const v = verifyParkPick(res.value, candidates, tctx);
+  const v = verifyParkPick(res.value, candidates, tctx, when);
   if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
   const { t } = deps;
   const why = (code: ParkReason, k: number) => {

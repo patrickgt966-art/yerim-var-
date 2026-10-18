@@ -11,8 +11,8 @@ import {
   ipGuard,
   peek,
   releaseUse,
+  takeCancelMark,
   takeUse,
-  wasCancelled,
   type AiLimits,
   type KV,
   type UseTaken,
@@ -20,7 +20,7 @@ import {
 
 const CALL_TTL_SECONDS = 172800;
 const DEFAULT_TTL_SECONDS = 172800;
-const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 /** One quota operation; times are epoch milliseconds so they cross the binding as plain JSON. */
 export type QuotaOp =
@@ -64,11 +64,8 @@ export async function runOp(kv: KV, o: QuotaOp): Promise<unknown> {
     case 'resetCall':
       await kv.put(o.callKey, '', { expirationTtl: CALL_TTL_SECONDS });
       return null;
-    case 'releaseIfCancelled': {
-      const now = new Date(o.now);
-      if (!(await wasCancelled(kv, o.deviceId, o.messageId, now))) return null;
-      return (await releaseUse(kv, o.deviceId, o.messageId, now)).remaining;
-    }
+    case 'releaseIfCancelled':
+      return takeCancelMark(kv, o.deviceId, o.messageId, new Date(o.now));
     case 'cancel':
       return cancelUse(kv, o.deviceId, o.messageId, new Date(o.now));
     default:
@@ -175,7 +172,11 @@ export interface ObjectStorage {
 
 type Stored = { v: string; e: number };
 
-/** KV on Durable Object storage: values carry their expiry; an alarm sweeps old ones daily. */
+/**
+ * KV on Durable Object storage: values carry their expiry, set when a key is first written and
+ * never extended by later writes (a counter tied to an IP or device lives at most its TTL from
+ * its first write); an alarm sweeps expired ones every hour.
+ */
 export function storageKV(
   storage: ObjectStorage,
   clock: () => number = Date.now,
@@ -195,10 +196,15 @@ export function storageKV(
     },
     async put(key, value, opts) {
       const ttl = opts?.expirationTtl ?? DEFAULT_TTL_SECONDS;
-      await storage.put(key, { v: value, e: clock() + ttl * 1000 } satisfies Stored);
+      const now = clock();
+      const old = await storage.get<Stored>(key);
+      const e = old && old.e > now ? Math.min(old.e, now + ttl * 1000) : now + ttl * 1000;
+      await storage.put(key, { v: value, e } satisfies Stored);
       if (!alarmChecked) {
         alarmChecked = true;
-        if ((await storage.getAlarm()) === null) await storage.setAlarm(clock() + DAY_MS);
+        // Also moves a later alarm (the daily one of an older version) forward.
+        const alarm = await storage.getAlarm();
+        if (alarm === null || alarm > clock() + HOUR_MS) await storage.setAlarm(clock() + HOUR_MS);
       }
     },
     /** Deletes every expired value; returns how many. */
@@ -254,6 +260,6 @@ export class QuotaCounter {
 
   async alarm(): Promise<void> {
     await this.queue(() => this.kv.sweep());
-    await this.storage.setAlarm(Date.now() + DAY_MS);
+    await this.storage.setAlarm(Date.now() + HOUR_MS);
   }
 }

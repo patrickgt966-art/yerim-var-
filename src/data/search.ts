@@ -68,6 +68,8 @@ type Entry = SearchHit & {
   aliases: string[];
   /** Metres from the active city's centre. */
   d: number;
+  /** One of the city's official districts, at its centre (cities.ts). */
+  official?: boolean;
 };
 
 // Higher wins on equal match quality.
@@ -168,6 +170,12 @@ function entry(hit: SearchHit, aliases: string[] = []): Entry {
 }
 
 function buildIndex(): Entry[] {
+  // The official districts at their own centres: the OSM data can hold a same-named village far
+  // away ("Kadıköy" in Şile, "Menderes" 95 km out) and miss the district's own town node.
+  const districts = activeCity().districtCenters.map((d) => ({
+    ...entry({ name: d.name, lat: d.lat, lng: d.lng, kind: 'town' }),
+    official: true,
+  }));
   const places = rawPlaces().map((p) =>
     entry({ name: cleanName(p.n), lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
   );
@@ -188,6 +196,7 @@ function buildIndex(): Entry[] {
       (c) => (c.key === e.key || c.aliases.includes(e.key)) && distanceMeters(c, e) <= SAME_PLACE_M,
     );
   return [
+    ...districts,
     ...popular.filter((e) => !dup(e)),
     ...curated,
     ...places.filter((e) => !dup(e)),
@@ -196,22 +205,33 @@ function buildIndex(): Entry[] {
 }
 
 const townLists = new Map<string, (LatLng & { name: string })[]>();
+/** A town node this close to a district centre of the same name is that district's town. */
+const SAME_TOWN_M = 3000;
 
 /** The neighbourhood a point is in, by the nearest place of kind town; none farther than `maxM`. */
 export function areaName(p: LatLng, maxM = 2500): string | undefined {
-  const name = nearestTown(p);
-  if (!name) return undefined;
-  const t = townLists.get(activeCity().id)?.find((x) => x.name === name);
-  return t && distanceMeters(p, t) <= maxM ? name : undefined;
+  const t = nearestTownAt(p);
+  return t && t.d <= maxM ? t.name : undefined;
 }
 
 function nearestTown(p: LatLng): string | undefined {
+  return nearestTownAt(p)?.name;
+}
+
+function nearestTownAt(p: LatLng): { name: string; d: number } | undefined {
   const id = activeCity().id;
   let towns = townLists.get(id);
   if (!towns) {
     towns = rawPlaces()
       .filter((t) => t.k === 'town')
       .map((t) => ({ name: cleanName(t.n), lat: t.a, lng: t.o }));
+    // OSM lacks the town node of some districts (Beyoğlu, Konak) or has the name only for a far
+    // village (Kadıköy): the district's own centre counts as a town too.
+    const own = towns;
+    const centres = activeCity().districtCenters.filter(
+      (d) => !own.some((t) => fold(t.name) === fold(d.name) && distanceMeters(t, d) <= SAME_TOWN_M),
+    );
+    towns = [...towns, ...centres.map((d) => ({ name: d.name, lat: d.lat, lng: d.lng }))];
     townLists.set(id, towns);
   }
   let best: string | undefined;
@@ -223,7 +243,7 @@ function nearestTown(p: LatLng): string | undefined {
       best = t.name;
     }
   }
-  return best;
+  return best === undefined ? undefined : { name: best, d: bestD };
 }
 
 /** Query words that carry meaning, with generic nouns mapped to a known place. */
@@ -325,6 +345,8 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
     // An exact town beats a same-named neighbourhood ("Selçuk"); a lone word
     // names a place before it names a car park ("Efes", "Hilton").
     if (exact && e.kind === 'town') adjust += 50;
+    // The district itself beats any same-named village (the dedupe below then drops the village).
+    if (exact && e.official) adjust += 60;
     if (words.length === 1 && e.kind === 'parking') adjust -= 30;
     if (e.kind === 'university' || e.kind === 'hospital') adjust += institutionBoost;
     scored.push({ e, score: score + adjust });

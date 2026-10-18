@@ -5,30 +5,20 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
-import { Button } from '@/components/Button';
+import { ActiveParkCard } from '@/components/ActiveParkCard';
+import { cityOfPlace, findFavoriteRestaurant, openInCity } from '@/components/favoriteCity';
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Row, Section } from '@/components/Section';
+import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { useNow } from '@/lib/useNow';
-import { FreshnessBadge } from '@/components/FreshnessBadge';
-import { formatClock, getFreshness, visibleFree } from '@/data/freshness';
-import {
-  cuisineLabels,
-  getRestaurant,
-  kindLabel,
-  parkingInfo,
-  type Restaurant,
-} from '@/data/restaurants';
-import { parkCost } from '@/data/tariffs';
+import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
+import { cuisineLabels, kindLabel, parkingInfo } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
-import { durationText } from '@/lib/format';
-import { needsStillParkedPrompt } from '@/lib/park';
 import { useApp } from '@/store/app';
-import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
+import { asym, brand, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
 
 function confirmRemove(t: TFunction, name: string, remove: () => void) {
   Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
@@ -40,32 +30,36 @@ function confirmRemove(t: TFunction, name: string, remove: () => void) {
 function ActiveSection() {
   const { t } = useTranslation();
   const active = useApp((s) => s.active);
-  const endPark = useApp((s) => s.endPark);
-  const now = useNow(15_000);
-  if (!active) {
-    return (
-      <Section title={t('favorites.activeTitle')}>
-        <Txt secondary>{t('favorites.noActive')}</Txt>
-      </Section>
-    );
-  }
-  const elapsed = now - new Date(active.startedAt).getTime();
-  const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
+  if (active) return <ActiveParkCard active={active} />;
   return (
     <Section title={t('favorites.activeTitle')}>
-      <Txt style={{ fontFamily: fonts.display, fontSize: 20 }}>{active.name}</Txt>
-      <Row label={t('favorites.elapsed')} value={durationText(elapsed, t)} />
-      <Row label={t('favorites.estCost')} value={cost != null ? `₺${cost}` : t('common.unknown')} />
-      {needsStillParkedPrompt(active, now) ? (
-        <StillParkedPrompt />
-      ) : (
-        <Button
-          kind="danger"
-          label={t('favorites.end')}
-          onPress={() => confirmEndPark(t, endPark)}
-        />
-      )}
+      <Txt secondary>{t('favorites.noActive')}</Txt>
     </Section>
+  );
+}
+
+/** Mint "P" tile, as on the home list (car parks are green). */
+function ParkTile() {
+  return (
+    <View
+      accessible={false}
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: brand.mintSoft,
+      }}
+    >
+      <Txt
+        allowFontScaling={false}
+        style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 23 }}
+        color={brand.mintText}
+      >
+        P
+      </Txt>
+    </View>
   );
 }
 
@@ -123,22 +117,33 @@ function RestaurantFavorites() {
   const { t } = useTranslation();
   const ids = useApp((s) => s.favoriteRestaurants);
   const toggle = useApp((s) => s.toggleFavoriteRestaurant);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
   const { data, isPlaceholderData } = useParkings();
-  // Ids no longer in the bundled data are skipped silently.
+  // Saved restaurants of every city stay listed with their city; ids no longer in any bundled
+  // data are skipped. Recomputed on a city switch: the active city's data changes with it.
   const items = useMemo(
-    () => ids.map((id) => getRestaurant(id)).filter((r): r is Restaurant => r != null),
-    [ids],
+    () =>
+      ids
+        .map((id) => findFavoriteRestaurant(id))
+        .filter((x): x is NonNullable<typeof x> => x != null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the lookup reads the active city
+    [ids, cityId],
   );
   if (items.length === 0) return <Txt secondary>{t('favorites.emptyRestaurants')}</Txt>;
   const parkings = data?.parkings ?? [];
   const now = new Date();
   return (
     <>
-      {items.map((r) => {
+      {items.map(({ r, city }) => {
         const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t).slice(0, 2)]
           .filter(Boolean)
           .join(' · ');
-        const { parking, nearbyCount } = parkingInfo(r, parkings, now);
+        // Another city's car parks are not loaded: say where the place is instead.
+        const elsewhere = city.id !== cityId;
+        const { parking, nearbyCount } = elsewhere
+          ? { parking: null, nearbyCount: 0 }
+          : parkingInfo(r, parkings, now);
         const near = parking
           ? t('food.nearbyParkings', {
               count: Math.max(nearbyCount, 1),
@@ -151,7 +156,9 @@ function RestaurantFavorites() {
           parking && parking.free != null && parking.at
             ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
             : null;
-        const parkText = [near, free].filter(Boolean).join(' · ');
+        const parkText = elsewhere
+          ? t('favorites.otherCity', { city: city.name, cityLoc: city.locative })
+          : [near, free].filter(Boolean).join(' · ');
         return (
           <View
             key={r.id}
@@ -175,7 +182,11 @@ function RestaurantFavorites() {
                 meta,
                 parking: parkText,
               })}
-              onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
+              onPress={() =>
+                openInCity(city, r.name, t, setCity, () =>
+                  router.push({ pathname: '/restoran/[id]', params: { id: r.id } }),
+                )
+              }
               style={{ flex: 1, minHeight: HIT, gap: 3, justifyContent: 'center' }}
             >
               <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
@@ -216,6 +227,8 @@ export default function FavoritesScreen() {
   const favorites = useApp((s) => s.favorites);
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const replaceFavoriteId = useApp((s) => s.replaceFavoriteId);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
   const { data } = useParkings();
   const now = new Date(useNow(30_000));
   const [tab, setTab] = useState<FavTab>('parkings');
@@ -248,13 +261,24 @@ export default function FavoritesScreen() {
         <Txt secondary>{t('favorites.empty')}</Txt>
       ) : (
         favorites.map((f) => {
-          const p = data ? resolveFavoriteParking(f, data.parkings) : null;
+          // A car park saved in another city: listed with its city, opened after switching to it.
+          const savedIn = cityOfPlace(f);
+          const elsewhere = savedIn && savedIn.id !== cityId ? savedIn : undefined;
+          const p = data && !elsewhere ? resolveFavoriteParking(f, data.parkings) : null;
           const fresh = p ? getFreshness(p, now) : null;
           const free = p ? visibleFree(p, now) : null;
-          // Only fresh counts are shown; anything else reads as no count / unknown.
-          const status =
+          // Only fresh counts are shown; anything else reads as no count / unknown, in grey.
+          const live =
             free != null && fresh && (fresh.kind === 'live' || fresh.kind === 'updated')
-              ? t('favorites.freeAt', { count: free, time: formatClock(fresh.at) })
+              ? fresh
+              : null;
+          const level = live && p ? occupancyLevel(free, p.capacity) : 'unknown';
+          const status = elsewhere
+            ? t('favorites.otherCity', { city: elsewhere.name, cityLoc: elsewhere.locative })
+            : live
+              ? level === 'full'
+                ? t('favorites.fullAt', { time: formatClock(live.at) })
+                : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
               : fresh?.kind === 'noData'
                 ? t('favorites.noCount')
                 : t('common.unknown');
@@ -278,7 +302,9 @@ export default function FavoritesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
                 onPress={() =>
-                  router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } })
+                  openInCity(elsewhere, f.name, t, setCity, () =>
+                    router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } }),
+                  )
                 }
                 style={{
                   flex: 1,
@@ -288,13 +314,15 @@ export default function FavoritesScreen() {
                   gap: 12,
                 }}
               >
-                <PBadge size={32} />
-                <View style={{ flex: 1, gap: 4 }}>
+                <ParkTile />
+                <View style={{ flex: 1, gap: 2 }}>
                   <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Txt variant="caption">{status}</Txt>
-                    {fresh && free != null && <FreshnessBadge freshness={fresh} />}
-                  </View>
+                  <Txt
+                    style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
+                    color={statusTone(level).fg}
+                  >
+                    {status}
+                  </Txt>
                 </View>
               </Pressable>
               <Pressable

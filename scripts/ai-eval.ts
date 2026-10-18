@@ -1,13 +1,15 @@
 /* eslint-disable import/no-unresolved -- SDK lives in server/yerim-ai/node_modules, absent in the main CI job. */
 /**
- * Runs the chat eval cases through the same Haiku "understand" call the Worker makes
+ * Runs the chat eval cases through the same "understand" call the Worker makes
  * (server/yerim-ai/src/index.ts, /understand) and scores them with src/data/eval/score.ts; then the
  * hard cases (src/data/eval/aiCases.ts: slang, filler, a request split over two messages, and pick
  * choices that need judgment) through /understand and /pick, scored with src/data/eval/aiScore.ts.
  * Exits 1 when fewer than HARD_PASS of the hard cases pass.
  *
  * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval.ts
- * CI: .github/workflows/ai-eval.yml (manual). Writes docs/chat-eval-ai.md.
+ * CI: .github/workflows/ai-eval.yml, run by hand and on every pull request that touches the AI
+ * files (src/lib/ai, src/data/assistant.ts, src/data/eval, this script, the Worker). Each run makes
+ * paid API calls and fails the check below HARD_PASS. Writes docs/chat-eval-ai.md.
  *
  * The SDK is imported from server/yerim-ai/node_modules (pinned 0.133.0, same as the Worker);
  * install it with `npm ci --prefix server/yerim-ai`.
@@ -18,6 +20,8 @@ import * as path from 'node:path';
 import Anthropic from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/index.mjs';
 import { zodOutputFormat } from '../server/yerim-ai/node_modules/@anthropic-ai/sdk/helpers/zod.mjs';
 
+import { cityById } from '@/data/cities';
+import { settleDistrict } from '@/data/districtMatch';
 import { PICK_CASES, UNDERSTAND_CASES } from '@/data/eval/aiCases';
 import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
 import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
@@ -71,28 +75,40 @@ const NOTHING_SET: Extract<QueryIntent, { kind: 'search' }> = {
   mentionsParking: false,
 };
 
+const TALK = ['greeting', 'abuse', 'offtopic'] as const;
+
 /**
- * Mirrors intentFromUnderstanding in src/data/assistant.ts.
+ * Mirrors intentFromUnderstanding in src/data/assistant.ts (keep the two in sync), with the
+ * district settled first as the app's router does (settleDistrict). The AI has one "chat" kind where the
+ * rules tell greeting, abuse and off-topic apart; in the app each gets the AI's own reply, so a
+ * chat answer counts as the talk kind the case expects. "unknown" is the AI's "I did not get it",
+ * which is what a gibberish case wants.
  */
-function intentFromUnderstanding(u: Understanding, text: string): QueryIntent {
-  if (u.kind === 'chat') return { kind: 'offtopic' };
+function intentFromUnderstanding(u: Understanding, text: string, want?: string): QueryIntent {
+  if (u.kind === 'chat') return { kind: TALK.find((k) => k === want) ?? 'offtopic' };
+  if (u.kind === 'unknown' && (want === 'gibberish' || want === 'empty')) return { kind: want };
   if (u.kind === 'unknown') return { ...NOTHING_SET, text: fold(text) };
-  const district = u.district
-    ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(u.district!)) ?? null)
+  // The chat cases are İzmir's.
+  const s = settleDistrict(u, text, cityById('izmir').districts);
+  const district = s.district
+    ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(s.district!)) ?? null)
     : null;
+  // A dish or a category is food, whichever section the chat is in.
+  const food = s.food || s.cat !== null || !!s.dish;
   return {
     kind: 'search',
     text: fold(text),
-    cat: u.cat,
-    dish: u.dish,
+    cat: s.cat,
+    dish: s.dish,
+    dishServes: s.dishServes,
     district,
-    placeQuery: u.place ? fold(u.place) : '',
-    requireParking: u.requireParking,
+    placeQuery: s.place ? fold(s.place) : '',
+    requireParking: s.requireParking,
     quality: false,
     uncertain: false,
-    food: u.food || u.cat !== null,
-    nearMe: u.nearMe,
-    mentionsParking: u.requireParking || (!u.food && u.cat === null),
+    food,
+    nearMe: s.nearMe,
+    mentionsParking: s.requireParking || !food,
   };
 }
 
@@ -127,7 +143,10 @@ async function main(): Promise<void> {
         response.stop_reason === 'refusal' || !response.parsed_output
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
-      rows.push({ c, ...scoreCase(c, intentFromUnderstanding(understanding, c.text)) });
+      rows.push({
+        c,
+        ...scoreCase(c, intentFromUnderstanding(understanding, c.text, c.expect.kind)),
+      });
     } catch (e) {
       // Message only: never echo request headers / the key.
       const msg = e instanceof Error ? e.message : 'unknown error';
@@ -191,7 +210,11 @@ async function main(): Promise<void> {
         response.stop_reason === 'refusal' || !response.parsed_output
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
-      return scoreUnderstanding(c, u);
+      // As the app reads it: the district settled against the city's own list.
+      return scoreUnderstanding(
+        c,
+        settleDistrict(u, c.text, cityById(c.city ?? 'izmir').districts),
+      );
     });
   }
   for (const c of PICK_CASES) {

@@ -24,9 +24,9 @@
 <body>
 <main>
 <h1>Gizlilik Politikası</h1>
-<p class="muted">Yerim Var: Yemek ve Park · Son güncelleme: 16 Ekim 2026 · <a href="#en">English below</a></p>
+<p class="muted">Yerim Var: Yemek ve Park · Son güncelleme: 18 Ekim 2026 · <a href="#en">English below</a></p>
 
-<p>Yerim Var; İzmir, İstanbul, Ankara, Bursa ve Antalya'da restoran, otopark ve gideceğin yerin yanındaki park yerini bulmana yardım eden açık kaynaklı bir uygulamadır. Hesap, analitik, reklam ve takip yoktur. Tek sunucumuz isteğe bağlı yapay zekâ asistanı Yerim ✨ içindir (aşağıda). Senden kişisel veri toplamıyor ve kimseye satmıyoruz.</p>
+<p>Yerim Var; İzmir, İstanbul, Ankara, Bursa ve Antalya'da restoran, otopark ve gideceğin yerin yanındaki park yerini bulmana yardım eden açık kaynaklı bir uygulamadır. Hesap, analitik, reklam ve takip yoktur. Tek sunucumuz isteğe bağlı yapay zekâ asistanı Yerim ✨ içindir (aşağıda). Kimliğine bağlı veri toplamıyor, hiçbir veriyi kimseye satmıyoruz.</p>
 
 <h2>Cihazında kalan bilgiler</h2>
 <ul>
@@ -36,24 +36,25 @@
 </ul>
 
 <h2>Konum</h2>
-<p>Konumunu yalnızca uygulama açıkken ve sen izin verirsen, yakınındaki otoparkları ve restoranları göstermek, yürüme mesafesini hesaplamak ve park ettiğin yeri kaydetmek için kullanırız. Konumun bize gönderilmez; mesafe hesapları telefonunda yapılır. Arka planda konum kullanılmaz.</p>
+<p>Konumunu yalnızca uygulama açıkken ve sen izin verirsen, yakınındaki otoparkları ve restoranları göstermek, yürüme mesafesini hesaplamak ve park ettiğin yeri kaydetmek için kullanırız. Konumun hiçbir zaman bizim sunucumuza gönderilmez; mesafe hesapları telefonunda yapılır. Otopark aramasında ve adres bulmada (bulunduğun yerin adresini göstermek için) konumun yaklaşık 100 m'ye yuvarlanarak Apple Haritalar'a gider. Arka planda konum kullanılmaz.</p>
 
 <h2>Yerim ✨ (yapay zekâ, isteğe bağlı)</h2>
-<p>Yerim ✨ yalnızca sen onay verirsen çalışır. Onay verirsen her sohbet mesajın bizim sunucumuz (Cloudflare) üzerinden Anthropic'in Claude modeline gider. Gönderilenler:</p>
+<p>Yerim ✨ yalnızca sen onay verirsen çalışır. Onay verirsen her sohbet mesajın bizim sunucumuz (Cloudflare) üzerinden Anthropic'in Claude yapay zekâsına gider. Yapay zekâya gönderilenler:</p>
 <ul>
-  <li>Yazdığın mesaj ve sohbetteki son birkaç mesaj,</li>
-  <li>seçtiğin şehir,</li>
-  <li>restoran seçiminde, uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı ve türü (kategori, mutfak) ile yürüme süresi, en yakın otoparkın uzaklığı, ücretsiz olup olmadığı, boş yer sayısı ve açık/kapalı bilgisi,</li>
-  <li>günlük hakkı saymak için rastgele üretilmiş bir cihaz kimliği.</li>
+  <li>yazdığın mesaj ve sohbetteki son birkaç mesaj (bir sonraki adımda, asistanın bu konuşmadan çıkardığı kısa özet de),</li>
+  <li>seçtiğin şehir, uygulamanın dili, sohbetin yemek mi otopark bölümünde olduğu,</li>
+  <li>restoran seçiminde, uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı ve türü (kategori, mutfak) ile yürüme süresi, açık/kapalı ve geç saate kadar açık olup olmadığı, istenen yemeğe uyup uymadığı, açık havada oturma yeri, en yakın otoparkın uzaklığı, ücretsiz olup olmadığı ve boş yer sayısı,</li>
+  <li>otopark seçiminde, yakındaki otoparkların yürüme süresi, açık/kapalı ve 24 saat açık olup olmadığı, ücretsiz olup olmadığı, tarifesinin bilinip bilinmediği, kapalı otopark olup olmadığı, boş yer sayısı, kapasitesi ve raylı sisteme yakınlığı,</li>
+  <li>plan yaparken, gitmek istediğin zaman (ör. "akşam") ile restoranların ve her birinin yanındaki en fazla 3 otoparkın aynı türden bilgileri.</li>
 </ul>
-<p>Konumun (koordinatların) ve hesap bilgisi gönderilmez; hesap yoktur. Sunucu mesaj metnini kaydetmez. Günlük hak sınırı için cihaz kimliğine ve IP adresine bağlı sayaçlar en fazla iki gün tutulur. Mesajına kişisel bilgi yazma. Onay vermezsen uygulama kendi kurallarıyla cevap verir.</p>
+<p>Yer adları ve yürüme süreleri yaklaşık bulunduğun bölgeyi belli edebilir; ama konumun (koordinatların) asla gönderilmez. Hesap yoktur, hesap bilgisi de gönderilmez. Günlük hakkı saymak için rastgele üretilmiş bir cihaz kimliği yalnızca bizim sunucumuza gider. Sunucu mesaj metnini kaydetmez. Günlük hak sınırı için cihaz kimliğine ya da IP adresine (IPv6'da /64 bloğuna) bağlı sayaçlar, ilk yazıldıktan sonra en geç 49 saat içinde silinir. Mesajına kişisel bilgi yazma. Onay vermezsen uygulama kendi kurallarıyla cevap verir.</p>
 
 <h2>Uygulamanın bağlandığı servisler</h2>
 <table>
   <tr><th>Servis</th><th>Ne gönderilir</th><th>Neden</th></tr>
   <tr><td>Seçili şehrin doluluk API'si: İzmir'de İzmir Büyükşehir Belediyesi açık veri API'si, İstanbul'da İBB / İSPARK. Ankara, Bursa ve Antalya'da bu istek yapılmaz.</td><td>Kişisel veri içermeyen standart bir istek</td><td>Otoparkların doluluk bilgisini almak</td></tr>
-  <tr><td>Yerim ✨ sunucusu (Cloudflare) ve Anthropic (yalnızca onay verirsen)</td><td>Yukarıdaki "Yerim ✨" bölümünde sayılanlar</td><td>Mesajını anlamak ve yakındaki yerlerden uygun olanı seçmek</td></tr>
-  <tr><td>Apple Haritalar (harita, adres ve yer araması)</td><td>Arama kutusuna yazdığın metin (yer aramasında arama alanı seçili şehrin tamamıdır, konumun gönderilmez); otopark aramasında arama noktasının (konumun ya da aradığın yerin) ~100 m'ye yuvarlanmış yaklaşık bölgesi; harita gösterirken ekrandaki bölgenin harita görüntüleri</td><td>Harita göstermek, yer ve otopark bulmak</td></tr>
+  <tr><td>Yerim ✨ sunucusu (Cloudflare) ve Anthropic (yalnızca onay verirsen)</td><td>Yukarıdaki "Yerim ✨" bölümünde sayılanlar</td><td>Mesajını anlamak, yakındaki yerlerden ve otoparklardan uygun olanı seçmek, plan yapmak</td></tr>
+  <tr><td>Apple Haritalar (harita, adres ve yer araması)</td><td>Arama kutusuna yazdığın metin (yer aramasında arama alanı seçili şehrin tamamıdır, konumun gönderilmez); otopark aramasında arama noktasının (konumun ya da aradığın yerin) ~100 m'ye yuvarlanmış yaklaşık bölgesi; adres bulmada ~100 m'ye yuvarlanmış konumun; harita gösterirken ekrandaki bölgenin harita görüntüleri</td><td>Harita göstermek, yer, adres ve otopark bulmak</td></tr>
 </table>
 <p>Bu servisler, her internet bağlantısında olduğu gibi IP adresini görebilir. Apple'ın verileri nasıl işlediği için <a href="https://www.apple.com/legal/privacy/">Apple Gizlilik Politikası</a>'na, Anthropic için <a href="https://www.anthropic.com/legal/privacy">Anthropic Gizlilik Politikası</a>'na bakabilirsin.</p>
 
@@ -62,7 +63,7 @@
 <p>Bir otoparkın bilgisini hatalı diye bildirirsen GitHub'da otoparkın adı ve kimliği önceden doldurulmuş bir kayıt sayfası açılır. Göndermezsen hiçbir şey paylaşılmaz. GitHub kayıtları herkese açıktır; içine kişisel bilgi yazma.</p>
 
 <h2>Çocuklar</h2>
-<p>Uygulama kimseden kişisel veri toplamadığı için çocuklardan da toplamaz.</p>
+<p>Uygulama kimseden kimliğine bağlı veri toplamaz; çocuklardan da. Yerim ✨ isteğe bağlıdır ve yalnızca onayla çalışır.</p>
 
 <h2>Değişiklikler ve iletişim</h2>
 <p>Favorilerini uygulamadan tek tek kaldırabilir, tüm bilgileri uygulamayı silerek silebilirsin. Bu politika değişirse bu sayfayı güncelleriz. Sorular için <a href="https://github.com/patrickgt966-art/yerim-var-/issues">GitHub sayfamızdan</a> bize yazabilirsin. Uygulamanın kaynak kodu açıktır; ne yaptığını herkes kontrol edebilir.</p>
@@ -70,9 +71,9 @@
 <hr>
 
 <h1 id="en">Privacy Policy</h1>
-<p class="muted">Yerim Var: Yemek ve Park · Last updated: 16 October 2026</p>
+<p class="muted">Yerim Var: Yemek ve Park · Last updated: 18 October 2026</p>
 
-<p>Yerim Var is an open-source app that helps you find restaurants and parking in İzmir, İstanbul, Ankara, Bursa and Antalya, including next to the place you are going. There are no accounts, analytics, ads or tracking. Our only server is for the optional AI assistant Yerim ✨ (see below). We do not collect or sell personal data.</p>
+<p>Yerim Var is an open-source app that helps you find restaurants and parking in İzmir, İstanbul, Ankara, Bursa and Antalya, including next to the place you are going. There are no accounts, analytics, ads or tracking. Our only server is for the optional AI assistant Yerim ✨ (see below). We collect no data linked to your identity and sell no data to anyone.</p>
 
 <h2>Data that stays on your device</h2>
 <ul>
@@ -82,24 +83,25 @@
 </ul>
 
 <h2>Location</h2>
-<p>With your permission, your location is used only while the app is open, to show nearby car parks and restaurants, calculate walking distances and save where you parked. It is never sent to us; distances are calculated on your phone. No background location is used.</p>
+<p>With your permission, your location is used only while the app is open, to show nearby car parks and restaurants, calculate walking distances and save where you parked. It is never sent to our server; distances are calculated on your phone. For car park search and address lookup (to show the address of where you are), your location goes to Apple Maps rounded to about 100 m. No background location is used.</p>
 
 <h2>Yerim ✨ (AI, optional)</h2>
-<p>Yerim ✨ only works if you agree. If you do, each chat message goes through our server (Cloudflare) to Anthropic's Claude model. What is sent:</p>
+<p>Yerim ✨ only works if you agree. If you do, each chat message goes through our server (Cloudflare) to Anthropic's Claude AI. What the AI receives:</p>
 <ul>
-  <li>your message and the last few messages of the chat,</li>
-  <li>your selected city,</li>
-  <li>when picking a restaurant, from the app's own data: the public name and type (category, cuisine) of nearby places, with walking time, distance to the nearest car park, whether it is free, its free spaces and whether the place is open,</li>
-  <li>a randomly generated device ID, to count daily uses.</li>
+  <li>your message and the last few messages of the chat (and, in a follow-up step, the assistant's own short summary of the conversation),</li>
+  <li>your selected city, the app's language, and whether the chat is in the food or the car park section,</li>
+  <li>when picking a restaurant, from the app's own data: the public name and type (category, cuisine) of nearby places, with walking time, whether each is open and open late, whether it serves the dish asked for, outdoor seating, distance to the nearest car park, whether that car park is free and its free spaces,</li>
+  <li>when picking a car park: for nearby car parks, walking time, whether each is open and open around the clock, whether it is free, whether we know its tariff, whether it is covered, its free spaces, its capacity and whether it is near rail transit,</li>
+  <li>when making a plan: when you want to go (for example "this evening"), with the same kind of facts for the restaurants and up to 3 car parks next to each.</li>
 </ul>
-<p>Your location (coordinates) and account details are not sent; there are no accounts. The server does not store message text. For the daily limit, counters tied to the device ID and IP address are kept for at most two days. Do not put personal information in your messages. If you do not agree, the app answers with its own rules.</p>
+<p>Place names and walking times can reveal your approximate area, but your location (coordinates) is never sent. There are no accounts, so no account details are sent. A randomly generated device ID, used to count daily uses, goes only to our server. The server does not store message text. For the daily limit, counters tied to the device ID or the IP address (for IPv6, its /64 block) are deleted within 49 hours after they are first written. Do not put personal information in your messages. If you do not agree, the app answers with its own rules.</p>
 
 <h2>Services the app connects to</h2>
 <table>
   <tr><th>Service</th><th>What is sent</th><th>Why</th></tr>
   <tr><td>The selected city's occupancy API: İzmir Metropolitan Municipality open data in İzmir, İBB / İSPARK in İstanbul. No such request in Ankara, Bursa and Antalya.</td><td>A standard request with no personal data</td><td>Car park occupancy</td></tr>
-  <tr><td>Yerim ✨ server (Cloudflare) and Anthropic (only with your consent)</td><td>What is listed under "Yerim ✨" above</td><td>Understanding your message and picking a fitting nearby place</td></tr>
-  <tr><td>Apple Maps (map, address and place search)</td><td>The text you type in search (place search covers the whole selected city and does not include your location); for car park search, the approximate area of the search point (your location or the place you searched), rounded to ~100 m; map imagery for the area shown on screen</td><td>Showing the map, finding places and car parks</td></tr>
+  <tr><td>Yerim ✨ server (Cloudflare) and Anthropic (only with your consent)</td><td>What is listed under "Yerim ✨" above</td><td>Understanding your message, picking a fitting nearby place or car park, making a plan</td></tr>
+  <tr><td>Apple Maps (map, address and place search)</td><td>The text you type in search (place search covers the whole selected city and does not include your location); for car park search, the approximate area of the search point (your location or the place you searched), rounded to ~100 m; for address lookup, your location rounded to ~100 m; map imagery for the area shown on screen</td><td>Showing the map, finding places, addresses and car parks</td></tr>
 </table>
 <p>Like any internet connection, these services can see your IP address. See the <a href="https://www.apple.com/legal/privacy/">Apple Privacy Policy</a> and the <a href="https://www.anthropic.com/legal/privacy">Anthropic Privacy Policy</a> for how they handle data.</p>
 
@@ -108,7 +110,7 @@
 <p>If you report wrong car park data, GitHub opens with the car park's name and ID prefilled. Nothing is shared unless you submit it. GitHub issues are public, so do not include personal information.</p>
 
 <h2>Children</h2>
-<p>The app collects no personal data from anyone, including children.</p>
+<p>The app collects no data linked to anyone's identity, including children's. Yerim ✨ is optional and only works with consent.</p>
 
 <h2>Changes and contact</h2>
 <p>You can remove favourites one by one in the app, and delete everything by deleting the app. If this policy changes, we will update this page. Questions: <a href="https://github.com/patrickgt966-art/yerim-var-/issues">GitHub issues</a>. The source code is public, so anyone can check what the app does.</p>

@@ -1,6 +1,6 @@
 import { setActiveCity } from '@/data/cities';
 
-import { BANNED_WORDS, validateFreeText } from '../freeText';
+import { BANNED_TURKISH_WORDS, BANNED_WORDS, validateFreeText } from '../freeText';
 
 const ctx = {
   names: ['Aysel Abla Lokantası', 'Mado', 'Konak Otopark'],
@@ -129,9 +129,10 @@ describe('validateFreeText', () => {
   });
 
   it('lists the banned words it checks', () => {
-    for (const w of ['ucretsiz', 'acik', 'saat', 'dakika', 'guvenli', 'yuksekl', 'rezervasyon']) {
+    for (const w of ['ucretsiz', 'saat', 'dakika', 'mesafe', 'guvenli', 'yuksekl', 'rezervasyon']) {
       expect(BANNED_WORDS).toContain(w);
     }
+    expect(BANNED_TURKISH_WORDS).toEqual(expect.arrayContaining(['açık', 'ünlü']));
   });
 });
 
@@ -165,6 +166,8 @@ describe('validateFreeText: chat zone (small talk)', () => {
   it.each([
     'Size de iyi günler! Park yeri mi, yemek mi?',
     'Selam! Ben Yerim, yemek ya da otopark bulurum.',
+    'Merhaba! Ben Yerim Var asistanı, yemek ya da otopark bulmana yardım ederim.',
+    "Hi! I'm the Yerim Var assistant, I find food and parking.",
     'Rica ederim, ne demek 😄',
     'Görüşürüz! İyi yolculuklar.',
   ])('accepts "%s"', (text) => {
@@ -231,5 +234,136 @@ describe('validateFreeText in English', () => {
       expect(validateFreeText('tone', s)).toBeNull();
     }
     expect(validateFreeText('dishNote', 'This place makes it fresh')).toBeNull();
+  });
+});
+
+describe('validateFreeText: distance and proximity claims', () => {
+  it.each([
+    ['tone', 'Kısa bir yürüyüş mesafesinde, afiyet olsun!'],
+    ['tone', 'İki adım mesafede güzel bir seçim.'],
+    ['tone', 'Yürüyerek gidebilirsin!'],
+    ['tone', 'Just a short walk away!'],
+    ['tone', 'Good food is near!'],
+    ['tone', 'Good food is near'],
+    ['tone', 'It is not far'],
+    ['tone', 'Give me a min'],
+    ['tone', 'Right around the corner!'],
+    ['chat', 'Just a short walk away!'],
+    ['dishNote', 'Kibbe is a dish you can find at walking distance.'],
+  ] as const)('rejects %s: "%s"', (zone, text) => {
+    expect(validateFreeText(zone, text, ctx)).toBeNull();
+  });
+
+  it('still lets an everyday word through that only starts like one', () => {
+    expect(validateFreeText('tone', 'Nearly there, enjoy!')).not.toBeNull();
+    expect(validateFreeText('tone', 'Fare enough, enjoy!')).not.toBeNull();
+  });
+});
+
+describe('validateFreeText: hunger is not "açık"', () => {
+  it.each([
+    ['tone', 'Acıktıysan hemen güzel bir şey bulalım!'],
+    ['chat', 'Acıktın mı? Hadi bir şeyler bulalım!'],
+    ['tone', 'Acıkmışsın, hadi bakalım!'],
+  ] as const)('accepts %s: "%s"', (zone, text) => {
+    expect(validateFreeText(zone, text, ctx)).toBe(text);
+  });
+
+  it.each([
+    'Bu akşam açık bir yer bulalım!',
+    'Açıkçası harika bir seçim.',
+    'Burası acik, gel!',
+    'Is it acik?',
+    'Ünlü bir yer bulalım!',
+  ])('still rejects "%s"', (text) => {
+    expect(validateFreeText('tone', text, ctx)).toBeNull();
+  });
+});
+
+describe('validateFreeText: dish notes in English and about foreign cuisines', () => {
+  it.each([
+    'Kibbe is a Middle Eastern dish made of bulgur and minced meat.',
+    'Gyoza are Japanese dumplings filled with meat or vegetables.',
+    'Carbonara is an Italian pasta with egg and cheese.',
+    'Souvlaki is a Greek dish of grilled meat on a skewer.',
+    'Pho is a Vietnamese noodle soup from the Far East.',
+    'Ramen, Uzak Doğu mutfağının sevilen erişte çorbalarından biridir.',
+    'Ramen, Uzakdoğu mutfağından bir erişte çorbasıdır.',
+    'Cağ kebabı, Erzurum mutfağına özgü bir kebaptır.',
+    'Pho, Vietnam mutfağından bir erişte çorbasıdır.',
+    'Falafel, Lübnan ve Güneydoğu mutfaklarında da sevilen bir yemektir.',
+    'Boyoz, Ege mutfağında önemli bir yeri olan yağlı bir hamur işidir.',
+    'Pişi, mayalı hamurdan kızartılarak yapılan unlu bir kahvaltılıktır.',
+    'Gözleme, peynir ve/veya ıspanakla yapılan bir hamur işidir.',
+  ])('accepts "%s"', (text) => {
+    expect(validateFreeText('dishNote', text, ctx)).toBe(text);
+  });
+
+  it.each([
+    'Kibbe is a Middle Eastern dish, best eaten here.',
+    'Uzak bir yerde yapılan bir yemektir.',
+    'Boyoz, bu yerde yapılan bir hamur işidir.',
+    'Pho is a Vietnamese soup from a famous place nearby.',
+    'Pho, Bornova tarafında yapılan bir çorbadır.',
+    'Detaylar için site/sayfa/pho adresine bak.',
+    'Pho is served at Mado on weekends.',
+  ])('still rejects "%s"', (text) => {
+    expect(validateFreeText('dishNote', text, ctx)).toBeNull();
+  });
+
+  it('keeps foreign region names out of the tone', () => {
+    expect(validateFreeText('tone', 'Bir Uzak Doğu akşamı, afiyet olsun!')).toBeNull();
+    expect(validateFreeText('tone', 'Uzakta değil, afiyet olsun!')).toBeNull();
+  });
+});
+
+describe('validateFreeText: polite phrases are not claims', () => {
+  it.each([
+    ['chat', 'Safe travels, come back when you are hungry!'],
+    ['chat', "Feel free to tell me what you're craving!"],
+    ['chat', 'All the best, see you soon!'],
+    ['chat', 'Kesinlikle, ne arıyorsunuz?'],
+    ['tone', 'Gluten-free it is!'],
+    ['tone', 'Best wishes on your anniversary!'],
+  ] as const)('accepts %s: "%s"', (zone, text) => {
+    expect(validateFreeText(zone, text, ctx)).toBe(text);
+  });
+
+  it.each([
+    'Parking is free there.',
+    'A safe spot for your car.',
+    'The best kebab around.',
+    'Kesin beğenirsin, en iyisi!',
+    'Kesin yer var!',
+  ])('still rejects "%s"', (text) => {
+    expect(validateFreeText('chat', text, ctx)).toBeNull();
+  });
+});
+
+describe('validateFreeText: words that are also district names', () => {
+  afterEach(() => setActiveCity('izmir'));
+
+  it('reads "kas" (muscle) as a word, not the district Kaş, in a text with accents', () => {
+    setActiveCity('antalya');
+    const t = 'Kas yapmak için güzel bir hedef, protein bulalım!';
+    expect(validateFreeText('tone', t)).toBe(t);
+    expect(validateFreeText('tone', "Kaş'ta güzel bir akşam!")).toBeNull();
+    expect(validateFreeText('tone', 'Off to Kas tonight!')).toBeNull();
+  });
+
+  it('lets a dish named after a district through, not the district itself', () => {
+    expect(validateFreeText('tone', 'Menemen ile güne başlamak gibisi yok!')).not.toBeNull();
+    expect(
+      validateFreeText('dishNote', 'Menemen, domates, biber ve yumurtayla yapılır.'),
+    ).not.toBeNull();
+    expect(
+      validateFreeText('dishNote', 'Kemalpaşa tatlısı, peynirli bir şerbetli tatlıdır.'),
+    ).not.toBeNull();
+    expect(validateFreeText('tone', "Menemen'de bir şey bulalım!")).toBeNull();
+    setActiveCity('bursa');
+    expect(
+      validateFreeText('dishNote', 'İnegöl köftesi, kıymadan yapılan bir köftedir.'),
+    ).not.toBeNull();
+    expect(validateFreeText('dishNote', "İnegöl'de yapılan bir köftedir.")).toBeNull();
   });
 });

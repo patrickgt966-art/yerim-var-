@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,15 @@ import { cityAt, cityExamples, CITIES, cityById, hasLiveParking, type City } fro
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
 import { asym, brand, fonts, HIT } from '@/theme';
+
+/** The permission prompt only: the last step never waits for a GPS fix (none may come indoors). */
+async function askLocationPermission(): Promise<void> {
+  try {
+    await Location.requestForegroundPermissionsAsync();
+  } catch {
+    // Denied or unavailable: search works without it.
+  }
+}
 
 function Rings() {
   const reduce = useReducedMotion();
@@ -466,7 +476,7 @@ export default function Onboarding() {
               <CTA
                 label={t('onboarding.allow')}
                 onPress={async () => {
-                  await currentLocation(true);
+                  await askLocationPermission();
                   finish();
                 }}
               />

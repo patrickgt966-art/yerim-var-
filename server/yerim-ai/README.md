@@ -7,21 +7,22 @@ Sıfırdan kurmak için:
 1. console.anthropic.com adresinde hesap aç, bakiye yükle, aylık harcama limiti belirle ve bir API anahtarı oluştur.
 2. `cd server/yerim-ai && npm install`
 3. `npx wrangler login`
-4. `npx wrangler kv namespace create QUOTA` — çıkan id'yi `wrangler.toml` içindeki `REPLACE_WITH_KV_ID` yerine yaz.
+4. `npx wrangler kv namespace create QUOTA` — çıkan id'yi `wrangler.toml` içindeki `[[kv_namespaces]]` bölümünün `id` alanına yaz (depodaki id proje sahibinin hesabına aittir). Sayaçların çalıştığı Durable Object (`QuotaCounter`) ilk `deploy` ile kendiliğinden oluşur.
 5. `npx wrangler secret put ANTHROPIC_API_KEY` — anahtar asla koda veya sohbete yazılmaz.
 6. `npx wrangler deploy` — çıkan URL'yi `app.json` içinde `expo.extra.aiUrl` alanına yaz.
 7. Uygulamayı yeniden başlat.
 
 ## Limitler
 
-Tek sayaç: her mesaj önce Haiku'ya gider (`/understand`, yönlendirici). Model önce kısa ve gizli bir `meaning` cümlesi yazar, sonra düz bir yapılandırılmış şemayla `search`, `chat` ya da `unknown` döner. Yemek aramalarında `/pick` yakındaki en çok 15 yeri adı ve türüyle görür, uyanları (`fit`, `noneFit`) değerlendirip birini seçer; yalnızca sıra numaraları döner.
+Tek sayaç: her mesaj önce Haiku'ya gider (`/understand`, yönlendirici). Model önce kısa ve gizli bir `meaning` cümlesi yazar, sonra düz bir yapılandırılmış şemayla `search`, `chat` ya da `unknown` döner. Yemek aramalarında `/pick` yakındaki en çok 40 yeri (`MAX_PICK_CANDIDATES`) adı ve türüyle görür, uyanları (`fit`, `noneFit`) değerlendirip birini seçer; yalnızca sıra numaraları döner.
 
 - Cihaz başına günde 10 yapay zekâ mesajı, ilk mesaj dahil (`FREE_DAILY`, `src/lib/ai/protocol.ts`; ayrı bir sohbet hakkı yok). `/understand`, `/pick`, `/plan`, `/narrate` ve eski uygulamalar için duran `/chat` aynı sayaçtan düşer. Aynı mesajın (aynı `messageId`) birden çok çağrısı tek hak sayılır.
 - Tüm cihazlar için günde 10000 mesaj (`AI_GLOBAL_DAILY`; eski adı `CHAT_GLOBAL_DAILY` yeni ad boşsa okunur). Dolunca Anthropic'e istek gitmez, 429 `reason: "global"`.
-- IP başına günde 100 çağrı (`AI_DAILY_PER_IP`, tüm uç noktalar).
+- IP başına günde 100 çağrı (`AI_DAILY_PER_IP`, tüm uç noktalar). IPv4 adresi tek başına, IPv6 adresi /64 önekiyle sayılır (bir abone ya da sunucu genelde bütün bir /64'e sahiptir).
 - Aynı cihazdan iki yeni mesaj arası en az 1000 ms (`CHAT_MIN_INTERVAL_MS`, 429 `reason: "slow"`); aynı mesajın `/pick` ve `/plan` çağrıları buna takılmaz.
-- Anthropic hata verirse ya da cevap vermezse hak (cihaz ve genel sayaç) geri verilir.
-- Uygulama yönlendiriciyi 9 sn içinde alamazsa bekleyişten vazgeçer ve `POST /cancel { deviceId, messageId }` gönderir; sunucu o mesajın hakkını geri verir (çağrı sürüyorsa bitince verir; tekrar çağrılması zarar vermez). Cihaz başına günde en fazla 5 iptal geri ödenir.
+- Anthropic'e ulaşılamazsa ya da HTTP hatası dönerse (faturalanmayan çağrı) hak (cihaz ve genel sayaç) geri verilir. Anthropic cevap verip faturaladıysa ama cevap kullanılamıyorsa (kesik, şemaya uymayan, reddedilen ya da boş) hak düşer ve o aşama aynı içeriğe bağlı kalır.
+- İstanbul'da gece yarısını geçen bir mesaj ilk düştüğü günden sayılır; sonraki aşamaları ücretsizdir ve iadesi de o güne yapılır.
+- Uygulama yönlendiriciyi 12 sn içinde (`ROUTER_TIMEOUT_MS`) alamazsa bekleyişten vazgeçer ve `POST /cancel { deviceId, messageId }` gönderir; sunucu o mesajın hakkını bir kez geri verir (hak henüz düşmediyse çağrı bitince verir; tekrar çağrılması ikinci bir iade getirmez). İptal işareti bir kez kullanılınca silinir. Cihaz başına günde en fazla 5 iptal geri ödenir.
 - Günlük sıfırlama İstanbul saatine göredir.
 
 ## Sınırları değiştirmek
@@ -38,4 +39,12 @@ cd server/yerim-ai && npx wrangler tail --format pretty
 
 ## Gizlilik
 
-Gönderilenler: mesaj metni, kısa sohbet geçmişi, seçili şehrin kimliği, rastgele cihaz kimliği ve `/pick` için uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı, türü ve bilgileri (yürüme süresi, otopark uzaklığı, ücretsiz mi, boş yer, açık mı). Konum (koordinat) asla gönderilmez. Hak sayaçları (cihaz kimliği ve IP adresine bağlı) KV'de en fazla iki gün tutulur.
+Gönderilenler: mesaj metni, kısa sohbet geçmişi, seçili şehrin kimliği, rastgele cihaz kimliği ve `/pick` için uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı, türü ve bilgileri (yürüme süresi, otopark uzaklığı, ücretsiz mi, boş yer, açık mı). Konum (koordinat) asla gönderilmez. Hak sayaçları (cihaz kimliği ve IP adresine bağlı) `QuotaCounter` Durable Object'inde tutulur ve en geç 49 saat içinde silinir: süreleri ilk yazıldıkları anda 48 saat olarak konur, sonraki yazmalar uzatmaz; süresi dolanları saatlik bir alarm siler.
+
+## Tür denetimi
+
+```bash
+cd server/yerim-ai && npm run typecheck
+```
+
+Kök `npx tsc --noEmit` sunucuyu kapsamaz (`server` hariç tutulur); Worker kodunu bu komut denetler.

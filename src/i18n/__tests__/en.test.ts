@@ -1,3 +1,4 @@
+import i18n from '..';
 import en from '../en';
 import tr from '../tr';
 
@@ -59,4 +60,18 @@ describe('the English strings', () => {
     const loc = [...enLeaves].filter(([, s]) => /{{\s*(\w+Loc|inDistrict)\s*}}/.test(s));
     expect(loc).toEqual([]);
   });
+});
+
+describe('English "found" replies', () => {
+  const opts = { what: 'fish restaurants', where: 'Alsancak', withPark: 1 };
+  it.each(['chat.foodFound_0', 'chat.foodFound_1', 'chat.foodFoundPark', 'chat.foodFoundFree'])(
+    '%s reads right for one result and for several',
+    (key) => {
+      const en = i18n.getFixedT('en');
+      const one = en(key, { ...opts, count: 1 });
+      expect(one).toMatch(/^Found 1 place \(fish restaurants\)/);
+      expect(one).not.toMatch(/\b1 have\b/);
+      expect(en(key, { ...opts, count: 4 })).toMatch(/^Found 4 fish restaurants/);
+    },
+  );
 });

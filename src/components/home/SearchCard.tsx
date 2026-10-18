@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
+import { handOffQuestion } from '@/components/chat/handoff';
 import { useCoachTarget } from '@/components/coach/registry';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
@@ -12,9 +13,10 @@ import { brand, fonts, HIT, useColors } from '@/theme';
 
 const EXAMPLES = ['home.example1', 'home.example2', 'home.example3'] as const;
 
-/** Opens the chat with a ready-made question. */
+/** Opens the chat and asks a ready-made question. */
 export function openChat(q: string) {
-  router.push({ pathname: '/sohbet', params: { q } });
+  handOffQuestion(q);
+  router.push('/sohbet');
 }
 
 /**

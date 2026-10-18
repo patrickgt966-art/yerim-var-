@@ -5,6 +5,7 @@ import { t } from 'i18next';
 import {
   categoryForQuery,
   categoryOf,
+  formatDistance,
   hasWordForm,
   parkingInfo,
   cuisineLabels,
@@ -245,6 +246,23 @@ describe('category excludes, pubs and lokanta', () => {
     expect(matchesCategory(mk('Balık Evi', 'restaurant'), 'lokanta')).toBe(false);
     expect(categoryOf(mk('Lezize Ev Yemekleri', 'restaurant'))).toBe('lokanta');
     expect(categoryForQuery('ev yemekleri')).toBe('lokanta');
+  });
+
+  it('what a name says is remembered per name, what the kind or tags say is not', () => {
+    // The same name asked again with another kind or tags: the answer follows them.
+    expect(matchesCategory(mk('Moda Bar', 'cafe'), 'meyhane')).toBe(false);
+    expect(matchesCategory(mk('Moda Bar', 'restaurant'), 'meyhane')).toBe(true);
+    expect(matchesCategory(mk('Plain Two', 'restaurant'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Plain Two', 'restaurant', ['sushi']), 'lokanta')).toBe(false);
+    expect(categoryOf(mk('Plain Two', 'restaurant', ['sushi']))).toBe('world');
+  });
+});
+
+describe('formatDistance', () => {
+  it('uses the separator of the language', () => {
+    expect(formatDistance(1840, 'tr')).toBe('1,8 km');
+    expect(formatDistance(1840, 'en')).toBe('1.8 km');
+    expect(formatDistance(650, 'en')).toBe('650 m');
   });
 });
 

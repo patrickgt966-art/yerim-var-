@@ -12,7 +12,7 @@ GET https://openapi.izmir.bel.tr/api/ibb/izum/otoparklar
 
 - Kimlik doğrulama yok (tarayıcıda anahtarsız açıldı).
 - Yanıt kök seviyede bir **JSON dizi**. Sayfalama yok.
-- **Yanıt yavaş:** iPhone Safari'de (LTE) açılması ~15 sn sürdü. Uygulama ilk sürümde 10 sn sonra vazgeçip örnek veriye düşüyordu; zaman aşımı 30 sn'ye çıkarıldı. Bekleme sırasında cihazda kayıtlı son veri gösterilir.
+- **Yanıt yavaş:** iPhone Safari'de (LTE) açılması ~15 sn sürdü. Uygulama ilk sürümde 10 sn sonra vazgeçip örnek veriye düşüyordu; zaman aşımı ilk denemede 20 sn'ye, yeniden denemede 30 sn'ye çıkarıldı (30 sn geçtikten sonra yeni deneme başlamaz). Bekleme sırasında cihazda kayıtlı son veri gösterilir.
 - Portal sayfası: https://acikveri.bizizmir.com/dataset/otopark-doluluk-ve-lokasyon-bilgileri
 
 ## Ham örnek
@@ -76,7 +76,7 @@ Tam yanıt testte fixture olarak duruyor: [`src/data/__tests__/fixtures/izmir-li
 ## Bulgular ve uygulamadaki karşılıkları
 
 - **Zaman damgası yok.** Kayıtlarda ölçüm zamanını veren bir alan yok. Tazelik, verinin cihaza indiği an (`fetchedAt`) ile ölçülür: kartlarda "Güncellendi: HH:mm" yazar, "Canlı" yazmaz. Kayıtlar `occupancyKind: 'estimated'` olarak işaretlenir.
-- **Fiyat alanı yok.** Yalnızca `isPaid` var. Tarifeler `data/tariffs.json` içinde ve hepsi "Tahmini".
+- **Fiyat alanı yok.** Yalnızca `isPaid` var. İzmir tarifeleri `data/tariffs.json` içinde ve hepsi "Tahmini".
 - **`openingHours` içindeki `"–"` bir saat değildir.** Normalizasyonda atılır; 7/24 bilgisi `nonstop` alanından gelir.
 - **`accessories.covered` güvenilmez.** "Konak Katlı Otopark" ve "Hatay Katlı Pazaryeri" katlı otoparklar olduğu halde `covered: false` geliyor. Bu yüzden yalnızca `true` değerine güvenilir, `false` "bilinmiyor" sayılır. Örnekte `true` olan kayıt olmadığı için "Kapalı" filtresi gizlenir.
 - `isPaid: false` olan yol kenarı kayıtları da var (ör. "24 Kordon 4 (Batı)"). Bu kayıtlarda `payment` alanlarının hepsi `false`.
@@ -115,7 +115,7 @@ GET https://api.ibb.gov.tr/ispark/Park
 GET https://api.ibb.gov.tr/ispark/ParkDetay?id=<parkID>
 ```
 
-- `Park`: anahtarsız, JSON dizi, 243 kayıt. Alanlar: `parkID`, `parkName`, `lat` ve `lng` (metin), `capacity`, `emptyCapacity`, `workHours` ("24 Saat"), `parkType` ("KAPALI OTOPARK", "AÇIK OTOPARK"…), `freeTime` (dakika), `district`, `isOpen` (1/0). Uygulama bu uç noktayı kullanır (`src/data/isparkProvider.ts`); biçim örnekle uyuşuyor.
+- `Park`: anahtarsız, JSON dizi, yaklaşık 244 kayıt. Alanlar: `parkID`, `parkName`, `lat` ve `lng` (metin), `capacity`, `emptyCapacity`, `workHours` ("24 Saat"), `parkType` ("KAPALI OTOPARK", "AÇIK OTOPARK"…), `freeTime` (dakika), `district`, `isOpen` (1/0). Uygulama bu uç noktayı kullanır (`src/data/isparkProvider.ts`); biçim örnekle uyuşuyor.
 - **Zaman damgası yok** (listede). Tazelik İzmir'deki gibi indirme anından ölçülür.
-- `ParkDetay?id=`: ek olarak `updateDate` ("16.10.2026 18:45:25"), `monthlyFee`, `tariff` ("0-1 Saat : 110,00;1-2 Saat : 140,00;…"), `address` ve `areaPolygon`. Uygulama bu uç noktayı henüz kullanmıyor.
+- `ParkDetay?id=`: ek olarak `updateDate` ("16.10.2026 18:45:25"), `monthlyFee`, `tariff` ("0-1 Saat : 110,00;1-2 Saat : 140,00;…"), `address` ve `areaPolygon`. Uygulama bunu çalışırken çağırmaz: `scripts/fetch-ispark-tariffs.mjs` her otoparkın `tariff` ve `monthlyFee` alanlarını `data/tariffs-ispark.json` dosyasına yazar (244 otopark, haftalık, `.github/workflows/ispark-tariffs.yml`), uygulama bu dosyayı gömülü taşır ve "Resmi tarife" olarak gösterir.
 - Doğrulanamayanlar: güncelleme sıklığı, yanıt başlıkları, veri lisansı, telefondan erişim.

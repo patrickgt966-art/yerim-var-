@@ -2,20 +2,28 @@ import { cityById, isInCityArea } from '../cities';
 import { getFreshness, visibleFree } from '../freshness';
 import { normalizeIspark } from '../isparkProvider';
 
-import capture from '../../../data/raw/ispark-sample.json';
+import capture from '../../../data/raw/fixtures/ispark-park-2026-10.json';
 
-// Real capture: the first 20 live records of https://api.ibb.gov.tr/ispark/Park.
+// Real capture, frozen: the first 20 live records of https://api.ibb.gov.tr/ispark/Park as
+// fetched in October 2026. A committed copy, not data/raw/ispark-sample.json, which the
+// data-refresh workflow rewrites with each new capture (or an { error } stub).
 const records = capture.records as Record<string, unknown>[];
 
 const now = new Date();
 const fetchedAt = now.toISOString();
 const list = normalizeIspark(records, fetchedAt);
+// Every record but the bus park (left out, see below).
+const cars = records.filter((r) => r.parkID !== 1912);
 const byId = (id: number) => list.find((p) => p.id === `ispark-${id}`);
 
 describe('normalizeIspark on the live capture', () => {
-  it('keeps all records', () => {
+  it('keeps every record but the bus park', () => {
     expect(records).toHaveLength(20);
-    expect(list).toHaveLength(records.length);
+    expect(list).toHaveLength(records.length - 1);
+    // "Alibeyköy Cep Otogarı Otobüs Otoparkı": buses only (its tariff has bus bands only).
+    expect(byId(1912)).toBeUndefined();
+    // The car park next to it stays.
+    expect(byId(1913)).toBeDefined();
   });
 
   it('gives unique ids that start with ispark-', () => {
@@ -35,16 +43,16 @@ describe('normalizeIspark on the live capture', () => {
   });
 
   it('marks KAPALI OTOPARK as indoor and leaves AÇIK OTOPARK unknown', () => {
-    for (const r of records.filter((x) => x.parkType === 'KAPALI OTOPARK')) {
+    for (const r of cars.filter((x) => x.parkType === 'KAPALI OTOPARK')) {
       expect(byId(r.parkID as number)?.isIndoor).toBe(true);
     }
-    for (const r of records.filter((x) => x.parkType === 'AÇIK OTOPARK')) {
+    for (const r of cars.filter((x) => x.parkType === 'AÇIK OTOPARK')) {
       expect(byId(r.parkID as number)?.isIndoor).toBeNull();
     }
   });
 
   it('turns "24 Saat" into nonstop', () => {
-    const all = records.filter((x) => x.workHours === '24 Saat');
+    const all = cars.filter((x) => x.workHours === '24 Saat');
     expect(all.length).toBeGreaterThan(0);
     for (const r of all) expect(byId(r.parkID as number)?.nonstop).toBe(true);
   });
@@ -53,10 +61,24 @@ describe('normalizeIspark on the live capture', () => {
     expect(byId(3412)).toMatchObject({ openingHoursText: '07:00-23:00', nonstop: null });
   });
 
+  it('never shows the street-parking placeholder as a free count', () => {
+    const street = records.filter((x) => x.parkType === 'YOL ÜSTÜ');
+    expect(street.length).toBeGreaterThan(0);
+    for (const r of street) {
+      // The live list sends emptyCapacity 1 for every street record, open or closed.
+      expect(r.emptyCapacity).toBe(1);
+      const p = byId(r.parkID as number)!;
+      expect(p.free).toBeNull();
+      expect(p.capacity).toBe(r.capacity);
+      expect(visibleFree(p, now)).toBeNull();
+    }
+  });
+
   it('shows the free count right after the fetch', () => {
-    // Every record whose emptyCapacity is a valid count (not above its capacity) shows it right away.
-    const valid = records.filter(
+    // Every counted car park whose emptyCapacity is valid (not above its capacity) shows it right away.
+    const valid = cars.filter(
       (r) =>
+        r.parkType !== 'YOL ÜSTÜ' &&
         Number.isInteger(r.emptyCapacity) &&
         (r.emptyCapacity as number) >= 0 &&
         (r.emptyCapacity as number) <= (r.capacity as number),

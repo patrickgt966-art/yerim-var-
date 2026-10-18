@@ -167,13 +167,13 @@ describe('the quota Durable Object', () => {
     expect((await counter.fetch(unknown)).status).toBe(500);
   });
 
-  it('values expire like KV, and the daily alarm sweeps the old ones', async () => {
+  it('values expire like KV, and the hourly alarm sweeps the old ones', async () => {
     const storage = memoryStorage();
     let now = 1_000_000;
     const kv = storageKV(storage, () => now);
     await kv.put('a', '1', { expirationTtl: 60 });
     await kv.put('b', '2', { expirationTtl: 3600 });
-    expect(storage.alarm).toBe(1_000_000 + 86_400_000);
+    expect(storage.alarm).toBe(1_000_000 + 3_600_000);
     expect(await kv.get('a')).toBe('1');
     now += 61_000;
     expect(await kv.get('a')).toBeNull();
@@ -181,5 +181,39 @@ describe('the quota Durable Object', () => {
     now += 3_600_000;
     expect(await kv.sweep()).toBe(2);
     expect([...storage.map.keys()]).toEqual([]);
+  });
+
+  it('never extends an expiry: later writes keep the one of the first write', async () => {
+    const storage = memoryStorage();
+    let now = 1_000_000;
+    const kv = storageKV(storage, () => now);
+    await kv.put('ip:x', '1', { expirationTtl: 172800 });
+    now += 47 * 3_600_000;
+    await kv.put('ip:x', '2', { expirationTtl: 172800 });
+    expect(await kv.get('ip:x')).toBe('2');
+    now += 3_600_000;
+    // 48 h after the first write, although the last write was an hour ago.
+    expect(await kv.get('ip:x')).toBeNull();
+    // A shorter TTL on a later write can only bring it forward; an expired key starts over.
+    await kv.put('ip:x', '3', { expirationTtl: 3600 });
+    await kv.put('ip:x', '4', { expirationTtl: 60 });
+    now += 61_000;
+    expect(await kv.get('ip:x')).toBeNull();
+  });
+
+  it('moves the daily alarm of an older version forward to the hourly one', async () => {
+    const storage = memoryStorage();
+    storage.alarm = 1_000_000 + 86_400_000;
+    const kv = storageKV(storage, () => 1_000_000);
+    await kv.put('a', '1');
+    expect(storage.alarm).toBe(1_000_000 + 3_600_000);
+  });
+
+  it('the alarm sweeps and sets the next one an hour later', async () => {
+    const storage = memoryStorage();
+    const { counter } = objectOf(storage);
+    await counter.alarm();
+    expect(storage.alarm).toBeGreaterThan(Date.now() + 3_500_000);
+    expect(storage.alarm).toBeLessThanOrEqual(Date.now() + 3_600_000);
   });
 });

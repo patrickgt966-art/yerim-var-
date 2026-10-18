@@ -1,20 +1,21 @@
 # Yapılacaklar
 
-Son güncelleme: 16 Ekim 2026.
+Son güncelleme: 18 Ekim 2026.
 
 ## Sıradaki büyük işler (bu sırayla)
 
 1. **Codex ile test ettirmek.** Yapay zeka ve beş şehrin akışlarını bağımsız bir gözle uçtan uca denetletmek.
-2. **Gerçek konuşmalarla sınav seti.** Her değişiklikte ölçelim (`scripts/ai-eval.ts`, elle çalışan "AI eval" görevi).
+2. ~~**Gerçek konuşmalarla sınav seti.**~~ Yapıldı: `scripts/ai-eval.ts` ("AI eval" görevi) yapay zekâ dosyalarına dokunan her PR'da ve elle çalışır; büyük ve uç sınavlar (`ai-eval-big.yml`, `ai-eval-extreme.yml`) elle ya da sınav dosyaları değişince. Kalan: sınavı gerçek kullanıcı konuşmalarından yeni örneklerle büyütmek.
 3. **Yapay zekayı daha zeki yapmak.**
    - Arama cevaplarının metnini de yapay zeka yazsın (bilgiler yine bizim veriden, dil daha doğal).
    - Takip sorularını daha iyi anlasın ("diyet menü" → semt sorusu → "yakınımda" zincirini tek istekte birleştirsin).
-4. **Menü / diyet verisi.** Elimizde yok: vejetaryen gibi istekler yalnızca yerin adı ve türüne göre yargılanıyor.
+4. **Menü verisi.** Elimizde yok: vejetaryen gibi istekler yerin adı, türü ve varsa beslenme etiketine (OSM `diet:*`, Overture kategorileri) göre yargılanıyor; etiketsiz yerlerde yalnızca ad ve tür var.
 5. **"Burası kapanmış" düğmesi.** Kullanıcı bildirimleriyle kapanmış yerleri gizlemek (Cloudflare sunucusu artık var).
 
 ### Şehirlerde kalanlar
+
 - Bursa: Açık Yeşil (Bursa BB) "otopark" veri seti son çalışmada alınamadı; tekrar denenecek.
-- İstanbul: İSPARK tarifesi (`ParkDetay?id=`, aylık ücret dahil) otopark detay sayfasında gösterilebilir. Önerildi, karar verilmedi.
+- ~~İstanbul: İSPARK tarifesi otopark detay sayfasında.~~ Yapıldı: 244 otoparkın resmi tarifesi ve aylık ücreti `data/tariffs-ispark.json` içinde (haftalık yenilenir), detayda "Resmi tarife".
 - İSPARK canlı verisi telefonda denenecek (biçim GitHub'dan alınan canlı örnekle uyuşuyor).
 
 ## Şimdi yapılabilir (hesap gerekmez)
@@ -22,41 +23,45 @@ Son güncelleme: 16 Ekim 2026.
 1. **Sohbet "Listede aç" düğmesi**: liste "hariç" ve "ücretsiz otopark" filtrelerini taşımıyor.
 2. **Yemek sözlüğü**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~380 yemek).
 3. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
-4. **İngilizce arayüz.**
-5. **ROADMAP.md güncellemesi.**
+4. ~~**İngilizce arayüz.**~~ Yapıldı (`src/i18n/en.ts`; telefon Türkçe değilse İngilizce, Profil'den değişir).
+5. **ROADMAP.md güncellemesi.** Alt ajan bölümü güncellendi; planın geri kalanı hâlâ 9 Ekim tarihli.
 
 ## Veri olmadan yapılamayanlar (kaynak lazım)
 
-- Vejetaryen / diyet etiketleri
-- Otopark ücret tarifeleri (sadece 3 tarife var)
+- ~~Vejetaryen / diyet etiketleri~~ Yapıldı: OSM `diet:*` ve Overture kategorileri (bkz. aşağıda Yerim ✨ durumu).
+- Otopark ücret tarifeleri: İstanbul'da 244 resmi İSPARK tarifesi var; diğer şehirlerde yalnızca `data/tariffs.json` içindeki 4 tahmini tarife.
 - Engelli erişimi (1.489 otoparkın 11'inde var)
 - Rezervasyon bilgisi (12 restoranda var)
 
 ## Fikirler (yapılacaklar listesiyle birlikte sunulur)
 
 ### Tek ekran ana sayfa (taslak hazır, karar bekliyor)
+
 - Taslaklar yan yana: https://claude.ai/artifact/5ynm5BFPMceJfftomEhiLU (A: iki sekme, şu anki · B: tek ekran)
 - B: tek arama kutusu, "Yakınımda otopark / yemek" düğmeleri, otopark ve restoranlar aynı listede.
 
 ### Veri doğruluğu
+
 - **Denetim sonucu (10 Ekim)**: 50 Overture yerinden 37 açık, 5 taşınmış, 8 kapanmış. 13 hatalı yer kara listede; tüm Overture yerlerinde "Bilgi eski olabilir".
 - **Foursquare çapraz kontrolü**: `FSQ_TOKEN` gerekir.
 - **Apple ile toplu kontrol** (Apple hesabından sonra): önce denetlenen 50 yerle dene.
 
 ### Uygulama boyutu
+
 - Beş şehirle gömülü veri ~17,5 MB (sıkıştırılmamış JSON). Şehir verisini ilk açılışta indirme düşünülür.
 
-## Yerim ✨ (Haiku) durumu
+## Yerim ✨ durumu
 
 - Açık: sunucu `https://yerim-ai.patrickgt966.workers.dev`, günde 10 ücretsiz mesaj, onay kartı, hak göstergesi, son hak notu.
 - Onay verildiyse her mesaj önce yönlendiriciye (`/understand`) gider; model kısa bir `meaning` yazar, sonra `search` / `chat` / `unknown` döner. Anlamazsa "anlayamadım" der, tahmin etmez.
 - Yönlendirici 12 sn içinde cevap vermezse, ağ hatasında ya da hak bitince uygulama kendi kurallarıyla cevap verir ve bunu söyler.
 - `/pick` yakındaki en çok 40 yeri adı ve türüyle görür, uyanları seçer; yalnızca sıra numarası döner.
-- Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`).
+- Sınav: kurallar 51/59 (kuralla çözülebilenlerin hepsi doğru); kalanlar belirsiz istekler ve takip soruları (`docs/chat-eval.md`; `WRITE_CHAT_EVAL=1 npx jest src/data/__tests__/chatEval.test.ts` ile yenilenir).
 - Canlı yapay zekâ sınavı (`scripts/ai-eval.ts`, `src/data/eval/aiCases.ts`): argo, dolgu kelime, iki mesaja bölünmüş istek ve seçim kararları; yapay zekâ dosyalarına dokunan her PR'da çalışır (GitHub'da `ANTHROPIC_API_KEY` sırrı gerekir), %85'in altında kırmızı olur.
 - Beslenme verisi: OSM `diet:*` etiketleri (vejetaryen, vegan, pesketaryen, glutensiz) ve Overture vegan/vejetaryen/glutensiz kategorileri; helal bilinçli olarak yok (Türkiye'de neredeyse her yer helal, az sayıda etiketli yer yanlış izlenim verir); detay sayfasında ve yapay zekâ seçiminde gösterilir.
 - Seçim, arama alanının biraz dışındaki 10 yeri de görür; yakında uyan yoksa onları seçer.
-- Sonraki: abonelik (Yerim+, sınırsız ✨), Haiku sınavının ilk çalıştırılması, sunucu kayıtlarına göre ince ayar.
+- Canlı sınav çalıştırıldı ve bulgulara göre düzeltildi (ilk çalıştırma, büyük ve uç sınavlar).
+- Sonraki: abonelik (Yerim+, sınırsız ✨), sunucu kayıtlarına göre ince ayar.
 
 ## Apple Developer hesabından sonra
 
@@ -71,7 +76,6 @@ Son güncelleme: 16 Ekim 2026.
 - Apple Developer hesabı (yıllık 99$)
 - GitHub Pages (gizlilik sayfası için)
 - Destek e-posta adresi, geri bildirim formu
-- İSPARK tarifesi otopark detay sayfasında gösterilsin mi?
 
 ## Tamamlananlar (12–16 Ekim)
 

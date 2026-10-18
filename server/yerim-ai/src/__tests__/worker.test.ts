@@ -116,6 +116,24 @@ const pickBody = (messageId: string, deviceId = 'dev-1') => ({
 });
 const pickOut = { pick: 0, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null };
 
+const narrateBody = (messageId: string, deviceId = 'dev-1') => ({
+  deviceId,
+  messageId,
+  text: 'gizli kullanıcı metni',
+  where: 'Bornova',
+  what: 'restoran',
+  total: 1,
+  withParking: 0,
+  results: [{ n: 1, kind: 'restaurant', distanceM: 120, parkingM: null }],
+});
+/** What the SDK throws for an HTTP error: a status and the API's JSON body. */
+const apiError = (status: number, type: string) =>
+  Object.assign(new Error(`${status} invalid x-api-key sk-ant-SECRET`), {
+    name: 'AuthenticationError',
+    status,
+    error: { type: 'error', error: { type, message: 'invalid x-api-key sk-ant-SECRET' } },
+  });
+
 const remainingOf = async (kv: Kv, deviceId = 'dev-1') => {
   const res = await post(envOf(kv), '/quota', { deviceId }, '9.9.9.9');
   return ((await res.json()) as { remaining: number }).remaining;
@@ -266,19 +284,46 @@ describe('one counter across the endpoints', () => {
     expect((await post(env, '/pick', pickBody('m1'))).status).toBe(200);
   });
 
-  it('gives the use back on an Anthropic error and on a refusal', async () => {
+  it('gives the use back on an Anthropic error (not billed)', async () => {
     const kv = fakeKV();
     const env = envOf(kv);
     mockParse.mockRejectedValueOnce(new Error('boom'));
     const bad = await post(env, '/understand', understandBody('m1'));
     expect(bad.status).toBe(502);
     expect(await bad.json()).toEqual({ error: 'upstream', remaining: 10, detail: 'Error' });
-    mockParse.mockResolvedValueOnce({ stop_reason: 'refusal', parsed_output: null });
-    const refused = await post(env, '/understand', understandBody('m2'));
-    expect(await refused.json()).toEqual({ understanding: { kind: 'unknown' }, remaining: 10 });
+    mockParse.mockRejectedValueOnce(apiError(529, 'overloaded_error'));
+    expect((await post(env, '/pick', pickBody('m2'))).status).toBe(502);
     expect(await remainingOf(kv)).toBe(10);
     const day = [...kv.store.keys()].find((k) => k.startsWith('ai:global:'))!;
     expect(kv.store.get(day)).toBe('0');
+  });
+
+  it('keeps the use of an answer Anthropic billed but that cannot be used', async () => {
+    const kv = fakeKV();
+    const env = envOf(kv);
+    mockParse.mockResolvedValueOnce({ stop_reason: 'refusal', parsed_output: null });
+    const refused = await post(env, '/understand', understandBody('m1'));
+    expect(await refused.json()).toEqual({ understanding: { kind: 'unknown' }, remaining: 9 });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'max_tokens', parsed_output: null });
+    const cut = await post(env, '/understand', understandBody('m2'));
+    expect(await cut.json()).toEqual({ understanding: { kind: 'unknown' }, remaining: 8 });
+    mockParse.mockRejectedValueOnce(new Error('Failed to parse structured output: cut off'));
+    const unreadable = await post(env, '/understand', understandBody('m3'));
+    expect(await unreadable.json()).toEqual({ understanding: { kind: 'unknown' }, remaining: 7 });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'max_tokens', parsed_output: null });
+    const pick = await post(env, '/pick', pickBody('m4'));
+    expect(pick.status).toBe(502);
+    expect(await pick.json()).toMatchObject({ remaining: 6, detail: 'no_output_max_tokens' });
+    mockParse.mockResolvedValueOnce({ stop_reason: 'end_turn', parsed_output: { reply: '' } });
+    await post(env, '/chat', { deviceId: 'dev-1', messageId: 'm5', text: 'selam', history: [] });
+    mockCreate.mockResolvedValueOnce({ stop_reason: 'end_turn', content: [] });
+    expect((await post(env, '/narrate', narrateBody('m6'))).status).toBe(502);
+    expect(await remainingOf(kv)).toBe(4);
+    const day = [...kv.store.keys()].find((k) => k.startsWith('ai:global:'))!;
+    expect(kv.store.get(day)).toBe('6');
+    // The stage stays bound to the text it was billed for: other text on it is a conflict.
+    const other = await post(env, '/understand', { ...understandBody('m1'), text: 'başka' });
+    expect(other.status).toBe(409);
   });
 });
 
@@ -431,14 +476,6 @@ describe('city', () => {
 });
 
 describe('upstream failure detail', () => {
-  /** What the SDK throws for an HTTP error: a status and the API's JSON body. */
-  const apiError = (status: number, type: string) =>
-    Object.assign(new Error(`${status} invalid x-api-key sk-ant-SECRET`), {
-      name: 'AuthenticationError',
-      status,
-      error: { type: 'error', error: { type, message: 'invalid x-api-key sk-ant-SECRET' } },
-    });
-
   it('a 401 says so in detail, with no message, key or text', async () => {
     const kv = fakeKV();
     mockParse.mockRejectedValueOnce(apiError(401, 'authentication_error'));
@@ -531,7 +568,7 @@ describe('the flat model output', () => {
     });
   });
 
-  it('/pick cuts a long reason list instead of failing, and answers an out-of-range index with pick null (200) and gives the use back', async () => {
+  it('/pick cuts a long reason list instead of failing, and answers an out-of-range index with pick null (200) and keeps the billed use', async () => {
     const kv = fakeKV();
     mockParse.mockResolvedValueOnce({
       stop_reason: 'end_turn',
@@ -546,6 +583,6 @@ describe('the flat model output', () => {
     });
     const bad = await post(envOf(kv), '/pick', pickBody('m2'));
     expect(bad.status).toBe(200);
-    expect(await bad.json()).toEqual({ pick: null, remaining: 9 });
+    expect(await bad.json()).toEqual({ pick: null, remaining: 8 });
   });
 });
