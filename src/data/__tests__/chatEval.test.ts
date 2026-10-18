@@ -41,8 +41,12 @@ describe('chat eval (baseline, never fails on misses)', () => {
 
     console.log(report);
 
-    const date = new Date().toISOString().slice(0, 10);
-    const md = `# Chat eval baseline\n\nDate: ${date}\n\n\`\`\`\n${report}\n\`\`\`\n`;
-    fs.writeFileSync(path.resolve(__dirname, '../../../docs/chat-eval.md'), md);
+    // The tracked docs/chat-eval.md is rewritten only on request:
+    // WRITE_CHAT_EVAL=1 npx jest src/data/__tests__/chatEval.test.ts
+    if (process.env.WRITE_CHAT_EVAL === '1') {
+      const date = new Date().toISOString().slice(0, 10);
+      const md = `# Chat eval baseline\n\nDate: ${date}\n\n\`\`\`\n${report}\n\`\`\`\n`;
+      fs.writeFileSync(path.resolve(__dirname, '../../../docs/chat-eval.md'), md);
+    }
   });
 });

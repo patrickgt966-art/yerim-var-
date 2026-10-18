@@ -2,9 +2,11 @@ import { cityById, isInCityArea } from '../cities';
 import { getFreshness, visibleFree } from '../freshness';
 import { normalizeIspark } from '../isparkProvider';
 
-import capture from '../../../data/raw/ispark-sample.json';
+import capture from '../../../data/raw/fixtures/ispark-park-2026-10.json';
 
-// Real capture: the first 20 live records of https://api.ibb.gov.tr/ispark/Park.
+// Real capture, frozen: the first 20 live records of https://api.ibb.gov.tr/ispark/Park as
+// fetched in October 2026. A committed copy, not data/raw/ispark-sample.json, which the
+// data-refresh workflow rewrites with each new capture (or an { error } stub).
 const records = capture.records as Record<string, unknown>[];
 
 const now = new Date();
