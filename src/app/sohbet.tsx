@@ -40,7 +40,7 @@ import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
-import { type ChatTurn } from '@/lib/ai/protocol';
+import { MAX_MESSAGE_CHARS, type ChatTurn } from '@/lib/ai/protocol';
 import { noteAiActivity, refreshAiQuota } from '@/lib/ai/refresh';
 import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
@@ -187,7 +187,7 @@ function Chat({ first }: { first: boolean }) {
   /** The reply waits for the AI: the typing bubble says so. */
   const [thinking, setThinking] = useState(false);
   // A `q` in the link only fills the input (see the opening effect below).
-  const [input, setInput] = useState(() => (first && q ? q : ''));
+  const [input, setInput] = useState(() => (first && q ? q.slice(0, MAX_MESSAGE_CHARS) : ''));
   const [ctx, setCtx] = useState<ChatContext>(() => emptyContext(section));
   const ctxRef = useRef(ctx);
   const typingRef = useRef(false);

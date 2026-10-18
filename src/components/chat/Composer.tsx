@@ -3,6 +3,7 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { MAX_MESSAGE_CHARS } from '@/lib/ai/protocol';
 import { brand, fonts, useColors } from '@/theme';
 
 import { softShadow } from './style';
@@ -67,6 +68,8 @@ export function Composer({
         <TextInput
           value={value}
           onChangeText={onChange}
+          // The assistant reads at most this much of a message.
+          maxLength={MAX_MESSAGE_CHARS}
           onSubmitEditing={onSubmit}
           placeholder={t('chat.placeholder')}
           placeholderTextColor={c.textSecondary}
