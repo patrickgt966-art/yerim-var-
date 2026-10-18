@@ -25,13 +25,17 @@
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
             "NSPrivacyCollectedDataTypeLinked": false,
             "NSPrivacyCollectedDataTypeTracking": false,
-            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
           },
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
             "NSPrivacyCollectedDataTypeLinked": false,
             "NSPrivacyCollectedDataTypeTracking": false,
-            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"]
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
           }
         ],
         "NSPrivacyAccessedAPITypes": [
@@ -55,8 +59,16 @@
       }
     },
     "locales": {
-      "tr": { "ios": { "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız." } },
-      "en": { "ios": { "NSLocationWhenInUseUsageDescription": "We use your location to show restaurants and car parks near you." } }
+      "tr": {
+        "ios": {
+          "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız."
+        }
+      },
+      "en": {
+        "ios": {
+          "NSLocationWhenInUseUsageDescription": "We use your location to show restaurants and car parks near you."
+        }
+      }
     },
     "extra": {
       "aiUrl": "https://yerim-ai.patrickgt966.workers.dev"
