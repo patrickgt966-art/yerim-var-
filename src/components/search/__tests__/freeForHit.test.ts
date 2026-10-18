@@ -31,4 +31,10 @@ describe('freeForHit', () => {
     expect(freeForHit(hit, [live({ updatedAt: '2026-10-11T09:00:00Z' })], now)).toBeNull();
     expect(freeForHit(hit, [live({ source: 'osm', free: null }), live({ free: 3 })], now)).toBe(3);
   });
+
+  it("never shows a neighbour's count when the hit's own count is stale", () => {
+    const own = live({ id: 'a', updatedAt: '2026-10-11T11:30:00Z' });
+    const neighbour = live({ id: 'b', lat: 38.4004, free: 37 });
+    expect(freeForHit(hit, [own, neighbour], now)).toBeNull();
+  });
 });

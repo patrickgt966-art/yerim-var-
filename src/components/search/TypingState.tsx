@@ -1,27 +1,31 @@
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { matchRestaurants } from '@/components/FoodHome';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { isInCityArea } from '@/data/cities';
+import { occupancyLevel, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
 import { localPart, parseQuery } from '@/data/intent';
 import { kindLabel, type Restaurant } from '@/data/restaurants';
 import type { SearchHit } from '@/data/search';
 import { useParkings } from '@/data/useParkings';
 import { useAnnounce } from '@/lib/a11y';
+import { currentLocation } from '@/lib/location';
 import { usePlaceSearch } from '@/lib/usePlaceSearch';
-import { brand, fonts, useColors } from '@/theme';
+import { brand, fonts, statusTone, useColors } from '@/theme';
 
-import { freeForHit } from './freeForHit';
+import { parkingForHit } from './freeForHit';
 import { Group, Row, SectionTitle, Tile } from './SearchBits';
 import { understoodChips } from './understood';
 
 const MAX_RESTAURANTS = 3;
 const MAX_PLACES = 5;
+const LOCATION_TIMEOUT_MS = 3000;
 
 function hitSubtitle(h: SearchHit, t: TFunction): string {
   return [
@@ -67,9 +71,24 @@ export function TypingState({
       }),
     [intent, deferredQuery, t],
   );
+  // Restaurant suggestions sort (and keep chain branches) by distance from the user when the
+  // position is known without asking; otherwise from the city's fallback place.
+  const [here, setHere] = useState<LatLng | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void currentLocation(false, LOCATION_TIMEOUT_MS).then((loc) => {
+      if (alive && loc && isInCityArea(loc)) setHere(loc);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const restaurants = useMemo(
-    () => matchRestaurants(deferredQuery, MAX_RESTAURANTS),
-    [deferredQuery],
+    () =>
+      here
+        ? matchRestaurants(deferredQuery, MAX_RESTAURANTS, here)
+        : matchRestaurants(deferredQuery, MAX_RESTAURANTS),
+    [deferredQuery, here],
   );
   const places = hits.slice(0, MAX_PLACES);
 
@@ -193,7 +212,13 @@ export function TypingState({
           <Group>
             {places.map((h, i) => {
               const sub = hitSubtitle(h, t);
-              const free = parkings ? freeForHit(h, parkings) : null;
+              const spot = parkings ? parkingForHit(h, parkings) : null;
+              const free = spot ? visibleFree(spot) : null;
+              // Same status language as everywhere else: a full car park reads "Dolu" in red.
+              const level = free != null && spot ? occupancyLevel(free, spot.capacity) : null;
+              const tone = level ? statusTone(level) : null;
+              const freeText =
+                level === 'full' ? t('a11y.levelFull') : t('ara.free', { count: free ?? 0 });
               return (
                 <Row
                   key={`${i}-${h.name}-${h.lat}-${h.lng}`}
@@ -202,7 +227,7 @@ export function TypingState({
                   subtitle={sub}
                   label={
                     free != null
-                      ? `${h.name}, ${sub}, ${t('ara.a11yFree', { count: free })}`
+                      ? `${h.name}, ${sub}, ${level === 'full' ? t('a11y.levelFull') : t('ara.a11yFree', { count: free })}`
                       : `${h.name}, ${sub}`
                   }
                   onPress={() => onPlace(h, h.name)}
@@ -224,20 +249,20 @@ export function TypingState({
                     )
                   }
                   trailing={
-                    free != null ? (
+                    free != null && tone ? (
                       <View
                         style={{
                           paddingVertical: 4,
                           paddingHorizontal: 8,
                           borderRadius: 10,
-                          backgroundColor: c.badgeFreshBg,
+                          backgroundColor: tone.bg,
                         }}
                       >
                         <Txt
-                          color={c.badgeFreshText}
+                          color={tone.fg}
                           style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
                         >
-                          {t('ara.free', { count: free })}
+                          {freeText}
                         </Txt>
                       </View>
                     ) : undefined
