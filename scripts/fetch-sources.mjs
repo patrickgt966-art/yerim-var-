@@ -10,8 +10,13 @@
 // - Bursa Büyükşehir open data portal "Açık Yeşil" (CKAN), Bursa only, optional: every resource of
 //   the dataset `otopark` goes to data/raw/bursa-otopark-*; JSON / GeoJSON with points is merged
 //   (capacity only) when its keys can be guessed. Any failure leaves the OSM data alone.
+// - İzmir's price list ("Otopark Ücretleri") becomes data/tariffs-izmir.json, matched by name to
+//   the İzelman car parks.
 //
-// Usage: node scripts/fetch-sources.mjs [izmir|istanbul]   (or YERIM_CITIES=istanbul)
+// Usage: node scripts/fetch-sources.mjs [izmir|istanbul|ankara|bursa|antalya ...]
+//        (or YERIM_CITIES=istanbul,bursa; no city = all five)
+//        node scripts/fetch-sources.mjs --izmir-tariffs   (offline: rebuild data/tariffs-izmir.json
+//        from data/raw/ and data/parkings-static.json)
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -192,7 +197,13 @@ const CITIES = [
   },
 ];
 
-const wantedCities = (process.env.YERIM_CITIES ?? process.argv.slice(2).join(','))
+const wantedCities = (
+  process.env.YERIM_CITIES ??
+  process.argv
+    .slice(2)
+    .filter((a) => !a.startsWith('--'))
+    .join(',')
+)
   .split(/[\s,]+/)
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
@@ -966,6 +977,131 @@ function dedupe(list, m, score) {
 }
 
 /**
+ * Merges municipal points (capacity only) into OSM: each point fills in the capacity of its
+ * nearest OSM car park within `m` metres, which keeps its name, fee, roof, hours and tags. A
+ * point with no OSM car park nearby is a car park of its own (`extra`). Nothing is dropped.
+ */
+function mergeCapacity(osm, muni, m = 80) {
+  const merged = osm.map((o) => ({ ...o }));
+  const extra = [];
+  const taken = new Set();
+  for (const z of muni) {
+    let best = -1;
+    let bestM = m;
+    merged.forEach((o, i) => {
+      const d = meters(o, z);
+      if (!taken.has(i) && d <= bestM) {
+        best = i;
+        bestM = d;
+      }
+    });
+    if (best < 0) {
+      extra.push(z);
+      continue;
+    }
+    taken.add(best);
+    const o = merged[best];
+    if (z.capacity) o.capacity = z.capacity;
+    if (!o.name && z.name) o.name = z.name;
+  }
+  return { osm: merged, extra, matched: taken.size };
+}
+
+// İzmir's price list ("Otopark Ücretleri", İzelman; CKAN datastore, also saved to data/raw/).
+// Its rows carry only a name, so each one is matched to one İzelman inventory record by name.
+const IZMIR_TARIFF_RESOURCE = 'b45d2e9f-f258-476e-a12d-d0ff62471ee0';
+const TARIFF_NAME_FILLER = new Set(['otopark', 'otoparki', 'otoparklari', 'katli', 've']);
+
+/** Name words for matching: folded, "yer altı"/"pazar yeri" joined, filler words dropped. */
+function tariffNameWords(name) {
+  return new Set(
+    foldTr(name)
+      .replace(/yer alti/g, 'yeralti')
+      .replace(/pazar yeri/g, 'pazaryeri')
+      .split(' ')
+      .filter((w) => w && !TARIFF_NAME_FILLER.has(w)),
+  );
+}
+
+const subsetOf = (a, b) => [...a].every((w) => b.has(w));
+
+/**
+ * İzmir price-list rows -> tariff rows keyed by İzelman ids. Only the car columns ("0-2 saat",
+ * "12-24 saat"…) become bands: motorcycle, disabled-badge, night and lost-ticket prices are
+ * left out. A row is used only when exactly one car park matches its name (all words equal, else
+ * one name's words all in the other), and a car park claimed by two rows gets neither.
+ */
+function izmirTariffs(rows, parkings, verifiedAt) {
+  const izelman = parkings
+    .filter((p) => p.source === 'izelman' && p.name)
+    .map((p) => ({ id: p.id, words: tariffNameWords(p.name) }));
+  const claims = new Map();
+  for (const row of rows ?? []) {
+    const name = String(row['Otopark / Fiyat'] ?? '').trim();
+    if (!name) continue;
+    const bands = [];
+    let hourly = null;
+    for (const [key, value] of Object.entries(row)) {
+      const m = /^(\d+)\s*-\s*(\d+)\s*saat$/i.exec(key.trim());
+      const price = typeof value === 'number' ? value : Number(String(value ?? '').replace(',', '.'));
+      if (!m || value === '' || value == null || !Number.isFinite(price) || price <= 0) continue;
+      bands.push({ label: `${m[1]}-${m[2]} Saat`, price, end: Number(m[2]), start: Number(m[1]) });
+      if (m[1] === '0' && m[2] === '1') hourly = price;
+    }
+    if (bands.length === 0) continue;
+    bands.sort((a, b) => a.end - b.end || a.start - b.start);
+    const words = tariffNameWords(name);
+    const exact = izelman.filter((p) => p.words.size === words.size && subsetOf(p.words, words));
+    const loose = izelman.filter((p) => subsetOf(p.words, words) || subsetOf(words, p.words));
+    const hit = exact.length === 1 ? exact[0] : exact.length === 0 && loose.length === 1 ? loose[0] : null;
+    if (!hit) continue;
+    const monthly = Number(row['Aylık Abone Ücreti']);
+    const tariff = {
+      parkingId: hit.id,
+      hourly,
+      currency: 'TRY',
+      bands: bands.map(({ label, price }) => ({ label, price })),
+      monthly: Number.isFinite(monthly) && monthly > 0 ? monthly : null,
+      priceKind: 'official',
+      validFrom: null,
+      source: 'İzmir BB Açık Veri (İzelman otopark ücretleri)',
+      verifiedAt,
+      sourceName: name,
+    };
+    claims.set(hit.id, claims.has(hit.id) ? null : tariff);
+  }
+  return [...claims.values()].filter(Boolean).sort((a, b) => a.parkingId.localeCompare(b.parkingId));
+}
+
+/** Writes data/tariffs-izmir.json from the price list; keeps the old file on a thin result. */
+async function writeIzmirTariffs(resource, parkings) {
+  const verifiedAt = String(resource?.lastModified ?? '').slice(0, 10) || null;
+  const tariffs = izmirTariffs(resource?.rows, parkings, verifiedAt);
+  const file = 'data/tariffs-izmir.json';
+  const old = await readFile(out(file), 'utf8').then(JSON.parse, () => null);
+  const oldCount = old?.tariffs?.length ?? 0;
+  if (tariffs.length === 0 || tariffs.length < oldCount * 0.7) {
+    log(`- ${file}: ${oldCount} → ${tariffs.length} tarife; yazılmadı.`);
+    return false;
+  }
+  await writeFile(
+    out(file),
+    JSON.stringify(
+      {
+        $comment:
+          'Generated by scripts/fetch-sources.mjs from İzmir Büyükşehir Belediyesi Açık Veri "Otopark Ücretleri" (İzelman, İzmir BB Açık Veri Lisansı). Car bands only; each row matched by name to one izelman-* car park of data/parkings-static.json (sourceName: the row name). verifiedAt: the resource update date.',
+        resource: IZMIR_TARIFF_RESOURCE,
+        tariffs,
+      },
+      null,
+      1,
+    ) + '\n',
+  );
+  log(`- ${file}: ${tariffs.length} tarife (İzelman fiyat listesi).`);
+  return true;
+}
+
+/**
  * Writes JSON, keeping the old generatedAt when the payload is unchanged.
  * Refuses a list that shrank below 70 % of the previous one: that is far
  * more likely a source hiccup than real car parks disappearing.
@@ -989,6 +1125,14 @@ async function writeData(file, payload) {
 }
 
 // --- main ------------------------------------------------------------------
+
+// Offline: rebuild data/tariffs-izmir.json from the saved price list and İzmir car parks.
+if (process.argv.includes('--izmir-tariffs')) {
+  const resource = JSON.parse(await readFile(out(`data/raw/ckan-${IZMIR_TARIFF_RESOURCE}.json`), 'utf8'));
+  const { parkings } = JSON.parse(await readFile(out('data/parkings-static.json'), 'utf8'));
+  await writeIzmirTariffs(resource, parkings);
+  process.exit(0);
+}
 
 await mkdir(out('data/raw'), { recursive: true });
 log(`# Veri kaynakları raporu`);
@@ -1192,13 +1336,19 @@ async function runCity(city) {
   log('');
   if (izmir) log(`- İzelman envanteri: ${izelman.length} otopark.`);
 
-  // Official records win over OSM points of the same car park.
-  const official = [...izelman, ...bursaMuni];
-  const osmKept = osm
-    .filter((o) => !official.some((z) => meters(o, z) <= 80))
+  // İzelman records win over OSM points of the same car park. Bursa's municipal points only
+  // add their capacity to the nearest OSM car park; one with none nearby stands on its own.
+  const muni = mergeCapacity(osm, bursaMuni);
+  const official = [
+    ...izelman,
+    ...muni.extra.map((z) => (z.name ? z : { ...z, near: nearestPlace(z) })),
+  ];
+  const osmKept = muni.osm
+    .filter((o) => !izelman.some((z) => meters(o, z) <= 80))
     .map((o) => (o.name ? o : { ...o, near: nearestPlace(o) }));
   if (izmir) log(`- OSM'den İzelman ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
-  if (bursaMuni.length) log(`- OSM'den Açık Yeşil ile çakışan ${osm.length - osmKept.length} kayıt çıkarıldı.`);
+  if (bursaMuni.length)
+    log(`- Açık Yeşil: ${muni.matched} OSM otoparkına kapasite eklendi, ${muni.extra.length} yeni nokta.`);
   log(`- Adsız otoparklardan yakın yer adı bulunan: ${osmKept.filter((o) => o.near).length}.`);
 
   // İzmir needs both sources; other cities only have OSM (and an empty answer is not a result).
@@ -1216,6 +1366,8 @@ async function runCity(city) {
       parkings,
     });
     if (wrote) log(`- ${files.parkings}: ${parkings.length} otopark.`);
+    const prices = izmir ? ckanFound?.find((r) => r.resource === IZMIR_TARIFF_RESOURCE) : null;
+    if (prices?.rows) await writeIzmirTariffs(prices, parkings);
   } else {
     // Keep the previous file rather than ship a partial one.
     log(`- Bir kaynak alınamadı; ${files.parkings} değiştirilmedi.`);
