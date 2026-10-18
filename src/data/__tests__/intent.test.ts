@@ -1,6 +1,12 @@
 import '@/i18n';
 
-import { IZMIR_DISTRICTS, localPart, looksLikePlace, parseQuery } from '../intent';
+import {
+  IZMIR_DISTRICTS,
+  localPart,
+  looksLikePlace,
+  parseQuery,
+  withoutPlanWords,
+} from '../intent';
 import { categoryForQuery } from '../restaurants';
 
 function search(q: string) {
@@ -430,5 +436,55 @@ describe('correction words, greetings and gibberish', () => {
   it('keeps short food words and places', () => {
     expect(search('et').cat).toBe('meat');
     expect(search('konak').district?.name).toBe('Konak');
+  });
+
+  it.each([
+    ["Bornova değil Buca'da kebap", 'Buca'],
+    ["Konak olmasın Karşıyaka'da balık", 'Karşıyaka'],
+    ["Bornova'da değil Karşıyaka'da otopark", 'Karşıyaka'],
+    ['Alsancak değil Bornova', 'Bornova'],
+  ])('never searches the place ruled out in "%s"', (q, district) => {
+    const r = search(q);
+    expect(r.district?.name).toBe(district);
+    expect(r.placeQuery).toBe('');
+  });
+
+  it('a ruled-out place keeps the food said before it', () => {
+    const r = search('balık Bornova değil');
+    expect(r.cat).toBe('fish');
+    expect(r.district).toBeNull();
+    expect(search('kebap olmasın balık').notCat).toBe('meat');
+  });
+
+  it.each(['otoparklı lahmacun', 'parklı lahmacun', 'lahmacun otoparklı'])(
+    'a car-park word is never part of the dish ("%s")',
+    (q) => {
+      const r = search(q);
+      expect(r.dish).toBe('lahmacun');
+      expect(r.requireParking).toBe(true);
+      expect(r.mentionsParking).toBe(true);
+    },
+  );
+
+  it('Bornova otoparklı pide: the district, the dish and the parking need', () => {
+    const r = search('Bornova otoparklı pide');
+    expect(r.district?.name).toBe('Bornova');
+    expect(r.dish).toBe('pide');
+    expect(r.requireParking).toBe(true);
+  });
+});
+
+describe('withoutPlanWords', () => {
+  it.each([
+    ["Konak'a gideceğim, nereye park edeyim", 'Konak'],
+    ["Bornova'ya gideceğim nereye park ederim", 'Bornova'],
+    ["Alsancak'a gidiyorum arabayı nereye bırakayım", null],
+  ])('keeps "where do I park" a car-park request: "%s"', (q, district) => {
+    const left = withoutPlanWords(q);
+    expect(left).not.toMatch(/ede|eder|araba/);
+    const r = search(left);
+    expect(r.mentionsParking).toBe(true);
+    if (district) expect(r.district?.name).toBe(district);
+    else expect(r.placeQuery).toBe('alsancak');
   });
 });

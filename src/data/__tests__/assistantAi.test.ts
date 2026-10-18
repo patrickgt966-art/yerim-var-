@@ -891,3 +891,69 @@ describe('what was asked before reaches the pick', () => {
     expect(req.text).toContain('Bornova hacı');
   });
 });
+
+describe('audit fixes: the AI reading is the search', () => {
+  it('ruling out the category that was picked excludes nothing ("kebap olmasın, köfte olsun")', async () => {
+    const { deps } = mockAi({
+      understand: async () =>
+        okU(search({ district: null, cat: 'meat', dish: 'köfte', notCat: 'meat' })),
+    });
+    const r = await answer('kebap olmasın, köfte olsun', emptyContext('food'), deps);
+    expect(r.ctx.notCat).toBeNull();
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+  });
+
+  it('a later reading without an exclusion or the parking need clears them', async () => {
+    let u = search({ district: null, cat: null, notCat: 'meat' });
+    const { deps } = mockAi({ understand: async () => okU(u) });
+    const first = await answer('kebap olmasın', emptyContext('food'), deps);
+    expect(first.ctx.notCat).toBe('meat');
+    u = search({ district: null, cat: null, notCat: null });
+    const second = await answer('tamam kebap da olur, ne olursa', first.ctx, deps);
+    expect(second.ctx.notCat).toBeNull();
+
+    u = search({ district: null, cat: 'meat', dish: 'kebap', requireParking: true });
+    const park = await answer('otoparklı kebapçı', emptyContext('food'), deps);
+    expect(park.ctx.requireParking).toBe(true);
+    u = search({ district: null, cat: 'meat', dish: 'kebap', requireParking: false });
+    const noPark = await answer('otopark şart değil', park.ctx, deps);
+    expect(noPark.ctx.requireParking).toBe(false);
+    expect(noPark.reply.text).not.toContain('chat.foodFoundPark');
+  });
+
+  it('a district and a place from the AI: the place is searched, not the district centre', async () => {
+    const { deps } = mockAi({
+      understand: async () =>
+        okU(search({ district: 'Konak', place: 'Alsancak', cat: 'fish', dish: 'balık' })),
+    });
+    const r = await answer("Alsancak'ta balık", emptyContext('food'), deps);
+    expect(r.ctx.place?.label).toMatch(/Alsancak/);
+    const park = mockAi({
+      understand: async () =>
+        okU(search({ district: 'Konak', place: 'Alsancak', food: false, requireParking: false })),
+    });
+    const p = await answer("Alsancak'ta otopark", emptyContext('park'), park.deps);
+    expect(p.ctx.place?.label).toMatch(/Alsancak/);
+  });
+
+  it('a word the rules call gibberish ("KFC nerede") is searched as the AI read it', async () => {
+    const { deps } = mockAi({
+      understand: async () => okU(search({ district: null, place: 'KFC', food: true })),
+    });
+    const r = await answer('KFC nerede', emptyContext('food'), deps);
+    expect(r.reply.text).not.toMatch(/chat\.unknown/);
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+  });
+
+  it('a geocoded place is labelled with the place, not the whole message', async () => {
+    const { deps } = mockAi({
+      understand: async () =>
+        okU(search({ district: null, place: 'Zyxqor sahili', cat: 'fish', dish: 'balık' })),
+    });
+    const r = await answer('akşam Zyxqor sahilinde güzel bir balık yeri arıyorum', emptyContext('food'), {
+      ...deps,
+      geocode: async () => ({ lat: 38.44, lng: 27.14 }),
+    });
+    expect(r.ctx.place?.label).toBe('Zyxqor sahili');
+  });
+});

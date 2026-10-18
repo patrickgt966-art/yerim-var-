@@ -563,12 +563,21 @@ export function parseQuery(raw: string): QueryIntent {
   rest = rest.filter((t) => !QUALITY.has(t));
 
   // "kebap olmasın", "köfte değil de balık": the category before the negation is ruled out.
+  // "Bornova değil Buca'da": so is a place, and it is not searched.
   let notCat: FoodCategory | null = null;
   for (let i = 1; i < rest.length; i++) {
     if (!NEGATES_PREVIOUS.has(rest[i]!)) continue;
     const len = i >= 2 && categoryForQuery(rest.slice(i - 2, i).join(' ')) ? 2 : 1;
     const c = categoryForQuery(rest.slice(i - len, i).join(' '));
-    if (!c) continue;
+    if (!c) {
+      const ruledOut = (t: string) =>
+        isPlaceToken(t) && !NEGATION.has(t) && !isParking(t) && categoryForQuery(t) === null;
+      let from = i;
+      while (from > 0 && ruledOut(rest[from - 1]!)) from--;
+      rest = [...rest.slice(0, from), ...rest.slice(i)];
+      i = from;
+      continue;
+    }
     notCat = c;
     rest = [...rest.slice(0, i - len), ...rest.slice(i)];
     i -= len;
@@ -598,6 +607,8 @@ export function parseQuery(raw: string): QueryIntent {
   for (const len of [4, 3, 2, 1]) {
     for (let i = 0; i + len <= rest.length && !cat; i++) {
       const words = rest.slice(i, i + len);
+      // "otoparklı lahmacun": a car-park word asks for parking, it is never part of the dish.
+      if (len > 1 && words.some(isParking)) continue;
       const phrase = words.join(' ');
       let c = categoryForQuery(phrase);
       let named = phrase;
@@ -852,7 +863,8 @@ export function parkTripIn(text: string): boolean {
 
 /**
  * The text without the words that only say when or that it is a trip ("akşam 8'de", "gideceğim,
- * nereye bırakayım"), so they are not mistaken for an unknown place or dish. The plan itself is
+ * nereye bırakayım"), so they are not mistaken for an unknown place or dish. The question where to
+ * leave the car ("arabayı nereye park edeyim") stays as one car-park word. The plan itself is
  * read from the original text by planWhenIn / parkTripIn.
  */
 export function withoutPlanWords(text: string): string {
@@ -861,7 +873,10 @@ export function withoutPlanWords(text: string): string {
       /(?:akşam|aksam|öğle|ogle|öğlen|oglen)\s+(?:saat\s+)?\d{1,2}(?:[’']?\s*(?:de|da|te|ta)\b)?/giu,
       ' ',
     )
-    .replace(/\bnereye\s+(?:bırak|birak|park)\p{L}*/giu, ' ')
+    .replace(
+      /(?:\b(?:araba|arac|araç)\p{L}*\s+)?\bnereye\s+(?:bırak|birak|park)\p{L}*(?:\s+(?:ed|et)\p{L}*)?/giu,
+      ' otopark ',
+    )
     .replace(/\b(?:gideceğim|gidecegim|gidiyorum|gidicem)\b/giu, ' ')
     .replace(/\s+/g, ' ')
     .trim();

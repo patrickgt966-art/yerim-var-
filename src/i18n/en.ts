@@ -665,12 +665,13 @@ const en = {
       'I don\'t know any place for sure that makes "{{dish}}". Showing similar places nearby.',
     dishUnknownLong: "I couldn't quite work out what you're after; showing places nearby.",
     dishLikely_one:
-      'No place is named "{{dish}}", but I found {{count}} {{label}} place; it very likely has it.',
+      'No place is named "{{dish}}", but I found {{count}} place of the kind that serves it; it very likely has it.',
     dishLikely_other:
-      'No place is named "{{dish}}", but I found {{count}} {{label}} places; they very likely have it.',
+      'No place is named "{{dish}}", but I found {{count}} places of the kind that serve it; they very likely have it.',
     dishWider: 'Not many places for {{dish}} nearby, so I looked a bit wider.',
     reasonNamed: 'Has {{dish}} in its name',
-    reasonLikely: '{{label}}; very likely has {{dish}}',
+    // {{label}} is a Turkish type word ("pide salonu"), so the English text leaves it out.
+    reasonLikely: 'Very likely has {{dish}}',
     dishNotFound:
       'I couldn\'t find a place that makes "{{dish}}". Shall we look at home-cooking places nearby?',
     actLokanta: 'Home cooking nearby',

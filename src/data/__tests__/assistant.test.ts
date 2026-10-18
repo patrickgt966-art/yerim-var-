@@ -1,6 +1,7 @@
-import '@/i18n';
+import i18n from '@/i18n';
 
 import { answer, emptyContext, refine, type AssistantDeps } from '../assistant';
+import { setActiveCity } from '../cities';
 import { visibleFree } from '../freshness';
 import { allRestaurants, matchesCategory } from '../restaurants';
 import { fold } from '../search';
@@ -1076,5 +1077,114 @@ describe('a district plus a word that is no dish, name or place', () => {
     const understand = jest.fn(async () => search({ district: 'Bornova', food: true }));
     const r = await answer('Bornova hacı', emptyContext('food'), withAi({ understand }));
     expect(r.ctx.place?.label).toBe('Bornova');
+  });
+});
+
+describe('audit fixes: the rule path', () => {
+  const konak = {
+    ...emptyContext('park'),
+    place: { label: 'Konak', lat: 38.4189, lng: 27.1287 },
+  };
+
+  it('a follow-up that names another place searches there, not at the old place', async () => {
+    const free = await answer('Alsancak ücretsiz otopark', konak, deps);
+    expect(free.ctx.place?.label).toBe('Alsancak');
+    expect(free.ctx.section).toBe('park');
+    const nearer = await answer("Kordon'a daha yakın otopark", konak, deps);
+    expect(nearer.ctx.place?.label).toBe('Kordon');
+    // Without a new place they stay follow-ups of the last search.
+    const same = await answer('ücretsiz otopark', konak, deps);
+    expect(same.ctx.place?.label).toBe('Konak');
+    expect(same.ctx.freeParking).toBe(true);
+    const near = await answer('daha yakın', konak, deps);
+    expect(near.ctx.sort).toBe('distance');
+    expect(near.ctx.place?.label).toBe('Konak');
+  });
+
+  it('"pick on map" in a food chat opens restaurants at the point', async () => {
+    const r = await answer('kumpirqqx', emptyContext('food'), deps);
+    const open = r.reply.actions.find((a) => a.kind === 'open');
+    expect(open).toMatchObject({ pathname: '/konum-sec', params: { mode: 'food' } });
+    const park = await answer('xqzt sokak', emptyContext('park'), deps);
+    const parkOpen = park.reply.actions.find((a) => a.kind === 'open');
+    expect(parkOpen).toMatchObject({ pathname: '/konum-sec' });
+    expect(parkOpen?.kind === 'open' && parkOpen.params.mode).toBeFalsy();
+  });
+
+  it.each(['adana kebap', 'çiğ köfte', 'esnaf lokantası'])(
+    'a dish that is also the start of a far business name is a dish search ("%s")',
+    async (q) => {
+      const r = await answer(q, emptyContext('food'), deps);
+      expect(r.reply.text).not.toContain('chat.foundName');
+      expect(r.reply.cards.length).toBeGreaterThan(1);
+      expect(r.reply.cards.every((c) => c.distanceM < 6000)).toBe(true);
+    },
+  );
+
+  it('a place whose name starts like a verb ("Girne") is searched, not chit-chat', async () => {
+    const r = await answer('Girne', emptyContext('park'), deps);
+    expect(r.reply.text).not.toMatch(/chat\.offTopic/);
+    expect(r.ctx.place?.label).toMatch(/Girne/);
+    // A real verb with nothing named so stays chit-chat.
+    const talk = await answer('bulamadın mı', emptyContext('park'), deps);
+    expect(talk.reply.cards).toEqual([]);
+  });
+
+  it.each([
+    ["Konak'a gideceğim, nereye park edeyim", 'Konak'],
+    ["Bornova'ya gideceğim nereye park ederim", 'Bornova'],
+    ["Alsancak'a gidiyorum arabayı nereye bırakayım", 'Alsancak'],
+  ])('a park trip without the AI lists car parks: "%s"', async (q, where) => {
+    for (const section of ['park', 'food'] as const) {
+      const r = await answer(q, emptyContext(section), deps);
+      expect(r.ctx.section).toBe('park');
+      expect(r.ctx.place?.label).toBe(where);
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+      expect(r.reply.cards.every((c) => c.kind === 'parking')).toBe(true);
+    }
+  });
+
+  it('a named food makes the unknown words a place, not a name search ("Çukurcuma civarında kahvaltı")', async () => {
+    setActiveCity('istanbul');
+    try {
+      const here = async () => ({ lat: 41.03, lng: 28.98 });
+      const r = await answer('Çukurcuma civarında kahvaltı', emptyContext('food'), {
+        ...deps,
+        here,
+        geocode: async () => ({ lat: 41.0315, lng: 28.9789 }),
+      });
+      expect(r.reply.text).not.toContain('chat.dishNamed');
+      expect(r.ctx.cat).toBe('breakfast');
+      expect(r.ctx.place?.label).toBe('Çukurcuma');
+      // No geocoder hit: still breakfast, never the places named "Çukurcuma".
+      const noGeo = await answer('Çukurcuma civarında kahvaltı', emptyContext('food'), {
+        ...deps,
+        here,
+      });
+      expect(noGeo.ctx.cat).toBe('breakfast');
+      expect(noGeo.reply.text).not.toContain('chat.dishNamed');
+    } finally {
+      setActiveCity('izmir');
+    }
+  });
+
+  it('English replies: the no-info note is capitalised only at the sentence start, no Turkish type label', async () => {
+    const en = { ...deps, t: i18n.getFixedT('en') as unknown as AssistantDeps['t'] };
+    const tr = { ...deps, t: i18n.getFixedT('tr') as unknown as AssistantDeps['t'] };
+    const cheap = await answer('ucuz kebap', emptyContext('food'), en);
+    expect(cheap.reply.text).toContain("We don't have price info");
+    const ucuz = await answer('ucuz kebap', emptyContext('food'), tr);
+    expect(ucuz.reply.text).toContain('Fiyat bilgimiz yok');
+    const likely = await answer('etli ekmek', emptyContext('food'), en);
+    expect(likely.reply.text).toMatch(/very likely/);
+    expect(likely.reply.text).not.toMatch(/pide salonu/);
+    const reasons = likely.reply.cards.map((c) => (c.kind === 'restaurant' ? c.reason : ''));
+    expect(reasons.some((s) => s?.includes('pide salonu'))).toBe(false);
+  });
+
+  it('a long paste is read only as far as the AI reads it', async () => {
+    const long = `${'çok güzel bir gün '.repeat(20)}Bornova'da kebap`;
+    const r = await answer(long, emptyContext('food'), deps);
+    expect(r.ctx.place?.label).not.toBe('Bornova');
   });
 });
