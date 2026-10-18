@@ -224,8 +224,12 @@ async function main(): Promise<void> {
           const msg = (e instanceof Error ? e.message : 'unknown error')
             .split('\n')[0]!
             .slice(0, 200);
-          if (e instanceof Anthropic.AuthenticationError) {
-            console.error('Authentication failed; aborting.');
+          // A bad key or an empty credit balance fails every call alike: stop at the first.
+          const noCredit = e instanceof Anthropic.BadRequestError && /credit balance/i.test(msg);
+          if (e instanceof Anthropic.AuthenticationError || noCredit) {
+            console.error(
+              noCredit ? 'Credit balance too low; aborting.' : 'Authentication failed; aborting.',
+            );
             aborted = true;
             row = { job, pass: false, misses: [`error: ${msg}`], error: msg };
           } else if (attempt < MAX_ATTEMPTS - 1 && retryable(e)) {
