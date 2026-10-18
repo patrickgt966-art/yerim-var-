@@ -2743,7 +2743,7 @@ async function askParkPick(
       ? { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error' }
       : { ok: false, reason: res.reason === 'quota' ? 'quota' : 'error', remaining: res.remaining };
   }
-  const v = verifyParkPick(res.value, candidates, tctx);
+  const v = verifyParkPick(res.value, candidates, tctx, when);
   if (!v) return { ok: false, reason: 'invalid', remaining: res.remaining };
   const { t } = deps;
   const why = (code: ParkReason, k: number) => {
