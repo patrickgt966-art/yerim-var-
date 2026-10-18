@@ -37,7 +37,7 @@ const DAY_TTL_SECONDS = 172800;
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 /** Place ids: "osm-n123", "apple-38.41234,27.12345", "ispark-12". */
-const PLACE_RE = /^[A-Za-z0-9_.,:-]{1,80}$/;
+export const PLACE_RE = /^[A-Za-z0-9_.,:-]{1,80}$/;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);

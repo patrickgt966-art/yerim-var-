@@ -302,7 +302,7 @@ export default function RestaurantDetail() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('share.a11y', { name: r.name })}
-          onPress={() => void shareText(placeShareText(r, t))}
+          onPress={() => void shareText(placeShareText('r', r, t))}
           style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
         >
           <Icon name="share" size={24} color={c.text} />

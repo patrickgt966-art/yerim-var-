@@ -43,6 +43,7 @@ import {
   validReport,
   validReview,
 } from './reports';
+import { siteRoute } from './site';
 import { localQuota, objectQuota, type Quota, type QuotaNamespace } from './store';
 
 export { QuotaCounter } from './store';
@@ -62,6 +63,12 @@ export interface Env {
   REPORT_FLAG_AT?: string;
   /** The maintainer's key for /admin/* (`wrangler secret put ADMIN_TOKEN`); unset turns them off. */
   ADMIN_TOKEN?: string;
+  /** The App Store page of the app (wrangler.toml [vars]); empty until the app is live. */
+  APP_STORE_URL?: string;
+  /** The App Store numeric app id, for the Smart App Banner; empty until the app is live. */
+  APP_STORE_ID?: string;
+  /** The Apple Developer team id, for /.well-known/apple-app-site-association; empty until paid. */
+  APPLE_TEAM_ID?: string;
 }
 
 /** The counters: the Durable Object when bound, else in-process on KV (tests). */
@@ -300,6 +307,11 @@ export default {
     if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
     if (req.method === 'GET' && path === '/admin') return adminPageRoute(env);
     if (path.startsWith('/admin/')) return adminRoute(req, env, path);
+    // The public pages of yerimvar.app: GET only, not logged, before the 404 fallback.
+    if (req.method === 'GET') {
+      const page = siteRoute(path, req, env);
+      if (page) return page;
+    }
     if (
       req.method !== 'POST' ||
       !['/understand', '/narrate', '/pick', '/plan', '/chat'].includes(path)

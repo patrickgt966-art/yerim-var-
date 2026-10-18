@@ -3,6 +3,15 @@ main = "src/index.ts"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
+# yerimvar.app bu worker'a özel alan adı olarak bağlanır (`wrangler deploy` ekler). Uygulama hâlâ
+# workers.dev adresini çağırdığı için o adres açık kalır.
+# yerimvar.app is attached to this worker as a Custom Domain (`wrangler deploy` adds it). The app
+# still calls the workers.dev URL, so that stays on.
+workers_dev = true
+routes = [
+  { pattern = "yerimvar.app", custom_domain = true },
+]
+
 # ANTHROPIC_API_KEY is set with `wrangler secret put ANTHROPIC_API_KEY`
 # and is never committed to the repo.
 # ADMIN_TOKEN (optional) turns on /admin/flagged and /admin/review: `wrangler secret put ADMIN_TOKEN`.
@@ -49,3 +58,19 @@ CHAT_MIN_INTERVAL_MS = "1000"
 # Distinct networks (on 2+ days) reporting a place closed before it is flagged. Hiding it for
 # everyone is the maintainer's call (/admin/review with the ADMIN_TOKEN secret). Default 3.
 REPORT_FLAG_AT = "3"
+
+# yerimvar.app sayfaları: uygulama App Store'a çıkınca doldurulur. Boşken sayfada "yakında" yazar.
+# Pages on yerimvar.app: fill these in when the app is live. Empty shows a "coming soon" line.
+# Mağaza bağlantısı / The App Store link, e.g. "https://apps.apple.com/app/id123456789"
+APP_STORE_URL = ""
+# Mağazadaki sayısal uygulama numarası (Smart App Banner) / The numeric App Store id, e.g. "123456789"
+APP_STORE_ID = ""
+# Apple Developer ekip kimliği (apple-app-site-association) / The Apple Developer team id
+APPLE_TEAM_ID = ""
+
+# Resim dosyaları pakete ham bayt olarak girer (.html zaten wrangler'ın varsayılan metin kuralındadır).
+# Image files are bundled as bytes (.html is already a default Text rule in wrangler).
+[[rules]]
+type = "Data"
+globs = ["**/*.png"]
+fallthrough = true
