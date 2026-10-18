@@ -9,7 +9,7 @@ import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
 import { isStatic, sourceLabel, staticHeadline } from '@/lib/staticInfo';
 import { useApp } from '@/store/app';
-import { asym, fonts, useColors } from '@/theme';
+import { asym, fonts, statusTone, useColors } from '@/theme';
 
 import { Button } from './Button';
 import { DashedFrame } from './DashedFrame';
@@ -36,18 +36,10 @@ function BigCount({
   capacity: number | null;
   size: number;
 }) {
-  const c = useColors();
   const { t } = useTranslation();
   const level = occupancyLevel(free, capacity);
   const word = levelWord(level, t);
-  const color =
-    level === 'plenty'
-      ? c.plenty
-      : level === 'few'
-        ? c.few
-        : level === 'full'
-          ? c.full
-          : c.textSecondary;
+  const color = statusTone(level).fg;
   return (
     <View style={{ alignItems: 'flex-end' }}>
       <Txt

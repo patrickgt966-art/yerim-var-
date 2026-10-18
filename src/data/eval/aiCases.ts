@@ -3,7 +3,14 @@
 // judgment. Each one checks only what a right answer must have, so a different but sensible
 // reading still passes.
 import type { FoodCategory } from '../restaurants';
-import type { AiCityId, ChatTurn, PickCandidate } from '@/lib/ai/protocol';
+import type {
+  AiCityId,
+  ChatReplyAction,
+  ChatTurn,
+  PickCandidate,
+  PlanWhen,
+  Wish,
+} from '@/lib/ai/protocol';
 
 export type UnderstandCase = {
   name: string;
@@ -29,6 +36,19 @@ export type UnderstandCase = {
     dishHas?: string[];
     /** The model's own reading (meaning) keeps the earlier request: contains one of these. */
     meaningHas?: string[];
+    /** The district is one of these (null: none); for a neighbourhood that may be read either way. */
+    districtIn?: (string | null)[];
+    /** The wishes include at least one of these. */
+    wishesAny?: Wish[];
+    partySize?: number;
+    /** The plan time is one of these (null: no plan). */
+    planIn?: (PlanWhen | null)[];
+    /** The place, the Apple Maps query, the district or the meaning names one of these (folded). */
+    placeHas?: string[];
+    /** A chat answer's action is one of these. */
+    actionIn?: ChatReplyAction[];
+    /** A chat reply holds no digit and nothing of the prompt, the schema or a key. */
+    replySafe?: boolean;
   };
 };
 
@@ -36,7 +56,7 @@ const vegAsk: ChatTurn[] = [
   { role: 'user', text: 'Yo hocam ben vejeteryenim kardo ona göre' },
   { role: 'bot', text: 'Hangi semtte vejetaryen yemek istersiniz?' },
 ];
-const VEG = ['vejet', 'vegan', 'etsiz', 'sebze'];
+export const VEG = ['vejet', 'vegan', 'etsiz', 'sebze'];
 
 export const UNDERSTAND_CASES: UnderstandCase[] = [
   {
@@ -149,7 +169,7 @@ export type PickCase = {
   };
 };
 
-const place = (
+export const place = (
   i: number,
   name: string,
   type: string,

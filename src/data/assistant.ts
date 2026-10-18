@@ -15,6 +15,7 @@ import {
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
 import { activeCity, CITIES, cityExamples } from '@/data/cities';
+import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
@@ -1079,7 +1080,8 @@ async function answerText(
   // The router said search: the AI's reading is the search (aiLedIntent). Follow-ups, abuse and
   // gibberish stay with the rules; so does everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse' && it.kind !== 'gibberish') {
-    const found = routed.out.value;
+    // The district against the city's own list: a typo fixed, a quarter moved to place.
+    const found = settleDistrict(routed.out.value, text, activeCity().districts);
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
     meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];

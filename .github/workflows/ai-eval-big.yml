@@ -1,0 +1,63 @@
+name: AI eval (big)
+
+# The big live eval (~590 cases, scripts/ai-eval-big.ts). Calls the Anthropic API and costs
+# roughly $0.5-1 per full run, so it runs by hand, and on a working branch only when the eval
+# itself changes (a workflow must be on main before it can be started by hand). Without the
+# ANTHROPIC_API_KEY secret it skips. The optional `limit` input runs only the first N cases.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Run only the first N cases (empty = all)'
+        required: false
+        default: ''
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'src/data/eval/aiBigCases.ts'
+      - 'scripts/ai-eval-big.ts'
+      - '.github/workflows/ai-eval-big.yml'
+
+permissions:
+  contents: read
+
+# The live evals share the org's per-minute token limit: one at a time, the next one waits.
+concurrency:
+  group: ai-eval-live
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      AI_EVAL_LIMIT: ${{ inputs.limit }}
+    steps:
+      - name: Skip without the API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret is not set; big AI eval skipped." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
+      # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-big.ts imports them from here.
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
+      - name: Run big AI eval
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-big.ts
+      - name: Publish summary
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        run: '[ -f docs/ai-eval-big.md ] && cat docs/ai-eval-big.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-big
+          path: docs/ai-eval-big.md
+          if-no-files-found: ignore

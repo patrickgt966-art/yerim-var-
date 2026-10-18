@@ -163,8 +163,9 @@ const KNOWN_CAPITALISED = [
   'Avrupa',
   'Meksika',
   'Amerika',
-  // The assistant's own name, used in the chat reply ("Ben Yerim").
+  // The assistant's own name, used in the chat reply ("Ben Yerim", "Yerim Var asistanı").
   'Yerim',
+  'Var',
 ].map((w) => fold(w));
 
 export type FreeTextContext = {

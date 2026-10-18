@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { FreshnessBadge, Tag } from '@/components/FreshnessBadge';
+import { FreshnessBadge, StatusBadge, Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
 import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -18,7 +18,6 @@ import { findAppleParking } from '@/data/appleParkings';
 import { tariffFor } from '@/data/tariffs';
 import type { OpeningHours } from '@/data/types';
 import { useParkings } from '@/data/useParkings';
-import { levelWord } from '@/lib/a11y';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
@@ -28,7 +27,7 @@ import { reportWrongData } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
 import { isStatic } from '@/lib/staticInfo';
 import { useApp, useIsFavorite } from '@/store/app';
-import { asym, fonts, HIT, useColors } from '@/theme';
+import { asym, fonts, HIT, statusTone, useColors } from '@/theme';
 
 const DAY_ORDER: (keyof OpeningHours)[] = [
   'monday',
@@ -76,6 +75,7 @@ export default function ParkingDetail() {
 
   const freshness = getFreshness(p);
   const free = visibleFree(p);
+  const level = occupancyLevel(free, p.capacity);
   const disabled = disabledInfo(p);
   // When isOpen is false the meta line already says "Şu an kapalı".
   const maybeClosed =
@@ -188,7 +188,11 @@ export default function ParkingDetail() {
             }}
           >
             <View style={{ gap: 8, flex: 1 }}>
-              <FreshnessBadge freshness={freshness} />
+              {/* The status pill says the level in words as well as colour, for colour-blind users. */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                <StatusBadge level={level} free={free} />
+                {freshness.kind !== 'unknown' && <FreshnessBadge freshness={freshness} />}
+              </View>
               <SlotStrip free={free} capacity={p.capacity} />
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -198,18 +202,13 @@ export default function ParkingDetail() {
                   fontSize: free == null ? 20 : 44,
                   lineHeight: free == null ? 26 : 48,
                 }}
+                color={statusTone(level).fg}
               >
                 {free == null ? t('common.unknown') : String(free)}
               </Txt>
               <Txt variant="label" secondary>
                 {t('common.free')}
               </Txt>
-              {/* A word as well as a colour, for colour-blind users. */}
-              {levelWord(occupancyLevel(free, p.capacity), t) && (
-                <Txt variant="label" style={{ fontFamily: fonts.bodyBold }}>
-                  {levelWord(occupancyLevel(free, p.capacity), t)}
-                </Txt>
-              )}
             </View>
           </View>
         )}

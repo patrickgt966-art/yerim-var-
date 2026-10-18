@@ -5,16 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
-import { Button } from '@/components/Button';
+import { ActiveParkCard } from '@/components/ActiveParkCard';
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Row, Section } from '@/components/Section';
+import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { useNow } from '@/lib/useNow';
-import { FreshnessBadge } from '@/components/FreshnessBadge';
-import { formatClock, getFreshness, visibleFree } from '@/data/freshness';
+import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import {
   cuisineLabels,
   getRestaurant,
@@ -22,13 +20,10 @@ import {
   parkingInfo,
   type Restaurant,
 } from '@/data/restaurants';
-import { parkCost } from '@/data/tariffs';
 import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
-import { durationText } from '@/lib/format';
-import { needsStillParkedPrompt } from '@/lib/park';
 import { useApp } from '@/store/app';
-import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
+import { asym, brand, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
 
 function confirmRemove(t: TFunction, name: string, remove: () => void) {
   Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
@@ -40,32 +35,36 @@ function confirmRemove(t: TFunction, name: string, remove: () => void) {
 function ActiveSection() {
   const { t } = useTranslation();
   const active = useApp((s) => s.active);
-  const endPark = useApp((s) => s.endPark);
-  const now = useNow(15_000);
-  if (!active) {
-    return (
-      <Section title={t('favorites.activeTitle')}>
-        <Txt secondary>{t('favorites.noActive')}</Txt>
-      </Section>
-    );
-  }
-  const elapsed = now - new Date(active.startedAt).getTime();
-  const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
+  if (active) return <ActiveParkCard active={active} />;
   return (
     <Section title={t('favorites.activeTitle')}>
-      <Txt style={{ fontFamily: fonts.display, fontSize: 20 }}>{active.name}</Txt>
-      <Row label={t('favorites.elapsed')} value={durationText(elapsed, t)} />
-      <Row label={t('favorites.estCost')} value={cost != null ? `₺${cost}` : t('common.unknown')} />
-      {needsStillParkedPrompt(active, now) ? (
-        <StillParkedPrompt />
-      ) : (
-        <Button
-          kind="danger"
-          label={t('favorites.end')}
-          onPress={() => confirmEndPark(t, endPark)}
-        />
-      )}
+      <Txt secondary>{t('favorites.noActive')}</Txt>
     </Section>
+  );
+}
+
+/** Mint "P" tile, as on the home list (car parks are green). */
+function ParkTile() {
+  return (
+    <View
+      accessible={false}
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: brand.mintSoft,
+      }}
+    >
+      <Txt
+        allowFontScaling={false}
+        style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 23 }}
+        color={brand.mintText}
+      >
+        P
+      </Txt>
+    </View>
   );
 }
 
@@ -251,13 +250,19 @@ export default function FavoritesScreen() {
           const p = data ? resolveFavoriteParking(f, data.parkings) : null;
           const fresh = p ? getFreshness(p, now) : null;
           const free = p ? visibleFree(p, now) : null;
-          // Only fresh counts are shown; anything else reads as no count / unknown.
-          const status =
+          // Only fresh counts are shown; anything else reads as no count / unknown, in grey.
+          const live =
             free != null && fresh && (fresh.kind === 'live' || fresh.kind === 'updated')
-              ? t('favorites.freeAt', { count: free, time: formatClock(fresh.at) })
-              : fresh?.kind === 'noData'
-                ? t('favorites.noCount')
-                : t('common.unknown');
+              ? fresh
+              : null;
+          const level = live && p ? occupancyLevel(free, p.capacity) : 'unknown';
+          const status = live
+            ? level === 'full'
+              ? t('favorites.fullAt', { time: formatClock(live.at) })
+              : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
+            : fresh?.kind === 'noData'
+              ? t('favorites.noCount')
+              : t('common.unknown');
           return (
             <View
               key={f.id}
@@ -288,13 +293,15 @@ export default function FavoritesScreen() {
                   gap: 12,
                 }}
               >
-                <PBadge size={32} />
-                <View style={{ flex: 1, gap: 4 }}>
+                <ParkTile />
+                <View style={{ flex: 1, gap: 2 }}>
                   <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Txt variant="caption">{status}</Txt>
-                    {fresh && free != null && <FreshnessBadge freshness={fresh} />}
-                  </View>
+                  <Txt
+                    style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
+                    color={statusTone(level).fg}
+                  >
+                    {status}
+                  </Txt>
                 </View>
               </Pressable>
               <Pressable

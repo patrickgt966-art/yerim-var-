@@ -2,8 +2,9 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { formatClock, type Freshness } from '@/data/freshness';
-import { asym, useColors } from '@/theme';
+import { formatClock, type Freshness, type OccupancyLevel } from '@/data/freshness';
+import { levelWord } from '@/lib/a11y';
+import { asym, statusTone, useColors } from '@/theme';
 
 import { Txt } from './Txt';
 
@@ -78,4 +79,17 @@ export function Tag({ text, bg, fg }: { text: string; bg: string; fg: string }) 
       </Txt>
     </View>
   );
+}
+
+/** Occupancy pill in the shared status colours: "Bol yer · 24", "Dolu", "Canlı bilgi yok". */
+export function StatusBadge({ level, free }: { level: OccupancyLevel; free: number | null }) {
+  const { t } = useTranslation();
+  const { fg, bg } = statusTone(level);
+  const word = levelWord(level, t);
+  const text = !word
+    ? t('detail.noLive')
+    : level === 'full' || free == null
+      ? word
+      : `${word} · ${free}`;
+  return <Tag text={text} bg={bg} fg={fg} />;
 }

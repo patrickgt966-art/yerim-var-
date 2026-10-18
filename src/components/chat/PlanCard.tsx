@@ -52,13 +52,13 @@ export function PlanCard({
                 borderRadius: 11,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: c.hero,
+                backgroundColor: brand.mintSoft,
               }}
             >
               <Txt
                 accessible={false}
                 allowFontScaling={false}
-                color={c.onHero}
+                color={brand.mintText}
                 style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}
               >
                 {i + 1}
@@ -84,13 +84,13 @@ export function PlanCard({
             borderRadius: 12,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: c.hero,
+            backgroundColor: c.accent,
             opacity: pressed ? 0.85 : 1,
           })}
         >
           <Txt
             accessible={false}
-            color={c.onHero}
+            color={brand.navy}
             style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 18 }}
           >
             {t('chat.directions')}

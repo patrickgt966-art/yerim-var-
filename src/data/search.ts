@@ -68,6 +68,8 @@ type Entry = SearchHit & {
   aliases: string[];
   /** Metres from the active city's centre. */
   d: number;
+  /** One of the city's official districts, at its centre (cities.ts). */
+  official?: boolean;
 };
 
 // Higher wins on equal match quality.
@@ -168,6 +170,12 @@ function entry(hit: SearchHit, aliases: string[] = []): Entry {
 }
 
 function buildIndex(): Entry[] {
+  // The official districts at their own centres: the OSM data can hold a same-named village far
+  // away ("Kadıköy" in Şile, "Menderes" 95 km out) and miss the district's own town node.
+  const districts = activeCity().districtCenters.map((d) => ({
+    ...entry({ name: d.name, lat: d.lat, lng: d.lng, kind: 'town' }),
+    official: true,
+  }));
   const places = rawPlaces().map((p) =>
     entry({ name: cleanName(p.n), lat: p.a, lng: p.o, kind: p.k === 'rail' ? 'station' : p.k }),
   );
@@ -188,6 +196,7 @@ function buildIndex(): Entry[] {
       (c) => (c.key === e.key || c.aliases.includes(e.key)) && distanceMeters(c, e) <= SAME_PLACE_M,
     );
   return [
+    ...districts,
     ...popular.filter((e) => !dup(e)),
     ...curated,
     ...places.filter((e) => !dup(e)),
@@ -325,6 +334,8 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
     // An exact town beats a same-named neighbourhood ("Selçuk"); a lone word
     // names a place before it names a car park ("Efes", "Hilton").
     if (exact && e.kind === 'town') adjust += 50;
+    // The district itself beats any same-named village (the dedupe below then drops the village).
+    if (exact && e.official) adjust += 60;
     if (words.length === 1 && e.kind === 'parking') adjust -= 30;
     if (e.kind === 'university' || e.kind === 'hospital') adjust += institutionBoost;
     scored.push({ e, score: score + adjust });

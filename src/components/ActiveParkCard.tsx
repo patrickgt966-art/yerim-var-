@@ -1,22 +1,17 @@
-import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Pressable, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
-import { appleWalkingUrl, appleWalkToUrl, walkMinutes } from '@/data/geo';
 import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
-import { currentLocation } from '@/lib/location';
 import { needsStillParkedPrompt } from '@/lib/park';
+import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
-import { asym, fonts, useColors } from '@/theme';
+import { brand, fonts } from '@/theme';
 
 import { Button } from './Button';
 import { ParkReminder } from './ParkReminder';
-import { PBadge } from './PBadge';
 import { Txt } from './Txt';
-import { useNow } from '@/lib/useNow';
 
 /** Shared by home and Favoriler so the wording and the confirm are identical. */
 export function confirmEndPark(t: TFunction, endPark: () => void) {
@@ -53,118 +48,94 @@ export function StillParkedPrompt() {
   );
 }
 
-async function walkToCar(active: ActivePark, failed: string) {
-  const from = await currentLocation(false, 3000);
-  const url = from
-    ? appleWalkingUrl(from, active, active.name)
-    : appleWalkToUrl(active, active.name);
-  await Linking.openURL(url).catch(() => Alert.alert(failed));
+/** One big figure with its small green label ("Geçen süre", "Tahmini ücret"). */
+function Figure({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ gap: 2 }}>
+      <Txt
+        style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }}
+        color={brand.mintText}
+      >
+        {label}
+      </Txt>
+      <Txt
+        style={{ fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.5 }}
+        maxFontSizeMultiplier={1.6}
+      >
+        {value}
+      </Txt>
+    </View>
+  );
 }
 
+/**
+ * The active park on Favoriler (design V5.1): mint card with a green edge, elapsed time and the
+ * estimated cost in big figures, the reminder chips and "Parkı bitir". After 12 h the reminder
+ * and the end button give way to "Hâlâ park hâlinde misin?".
+ */
 export function ActiveParkCard({ active }: { active: ActivePark }) {
-  const c = useColors();
   const { t } = useTranslation();
-  const now = useNow();
+  const now = useNow(15_000);
+  const endPark = useApp((s) => s.endPark);
   const elapsed = now - new Date(active.startedAt).getTime();
   const cost = parkCost(active.parkingId, active.hourly, elapsed / 60000);
   const duration = durationText(elapsed, t);
-  const sub = [active.note, duration].filter(Boolean).join(' · ');
-  const dest = active.destination;
-  const endPark = useApp((s) => s.endPark);
   const stale = needsStillParkedPrompt(active, now);
-  const [busy, setBusy] = useState(false);
-  const card = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${t('search.active')}: ${active.name}, ${duration}${cost != null ? `, ${t('favorites.estCost')} ${t('common.a11yLira', { price: cost })}` : ''}`}
-      onPress={() => router.push('/favoriler')}
-      style={[
-        asym(22, 6),
-        {
-          padding: 14,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          backgroundColor: c.card,
-          borderWidth: 1,
-          borderColor: c.line,
-        },
-      ]}
-    >
-      <PBadge size={44} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
-          {active.name}
-        </Txt>
-        <Txt variant="caption" secondary>
-          {sub}
-        </Txt>
-      </View>
-      {cost != null && (
-        <Txt style={{ fontFamily: fonts.display, fontSize: 22 }} color={c.plenty}>
-          ₺{cost}
-        </Txt>
-      )}
-    </Pressable>
-  );
-  const actions = (
-    <View style={{ gap: 8, paddingHorizontal: 4 }}>
-      {stale && <StillParkedPrompt />}
-      {!stale && <ParkReminder active={active} />}
-      <Button
-        label={t('search.goToCar')}
-        disabled={busy}
-        onPress={() => {
-          if (busy) return;
-          setBusy(true);
-          void walkToCar(active, t('food.openFailed')).finally(() => setBusy(false));
-        }}
-      />
-      {!stale && (
-        <Button
-          kind="danger"
-          label={t('favorites.end')}
-          onPress={() => confirmEndPark(t, endPark)}
-        />
-      )}
-    </View>
-  );
-  if (!dest)
-    return (
-      <View style={{ gap: 8 }}>
-        {card}
-        {actions}
-      </View>
-    );
-  const minutes = walkMinutes(active, dest);
-  const summary = t('food.routeSummary', { park: active.name, count: minutes, name: dest.name });
   return (
-    <View style={{ gap: 8 }}>
-      {card}
-      <View style={{ gap: 8, paddingHorizontal: 4 }}>
-        <Txt
-          variant="caption"
-          accessibilityLabel={t('food.a11yRouteSummary', {
-            park: active.name,
-            count: minutes,
-            name: dest.name,
-          })}
-        >
-          {summary}
-        </Txt>
-        <View style={{ flexDirection: 'row' }}>
-          <Button
-            kind="secondary"
-            label={t('food.walkingRoute')}
-            onPress={() =>
-              Linking.openURL(appleWalkingUrl(active, dest, dest.name)).catch(() =>
-                Alert.alert(t('food.openFailed')),
-              )
-            }
-          />
+    <View
+      testID="active-park-card"
+      style={{
+        borderRadius: 22,
+        borderLeftWidth: 4,
+        borderLeftColor: brand.mintText,
+        padding: 16,
+        gap: 12,
+        backgroundColor: brand.mintSoft,
+      }}
+    >
+      <View
+        accessible
+        accessibilityLabel={`${t('favorites.activeTitle')}: ${active.name}. ${t('favorites.elapsed')} ${duration}${cost != null ? `. ${t('favorites.estCost')} ${t('common.a11yLira', { price: cost })}` : ''}`}
+        style={{ gap: 10 }}
+      >
+        <View style={{ gap: 2 }}>
+          <Txt
+            style={{
+              fontFamily: fonts.bodyExtraBold,
+              fontSize: 12,
+              lineHeight: 16,
+              letterSpacing: 1,
+            }}
+            color={brand.mintText}
+          >
+            {t('favorites.activeLabel')}
+          </Txt>
+          <Txt
+            style={{ fontFamily: fonts.display, fontSize: 20, lineHeight: 25 }}
+            numberOfLines={2}
+          >
+            {active.name}
+          </Txt>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 8 }}>
+          <Figure label={t('favorites.elapsed')} value={duration} />
+          {cost != null && (
+            <Figure label={t('favorites.estCost')} value={t('home.activeCost', { cost })} />
+          )}
         </View>
       </View>
-      {actions}
+      {stale ? (
+        <StillParkedPrompt />
+      ) : (
+        <>
+          <ParkReminder active={active} />
+          <Button
+            label={t('favorites.end')}
+            onPress={() => confirmEndPark(t, endPark)}
+            style={{ alignSelf: 'stretch' }}
+          />
+        </>
+      )}
     </View>
   );
 }
