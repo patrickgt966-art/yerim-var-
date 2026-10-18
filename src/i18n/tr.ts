@@ -48,7 +48,6 @@ const tr = {
   },
   onboarding: {
     tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
-    start: 'Başla',
     next: 'Devam',
     cityTitle: 'Hangi şehirdesin?',
     citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
@@ -57,29 +56,22 @@ const tr = {
     cityA11yRow: '{{name}}, {{source}}',
     cityA11ySelected: '{{name}}, seçili, {{source}}',
     cityA11ySoon: '{{name}}, yakında',
-    aiTitle: 'Yerim ile konuş',
-    aiChatUser: '{{aLoc}} akşam balık, yanında otopark olsun',
-    aiChatBot: 'Sana 3 yer buldum, hepsinin yanında otopark var.',
-    aiChatA11y: 'Örnek sohbet. Sen: {{user}}. Yerim: {{bot}}',
-    aiBody:
-      'Yerim, yapay zeka asistanın. Ne istediğini kendi cümlenle yaz; restoranı ve park yerini o bulsun. Günde 10 ✨ hakkın var, her mesaj 1 hak.',
-    aiHonest: 'Restoran ve otopark bilgileri açık veriden gelir; yapay zeka bilgi uydurmaz.',
     locTitle: 'Yakınındakileri göster',
-    locBody:
-      "Konumunu yakındaki yerleri sıralamak için kullanırız; sunucumuza hiç gönderilmez. Otopark araması ve adres bulma için yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar'a gider. İzin vermesen de aramayı kullanabilirsin.",
     allow: 'Konuma izin ver',
-    a11yStart: 'Başla, uygulamaya geç',
-    a11yStep: 'Adım {{n}}, toplam 4 adım',
+    a11yStep: 'Adım {{n}}, toplam 2 adım',
+    locWhy1: 'Yakınındaki yerleri ve otoparkları sıralar.',
+    locWhy2: 'Konumun sunucumuza hiç gönderilmez.',
+    locWhy3: 'İzin vermesen de her şeyi arayabilirsin.',
+    locNote:
+      "Otopark araması ve adres bulma için yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar'a gider.",
+    skip: 'Şimdilik geç',
   },
   coach: {
-    yerim:
-      'Bu Yerim, yapay zeka asistanın. Ne yemek istediğini ya da nereye gideceğini yaz, o bulsun.',
-    ai: 'Günlük yapay zeka hakların. Her mesaj 1 hak harcar, gece yenilenir.',
-    city: 'Şehrini buradan değiştir.',
-    search: 'Yemek, yer ya da otopark yaz; ya da hazır örneklerden birine dokun.',
+    search: "Ne yemek istediğini ya da nereye gideceğini yaz. Uzun bir isteğin varsa Yerim'e sor.",
     next: 'Devam',
     skip: 'Geç',
     a11yHint: 'Sonraki ipucuna geçer',
+    a11yHintLast: 'İpucunu kapatır',
     a11yStep: 'İpucu {{n}} / {{total}}',
   },
   city: {
@@ -299,6 +291,16 @@ const tr = {
     reminderDenied: 'Hatırlatma için bildirimlere izin vermen gerekiyor. Ayarlar’dan açabilirsin.',
     openSettings: 'Ayarları aç',
   },
+  directions: {
+    chooseTitle: 'Yol tarifi hangi uygulamada açılsın?',
+    chooseBody: "Seçimin hatırlanır; Profil'den değiştirebilirsin.",
+    apps: {
+      apple: 'Apple Haritalar',
+      google: 'Google Haritalar',
+      yandex: 'Yandex Navigasyon',
+      waze: 'Waze',
+    },
+  },
   profile: {
     title: 'Profil',
     noAccount: 'Hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır.',
@@ -316,6 +318,8 @@ const tr = {
     resetOnboarding: 'Tanıtımı yeniden göster',
     language: 'Dil / Language',
     langAuto: 'Telefonun dili',
+    mapApp: 'Yol tarifi uygulaması',
+    mapAppAsk: 'Her seferinde sor',
   },
   card: {
     municipal: 'Belediye otoparkı',
@@ -387,6 +391,9 @@ const tr = {
     exceptChip: '{{cat}} hariç  ✕',
     freeParkingChip: 'Ücretsiz otopark  ✕',
     pointOutside: 'Seçtiğin yer {{city}} dışında; {{city}} merkezindeki restoranları gösteriyoruz.',
+    approxNoLocation: 'Konumun kapalı; {{place}} çevresi gösteriliyor.',
+    approxOutside: 'Şehir dışındasın; {{place}} çevresi gösteriliyor.',
+    turnOnLocation: 'Konumu aç',
     widened: 'Yakında az olduğu için {{km}} km içinde arandı.',
     a11yRow: '{{name}}. {{meta}}. {{parking}}',
     notFound: 'Mekan bulunamadı.',

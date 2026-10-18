@@ -13,7 +13,7 @@ import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
-import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
+import { distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, dietLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
 import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongRestaurant } from '@/lib/report';
@@ -22,6 +22,7 @@ import { useRanked } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
+import { openDirections } from '@/lib/directions';
 import { parkHere } from '@/lib/parkHere';
 import { useApp, useIsFavoriteRestaurant } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
@@ -64,6 +65,9 @@ export default function RestaurantDetail() {
 
   const open = (url: string) => {
     Linking.openURL(url).catch(() => Alert.alert(t('food.openFailed')));
+  };
+  const openRoute = async (dest: { lat: number; lng: number; name: string }) => {
+    if ((await openDirections(dest, dest.name)) === 'failed') Alert.alert(t('food.openFailed'));
   };
 
   if (!r) {
@@ -170,7 +174,7 @@ export default function RestaurantDetail() {
               kind="accent"
               style={{ flexGrow: 1 }}
               label={t('food.directions')}
-              onPress={() => open(appleMapsUrl({ lat: r.lat, lng: r.lng }, r.name))}
+              onPress={() => void openRoute(r)}
             />
             {!!tel && <Button kind="secondary" label={t('food.call')} onPress={() => open(tel)} />}
             {!!r.website && (

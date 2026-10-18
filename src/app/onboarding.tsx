@@ -16,11 +16,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandWordmark } from '@/components/BrandWordmark';
-import { Icon } from '@/components/Icon';
+import { DashedFrame } from '@/components/DashedFrame';
+import { Icon, type IconName } from '@/components/Icon';
 import { OnboardingBackdrop } from '@/components/OnboardingBackdrop';
 import { PBadge } from '@/components/PBadge';
 import { Txt } from '@/components/Txt';
-import { cityAt, cityExamples, CITIES, cityById, hasLiveParking, type City } from '@/data/cities';
+import { cityAt, CITIES, hasLiveParking, type City } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
 import { asym, brand, fonts, HIT } from '@/theme';
@@ -34,7 +35,7 @@ async function askLocationPermission(): Promise<void> {
   }
 }
 
-function Rings() {
+function Rings({ size }: { size: number }) {
   const reduce = useReducedMotion();
   const s = useSharedValue(0);
   useEffect(() => {
@@ -54,9 +55,9 @@ function Rings() {
       <View
         style={{
           position: 'absolute',
-          width: 260,
-          height: 260,
-          borderRadius: 130,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
           borderWidth: 1,
           borderColor: 'rgba(255,255,255,0.35)',
         }}
@@ -65,9 +66,9 @@ function Rings() {
         style={[
           {
             position: 'absolute',
-            width: 260,
-            height: 260,
-            borderRadius: 130,
+            width: size,
+            height: size,
+            borderRadius: size / 2,
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.5)',
           },
@@ -86,7 +87,7 @@ function Dots({ page }: { page: number }) {
       accessible
       accessibilityLabel={t('onboarding.a11yStep', { n: page + 1 })}
     >
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1].map((i) => (
         <View
           key={i}
           style={{
@@ -240,49 +241,29 @@ function CityCard({
   );
 }
 
-/** Static mock of the Yerim chat, so the assistant is clear before it is ever opened. */
-function MockChat({ user, bot }: { user: string; bot: string }) {
-  const { t } = useTranslation();
+/** One short reason to allow location: a small icon and a line. */
+function WhyRow({ icon, text }: { icon: IconName; text: string }) {
   return (
-    <View
-      accessible
-      accessibilityLabel={t('onboarding.aiChatA11y', { user, bot })}
-      style={{ gap: 10 }}
-    >
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
       <View
-        style={{
-          alignSelf: 'flex-end',
-          maxWidth: '85%',
-          paddingVertical: 10,
-          paddingHorizontal: 14,
-          backgroundColor: brand.orange,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 6,
-          borderBottomRightRadius: 20,
-          borderBottomLeftRadius: 20,
-        }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[
+          asym(14, 5),
+          {
+            width: 40,
+            height: 40,
+            backgroundColor: 'rgba(255,255,255,0.12)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        ]}
       >
-        <Txt color={brand.navy} style={{ fontSize: 15, lineHeight: 21 }}>
-          {user}
-        </Txt>
+        <Icon name={icon} size={22} color={brand.orange} strokeWidth={2.2} />
       </View>
-      <View
-        style={{
-          alignSelf: 'flex-start',
-          maxWidth: '85%',
-          paddingVertical: 10,
-          paddingHorizontal: 14,
-          backgroundColor: '#FFFFFF',
-          borderTopLeftRadius: 6,
-          borderTopRightRadius: 20,
-          borderBottomRightRadius: 20,
-          borderBottomLeftRadius: 20,
-        }}
-      >
-        <Txt color={brand.navy} style={{ fontSize: 15, lineHeight: 21 }}>
-          ✨ {bot}
-        </Txt>
-      </View>
+      <Txt style={{ flex: 1, fontSize: 17, lineHeight: 24 }} color="rgba(255,255,255,0.9)">
+        {text}
+      </Txt>
     </View>
   );
 }
@@ -336,76 +317,74 @@ export default function Onboarding() {
         }}
       >
         {page === 0 && (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-            <View
-              style={{ width: 280, height: 280, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Rings />
-              {/* Food + parking: orange fork-and-knife tile with a white P badge on its corner. */}
-              <Animated.View
-                entering={FadeInDown.delay(300).duration(1200)}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                style={{ width: 168, height: 168 }}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              <View
+                style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}
               >
-                <View
-                  style={[
-                    asym(48, 14),
-                    {
-                      width: 168,
-                      height: 168,
-                      backgroundColor: brand.orange,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    },
-                  ]}
+                <Rings size={160} />
+                {/* Food + parking: orange fork-and-knife tile with a white P badge on its corner. */}
+                <Animated.View
+                  entering={FadeInDown.delay(300).duration(1200)}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={{ width: 100, height: 100 }}
                 >
-                  <Icon name="cutlery" size={104} color={brand.navy} strokeWidth={2} />
-                </View>
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: -26,
-                    bottom: -26,
-                    shadowColor: brand.navy,
-                    shadowOpacity: 0.35,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 4 },
-                  }}
+                  <View
+                    style={[
+                      asym(29, 8),
+                      {
+                        width: 100,
+                        height: 100,
+                        backgroundColor: brand.orange,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      },
+                    ]}
+                  >
+                    <Icon name="cutlery" size={62} color={brand.navy} strokeWidth={2} />
+                  </View>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: -16,
+                      bottom: -16,
+                      shadowColor: brand.navy,
+                      shadowOpacity: 0.35,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 3 },
+                    }}
+                  >
+                    <PBadge size={44} inverted />
+                  </View>
+                </Animated.View>
+              </View>
+              <Animated.View entering={FadeInDown.delay(900).duration(800)}>
+                <BrandWordmark layout="stacked" tone="onDark" size={40} header />
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(1100).duration(800)}>
+                <Txt
+                  style={{ textAlign: 'center', fontSize: 16, lineHeight: 23 }}
+                  color="rgba(255,255,255,0.85)"
                 >
-                  <PBadge size={72} inverted />
-                </View>
+                  {t('onboarding.tagline')}
+                </Txt>
               </Animated.View>
             </View>
-            <Animated.View entering={FadeInDown.delay(900).duration(800)}>
-              <BrandWordmark layout="stacked" tone="onDark" size={56} header />
-            </Animated.View>
-            <Animated.View entering={FadeInDown.delay(1100).duration(800)}>
-              <Txt
-                style={{ textAlign: 'center', fontSize: 18, lineHeight: 26 }}
-                color="rgba(255,255,255,0.85)"
-              >
-                {t('onboarding.tagline')}
-              </Txt>
-            </Animated.View>
-          </View>
-        )}
-
-        {page === 1 && (
-          <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 12 }}
+            <Txt
+              ref={headerRef}
+              variant="display"
+              color="#FFFFFF"
+              accessibilityRole="header"
+              style={{ marginTop: 8 }}
             >
-              <Txt
-                ref={headerRef}
-                variant="display"
-                color="#FFFFFF"
-                accessibilityRole="header"
-                style={{ marginBottom: 4 }}
-              >
-                {t('onboarding.cityTitle')}
-              </Txt>
+              {t('onboarding.cityTitle')}
+            </Txt>
+            <View style={{ gap: 12 }}>
               {CITIES.map((c) => (
                 <CityCard
                   key={c.id}
@@ -417,44 +396,45 @@ export default function Onboarding() {
                   }}
                 />
               ))}
-            </ScrollView>
-          </Animated.View>
+            </View>
+          </ScrollView>
         )}
 
-        {page === 2 && (
+        {page === 1 && (
           <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 20 }}
+              showsVerticalScrollIndicator={false}
             >
-              <Txt ref={headerRef} variant="display" color="#FFFFFF" accessibilityRole="header">
-                {t('onboarding.aiTitle')}
-              </Txt>
-              <MockChat
-                user={t('onboarding.aiChatUser', cityExamples(cityById(cityId)))}
-                bot={t('onboarding.aiChatBot')}
-              />
-              <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
-                {t('onboarding.aiBody')}
-              </Txt>
-              <Txt style={{ fontSize: 15, lineHeight: 22 }} color="rgba(255,255,255,0.7)">
-                {t('onboarding.aiHonest')}
-              </Txt>
-            </ScrollView>
-          </Animated.View>
-        )}
-
-        {page === 3 && (
-          <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
-            >
+              {/* A parking slot with a location pin in it: the brand motif, decorative only. */}
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={{ alignItems: 'center' }}
+              >
+                <View
+                  style={{
+                    width: 132,
+                    height: 150,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DashedFrame color={brand.orange} radius={34} tight={10} strokeWidth={2.5} />
+                  <Icon name="pin" size={64} color={brand.orange} strokeWidth={2} />
+                </View>
+              </View>
               <Txt ref={headerRef} variant="display" color="#FFFFFF" accessibilityRole="header">
                 {t('onboarding.locTitle')}
               </Txt>
-              <Txt style={{ fontSize: 18, lineHeight: 27 }} color="rgba(255,255,255,0.85)">
-                {t('onboarding.locBody')}
+              <View style={{ gap: 14 }}>
+                <WhyRow icon="locate" text={t('onboarding.locWhy1')} />
+                <WhyRow icon="check" text={t('onboarding.locWhy2')} />
+                <WhyRow icon="search" text={t('onboarding.locWhy3')} />
+              </View>
+              <Txt variant="caption" color="rgba(255,255,255,0.7)">
+                {t('onboarding.locNote')}
               </Txt>
             </ScrollView>
           </Animated.View>
@@ -462,16 +442,8 @@ export default function Onboarding() {
 
         <View style={{ gap: 20 }}>
           <Dots page={page} />
-          {page === 0 && (
-            <CTA
-              label={t('onboarding.start')}
-              a11y={t('onboarding.a11yStart')}
-              onPress={() => setPage(1)}
-            />
-          )}
-          {page === 1 && <CTA label={t('onboarding.next')} onPress={() => setPage(2)} />}
-          {page === 2 && <CTA label={t('onboarding.next')} onPress={() => setPage(3)} />}
-          {page === 3 && (
+          {page === 0 && <CTA label={t('onboarding.next')} onPress={() => setPage(1)} />}
+          {page === 1 && (
             <>
               <CTA
                 label={t('onboarding.allow')}
@@ -482,12 +454,12 @@ export default function Onboarding() {
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t('onboarding.a11yStart')}
+                accessibilityLabel={t('onboarding.skip')}
                 onPress={finish}
                 style={{ minHeight: HIT, alignItems: 'center', justifyContent: 'center' }}
               >
                 <Txt variant="bodyBold" color="#FFFFFF">
-                  {t('onboarding.start')}
+                  {t('onboarding.skip')}
                 </Txt>
               </Pressable>
             </>

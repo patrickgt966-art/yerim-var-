@@ -21,30 +21,21 @@ describe('coach store', () => {
     expect(useCoach.getState().step).toBe(0);
   });
 
-  it('walks the steps in order and sets coachDone after the last', () => {
-    const seen: number[] = [useCoach.getState().step];
-    for (let i = 0; i < COACH_STEPS.length - 1; i++) {
-      useCoach.getState().next(ALL);
-      seen.push(useCoach.getState().step);
-      expect(useCoach.getState().coachDone).toBe(false);
-    }
-    expect(seen).toEqual([0, 1, 2, 3]);
+  it('has a single step, the search card', () => {
+    expect([...COACH_STEPS]).toEqual(['search']);
+  });
+
+  it('sets coachDone after the last step', () => {
     useCoach.getState().next(ALL);
     expect(useCoach.getState().coachDone).toBe(true);
   });
 
-  it('skips a step whose target is missing (the ✨ pill without AI consent)', () => {
-    const noAi = ALL.filter((k) => k !== 'ai');
-    expect(resolveStep(1, noAi)).toBe(2);
-    useCoach.getState().next(noAi);
-    expect(useCoach.getState().step).toBe(2);
-  });
-
-  it('finishes when no later target is left', () => {
-    useCoach.setState({ step: 2 });
-    useCoach.getState().next(['yerim', 'ai', 'city']);
+  it('finishes when no target is left on screen', () => {
+    useCoach.getState().next([]);
     expect(useCoach.getState().coachDone).toBe(true);
     expect(resolveStep(0, [])).toBeNull();
+    expect(resolveStep(0, ['search'])).toBe(0);
+    expect(resolveStep(1, ['search'])).toBeNull();
   });
 
   it('skip ends the tour at once', () => {
@@ -59,17 +50,17 @@ describe('coach store', () => {
     expect(stored.state).toEqual({ coachDone: true });
     const saved = (await AsyncStorage.getItem(KEY)) ?? '';
     // Simulate a restart: a fresh in-memory store, the saved string still in storage.
-    useCoach.setState({ coachDone: false, step: 3 });
+    useCoach.setState({ coachDone: false, step: 1 });
     await new Promise((r) => setTimeout(r, 0));
     await AsyncStorage.setItem(KEY, saved);
     await useCoach.persist.rehydrate();
     expect(useCoach.getState().coachDone).toBe(true);
     // The step is not persisted: an interrupted tour starts over.
-    expect(useCoach.getState().step).toBe(3);
+    expect(useCoach.getState().step).toBe(1);
   });
 
   it('does not persist the step', async () => {
-    useCoach.getState().next(ALL);
+    useCoach.setState({ step: 1 });
     await new Promise((r) => setTimeout(r, 0));
     const stored = JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
     expect(stored.state).toEqual({ coachDone: false });

@@ -21,9 +21,13 @@ export function walkMinutes(a: LatLng, b: LatLng): number {
 }
 
 /** Apple Maps hand-off. The app itself never gives directions. */
-export function appleMapsUrl(dest: LatLng, name?: string): string {
+export function appleMapsUrl(
+  dest: LatLng,
+  name?: string,
+  mode: 'drive' | 'walk' = 'drive',
+): string {
   const q = name ? `&q=${encodeURIComponent(name)}` : '';
-  return `https://maps.apple.com/?daddr=${dest.lat},${dest.lng}&dirflg=d${q}`;
+  return `https://maps.apple.com/?daddr=${dest.lat},${dest.lng}&dirflg=${mode === 'walk' ? 'w' : 'd'}${q}`;
 }
 
 /** Apple Maps walking directions between two points (no routing in the app). */

@@ -13,7 +13,10 @@ import {
 import { fold } from '@/data/search';
 import { currentLocation } from '@/lib/location';
 
-export type FoodOpts = { park?: boolean; dish?: string; quality?: boolean };
+/** Why the list is not around the user: location unknown, or the user is outside the city. */
+export type FoodApprox = 'noLocation' | 'outside';
+
+export type FoodOpts = { park?: boolean; dish?: string; quality?: boolean; approx?: FoodApprox };
 
 /** Opens the restaurant list around a point. */
 export function openFood(target: LatLng, label: string, cat?: FoodCategory, opts?: FoodOpts) {
@@ -27,6 +30,7 @@ export function openFood(target: LatLng, label: string, cat?: FoodCategory, opts
       ...(opts?.park ? { park: '1' } : {}),
       ...(opts?.dish ? { dish: opts.dish } : {}),
       ...(opts?.quality ? { quality: '1' } : {}),
+      ...(opts?.approx ? { approx: opts.approx } : {}),
     },
   });
 }
@@ -42,15 +46,18 @@ function fallbackPlace(): { name: string } & LatLng {
 
 const LOCATION_TIMEOUT_MS = 5000;
 
-/** The user's location if known quickly and inside the city, else the city's fallback place. */
+/**
+ * The user's location if known quickly and inside the city, else the city's fallback place.
+ * `approx` says why the fallback was used (null: the list is around the user).
+ */
 async function foodCenter(
   ask: boolean,
   myLabel: string,
-): Promise<{ target: LatLng; label: string }> {
+): Promise<{ target: LatLng; label: string; approx: FoodApprox | null }> {
   const here = await currentLocation(ask, LOCATION_TIMEOUT_MS);
-  if (here && isInCityArea(here)) return { target: here, label: myLabel };
+  if (here && isInCityArea(here)) return { target: here, label: myLabel, approx: null };
   const fallback = fallbackPlace();
-  return { target: fallback, label: fallback.name };
+  return { target: fallback, label: fallback.name, approx: here ? 'outside' : 'noLocation' };
 }
 
 /** Around the user when location is already granted (or `ask`), else the city fallback (Kordon in İzmir). */
@@ -60,8 +67,8 @@ export async function openFoodNearMe(
   ask = false,
   opts?: FoodOpts,
 ) {
-  const { target, label: shown } = await foodCenter(ask, label);
-  openFood(target, shown, cat, opts);
+  const { target, label: shown, approx } = await foodCenter(ask, label);
+  openFood(target, shown, cat, approx ? { ...opts, approx } : opts);
 }
 
 // Keyed by city id: a switch must never serve the old city's restaurants.

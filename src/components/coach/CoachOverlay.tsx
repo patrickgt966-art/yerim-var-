@@ -53,8 +53,8 @@ export function CoachOverlay() {
   const index = resolveStep(step, available);
   const key = index == null ? null : COACH_STEPS[index];
 
-  // Home has laid out (the city button and the search card are measured) and is focused.
-  const ready = hydrated && !done && homeFocused && !!rects.city && !!rects.search;
+  // Home has laid out (the search card is measured) and is focused.
+  const ready = hydrated && !done && homeFocused && !!rects.search;
   useEffect(() => {
     if (!ready) return;
     const id = setTimeout(() => {
@@ -158,10 +158,14 @@ export function CoachOverlay() {
       accessible
       accessibilityRole="button"
       accessibilityLabel={text}
-      accessibilityHint={t('coach.a11yHint')}
-      accessibilityValue={{
-        text: t('coach.a11yStep', { n: position + 1, total: available.length }),
-      }}
+      accessibilityHint={t(
+        position >= available.length - 1 ? 'coach.a11yHintLast' : 'coach.a11yHint',
+      )}
+      accessibilityValue={
+        available.length > 1
+          ? { text: t('coach.a11yStep', { n: position + 1, total: available.length }) }
+          : undefined
+      }
       onPress={next}
       style={{
         padding: 16,
@@ -180,23 +184,25 @@ export function CoachOverlay() {
       <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23 }} color={brand.navy}>
         {text}
       </Txt>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={{ flexDirection: 'row', gap: 6 }}
-      >
-        {available.map((k, i) => (
-          <View
-            key={k}
-            style={{
-              width: i === position ? 18 : 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: i === position ? brand.orange : c.badgeNearBg,
-            }}
-          />
-        ))}
-      </View>
+      {available.length > 1 && (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{ flexDirection: 'row', gap: 6 }}
+        >
+          {available.map((k, i) => (
+            <View
+              key={k}
+              style={{
+                width: i === position ? 18 : 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: i === position ? brand.orange : c.badgeNearBg,
+              }}
+            />
+          ))}
+        </View>
+      )}
     </Pressable>
   );
 

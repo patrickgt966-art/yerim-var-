@@ -1,17 +1,13 @@
-import { Alert, Linking } from 'react-native';
+import { Alert } from 'react-native';
 
-import { appleMapsUrl } from '@/data/geo';
 import { tariffFor } from '@/data/tariffs';
 import type { Parking } from '@/data/types';
 import i18n from '@/i18n';
+import { openDirections } from '@/lib/directions';
 import { useApp, type ParkDestination } from '@/store/app';
 
 async function openMaps(p: Parking) {
-  try {
-    await Linking.openURL(appleMapsUrl(p, p.name));
-  } catch {
-    Alert.alert(i18n.t('results.mapsFailed'));
-  }
+  if ((await openDirections(p, p.name)) === 'failed') Alert.alert(i18n.t('results.mapsFailed'));
 }
 
 function startTimer(p: Parking, destination?: ParkDestination) {

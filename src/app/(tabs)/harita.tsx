@@ -1,14 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Pressable,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { FreshnessBadge, freshnessText, Tag } from '@/components/FreshnessBadge';
@@ -18,7 +11,7 @@ import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { cityAt, cityById, hasLiveParking, isInCityArea, type City } from '@/data/cities';
 import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
-import { appleMapsUrl, distanceMeters, type LatLng } from '@/data/geo';
+import { distanceMeters, type LatLng } from '@/data/geo';
 import {
   cuisineLabels,
   kindLabel,
@@ -29,6 +22,7 @@ import {
 } from '@/data/restaurants';
 import { rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { levelWord, useAnnounce, useScreenReader } from '@/lib/a11y';
+import { openDirections } from '@/lib/directions';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { currentLocation } from '@/lib/location';
@@ -456,8 +450,9 @@ function ParkingSheetCard({
   const word = staticCard ? null : levelWord(level, t);
   const count = staticCard || free == null ? null : free;
   const openDetail = () => router.push({ pathname: '/otopark/[id]', params: { id: p.id } });
-  const directions = () =>
-    Linking.openURL(appleMapsUrl(p, p.name)).catch(() => Alert.alert(t('food.openFailed')));
+  const directions = async () => {
+    if ((await openDirections(p, p.name)) === 'failed') Alert.alert(t('food.openFailed'));
+  };
 
   return (
     <View

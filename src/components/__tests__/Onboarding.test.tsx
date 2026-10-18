@@ -49,7 +49,6 @@ const mount = () =>
     </SafeAreaProvider>,
   );
 
-const press = async (label: string) => fireEvent.press(screen.getByLabelText(label));
 const next = async () => fireEvent.press(screen.getByText('Devam'));
 const tap = async (label: RegExp | string) => fireEvent.press(screen.getByLabelText(label));
 
@@ -61,17 +60,17 @@ beforeEach(() => {
 });
 
 describe('onboarding', () => {
-  it('starts with the hero and tagline, with four step dots', async () => {
+  it('starts with the hero, tagline and the city list, with two step dots', async () => {
     await mount();
     expect(
       screen.getByText('Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.'),
     ).toBeTruthy();
-    expect(screen.getByLabelText('Adım 1, toplam 4 adım')).toBeTruthy();
+    expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
+    expect(screen.getByLabelText('Adım 1, toplam 2 adım')).toBeTruthy();
   });
 
   it('lists every city as active, none as "Yakında"', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İzmir Büyükşehir')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İSPARK')).toBeTruthy();
@@ -88,7 +87,6 @@ describe('onboarding', () => {
 
   it('sets the store city when İstanbul is picked', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     await tap(/^İstanbul, /);
     expect(useApp.getState().city).toBe('istanbul');
     expect(screen.getByLabelText(/^İstanbul, seçili/)).toBeTruthy();
@@ -96,7 +94,6 @@ describe('onboarding', () => {
 
   it('sets the store city when Ankara is picked and says it has no live car park data', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     await tap(/^Ankara, /);
     expect(useApp.getState().city).toBe('ankara');
     expect(screen.getByLabelText(/^Ankara, seçili, Canlı otopark verisi yok/)).toBeTruthy();
@@ -104,7 +101,6 @@ describe('onboarding', () => {
 
   it('sets the store city when Bursa is picked and says it has no live car park data', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     await tap(/^Bursa, /);
     expect(useApp.getState().city).toBe('bursa');
     expect(screen.getByLabelText(/^Bursa, seçili, Canlı otopark verisi yok/)).toBeTruthy();
@@ -112,7 +108,6 @@ describe('onboarding', () => {
 
   it('sets the store city when Antalya is picked and says it has no live car park data', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     await tap(/^Antalya, /);
     expect(useApp.getState().city).toBe('antalya');
     expect(screen.getByLabelText(/^Antalya, seçili, Canlı otopark verisi yok/)).toBeTruthy();
@@ -124,35 +119,12 @@ describe('onboarding', () => {
     antalya.available = false;
     try {
       await mount();
-      await press('Başla, uygulamaya geç');
       expect(screen.getAllByText('Yakında')).toHaveLength(1);
       await tap('Antalya, yakında');
       expect(useApp.getState().city).toBe('izmir');
     } finally {
       antalya.available = true;
     }
-  });
-
-  it("shows the selected city's example in the chat step", async () => {
-    await mount();
-    await press('Başla, uygulamaya geç');
-    await tap(/^İstanbul, /);
-    await next();
-    expect(screen.getByText('Yerim ile konuş')).toBeTruthy();
-    expect(screen.getByText("Kadıköy'de akşam balık, yanında otopark olsun")).toBeTruthy();
-    expect(screen.getByText('✨ Sana 3 yer buldum, hepsinin yanında otopark var.')).toBeTruthy();
-    expect(
-      screen.getByText(
-        'Restoran ve otopark bilgileri açık veriden gelir; yapay zeka bilgi uydurmaz.',
-      ),
-    ).toBeTruthy();
-  });
-
-  it('uses the İzmir example when İzmir is selected', async () => {
-    await mount();
-    await press('Başla, uygulamaya geç');
-    await next();
-    expect(screen.getByText("Alsancak'ta akşam balık, yanında otopark olsun")).toBeTruthy();
   });
 
   it('preselects the city of the device when location is already granted', async () => {
@@ -166,31 +138,38 @@ describe('onboarding', () => {
     let resolve: (p: { lat: number; lng: number }) => void = () => {};
     (currentLocation as jest.Mock).mockReturnValue(new Promise((r) => (resolve = r)));
     await mount();
-    await press('Başla, uygulamaya geç');
     await tap(/^İzmir, /);
     await act(async () => resolve({ lat: 41.0136, lng: 28.9503 }));
     expect(useApp.getState().city).toBe('izmir');
   });
 
-  it('ends on the location step: allow asks, "Başla" only finishes', async () => {
+  it('has no AI step: "Devam" goes straight to the location step', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
     await next();
-    await next();
-    expect(screen.getByLabelText('Adım 4, toplam 4 adım')).toBeTruthy();
+    expect(screen.queryByText('Yerim ile konuş')).toBeNull();
+    expect(screen.getByLabelText('Adım 2, toplam 2 adım')).toBeTruthy();
     expect(screen.getByText('Yakınındakileri göster')).toBeTruthy();
-    (currentLocation as jest.Mock).mockClear();
+    expect(screen.getByText('Yakınındaki yerleri ve otoparkları sıralar.')).toBeTruthy();
+    expect(screen.getByText('Konumun sunucumuza hiç gönderilmez.')).toBeTruthy();
+    expect(screen.getByText('İzin vermesen de her şeyi arayabilirsin.')).toBeTruthy();
+    expect(screen.getByText(/yuvarlanmış konumun \(yaklaşık 100 m\) Apple Haritalar/)).toBeTruthy();
+  });
 
-    await tap('Başla, uygulamaya geç');
+  it('ends on the location step: "Şimdilik geç" only finishes', async () => {
+    await mount();
+    await next();
+    (currentLocation as jest.Mock).mockClear();
+    mockRequestPermission.mockClear();
+
+    await tap('Şimdilik geç');
     expect(currentLocation).not.toHaveBeenCalled();
+    expect(mockRequestPermission).not.toHaveBeenCalled();
     expect(useApp.getState().onboarded).toBe(true);
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
   });
 
   it('asks for the location, then finishes without waiting for a fix', async () => {
     await mount();
-    await press('Başla, uygulamaya geç');
-    await next();
     await next();
     (currentLocation as jest.Mock).mockClear();
     mockRequestPermission.mockClear();

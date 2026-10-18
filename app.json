@@ -16,7 +16,8 @@
         "CFBundleAllowMixedLocalizations": true,
         "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız.",
         "ITSAppUsesNonExemptEncryption": false,
-        "NSSupportsLiveActivities": true
+        "NSSupportsLiveActivities": true,
+        "LSApplicationQueriesSchemes": ["comgooglemaps", "yandexnavi", "yandexmaps", "waze"]
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,

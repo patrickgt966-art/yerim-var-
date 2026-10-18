@@ -1,4 +1,5 @@
 import { DEFAULT_CITY, isAvailableCity } from '@/data/cities';
+import { isMapApp } from '@/data/mapApps';
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -103,6 +104,7 @@ export function sanitizeAppState(persisted: unknown): unknown {
   if ('mode' in s && s.mode !== 'now' && s.mode !== 'twoHours') s.mode = 'now';
   if ('city' in s && !isAvailableCity(s.city)) s.city = DEFAULT_CITY;
   if ('lang' in s && s.lang !== 'tr' && s.lang !== 'en' && s.lang !== 'auto') s.lang = 'auto';
+  if ('mapApp' in s && !isMapApp(s.mapApp)) s.mapApp = null;
   return s;
 }
 
@@ -117,6 +119,7 @@ const DATA_KEYS = [
   'city',
   'lang',
   'recentSearches',
+  'mapApp',
 ] as const;
 
 /** Only the persisted data keys, sanitised: a stray key can never overwrite an action. */
