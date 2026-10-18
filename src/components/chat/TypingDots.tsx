@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -10,46 +11,56 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { useColors } from '@/theme';
+import { brand } from '@/theme';
 
-const DOT = 7;
-const STEP = 160;
+const DOT = 8;
+const STEP = 140;
+/** Orange to peach: the brand's food colours. */
+const COLORS = [brand.orange, '#FF9F45', brand.orangeLight] as const;
 
-function Dot({ index, reduce, color }: { index: number; reduce: boolean; color: string }) {
-  const o = useSharedValue(index === 1 ? 1 : 0.55);
+function Dot({ index, reduce }: { index: number; reduce: boolean }) {
+  const y = useSharedValue(0);
   useEffect(() => {
     if (reduce) {
-      o.value = index === 1 ? 1 : 0.55;
+      y.value = 0;
       return;
     }
-    o.value = withDelay(
+    const ease = Easing.inOut(Easing.quad);
+    // A wave: each dot hops a beat after the one before, then all rest a moment together.
+    y.value = withDelay(
       index * STEP,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: STEP * 2 }),
-          withTiming(0.35, { duration: STEP * 2 }),
+          withTiming(-6, { duration: STEP * 2, easing: ease }),
+          withTiming(0, { duration: STEP * 2, easing: ease }),
+          withTiming(0, { duration: STEP * 3 }),
         ),
         -1,
         false,
       ),
     );
-  }, [index, reduce, o]);
-  const style = useAnimatedStyle(() => ({ opacity: o.value }));
+  }, [index, reduce, y]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: y.value }, { scale: 1 - y.value / 30 }],
+    opacity: 0.7 - y.value / 20,
+  }));
   return (
     <Animated.View
-      style={[{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: color }, style]}
+      style={[
+        { width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: COLORS[index] },
+        style,
+      ]}
     />
   );
 }
 
-/** Three softly pulsing dots; static when reduce-motion is on. */
+/** Three orange dots in a soft wave; still when reduce-motion is on. */
 export function TypingDots() {
-  const c = useColors();
   const reduce = useReducedMotion();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, height: 16 }}>
       {[0, 1, 2].map((i) => (
-        <Dot key={i} index={i} reduce={reduce} color={c.textSecondary} />
+        <Dot key={i} index={i} reduce={reduce} />
       ))}
     </View>
   );

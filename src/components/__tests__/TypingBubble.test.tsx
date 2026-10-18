@@ -7,10 +7,7 @@ import { TypingBubble } from '../ChatBits';
 
 // Reanimated needs the native worklets runtime; the animations are not what this test is about.
 jest.mock('@/components/chat/TypingDots', () => ({ TypingDots: () => null }));
-jest.mock('@/components/chat/ThinkingFx', () => ({
-  ThinkingSparkle: () => null,
-  ThinkingBar: () => null,
-}));
+jest.mock('@/components/chat/ThinkingFx', () => ({ ThinkingBar: () => null }));
 jest.mock('@/components/chat/YAvatar', () => ({ YAvatar: () => null }));
 jest.mock('@/components/chat/ResultCard', () => ({ ResultCard: () => null }));
 jest.mock('@/components/chat/PlanCard', () => ({ PlanCard: () => null }));

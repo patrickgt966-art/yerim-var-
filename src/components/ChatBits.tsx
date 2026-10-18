@@ -7,7 +7,7 @@ import { cardModel, understoodChips } from '@/components/chat/model';
 import { PlanCard } from '@/components/chat/PlanCard';
 import { ResultCard } from '@/components/chat/ResultCard';
 import { BOT_INSET, softShadow } from '@/components/chat/style';
-import { ThinkingBar, ThinkingSparkle } from '@/components/chat/ThinkingFx';
+import { ThinkingBar } from '@/components/chat/ThinkingFx';
 import { TypingDots } from '@/components/chat/TypingDots';
 import { YAvatar } from '@/components/chat/YAvatar';
 import { Txt } from '@/components/Txt';
@@ -80,7 +80,7 @@ const THINKING_STEPS = [
   { at: 10000, key: 'chat.thinkingAlmost' },
 ] as const;
 
-/** `thinking`: the reply waits for the AI; a sparkle, a changing line and a slow bar show it. */
+/** `thinking`: the reply waits for the AI; the wave of dots, a changing line and a slow bar show it. */
 export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
   const { t } = useTranslation();
   const c = useColors();
@@ -106,7 +106,7 @@ export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
         accessibilityLabel={label}
         style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
       >
-        <YAvatar />
+        <YAvatar thinking />
         <View
           style={[
             botCorners,
@@ -125,7 +125,7 @@ export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
       accessibilityLabel={label}
       style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
     >
-      <YAvatar />
+      <YAvatar thinking />
       <View
         style={[
           botCorners,
@@ -144,7 +144,7 @@ export function TypingBubble({ thinking = false }: { thinking?: boolean }) {
         ]}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <ThinkingSparkle />
+          <TypingDots />
           <Animated.View style={{ flexShrink: 1, opacity: fade }}>
             <Txt
               color={c.text}
