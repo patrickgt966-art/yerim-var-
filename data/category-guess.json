@@ -1,6 +1,17 @@
 {
-  "$comment": "Estimated food category of places whose category the name rules in src/data/restaurants.ts do not read from a name or cuisine tag. Written by scripts/classify-places.ts (Anthropic Message Batches API, claude-haiku-5-5; run it from the Classify places workflow or: npx tsx scripts/classify-places.ts [--dry-run] [--limit N]). items: place id -> food category id (replaces the place's kind-only fallback category) or not_food; only high/medium confidence answers (not_food only when high), and only answers that change something. The ids already asked about are in data/category-guess-seen.json, which the app does not bundle. Empty until the first run.",
-  "generatedAt": null,
-  "model": null,
-  "items": {}
+  "$comment": "Estimated food category of places whose category the name rules in src/data/restaurants.ts do not read from a name or cuisine tag. Written by scripts/classify-places.ts (Anthropic Message Batches API, claude-haiku-5-5; run it from the Classify places workflow or: npx tsx scripts/classify-places.ts [--dry-run] [--limit N]). items: place id -> food category id (replaces the place's kind-only fallback category) or not_food; only high/medium confidence answers (not_food only when high), and only answers that change something. The ids already asked about are in data/category-guess-seen.json, which the app does not bundle.",
+  "generatedAt": "2026-10-18T22:12:08.067Z",
+  "model": "claude-haiku-5-5",
+  "items": {
+    "osm-n10022375717": "meat",
+    "osm-n10082628063": "meat",
+    "osm-n10101120200": "dessert",
+    "osm-n10128661109": "meyhane",
+    "osm-n10860094784": "world",
+    "osm-n10918466582": "lokanta",
+    "osm-n11085992805": "breakfast",
+    "osm-n11091576130": "breakfast",
+    "osm-n11141631290": "soup",
+    "osm-n11141634961": "soup"
+  }
 }
