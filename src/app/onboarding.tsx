@@ -4,27 +4,17 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccessibilityInfo, findNodeHandle, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, {
-  Easing,
-  FadeInDown,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandWordmark } from '@/components/BrandWordmark';
-import { DashedFrame } from '@/components/DashedFrame';
+import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
-import { OnboardingBackdrop } from '@/components/OnboardingBackdrop';
-import { PBadge } from '@/components/PBadge';
 import { Txt } from '@/components/Txt';
 import { cityAt, CITIES, hasLiveParking, type City } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
 import { useApp } from '@/store/app';
-import { asym, brand, fonts, HIT } from '@/theme';
+import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 /** The permission prompt only: the last step never waits for a GPS fix (none may come indoors). */
 async function askLocationPermission(): Promise<void> {
@@ -35,55 +25,12 @@ async function askLocationPermission(): Promise<void> {
   }
 }
 
-function Rings({ size }: { size: number }) {
-  const reduce = useReducedMotion();
-  const s = useSharedValue(0);
-  useEffect(() => {
-    if (!reduce)
-      s.value = withRepeat(
-        withTiming(1, { duration: 5000, easing: Easing.out(Easing.ease) }),
-        -1,
-        false,
-      );
-  }, [reduce, s]);
-  const ring = useAnimatedStyle(() => ({
-    opacity: 0.5 * (1 - s.value),
-    transform: [{ scale: 0.7 + 1.4 * s.value }],
-  }));
-  return (
-    <>
-      <View
-        style={{
-          position: 'absolute',
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.35)',
-        }}
-      />
-      <Animated.View
-        style={[
-          {
-            position: 'absolute',
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.5)',
-          },
-          ring,
-        ]}
-      />
-    </>
-  );
-}
-
 function Dots({ page }: { page: number }) {
   const { t } = useTranslation();
+  const c = useColors();
   return (
     <View
-      style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}
+      style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' }}
       accessible
       accessibilityLabel={t('onboarding.a11yStep', { n: page + 1 })}
     >
@@ -91,12 +38,10 @@ function Dots({ page }: { page: number }) {
         <View
           key={i}
           style={{
-            width: 12,
-            height: 22,
+            width: i === page ? 24 : 8,
+            height: 8,
             borderRadius: 4,
-            ...(i === page
-              ? { backgroundColor: brand.orange }
-              : { borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.6)' }),
+            backgroundColor: i === page ? brand.orange : c.line,
           }}
         />
       ))}
@@ -104,43 +49,13 @@ function Dots({ page }: { page: number }) {
   );
 }
 
-function CTA({ label, onPress, a11y }: { label: string; onPress: () => void; a11y?: string }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={a11y ?? label}
-      onPress={onPress}
-      style={({ pressed }) => [
-        asym(34, 10),
-        {
-          minHeight: 64,
-          backgroundColor: '#FFFFFF',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 14,
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      <Txt style={{ fontFamily: fonts.display, fontSize: 20 }} color={brand.navy}>
-        {label}
-      </Txt>
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: brand.orange,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name="arrow" size={20} color={brand.navy} strokeWidth={2.4} />
-      </View>
-    </Pressable>
-  );
-}
+/** The light card of the home screen (QuickGo): white, tight bottom-left corner, soft shadow. */
+const cardShadow = {
+  shadowColor: brand.navy,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.07,
+  shadowRadius: 10,
+} as const;
 
 /** Large tappable city card: open cities are selectable, the others are greyed with a "Yakında" badge. */
 function CityCard({
@@ -153,6 +68,8 @@ function CityCard({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
+  const c = useColors();
+  const live = city.available && hasLiveParking(city);
   const source = city.available
     ? t(
         !hasLiveParking(city)
@@ -177,36 +94,45 @@ function CityCard({
       disabled={!city.available}
       onPress={onPress}
       style={({ pressed }) => [
-        asym(26, 8),
+        asym(22, 6),
         {
-          minHeight: 72,
-          paddingHorizontal: 18,
-          paddingVertical: 12,
+          minHeight: 64,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
           borderWidth: 2,
           borderColor: selected ? brand.orange : 'transparent',
-          backgroundColor: !city.available
-            ? 'rgba(255,255,255,0.08)'
-            : selected
-              ? '#FFFFFF'
-              : 'rgba(255,255,255,0.92)',
-          opacity: pressed ? 0.9 : 1,
+          backgroundColor: city.available ? c.card : c.surface,
+          opacity: pressed ? 0.85 : 1,
         },
+        city.available && cardShadow,
       ]}
     >
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, alignItems: 'flex-start', gap: 4 }}>
         <Txt
-          style={{ fontFamily: fonts.display, fontSize: 22 }}
-          color={city.available ? brand.navy : 'rgba(255,255,255,0.75)'}
+          style={{ fontFamily: fonts.display, fontSize: 20, lineHeight: 26 }}
+          color={city.available ? c.text : c.textSecondary}
         >
           {city.name}
         </Txt>
         {city.available && (
-          <Txt variant="caption" color={brand.textSecondary}>
-            {source}
-          </Txt>
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 2,
+              borderRadius: 999,
+              backgroundColor: live ? brand.mintSoft : c.chipBg,
+            }}
+          >
+            <Txt
+              style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}
+              color={live ? brand.mintText : c.textSecondary}
+            >
+              {source}
+            </Txt>
+          </View>
         )}
       </View>
       {!city.available && (
@@ -215,10 +141,10 @@ function CityCard({
             paddingHorizontal: 10,
             paddingVertical: 4,
             borderRadius: 999,
-            backgroundColor: 'rgba(255,255,255,0.18)',
+            backgroundColor: c.chipBg,
           }}
         >
-          <Txt variant="label" color="#FFFFFF">
+          <Txt variant="label" color={c.textSecondary}>
             {t('city.soon')}
           </Txt>
         </View>
@@ -241,35 +167,42 @@ function CityCard({
   );
 }
 
-/** One short reason to allow location: a small icon and a line. */
-function WhyRow({ icon, text }: { icon: IconName; text: string }) {
+/** One short reason to allow location: a soft icon tile and a line. */
+function WhyRow({
+  icon,
+  text,
+  tile,
+  fg,
+}: {
+  icon: IconName;
+  text: string;
+  tile: string;
+  fg: string;
+}) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 }}>
       <View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={[
-          asym(14, 5),
-          {
-            width: 40,
-            height: 40,
-            backgroundColor: 'rgba(255,255,255,0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-        ]}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: tile,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <Icon name={icon} size={22} color={brand.orange} strokeWidth={2.2} />
+        <Icon name={icon} size={22} color={fg} strokeWidth={2.2} />
       </View>
-      <Txt style={{ flex: 1, fontSize: 17, lineHeight: 24 }} color="rgba(255,255,255,0.9)">
-        {text}
-      </Txt>
+      <Txt style={{ flex: 1, fontSize: 16, lineHeight: 23 }}>{text}</Txt>
     </View>
   );
 }
 
 export default function Onboarding() {
   const { t } = useTranslation();
+  const c = useColors();
   const insets = useSafeAreaInsets();
   const setOnboarded = useApp((s) => s.setOnboarded);
   const cityId = useApp((s) => s.city);
@@ -305,94 +238,55 @@ export default function Onboarding() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: brand.navy }}>
-      <StatusBar style="light" />
-      <OnboardingBackdrop />
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <StatusBar style="dark" />
       <View
         style={{
           flex: 1,
-          paddingTop: insets.top + 24,
+          paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + 16,
-          paddingHorizontal: 32,
+          paddingHorizontal: 16,
         }}
       >
         {page === 0 && (
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 14 }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={{ alignItems: 'center', gap: 12 }}>
-              <View
-                style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}
+            <Animated.View
+              entering={FadeInDown.duration(400)}
+              style={{ alignItems: 'center', gap: 6 }}
+            >
+              <BrandWordmark layout="stacked" tone="onLight" size={44} header />
+              <Txt
+                style={{ textAlign: 'center', fontSize: 14, lineHeight: 20, paddingHorizontal: 8 }}
+                color={c.textSecondary}
               >
-                <Rings size={160} />
-                {/* Food + parking: orange fork-and-knife tile with a white P badge on its corner. */}
-                <Animated.View
-                  entering={FadeInDown.delay(300).duration(1200)}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                  style={{ width: 100, height: 100 }}
-                >
-                  <View
-                    style={[
-                      asym(29, 8),
-                      {
-                        width: 100,
-                        height: 100,
-                        backgroundColor: brand.orange,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      },
-                    ]}
-                  >
-                    <Icon name="cutlery" size={62} color={brand.navy} strokeWidth={2} />
-                  </View>
-                  <View
-                    style={{
-                      position: 'absolute',
-                      right: -16,
-                      bottom: -16,
-                      shadowColor: brand.navy,
-                      shadowOpacity: 0.35,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 3 },
-                    }}
-                  >
-                    <PBadge size={44} inverted />
-                  </View>
-                </Animated.View>
-              </View>
-              <Animated.View entering={FadeInDown.delay(900).duration(800)}>
-                <BrandWordmark layout="stacked" tone="onDark" size={40} header />
-              </Animated.View>
-              <Animated.View entering={FadeInDown.delay(1100).duration(800)}>
-                <Txt
-                  style={{ textAlign: 'center', fontSize: 16, lineHeight: 23 }}
-                  color="rgba(255,255,255,0.85)"
-                >
-                  {t('onboarding.tagline')}
-                </Txt>
-              </Animated.View>
-            </View>
+                {t('onboarding.tagline')}
+              </Txt>
+            </Animated.View>
             <Txt
               ref={headerRef}
-              variant="display"
-              color="#FFFFFF"
               accessibilityRole="header"
-              style={{ marginTop: 8 }}
+              style={{
+                fontFamily: fonts.display,
+                fontSize: 32,
+                lineHeight: 38,
+                letterSpacing: -0.4,
+              }}
             >
               {t('onboarding.cityTitle')}
             </Txt>
-            <View style={{ gap: 12 }}>
-              {CITIES.map((c) => (
+            <View style={{ gap: 8 }}>
+              {CITIES.map((city) => (
                 <CityCard
-                  key={c.id}
-                  city={c}
-                  selected={c.available && c.id === cityId}
+                  key={city.id}
+                  city={city}
+                  selected={city.available && city.id === cityId}
                   onPress={() => {
                     picked.current = true;
-                    setCity(c.id);
+                    setCity(city.id);
                   }}
                 />
               ))}
@@ -401,51 +295,66 @@ export default function Onboarding() {
         )}
 
         {page === 1 && (
-          <Animated.View entering={FadeInDown.duration(500)} style={{ flex: 1 }}>
+          <Animated.View entering={FadeInDown.duration(400)} style={{ flex: 1 }}>
             <ScrollView
               style={{ flex: 1 }}
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 20 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: 16 }}
               showsVerticalScrollIndicator={false}
             >
-              {/* A parking slot with a location pin in it: the brand motif, decorative only. */}
-              <View
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-                style={{ alignItems: 'center' }}
+              <BrandWordmark layout="inline" tone="onLight" size={26} header />
+              <Txt
+                ref={headerRef}
+                accessibilityRole="header"
+                style={{
+                  fontFamily: fonts.display,
+                  fontSize: 32,
+                  lineHeight: 38,
+                  letterSpacing: -0.4,
+                }}
               >
-                <View
-                  style={{
-                    width: 132,
-                    height: 150,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <DashedFrame color={brand.orange} radius={34} tight={10} strokeWidth={2.5} />
-                  <Icon name="pin" size={64} color={brand.orange} strokeWidth={2} />
-                </View>
-              </View>
-              <Txt ref={headerRef} variant="display" color="#FFFFFF" accessibilityRole="header">
                 {t('onboarding.locTitle')}
               </Txt>
-              <View style={{ gap: 14 }}>
-                <WhyRow icon="locate" text={t('onboarding.locWhy1')} />
-                <WhyRow icon="check" text={t('onboarding.locWhy2')} />
-                <WhyRow icon="search" text={t('onboarding.locWhy3')} />
+              <View
+                style={[
+                  asym(22, 6),
+                  { backgroundColor: c.card, paddingHorizontal: 16, paddingVertical: 2 },
+                  cardShadow,
+                ]}
+              >
+                <WhyRow
+                  icon="locate"
+                  text={t('onboarding.locWhy1')}
+                  tile={brand.mintSoft}
+                  fg={brand.mintText}
+                />
+                <View style={{ height: 1, backgroundColor: c.line }} />
+                <WhyRow
+                  icon="check"
+                  text={t('onboarding.locWhy2')}
+                  tile={brand.peachSoft}
+                  fg={brand.peachText}
+                />
+                <View style={{ height: 1, backgroundColor: c.line }} />
+                <WhyRow
+                  icon="search"
+                  text={t('onboarding.locWhy3')}
+                  tile={brand.mintSoft}
+                  fg={brand.mintText}
+                />
               </View>
-              <Txt variant="caption" color="rgba(255,255,255,0.7)">
+              <Txt variant="caption" color={c.textSecondary} style={{ paddingHorizontal: 4 }}>
                 {t('onboarding.locNote')}
               </Txt>
             </ScrollView>
           </Animated.View>
         )}
 
-        <View style={{ gap: 20 }}>
+        <View style={{ gap: 14, paddingTop: 12 }}>
           <Dots page={page} />
-          {page === 0 && <CTA label={t('onboarding.next')} onPress={() => setPage(1)} />}
+          {page === 0 && <Button label={t('onboarding.next')} onPress={() => setPage(1)} />}
           {page === 1 && (
             <>
-              <CTA
+              <Button
                 label={t('onboarding.allow')}
                 onPress={async () => {
                   await askLocationPermission();
@@ -458,7 +367,7 @@ export default function Onboarding() {
                 onPress={finish}
                 style={{ minHeight: HIT, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Txt variant="bodyBold" color="#FFFFFF">
+                <Txt variant="bodyBold" color={c.textSecondary}>
                   {t('onboarding.skip')}
                 </Txt>
               </Pressable>
