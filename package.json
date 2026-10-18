@@ -49,6 +49,7 @@
     "prettier": "^3.9.9",
     "react-test-renderer": "^19.2.3",
     "sharp": "^0.35.5",
+    "tsx": "4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -60,6 +61,7 @@
     "test": "jest",
     "test:dishes": "DISH_AUDIT=full jest src/data/__tests__/turkishDishes.test.ts",
     "build-icons": "node scripts/build-icons.mjs",
+    "site:build": "tsx scripts/build-site.ts",
     "doctor": "expo-doctor"
   },
   "private": true,
