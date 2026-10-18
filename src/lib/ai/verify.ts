@@ -195,11 +195,16 @@ export function verifyPlan(
   };
 }
 
-/** True when the car park reason is a fact about this candidate (compared with all candidates). */
+/**
+ * True when the car park reason is a fact about this candidate (compared with all candidates).
+ * `when` is the time the candidates' openState was computed for: "open_now" is shown as "şu an
+ * açık", so it holds only for a pick about now (as in planReasonHolds).
+ */
 export function parkReasonHolds(
   code: ParkReason,
   c: ParkPickCandidate,
   all: ParkPickCandidate[],
+  when: PlanWhen = 'now',
 ): boolean {
   switch (code) {
     case 'closest':
@@ -209,7 +214,7 @@ export function parkReasonHolds(
     case 'nonstop':
       return c.nonstop === true;
     case 'open_now':
-      return c.openState === 'open';
+      return when === 'now' && c.openState === 'open';
     case 'most_free_spots': {
       if (c.freeSpots === null || c.freeSpots <= 0) return false;
       const free = c.freeSpots;
@@ -233,21 +238,30 @@ export type VerifiedParkPick = {
   tone: string | null;
 };
 
+/** `when`: the time the candidates' openState was computed for (the planned time of a trip). */
 export function verifyParkPick(
   res: ParkPickResponse,
   candidates: ParkPickCandidate[],
   text: FreeTextContext = {},
+  when: PlanWhen = 'now',
 ): VerifiedParkPick | null {
   const n = candidates.length;
   if (!isIndex(res?.pick, n)) return null;
   const chosen = candidates[res.pick]!;
+  // A car park known to be closed at that time is never a pick (a trip plan sends the user there).
+  if (chosen.openState === 'closed') return null;
   const reasons = uniqueReasons(res.reasons)
-    .filter((code) => parkReasonHolds(code as ParkReason, chosen, candidates))
+    .filter((code) => parkReasonHolds(code as ParkReason, chosen, candidates, when))
     .slice(0, MAX_REASONS) as ParkReason[];
   if (reasons.length === 0) return null;
   let runnerUp: VerifiedParkPick['runnerUp'] = null;
-  if (isIndex(res.runnerUp, n) && res.runnerUp !== res.pick && res.runnerUpWhy) {
-    if (parkReasonHolds(res.runnerUpWhy, candidates[res.runnerUp]!, candidates)) {
+  if (
+    isIndex(res.runnerUp, n) &&
+    res.runnerUp !== res.pick &&
+    res.runnerUpWhy &&
+    candidates[res.runnerUp]!.openState !== 'closed'
+  ) {
+    if (parkReasonHolds(res.runnerUpWhy, candidates[res.runnerUp]!, candidates, when)) {
       runnerUp = { index: res.runnerUp, why: res.runnerUpWhy };
     }
   }
