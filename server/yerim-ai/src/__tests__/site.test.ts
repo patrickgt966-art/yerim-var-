@@ -23,6 +23,16 @@ jest.mock('../../../../assets/icon.png', () => {
   };
 });
 
+jest.mock('../../../../assets/brand/wordmark.png', () => {
+  const buf: Buffer = require('fs').readFileSync(
+    require('path').join(__dirname, '../../../../assets/brand/wordmark.png'),
+  );
+  return {
+    __esModule: true,
+    default: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+  };
+});
+
 import worker, { type Env } from '../index';
 import { esc } from '../site';
 
@@ -124,7 +134,7 @@ describe('share pages', () => {
     );
     expect(res.status).toBe(200);
     expect(text).not.toContain('<script');
-    expect(text).not.toContain('<img');
+    expect(text).not.toContain('<img src=x'); // the logo <img> is the only one
     expect(text).toContain('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&#39;&amp;');
     expect(text).toContain(`q=${esc(encodeURIComponent(name))}`);
   });
@@ -159,6 +169,22 @@ describe('other pages', () => {
     expect(res.headers.get('cache-control')).toBe('public, max-age=604800');
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect(Array.from(bytes.slice(1, 4))).toEqual([0x50, 0x4e, 0x47]);
+  });
+
+  it('/logo.png is the wordmark', async () => {
+    const res = await worker.fetch(new Request('https://yerimvar.app/logo.png'), envOf());
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(res.headers.get('cache-control')).toBe('public, max-age=604800');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(Array.from(bytes.slice(1, 4))).toEqual([0x50, 0x4e, 0x47]);
+  });
+
+  it('the home page shows the logo image inside the card', async () => {
+    const { text } = await get('/');
+    expect(text).toContain(
+      '<div class="card"><img class="logo" src="/logo.png" alt="Yerim Var" width="160" height="110">',
+    );
   });
 
   it('apple-app-site-association: 404 without a team id, the json with one', async () => {
