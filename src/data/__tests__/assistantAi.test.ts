@@ -453,6 +453,28 @@ describe('clarify (job 3)', () => {
     }
   });
 
+  it('asks whether an ambiguous word is a place, with the place and "near me" as chips', async () => {
+    const { ai, deps } = mockAi({
+      understand: async () =>
+        okU(
+          search({
+            district: null,
+            place: 'Bebek',
+            dish: 'kuru fasulye',
+            clarify: { ask: 'place', text: null },
+          }),
+        ),
+    });
+    const r = await answer('bebek kuru fasulye', emptyContext('food'), deps);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.text).toBe('chat.ask_place {"place":"Bebek"}');
+    expect(r.reply.actions).toEqual([
+      { kind: 'say', label: 'Bebek', text: 'Bebek' },
+      { kind: 'say', label: 'chat.clarifyNotPlace', text: 'chat.clarifyNear' },
+    ]);
+    expect(ai.pick).not.toHaveBeenCalled();
+  });
+
   it('uses the template when the wording fails validation', async () => {
     for (const text of ['Konak otopark ücretsiz mi?', 'Saat kaçta 3 kişi?', null]) {
       const { deps } = mockAi({ understand: ask('district', text) });
@@ -950,10 +972,14 @@ describe('audit fixes: the AI reading is the search', () => {
       understand: async () =>
         okU(search({ district: null, place: 'Zyxqor sahili', cat: 'fish', dish: 'balık' })),
     });
-    const r = await answer('akşam Zyxqor sahilinde güzel bir balık yeri arıyorum', emptyContext('food'), {
-      ...deps,
-      geocode: async () => ({ lat: 38.44, lng: 27.14 }),
-    });
+    const r = await answer(
+      'akşam Zyxqor sahilinde güzel bir balık yeri arıyorum',
+      emptyContext('food'),
+      {
+        ...deps,
+        geocode: async () => ({ lat: 38.44, lng: 27.14 }),
+      },
+    );
     expect(r.ctx.place?.label).toBe('Zyxqor sahili');
   });
 });

@@ -1601,7 +1601,9 @@ async function answerText(
         ctx.party === undefined &&
         !meta.ai?.partySize) ||
       (ask === 'time' && ctx.when === undefined && meta.planWhen === null) ||
-      (ask === 'duration' && next.section === 'park'))
+      (ask === 'duration' && next.section === 'park') ||
+      // A word that may be a place or not ("bebek", "kas"): ask before searching anywhere.
+      (ask === 'place' && !!(meta.ai?.place ?? meta.ai?.district)))
   ) {
     return withNotice(await clarify(ask, next, it.food, deps, meta));
   }
@@ -2233,10 +2235,18 @@ async function clarify(
   const { t } = deps;
   const here = (await deps.here()) ?? activeCity().center;
   const asked = validateFreeText('clarify', meta.ai?.clarify?.text, textContext(deps, here));
-  const text = asked ?? t(`chat.ask_${ask}`);
+  const placeName = meta.ai?.place ?? meta.ai?.district ?? '';
+  const text =
+    asked ?? (ask === 'place' ? t('chat.ask_place', { place: placeName }) : t(`chat.ask_${ask}`));
   const group = [...new Set<Wish>([...meta.wishes, 'group'])];
   let actions: ChatAction[];
-  if (ask === 'district') {
+  if (ask === 'place') {
+    // Yes sends the place as an answer (the AI reads it with the request before); no searches nearby.
+    actions = [
+      { kind: 'say', label: placeName, text: placeName },
+      { kind: 'say', label: t('chat.clarifyNotPlace'), text: t('chat.clarifyNear') },
+    ];
+  } else if (ask === 'district') {
     const nearest = [...activeCity().districtCenters]
       .sort((a, b) => distanceMeters(here, a) - distanceMeters(here, b))
       .slice(0, 3);

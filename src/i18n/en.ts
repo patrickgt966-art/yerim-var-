@@ -777,11 +777,13 @@ const en = {
     planWalkTo: 'Walk ~{{count}} min: {{place}}',
     // Clarify (job 3)
     ask_district: 'Which area should I search?',
+    ask_place: 'By “{{place}}”, did you mean the place?',
     ask_dish: 'What do you feel like eating?',
     ask_party: 'How many of you?',
     ask_time: 'When do you want to go?',
     ask_duration: 'How long will you stay?',
     clarifyNear: 'Near me',
+    clarifyNotPlace: 'No, near me',
     party_1: '1-2 people',
     party_2: '3-5 people',
     party_3: '6+ people',

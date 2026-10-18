@@ -51,7 +51,11 @@ export function scoreUnderstanding(c: UnderstandCase, u: Understanding): Score {
     if (e.district !== undefined) {
       const got = u.district ? fold(u.district) : null;
       const want = e.district ? fold(e.district) : null;
-      if (got !== want) misses.push(`district: want ${e.district}, got ${u.district}`);
+      // Asking "did you mean the place X?" about the expected place is a right answer too.
+      const asked = u.clarify?.ask === 'place' ? fold(u.place ?? u.district ?? '') : null;
+      if (got !== want && !(want && asked === want)) {
+        misses.push(`district: want ${e.district}, got ${u.district}`);
+      }
     }
     if (e.food !== undefined && u.food !== e.food)
       misses.push(`food: want ${e.food}, got ${u.food}`);

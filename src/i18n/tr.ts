@@ -740,11 +740,13 @@ const tr = {
     planWalkTo: '~{{count}} dk yürü: {{place}}',
     // Clarify (job 3)
     ask_district: 'Hangi semtte arayayım?',
+    ask_place: '“{{place}}” derken bir yeri mi kastettiniz?',
     ask_dish: 'Ne yemek istersin?',
     ask_party: 'Kaç kişisiniz?',
     ask_time: 'Ne zaman gitmek istersin?',
     ask_duration: 'Ne kadar kalacaksın?',
     clarifyNear: 'Yakınımda',
+    clarifyNotPlace: 'Hayır, yakınımda',
     party_1: '1-2 kişi',
     party_2: '3-5 kişi',
     party_3: '6+ kişi',
