@@ -1,0 +1,116 @@
+{
+ "$comment": "Hand-kept from BURULAŞ (Bursa Büyükşehir Belediyesi company), \"Otopark Tarifesi\" of the Bursa Şehirlerarası ve Uluslararası Otobüs Terminali car park: https://www.burulas.com.tr/hizmetler/terminal/otopark-tarifesi (undated page, read 2026-10-18; supersedes the older 80 TL table on /bursa-otobus-terminali/hakkinda/). 0-25 min free; \"1..12 Saate Kadar\" bands as published; the 12-13 ... 23-24 Saat bands are computed from the published rule \"12 saatten sonra her saat için 5,00 TL ilave edilir\" (290 + 5 per started hour). Past 24 h the app charges the 23-24 Saat price per started day, which overstates the real +5 TL/hour. Matched only to the OSM car park tagged operator \"Burulaş Bursa Terminal Otoparkı\"; two unnamed OSM car parks beside the terminal (osm-node-3525140237, osm-way-191171828) are left out. Ankara (ANPARK/BELTAŞ 2026 table published only as an image) and Antalya (ANET, no published price table found) have no file yet: see docs/data-source.md.",
+ "tariffs": [
+  {
+   "parkingId": "osm-way-345889573",
+   "hourly": 100,
+   "currency": "TRY",
+   "bands": [
+    {
+     "label": "0-1 Saat",
+     "price": 100
+    },
+    {
+     "label": "1-2 Saat",
+     "price": 120
+    },
+    {
+     "label": "2-3 Saat",
+     "price": 140
+    },
+    {
+     "label": "3-4 Saat",
+     "price": 160
+    },
+    {
+     "label": "4-5 Saat",
+     "price": 180
+    },
+    {
+     "label": "5-6 Saat",
+     "price": 200
+    },
+    {
+     "label": "6-7 Saat",
+     "price": 215
+    },
+    {
+     "label": "7-8 Saat",
+     "price": 230
+    },
+    {
+     "label": "8-9 Saat",
+     "price": 245
+    },
+    {
+     "label": "9-10 Saat",
+     "price": 260
+    },
+    {
+     "label": "10-11 Saat",
+     "price": 275
+    },
+    {
+     "label": "11-12 Saat",
+     "price": 290
+    },
+    {
+     "label": "12-13 Saat",
+     "price": 295
+    },
+    {
+     "label": "13-14 Saat",
+     "price": 300
+    },
+    {
+     "label": "14-15 Saat",
+     "price": 305
+    },
+    {
+     "label": "15-16 Saat",
+     "price": 310
+    },
+    {
+     "label": "16-17 Saat",
+     "price": 315
+    },
+    {
+     "label": "17-18 Saat",
+     "price": 320
+    },
+    {
+     "label": "18-19 Saat",
+     "price": 325
+    },
+    {
+     "label": "19-20 Saat",
+     "price": 330
+    },
+    {
+     "label": "20-21 Saat",
+     "price": 335
+    },
+    {
+     "label": "21-22 Saat",
+     "price": 340
+    },
+    {
+     "label": "22-23 Saat",
+     "price": 345
+    },
+    {
+     "label": "23-24 Saat",
+     "price": 350
+    }
+   ],
+   "freeMinutes": 25,
+   "monthly": null,
+   "priceKind": "official",
+   "validFrom": null,
+   "source": "BURULAŞ (Bursa Otobüs Terminali otopark tarifesi)",
+   "verifiedAt": "2026-10-18",
+   "sourceName": "Bursa Şehirlerarası ve Uluslararası Otobüs Terminali Otoparkı",
+   "sourceUrl": "https://www.burulas.com.tr/hizmetler/terminal/otopark-tarifesi"
+  }
+ ]
+}

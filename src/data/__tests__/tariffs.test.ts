@@ -1,3 +1,5 @@
+import bursaParkings from '../../../data/parkings-static-bursa.json';
+import bursaTariffs from '../../../data/tariffs-bursa.json';
 import {
   bandMinutes,
   carBands,
@@ -154,5 +156,34 @@ describe('İzmir price list', () => {
     expect(parkCost('izelman-342e739365', null, 30 * 60)).toBe(600);
     // Only car columns: no motorcycle or disabled-badge prices.
     expect(konak?.bands.some((b) => /motosiklet|engelli/i.test(b.label))).toBe(false);
+  });
+});
+
+describe('Bursa terminal tariff (BURULAŞ)', () => {
+  const ID = 'osm-way-345889573';
+
+  it('loads as official, with 25 free minutes', () => {
+    expect(tariffFor(ID)).toMatchObject({
+      priceKind: 'official',
+      verifiedAt: '2026-10-18',
+      freeMinutes: 25,
+      hourly: 100,
+    });
+  });
+
+  it('prices a stay by the published "N saate kadar" bands', () => {
+    expect(parkCost(ID, null, 20)).toBe(0);
+    expect(parkCost(ID, null, 40)).toBe(100);
+    expect(parkCost(ID, null, 150)).toBe(140); // 3 saate kadar
+    expect(parkCost(ID, null, 12 * 60)).toBe(290);
+    // After 12 h: 5 TL per started hour.
+    expect(parkCost(ID, null, 13 * 60)).toBe(295);
+    expect(parkCost(ID, null, 24 * 60)).toBe(350);
+  });
+
+  it('only names car parks that exist in the Bursa data', () => {
+    const ids = new Set(bursaParkings.parkings.map((p) => p.id));
+    expect(bursaTariffs.tariffs.length).toBeGreaterThan(0);
+    for (const t of bursaTariffs.tariffs) expect(ids.has(t.parkingId)).toBe(true);
   });
 });

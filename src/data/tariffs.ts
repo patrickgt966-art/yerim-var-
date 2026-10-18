@@ -1,3 +1,4 @@
+import bursaRaw from '../../data/tariffs-bursa.json';
 import isparkRaw from '../../data/tariffs-ispark.json';
 import izmirRaw from '../../data/tariffs-izmir.json';
 import raw from '../../data/tariffs.json';
@@ -65,12 +66,14 @@ export function isHeavyVehicleName(name: string | null | undefined): boolean {
   return HEAVY_WORD.test(n);
 }
 
-// The hand-kept file, the İzmir (İzelman) price list mapped by scripts/fetch-sources.mjs, then
-// the İSPARK tariffs collected by scripts/fetch-ispark-tariffs.mjs.
+// The hand-kept file, the İzmir (İzelman) price list mapped by scripts/fetch-sources.mjs, the
+// İSPARK tariffs collected by scripts/fetch-ispark-tariffs.mjs, then the hand-kept BURULAŞ
+// (Bursa terminal) tariff.
 const RAW_TARIFFS = [
   ...(raw.tariffs as Tariff[]),
   ...(izmirRaw.tariffs as Tariff[]),
   ...(isparkRaw.tariffs as Tariff[]),
+  ...(bursaRaw.tariffs as Tariff[]),
 ];
 const RAW_BY_ID = new Map(RAW_TARIFFS.map((t) => [t.parkingId, t]));
 
