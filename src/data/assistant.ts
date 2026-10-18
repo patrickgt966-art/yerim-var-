@@ -101,6 +101,8 @@ import { disabledInfo } from '@/lib/disabledSpots';
 import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { tariffFor } from '@/data/tariffs';
+import i18n from '@/i18n';
+import { daypartOf, foodReply, foundNameReply, parkReply } from '@/data/replyText';
 
 export type ChatPlace = { label: string; lat: number; lng: number };
 
@@ -1262,7 +1264,7 @@ async function answerText(
           ]
         : [];
       const found: BotMessage = {
-        text: t('chat.foundName', { name: first.name, count: matches.length }),
+        text: foundNameReply(first.name, matches.length, t, text, i18n.language),
         cards,
         actions,
       };
@@ -1987,19 +1989,36 @@ function runFood(
   const list = prefs ? preferRows(shown, prefs, hits) : shown;
 
   if (shown.length > 0) {
-    let text = ctx.requireParking
-      ? t(freeOnly ? 'chat.foodFoundFree' : 'chat.foodFoundPark', {
-          where,
-          count: shown.length,
-          what,
-        })
-      : variant(t, 'chat.foodFound', 2, seed, {
-          where,
-          count: ordered.length,
-          what,
-          withPark: withPark.length,
-        });
-    text = dishPrefix + text;
+    // Facts for the reply come from the cards the user will see (the first MAX_CARDS of the list).
+    const seen = list.slice(0, MAX_CARDS);
+    const firstPark = seen[0]?.parking;
+    const hoursStates = seen
+      .filter((row) => !!row.r.openingHours)
+      .map((row) => openState({ openingHoursText: row.r.openingHours }, now))
+      .filter((s) => s !== 'unknown');
+    let text = foodReply(
+      {
+        where,
+        what,
+        count: ctx.requireParking ? shown.length : ordered.length,
+        withPark: withPark.length,
+        requireParking: ctx.requireParking,
+        freeOnly,
+        nearestWalkMin: firstPark ? walkMinFromMeters(firstPark.distanceM) : null,
+        freeParkCount: seen.filter(
+          (row) => nearestParking(row.r, deps.parkings)?.parking.isPaid === false,
+        ).length,
+        openNowCount: hoursStates.filter((s) => s === 'open').length,
+        knownHoursCount: hoursStates.length,
+        daypart: daypartOf(istanbulClock(now).minutes),
+        // Places matched to a dish are named by what you can get there, never by a shop type.
+        dish: hits.size > 0 && dishName ? dishName : null,
+        dishPrefix,
+      },
+      t,
+      seed,
+      i18n.language,
+    );
     if (quality) text = t('chat.noRatings') + '\n' + text;
     if (prefs?.at) {
       const known = list.slice(0, MAX_CARDS).some((row) => openAt(row.r, prefs.at!) === 'open');
@@ -2202,9 +2221,25 @@ function runPark(
   const ranked = prefs ? preferParkings(list, prefs, now) : list;
 
   if (list.length > 0) {
-    let text = variant(t, 'chat.parkFound', 2, seed, { where, count: list.length });
+    const nearest = list[0]!;
+    let text = parkReply(
+      {
+        where,
+        count: list.length,
+        nearestName: nearest.p.name,
+        nearestWalkMin: walkMinFromMeters(nearest.d),
+        nearestFree: visibleFree(nearest.p, now),
+        liveCount: list.filter((x) => visibleFree(x.p, now) !== null).length,
+        freeOfChargeCount: list.filter((x) => x.p.isPaid === false).length,
+      },
+      t,
+      seed,
+      i18n.language,
+    );
     const fresh = list.filter((x) => visibleFree(x.p, now) !== null).length;
-    if (fresh > 0) text += ' ' + t('chat.parkFresh', { count: fresh });
+    // The live-spots highlight (fresh free count of the nearest) already says it: no second sentence.
+    if (fresh > 0 && visibleFree(nearest.p, now) === null)
+      text += ' ' + t('chat.parkFresh', { count: fresh });
     if (prefs) text += ' ' + parkPrefLines(ranked.slice(0, MAX_CARDS), prefs, now, t).join(' ');
     const cards: ChatCard[] = ranked.slice(0, MAX_CARDS).map(({ p, d }) => ({
       kind: 'parking',

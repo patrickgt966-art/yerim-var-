@@ -592,8 +592,146 @@ const en = {
     distance: '{{km}} km',
     a11yUser: 'You: {{text}}',
     a11yBot: 'Yerim: {{text}}',
-    foundName_one: 'Found "{{name}}". There’s {{count}} place with this name:',
-    foundName_other: 'Found "{{name}}". There are {{count}} places with this name, closest first:',
+    foundName_0_one: 'Found "{{name}}". There’s {{count}} place with this name:',
+    foundName_0_other:
+      'Found "{{name}}". There are {{count}} places with this name, closest first:',
+    foundName_1_one: 'One place is called "{{name}}". Here it is:',
+    foundName_1_other: '{{count}} places are called "{{name}}". The closest is on top.',
+    foundName_2_one: 'I found {{count}} place named "{{name}}":',
+    foundName_2_other: 'I found {{count}} places named "{{name}}", sorted from near to far:',
+    reply: {
+      foodLead_0_one: 'Found 1 place ({{what}}) around {{where}}, with a car park nearby.',
+      foodLead_0_other:
+        'Found {{count}} {{what}} around {{where}}; {{withPark}} of them have a car park nearby.',
+      foodLead_1_one:
+        'There is 1 place ({{what}}) around {{where}}, and it has a car park close by.',
+      foodLead_1_other:
+        'There are {{count}} {{what}} around {{where}}; {{withPark}} of them have a car park close by.',
+      foodLead_2_one: '1 place ({{what}}) came up around {{where}}, with a car park close by.',
+      foodLead_2_other:
+        '{{count}} {{what}} came up around {{where}}, and {{withPark}} have a car park close by.',
+      foodLead_3_one: 'I listed 1 place ({{what}}) around {{where}}; it has a car park nearby.',
+      foodLead_3_other:
+        'I listed {{count}} {{what}} around {{where}}; {{withPark}} of them have a car park nearby.',
+      foodLead_4_one: 'The one place ({{what}}) around {{where}} has a car park nearby.',
+      foodLead_4_other:
+        'Among the {{count}} {{what}} around {{where}}, {{withPark}} have a car park nearby.',
+      foodPlainLead_0_one: 'Found 1 place ({{what}}) around {{where}}.',
+      foodPlainLead_0_other: 'Found {{count}} {{what}} around {{where}}.',
+      foodPlainLead_1_one: 'There is 1 place ({{what}}) around {{where}}.',
+      foodPlainLead_1_other: 'There are {{count}} {{what}} around {{where}}.',
+      foodPlainLead_2_one: '1 place ({{what}}) came up around {{where}}.',
+      foodPlainLead_2_other: '{{count}} {{what}} came up around {{where}}.',
+      foodParkLead_0_one: 'Found 1 place ({{what}}) with a car park nearby around {{where}}.',
+      foodParkLead_0_other: 'Found {{count}} {{what}} with a car park nearby around {{where}}.',
+      foodParkLead_1_one: '1 place ({{what}}) with parking came up around {{where}}.',
+      foodParkLead_1_other: '{{count}} {{what}} with parking came up around {{where}}.',
+      foodParkLead_2_one:
+        'Found 1 place ({{what}}) around {{where}}, and it has a car park nearby.',
+      foodParkLead_2_other:
+        'Found {{count}} {{what}} around {{where}}, all with a car park nearby.',
+      foodParkLead_3_one: 'I listed 1 place ({{what}}) with a car park nearby around {{where}}.',
+      foodParkLead_3_other: 'I listed {{count}} {{what}} with a car park nearby around {{where}}.',
+      foodParkLead_4_one: 'Options with parking around {{where}}: 1 place ({{what}}).',
+      foodParkLead_4_other: 'Options with parking around {{where}}: {{count}} {{what}}.',
+      foodFreeLead_0_one: 'Found 1 place ({{what}}) with free parking around {{where}}.',
+      foodFreeLead_0_other: 'Found {{count}} {{what}} with free parking around {{where}}.',
+      foodFreeLead_1_one:
+        '1 place ({{what}}) with a free car park nearby came up around {{where}}.',
+      foodFreeLead_1_other:
+        '{{count}} {{what}} with a free car park nearby came up around {{where}}.',
+      foodFreeLead_2_one:
+        'Found 1 place ({{what}}) around {{where}}, and its nearby car park is free.',
+      foodFreeLead_2_other:
+        'Found {{count}} {{what}} around {{where}}, all with a free car park nearby.',
+      foodFreeLead_3_one: 'Around {{where}} there is 1 place ({{what}}) with a free car park.',
+      foodFreeLead_3_other: 'Around {{where}} there are {{count}} {{what}} with a free car park.',
+      foodFreeLead_4_one: 'I listed 1 place ({{what}}) near a free car park around {{where}}.',
+      foodFreeLead_4_other: 'I listed {{count}} {{what}} near a free car park around {{where}}.',
+      foodDishLead_0_one:
+        'Found 1 place around {{where}} where you can get {{dish}}, and it has a car park nearby.',
+      foodDishLead_0_other:
+        'Found {{count}} places around {{where}} where you can get {{dish}}; {{withPark}} of them have a car park nearby.',
+      foodDishLead_1_one: 'For {{dish}}, {{where}} has 1 place, and it has a car park close by.',
+      foodDishLead_1_other:
+        'For {{dish}}, {{where}} has {{count}} places; {{withPark}} of them have a car park close by.',
+      foodDishLead_2_one:
+        '1 place for {{dish}} came up around {{where}}, with a car park close by.',
+      foodDishLead_2_other:
+        '{{count}} places for {{dish}} came up around {{where}}, and {{withPark}} have a car park close by.',
+      foodDishLead_3_one:
+        'I listed 1 place around {{where}} where you can get {{dish}}; it has a car park nearby.',
+      foodDishLead_3_other:
+        'I listed {{count}} places around {{where}} where you can get {{dish}}; {{withPark}} of them have a car park nearby.',
+      foodDishLead_4_one:
+        'For {{dish}}, I can see 1 place around {{where}}, and it has a car park nearby.',
+      foodDishLead_4_other:
+        'For {{dish}}, I can see {{count}} places around {{where}}; {{withPark}} of them have a car park nearby.',
+      foodDishPlainLead_0_one: 'Found 1 place around {{where}} where you can get {{dish}}.',
+      foodDishPlainLead_0_other:
+        'Found {{count}} places around {{where}} where you can get {{dish}}.',
+      foodDishPlainLead_1_one: 'For {{dish}}, {{where}} has 1 place.',
+      foodDishPlainLead_1_other: 'For {{dish}}, {{where}} has {{count}} places.',
+      foodDishPlainLead_2_one: '1 place for {{dish}} came up around {{where}}.',
+      foodDishPlainLead_2_other: '{{count}} places for {{dish}} came up around {{where}}.',
+      foodDishParkLead_0_one:
+        'Found 1 place around {{where}} where you can get {{dish}}, with a car park nearby.',
+      foodDishParkLead_0_other:
+        'Found {{count}} places around {{where}} where you can get {{dish}}, with a car park nearby.',
+      foodDishParkLead_1_one: '1 place for {{dish}} with parking came up around {{where}}.',
+      foodDishParkLead_1_other:
+        '{{count}} places for {{dish}} with parking came up around {{where}}.',
+      foodDishParkLead_2_one:
+        'Found 1 place for {{dish}} around {{where}}, and it has a car park nearby.',
+      foodDishParkLead_2_other:
+        'Found {{count}} places for {{dish}} around {{where}}, all with a car park nearby.',
+      foodDishParkLead_3_one:
+        'I listed 1 place around {{where}} where you can get {{dish}}, with a car park nearby.',
+      foodDishParkLead_3_other:
+        'I listed {{count}} places around {{where}} where you can get {{dish}}, with a car park nearby.',
+      foodDishParkLead_4_one: 'Options with parking for {{dish}} around {{where}}: 1 place.',
+      foodDishParkLead_4_other:
+        'Options with parking for {{dish}} around {{where}}: {{count}} places.',
+      foodDishFreeLead_0_one:
+        'Found 1 place around {{where}} where you can get {{dish}}, with free parking.',
+      foodDishFreeLead_0_other:
+        'Found {{count}} places around {{where}} where you can get {{dish}}, with free parking.',
+      foodDishFreeLead_1_one:
+        '1 place for {{dish}} with a free car park nearby came up around {{where}}.',
+      foodDishFreeLead_1_other:
+        '{{count}} places for {{dish}} with a free car park nearby came up around {{where}}.',
+      foodDishFreeLead_2_one:
+        'Found 1 place for {{dish}} around {{where}}, and its nearby car park is free.',
+      foodDishFreeLead_2_other:
+        'Found {{count}} places for {{dish}} around {{where}}, all with a free car park nearby.',
+      foodDishFreeLead_3_one:
+        'Around {{where}} there is 1 place where you can get {{dish}}, with a free car park.',
+      foodDishFreeLead_3_other:
+        'Around {{where}} there are {{count}} places where you can get {{dish}}, with a free car park.',
+      foodDishFreeLead_4_one:
+        'I listed 1 place for {{dish}} near a free car park around {{where}}.',
+      foodDishFreeLead_4_other:
+        'I listed {{count}} places for {{dish}} near a free car park around {{where}}.',
+      parkLead_0_one: 'Found 1 car park around {{where}}.',
+      parkLead_0_other: 'Found {{count}} car parks around {{where}}.',
+      parkLead_1_one: 'There is 1 car park around {{where}}.',
+      parkLead_1_other: 'There are {{count}} car parks around {{where}}.',
+      parkLead_2_one: '1 car park came up around {{where}}.',
+      parkLead_2_other: '{{count}} car parks came up around {{where}}.',
+      parkLead_3_one: 'I listed 1 car park for {{where}}.',
+      parkLead_3_other: 'I listed {{count}} car parks for {{where}}.',
+      parkLead_4_one: 'Around {{where}} I can see 1 car park.',
+      parkLead_4_other: 'Around {{where}} I can see {{count}} car parks.',
+      hlWalk: 'The car park for the first one is a ~{{n}} min walk.',
+      hlFreePark_one: 'Of the ones shown, {{n}} has free parking.',
+      hlFreePark_other: 'Of the ones shown, {{n}} have free parking.',
+      hlOpen_one: 'Of the ones shown, {{n}} is known to be open right now.',
+      hlOpen_other: 'Of the ones shown, {{n}} are known to be open right now.',
+      hlParkLive_one: 'The closest is {{name}}, ~{{min}} min walk; {{free}} free space right now.',
+      hlParkLive_other:
+        'The closest is {{name}}, ~{{min}} min walk; {{free}} free spaces right now.',
+      hlPark: 'The closest is {{name}}, ~{{min}} min walk.',
+    },
     hello_0: 'Hi! Where are you headed, or what do you feel like eating?',
     hello_1: 'Hi! Type a place name, or something like "meatballs in {{c}}".',
     hello_2: 'Hi! Parking or food?',
@@ -637,16 +775,6 @@ const en = {
     actAsDish: 'Search as a dish',
     districtUnknownThing: 'I couldn\'t find a place or dish called "{{q}}" in {{district}}.',
     actDistrictFood: 'Restaurants in {{district}}',
-    foodFound_0_one:
-      'Found 1 place ({{what}}) around {{where}}. With a car park nearby: {{withPark}}. Easiest parking first:',
-    foodFound_0_other:
-      'Found {{count}} {{what}} around {{where}}. With a car park nearby: {{withPark}}. Easiest parking first:',
-    foodFound_1_one:
-      'Found 1 place ({{what}}) for {{where}}. With a car park within 300 m: {{withPark}}.',
-    foodFound_1_other:
-      'Found {{count}} {{what}} for {{where}}. With a car park within 300 m: {{withPark}}.',
-    foodFoundPark_one: 'Found 1 place ({{what}}) with a car park nearby around {{where}}:',
-    foodFoundPark_other: 'Found {{count}} {{what}} with a car park nearby around {{where}}:',
     dishNamed_one: 'Found {{count}} place with "{{dish}}" in its name and put it at the top.',
     dishNamed_other:
       'Found {{count}} places with "{{dish}}" in their name and put them at the top.',
@@ -689,14 +817,10 @@ const en = {
     nearest: 'Sorted closest first.',
     wideNow: 'I looked in a wider area.',
     wideAlready: 'These are what come up in a wider area too.',
-    foodFoundFree_one: 'Found 1 place ({{what}}) with free parking around {{where}}:',
-    foodFoundFree_other: 'Found {{count}} {{what}} with free parking around {{where}}:',
     foodNoFreePark:
       'There are {{what}} around {{where}}, but none I know of with free parking. What now?',
     parkNoFree: "I don't know of any free car parks around {{where}}. What now?",
     actDropFree: 'Paid is fine too',
-    parkFound_0: 'Car parks around {{where}}: {{count}}. Closest first:',
-    parkFound_1: 'Car parks found for {{where}}: {{count}}',
     parkFresh: 'Live free-space info for {{count}} of them.',
     parkNone: "I couldn't find a car park around {{where}}. Shall I look wider?",
     nearYou: 'your location',
