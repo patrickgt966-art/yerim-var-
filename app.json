@@ -15,7 +15,8 @@
         "CFBundleDisplayName": "Yerim Var",
         "CFBundleAllowMixedLocalizations": true,
         "NSLocationWhenInUseUsageDescription": "Yakınındaki restoranları ve otoparkları göstermek için konumunu kullanırız.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
@@ -95,7 +96,17 @@
           "backgroundColor": "#0B3C49"
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.yerimvar.app.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.yerimvar.app",
+          "enablePushNotifications": false,
+          "frequentUpdates": false,
+          "widgets": []
+        }
+      ]
     ]
   }
 }
