@@ -274,7 +274,7 @@ export const DISHES: DishProfile[] = [
   d('kelle paca', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
   d('paca', 'soup', 'paçacı', OFFAL, ['soup']),
   d('tuzlama', 'soup', 'işkembeci-paçacı', OFFAL, ['soup']),
-  d('sogus', 'soup', 'kelle-paçacı', OFFAL, ['soup']),
+  d('sogus', 'meat', 'söğüşçü', ['sogus', 'kasap', 'ocakbasi', 'sakatat'], ['meat']),
   d('yuvarlama', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
   d('lebeniye', 'soup', 'çorbacı-lokanta', [...HOME, ...SOUP], ['soup']),
 

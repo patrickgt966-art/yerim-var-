@@ -199,6 +199,82 @@ describe('categories', () => {
     expect(categoryOf(mk('Plain', 'restaurant'))).toBe('lokanta');
     expect(categoryOf(mk('Plain', 'other'))).toBeNull();
   });
+
+  it('puts a place in the category its name words point to', () => {
+    const cases: [string, FoodCategory][] = [
+      ['İskender Usta', 'meat'],
+      ['Beyti Sofrası', 'meat'],
+      ['Kuzu Tandır Evi', 'meat'],
+      ['Çöp Şiş Ali', 'meat'],
+      ['Şırdancı Mehmet', 'meat'],
+      ['Aspava Ankara', 'meat'],
+      ['Piliç Dünyası', 'meat'],
+      ['Tavukçu Hasan', 'meat'],
+      ['Adanalı Hasan', 'meat'],
+      ['Söğüşçü', 'meat'],
+      ['Ayvalık Tostçusu', 'fast'],
+      ['Kumpir Evi', 'fast'],
+      ['Sandviç Dünyası', 'fast'],
+      ['Komagene', 'fast'],
+      ['Çiğköfteci Ali', 'fast'],
+      ['Mantıcı Ayşe', 'lokanta'],
+      ['Güveç Evi', 'lokanta'],
+      ['Kuru Fasulye Salonu', 'lokanta'],
+      ['Waffle House', 'dessert'],
+      ['Lokmacı Hasan', 'dessert'],
+      ['Muhallebici Şükrü', 'dessert'],
+      ['Magnolia', 'dessert'],
+      ['Çikolata Atölyesi', 'dessert'],
+      ['Pasta Evi', 'dessert'],
+      ['Köşe Pastanesi', 'dessert'],
+      ['Pişici Ali', 'breakfast'],
+      ['Katmer Sarayı', 'breakfast'],
+      ['Menemen Evi', 'breakfast'],
+      ['Beyran Salonu', 'soup'],
+      ['Kelle Sofrası', 'soup'],
+      ['Hamsi Evi', 'fish'],
+      ['Levrek Restaurant', 'fish'],
+      ['Deniz Ürünleri Restaurant', 'fish'],
+      ['Kalkan Balıkçısı', 'fish'],
+      ['Midye Dolmacı', 'fish'],
+      ['Meze Evi', 'meyhane'],
+      ['Rakı Balık', 'meyhane'],
+      ['Makarna Evi', 'world'],
+      ['Korean Kitchen', 'world'],
+      ['Tapas Corner', 'world'],
+      ['Italian Corner', 'world'],
+      ['Köşe Kafe', 'cafe'],
+      ['Kahve Dünyası', 'cafe'],
+      ['Çay Bahçesi Park', 'cafe'],
+      ['Köşe Kıraathanesi', 'cafe'],
+    ];
+    for (const [name, cat] of cases) {
+      expect([name, matchesCategory(mk(name, 'restaurant'), cat)]).toEqual([name, true]);
+    }
+    // A place can be in several categories: Adana Sofrası is meat and lokanta, Tavuk Döner meat and fast.
+    expect(matchesCategory(mk('Adana Sofrası', 'restaurant'), 'meat')).toBe(true);
+    expect(matchesCategory(mk('Adana Sofrası', 'restaurant'), 'lokanta')).toBe(true);
+    expect(matchesCategory(mk('Tavuk Döner', 'restaurant'), 'meat')).toBe(true);
+    expect(matchesCategory(mk('Tavuk Döner', 'restaurant'), 'fast')).toBe(true);
+  });
+
+  it('keeps look-alike words out of the wrong category', () => {
+    // A town and a city name are not a fish or a kebab.
+    expect(matchesCategory(mk('Kalkan Pansiyon Kafe', 'restaurant'), 'fish')).toBe(false);
+    expect(matchesCategory(mk('Kalkan Köşe', 'restaurant'), 'fish')).toBe(false);
+    expect(matchesCategory(mk('Adana Cafe', 'restaurant'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Urfa Cafe', 'restaurant'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Adana Cafe', 'restaurant'), 'cafe')).toBe(true);
+    // A midye dolma stand is fish only; bare "pasta" is not dessert; raw çiğ köfte is not meat.
+    expect(matchesCategory(mk('Midye Dolmacı', 'restaurant'), 'lokanta')).toBe(false);
+    expect(matchesCategory(mk('Pasta & Pizza', 'restaurant'), 'dessert')).toBe(false);
+    expect(matchesCategory(mk('Çiğköfteci Ali', 'restaurant'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Komagene Çiğ Köfte', 'restaurant'), 'meat')).toBe(false);
+    expect(matchesCategory(mk('Söğüşçü', 'restaurant'), 'soup')).toBe(false);
+    // "Barbunya" is a bean, not a barbun fish.
+    expect(matchesCategory(mk('Barbunya Pilaki Evi', 'restaurant'), 'fish')).toBe(false);
+    expect(categoryForQuery('söğüş')).toBe('meat');
+  });
 });
 
 describe('category excludes, pubs and lokanta', () => {
