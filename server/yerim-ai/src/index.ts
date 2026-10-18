@@ -33,6 +33,7 @@ import {
   validQuota,
   validUnderstand,
 } from './quota';
+import { HIDE_AT, shortHash, validCity, validReport } from './reports';
 import { localQuota, objectQuota, type Quota, type QuotaNamespace } from './store';
 
 export { QuotaCounter } from './store';
@@ -48,6 +49,8 @@ export interface Env {
   CHAT_GLOBAL_DAILY?: string;
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
+  /** Distinct devices that must report a place closed before /hidden lists it (default 3). */
+  REPORT_HIDE_AT?: string;
 }
 
 /** The counters: the Durable Object when bound, else in-process on KV (tests). */
@@ -159,6 +162,52 @@ async function cancelRoute(req: Request, env: Env): Promise<Response> {
   return json({ remaining });
 }
 
+/**
+ * A "closed / wrong location / wrong info" report from the app. Never calls Anthropic and never
+ * touches the AI counter. The device is kept only hashed with the place.
+ */
+async function reportRoute(req: Request, env: Env): Promise<Response> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const parsed = validReport(raw);
+  if (!parsed) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`report:${ip}`, now, 60))) return json({ error: 'rate_limited' }, 429);
+  const hideAt = Math.max(1, Number(env.REPORT_HIDE_AT) || HIDE_AT);
+  const out = await quota.report(
+    {
+      city: parsed.city,
+      placeId: parsed.placeId,
+      kind: parsed.kind,
+      device: await shortHash('place', parsed.placeId, parsed.deviceId),
+      dayDevice: await shortHash('day', parsed.deviceId),
+    },
+    now,
+    hideAt,
+  );
+  if (!out.ok) return json({ error: 'rate_limited', reason: out.reason }, 429);
+  return json({ ok: true, hidden: out.hidden });
+}
+
+/** The ids of the city's places hidden by reports. Public and cacheable for an hour. */
+async function hiddenRoute(req: Request, env: Env): Promise<Response> {
+  const city = validCity(new URL(req.url).searchParams.get('city'));
+  if (!city) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`hidden:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
+  const res = json({ city, ids: await quota.hidden(city, now) });
+  res.headers.set('cache-control', 'public, max-age=3600');
+  return res;
+}
+
 type Outcome = 'ok' | 'refusal' | 'error';
 
 export default {
@@ -166,6 +215,8 @@ export default {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
+    if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
+    if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
     if (
       req.method !== 'POST' ||
       !['/understand', '/narrate', '/pick', '/plan', '/chat'].includes(path)

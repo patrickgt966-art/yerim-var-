@@ -24,6 +24,7 @@ import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
+import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongData } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
 import { isStatic } from '@/lib/staticInfo';
@@ -47,7 +48,7 @@ export default function ParkingDetail() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   // `?id=a&id=b` arrives as an array.
   const id = firstParam(params.id);
-  const { data, isLoading, isPlaceholderData } = useParkings();
+  const { data, isLoading, isPlaceholderData } = useParkings({ withHidden: true });
   const queryClient = useQueryClient();
   const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
   const isFav = useIsFavorite(id ?? '');
@@ -316,11 +317,12 @@ export default function ParkingDetail() {
           </Txt>
         </Section>
 
-        <Button
-          kind="secondary"
+        <ReportPlace
+          placeId={p.id}
+          place="parking"
+          name={p.name}
           label={t('detail.report')}
-          accessibilityLabel={`${t('detail.report')}: ${p.name}`}
-          onPress={() => void reportWrongData(p)}
+          onDetails={() => void reportWrongData(p)}
         />
       </ScrollView>
     </View>

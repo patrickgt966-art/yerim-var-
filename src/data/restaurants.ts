@@ -8,6 +8,7 @@ import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
 import { fold } from './search';
 import type { Parking } from './types';
+import { hiddenPlaceIds } from '@/store/reports';
 
 /**
  * Restaurants, cafés and bars from OpenStreetMap, bundled with the app and
@@ -100,9 +101,10 @@ export function toRestaurant(r: FoodRecord): Restaurant {
 const caches = new Map<string, Restaurant[]>();
 const byIds = new Map<string, Map<string, Restaurant>>();
 
-/** The active city's restaurants; empty while its data files are placeholders. */
-export function allRestaurants(): Restaurant[] {
-  const id = activeCity().id;
+const visible = new Map<string, { hidden: ReadonlySet<string>; list: Restaurant[] }>();
+
+/** Every restaurant of the active city, hidden ones included. */
+function cityRestaurants(id: string): Restaurant[] {
   let list = caches.get(id);
   if (!list) {
     list = [
@@ -114,11 +116,28 @@ export function allRestaurants(): Restaurant[] {
   return list;
 }
 
+/**
+ * The active city's restaurants; empty while its data files are placeholders. Places reported
+ * closed (by this device, or by enough people) are left out.
+ */
+export function allRestaurants(): Restaurant[] {
+  const id = activeCity().id;
+  const list = cityRestaurants(id);
+  const hidden = hiddenPlaceIds();
+  if (hidden.size === 0) return list;
+  const v = visible.get(id);
+  if (v && v.hidden === hidden) return v.list;
+  const out = list.filter((r) => !hidden.has(r.id));
+  visible.set(id, { hidden, list: out });
+  return out;
+}
+
+/** A restaurant by id, hidden or not: a favorite or a shared link still opens. */
 export function getRestaurant(id: string): Restaurant | null {
   const city = activeCity().id;
   let map = byIds.get(city);
   if (!map) {
-    map = new Map(allRestaurants().map((r) => [r.id, r]));
+    map = new Map(cityRestaurants(city).map((r) => [r.id, r]));
     byIds.set(city, map);
   }
   return map.get(id) ?? null;

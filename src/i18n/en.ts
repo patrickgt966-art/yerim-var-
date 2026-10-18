@@ -318,7 +318,7 @@ const en = {
     lastFetch: 'Last data fetch: {{time}}',
     privacy: 'Privacy',
     privacyBody:
-      "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. Your location is never sent to our server. When you search, the text you type is sent to Apple Maps, and for car park search and address lookup so is a rounded location (about 100 m). The only request sent to the municipality is for free-space info. When ✨ Smart help is on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. A random device ID is kept for the daily usage counter and deleted within 2 days.",
+      "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. Your location is never sent to our server. When you search, the text you type is sent to Apple Maps, and for car park search and address lookup so is a rounded location (about 100 m). The only request sent to the municipality is for free-space info. When ✨ Smart help is on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. A random device ID is kept for the daily usage counter and deleted within 2 days. If you report a place as closed or wrong, our server receives the place's ID, the reason and the city; your device ID is stored only as a one-way hash tied to that place and deleted after 180 days.",
     licenses: 'Open source licenses',
     licensesBody:
       'Code: MIT. Fonts Bricolage Grotesque and Plus Jakarta Sans: SIL Open Font License 1.1.',
@@ -339,6 +339,20 @@ const en = {
     unnamed: 'Car park',
     operatorParking: '{{operator}} car park',
     nearby: 'Car park · near {{place}}',
+  },
+  report: {
+    title: 'What is wrong?',
+    closed: 'Closed',
+    location: 'Wrong location',
+    info: 'Wrong info',
+    details: 'Write details (GitHub)',
+    cancel: 'Cancel',
+    note: 'Reports are anonymous; only the place, the reason and the city are sent.',
+    thanks: 'Thanks, your report was received.',
+    thanksOffline: 'Saved on this device; the server could not be reached.',
+    hiddenHere: 'This place no longer shows in the lists on this device.',
+    undo: 'Undo, it is open',
+    reportedClosed: 'Reported closed; it is not shown in the lists.',
   },
   food: {
     title: 'Restaurants',

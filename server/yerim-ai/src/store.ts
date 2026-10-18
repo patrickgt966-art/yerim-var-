@@ -17,6 +17,7 @@ import {
   type KV,
   type UseTaken,
 } from './quota';
+import { addReport, hiddenPlaces, type ReportKind, type ReportOutcome } from './reports';
 
 const CALL_TTL_SECONDS = 172800;
 const DEFAULT_TTL_SECONDS = 172800;
@@ -38,7 +39,18 @@ export type QuotaOp =
   | { op: 'release'; deviceId: string; messageId: string; now: number }
   | { op: 'resetCall'; callKey: string }
   | { op: 'releaseIfCancelled'; deviceId: string; messageId: string; now: number }
-  | { op: 'cancel'; deviceId: string; messageId: string; now: number };
+  | { op: 'cancel'; deviceId: string; messageId: string; now: number }
+  | {
+      op: 'report';
+      city: string;
+      placeId: string;
+      kind: ReportKind;
+      device: string;
+      dayDevice: string;
+      now: number;
+      hideAt: number;
+    }
+  | { op: 'hidden'; city: string; now: number };
 
 /**
  * The start of an AI call: the same message and stage asked again with other content is a
@@ -68,6 +80,12 @@ export async function runOp(kv: KV, o: QuotaOp): Promise<unknown> {
       return takeCancelMark(kv, o.deviceId, o.messageId, new Date(o.now));
     case 'cancel':
       return cancelUse(kv, o.deviceId, o.messageId, new Date(o.now));
+    case 'report': {
+      const { city, placeId, kind, device, dayDevice } = o;
+      return addReport(kv, { city, placeId, kind, device, dayDevice }, new Date(o.now), o.hideAt);
+    }
+    case 'hidden':
+      return hiddenPlaces(kv, o.city, new Date(o.now));
     default:
       throw new Error('unknown quota op');
   }
@@ -90,6 +108,12 @@ export interface Quota {
   /** Gives the use back when the client cancelled this message; the new remaining, or null. */
   releaseIfCancelled(deviceId: string, messageId: string, now: Date): Promise<number | null>;
   cancel(deviceId: string, messageId: string, now: Date): Promise<{ remaining: number }>;
+  report(
+    r: { city: string; placeId: string; kind: ReportKind; device: string; dayDevice: string },
+    now: Date,
+    hideAt: number,
+  ): Promise<ReportOutcome>;
+  hidden(city: string, now: Date): Promise<string[]>;
 }
 
 function quotaClient(send: (o: QuotaOp) => Promise<unknown>): Quota {
@@ -114,6 +138,12 @@ function quotaClient(send: (o: QuotaOp) => Promise<unknown>): Quota {
       (await send({ op: 'cancel', deviceId, messageId, now: now.getTime() })) as {
         remaining: number;
       },
+    report: async (r, now, hideAt) =>
+      (await send({ op: 'report', ...r, now: now.getTime(), hideAt })) as ReportOutcome,
+    hidden: async (city, now) => {
+      const r = await send({ op: 'hidden', city, now: now.getTime() });
+      return Array.isArray(r) ? (r as string[]) : [];
+    },
   };
 }
 

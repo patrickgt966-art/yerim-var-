@@ -10,6 +10,7 @@ import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/d
 import { currentLocation } from '@/lib/location';
 import { isClosedNow } from '@/lib/openNow';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
+import { useHiddenPlaceIds } from '@/store/reports';
 
 const PARK_RADIUS_M = 2000;
 const FOOD_RADIUS_M = 1500;
@@ -87,13 +88,14 @@ export function useNearbyHome(): NearbyHome {
   const parks = useMemo(() => ranked.slice(0, PER_KIND), [ranked]);
 
   const placeholder = q.isPlaceholderData;
+  const hidden = useHiddenPlaceIds();
   const foods = useMemo(() => {
-    if (!here) return [];
+    if (!here || !hidden) return [];
     const near = restaurantsNear(here, FOOD_RADIUS_M, 60);
     const rows = buildRestaurantRows(near, result?.parkings ?? [], here, new Date());
     // Without live data the park-ease order would jump once it arrives.
     return rankRestaurants(rows, placeholder ? 'distance' : 'parkEase').slice(0, PER_KIND);
-  }, [here, result, placeholder]);
+  }, [here, result, placeholder, hidden]);
 
   const nearestFree = useMemo(
     () =>

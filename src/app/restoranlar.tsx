@@ -34,6 +34,7 @@ import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
+import { useHiddenPlaceIds } from '@/store/reports';
 
 type Filter = 'all' | FoodCategory;
 
@@ -144,9 +145,11 @@ function Restaurants() {
     return parsed && !isInCityArea(parsed, home) ? home.center : parsed;
   }, [parsed, cityId]);
 
+  // A place reported closed leaves the list at once.
+  const hidden = useHiddenPlaceIds();
   const all = useMemo(
-    () => (target ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
-    [target, wide],
+    () => (target && hidden ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
+    [target, wide, hidden],
   );
   // A category never falls back to unrelated places: it searches wider instead.
   const active: Filter = filter;

@@ -15,6 +15,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import { appleMapsUrl, distanceMeters, walkMinutes } from '@/data/geo';
 import { cuisineLabels, dietLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
+import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongRestaurant } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
 import { useRanked } from '@/data/useParkings';
@@ -246,11 +247,12 @@ export default function RestaurantDetail() {
           <Txt variant="caption" secondary style={{ marginTop: 10 }}>
             {t(r.source === 'overture' ? 'food.footerOverture' : 'food.footer')}
           </Txt>
-          <Button
-            kind="secondary"
+          <ReportPlace
+            placeId={r.id}
+            place="food"
+            name={r.name}
             label={t('food.report')}
-            accessibilityLabel={`${t('food.report')}: ${r.name}`}
-            onPress={() => void reportWrongRestaurant(r)}
+            onDetails={() => void reportWrongRestaurant(r)}
           />
         </BottomSheetScrollView>
       </BottomSheet>

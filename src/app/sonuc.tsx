@@ -37,6 +37,7 @@ import { parkHere } from '@/lib/parkHere';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
+import { useHiddenPlaceIds } from '@/store/reports';
 
 type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled' | 'free' | 'nonstop' | 'rail';
 type Notice = 'outside' | 'failed' | 'denied';
@@ -148,8 +149,9 @@ function Results() {
     }
     return list;
   }, [ranked, filter, nearMode, selectedId]);
+  const hidden = useHiddenPlaceIds();
   const foodRows = useMemo<RestaurantRow[]>(() => {
-    if (filter !== 'food' || !target) return [];
+    if (filter !== 'food' || !target || !hidden) return [];
     let list = rankRestaurants(
       buildRestaurantRows(
         restaurantsNear(target, 1000, 600),
@@ -164,7 +166,7 @@ function Results() {
       if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
     }
     return list;
-  }, [filter, target, data, isPlaceholderData, selectedRestaurantId]);
+  }, [filter, target, data, isPlaceholderData, selectedRestaurantId, hidden]);
   // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
   const nearestId = useMemo(() => {
     let best: RankedParking | null = null;

@@ -19,8 +19,10 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { warmUpParkings } from '@/data/useParkings';
+import { refreshHiddenPlaces } from '@/lib/placeReports';
 import { cancelParkReminder, setUpReminders } from '@/lib/reminders';
 import { useApp } from '@/store/app';
+import { useReports } from '@/store/reports';
 import { useHydrated } from '@/store/useHydrated';
 import { useColors } from '@/theme';
 
@@ -28,8 +30,18 @@ void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+// The places reported closed by enough people, for the selected city (at most every few hours).
+const refreshHidden = () => {
+  const go = () => void refreshHiddenPlaces(useApp.getState().city);
+  if (useReports.persist.hasHydrated()) go();
+  else useReports.persist.onFinishHydration(go);
+};
+
 // Before the store hydrates it still says İzmir, so warm the car parks of the hydrated city.
-const warmHydratedCity = () => void warmUpParkings(queryClient, useApp.getState().city);
+const warmHydratedCity = () => {
+  void warmUpParkings(queryClient, useApp.getState().city);
+  refreshHidden();
+};
 if (useApp.persist.hasHydrated()) warmHydratedCity();
 else useApp.persist.onFinishHydration(warmHydratedCity);
 
@@ -39,11 +51,13 @@ setUpReminders();
 useApp.subscribe((s, prev) => {
   const old = prev.active?.reminder?.id;
   if (old && old !== s.active?.reminder?.id) void cancelParkReminder(old);
+  if (s.city !== prev.city) refreshHidden();
 });
 
 // Pause polling while the app is in the background.
 function onAppStateChange(status: AppStateStatus) {
   focusManager.setFocused(status === 'active');
+  if (status === 'active') refreshHidden();
 }
 
 export default function RootLayout() {
