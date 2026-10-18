@@ -16,6 +16,9 @@ on:
     paths:
       - 'src/data/eval/aiBigCases.ts'
       - 'scripts/ai-eval-big.ts'
+      # What the eval measures: the prompts, the readers and the district settling.
+      - 'src/lib/ai/protocol.ts'
+      - 'src/data/districtMatch.ts'
       - '.github/workflows/ai-eval-big.yml'
 
 permissions:

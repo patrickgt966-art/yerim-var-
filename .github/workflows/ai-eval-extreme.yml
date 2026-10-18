@@ -16,6 +16,9 @@ on:
     paths:
       - 'src/data/eval/aiExtremeCases.ts'
       - 'scripts/ai-eval-big.ts'
+      # What the eval measures: the prompts, the readers and the district settling.
+      - 'src/lib/ai/protocol.ts'
+      - 'src/data/districtMatch.ts'
       - 'src/data/eval/aiScore.ts'
       - '.github/workflows/ai-eval-extreme.yml'
 
