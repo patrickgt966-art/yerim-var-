@@ -86,6 +86,14 @@ type Row = { job: Job; pass: boolean; misses: string[]; error?: string };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** As the Worker's cachedSystem: the fixed prompt is cached across cases. */
+const cachedSystem = (text: string) => [
+  { type: 'text' as const, text, cache_control: { type: 'ephemeral' as const } },
+];
+
+/** 1234567 -> "1 234 567". */
+const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
 /** 429, 5xx and dropped connections are worth one more try. */
 function retryable(e: unknown): boolean {
   if (e instanceof Anthropic.APIConnectionError) return true;
@@ -131,6 +139,8 @@ async function main(): Promise<void> {
 
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheWriteTokens = 0;
   let aborted = false;
 
   const call = async (job: Job): Promise<{ pass: boolean; misses: string[] }> => {
@@ -140,11 +150,13 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 2048,
-        system: understandSystem(city),
+        system: cachedSystem(understandSystem(city)),
         output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
         messages: toMessages(c.history ?? [], c.text),
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       const u: Understanding =
         response.stop_reason === 'refusal' || !response.parsed_output
@@ -153,7 +165,16 @@ async function main(): Promise<void> {
       // As the app reads it: the district settled against the city's own list.
       return scoreUnderstanding(
         c,
-        settleDistrict(u, c.text, cityById(city).districts, quartersOf(city)),
+        settleDistrict(
+          u,
+          c.text,
+          cityById(city).districts,
+          quartersOf(city),
+          (c.history ?? [])
+            .filter((h) => h.role === 'user')
+            .map((h) => h.text)
+            .reverse(),
+        ),
       );
     }
     if (job.type === 'park') {
@@ -162,13 +183,15 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 1024,
-        system: parkPickSystem(city),
+        system: cachedSystem(parkPickSystem(city)),
         output_config: { effort: 'low', format: zodOutputFormat(parkPickModelSchema(n)) },
         messages: [
           { role: 'user', content: JSON.stringify({ text: c.text, candidates: c.candidates }) },
         ],
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       return scoreParkPick(c, toPick(response.parsed_output, n, true) as ParkPickResponse | null);
     }
@@ -178,7 +201,7 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 1024,
-        system: planSystem(city),
+        system: cachedSystem(planSystem(city)),
         output_config: {
           effort: 'low',
           format: zodOutputFormat(planModelSchema(c.candidates.length, total)),
@@ -191,6 +214,8 @@ async function main(): Promise<void> {
         ],
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       return scorePlan(c, toPlan(response.parsed_output, c.candidates.length, total));
     }
@@ -199,13 +224,15 @@ async function main(): Promise<void> {
     const response = await client.messages.parse({
       model: MODEL,
       max_tokens: 1024,
-      system: pickSystem(city),
+      system: cachedSystem(pickSystem(city)),
       output_config: { effort: 'low', format: zodOutputFormat(pickModelSchema(n)) },
       messages: [
         { role: 'user', content: JSON.stringify({ text: c.text, candidates: c.candidates }) },
       ],
     });
     inputTokens += response.usage.input_tokens;
+    cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+    cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
     outputTokens += response.usage.output_tokens;
     return scorePick(c, toPick(response.parsed_output, n) as PickResponse | null);
   };
@@ -256,7 +283,13 @@ async function main(): Promise<void> {
   const total = ran.length;
   const passed = ok(ran);
   const rate = total === 0 ? 0 : passed / total;
-  const cost = (inputTokens * PRICE_IN + outputTokens * PRICE_OUT) / 1e6;
+  // 5-minute prompt cache: reads cost 0.1x and writes 1.25x the input price.
+  const cost =
+    (inputTokens * PRICE_IN +
+      cacheReadTokens * PRICE_IN * 0.1 +
+      cacheWriteTokens * PRICE_IN * 1.25 +
+      outputTokens * PRICE_OUT) /
+    1e6;
 
   const lines: string[] = [];
   lines.push(
@@ -283,7 +316,7 @@ async function main(): Promise<void> {
   lines.push('');
   lines.push(`Errors: ${ran.filter((r) => r.error).length}`);
   lines.push(
-    `Tokens: input ${inputTokens}, output ${outputTokens}, total ${inputTokens + outputTokens}`,
+    `Tokens: input ${fmt(inputTokens)} · cache read ${fmt(cacheReadTokens)} · cache write ${fmt(cacheWriteTokens)} · output ${fmt(outputTokens)}`,
   );
   lines.push(
     `Estimated cost: $${cost.toFixed(3)} (at $${PRICE_IN} in / $${PRICE_OUT} out per MTok)`,

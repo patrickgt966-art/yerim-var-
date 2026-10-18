@@ -13,7 +13,6 @@ import {
   useColors,
 } from '@/theme';
 
-import { useCoachTarget } from './coach/registry';
 import { TabGlyph, type TabGlyphName } from './home/TabGlyph';
 import { Txt } from './Txt';
 
@@ -41,7 +40,6 @@ const CENTER_SIZE = 66;
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const c = useColors();
   const { t } = useTranslation();
-  const coach = useCoachTarget('yerim');
 
   const items = state.routes.map((route, index) => {
     const focused = state.index === index;
@@ -137,7 +135,6 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         {items.slice(2)}
       </View>
       <Pressable
-        {...coach}
         accessibilityRole="button"
         accessibilityLabel={t('home.a11yYerim')}
         accessibilityHint={t('home.a11yYerimHint')}

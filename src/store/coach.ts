@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 /** The home coach marks, in the order they are shown. */
-export const COACH_STEPS = ['yerim', 'ai', 'city', 'search'] as const;
+export const COACH_STEPS = ['search'] as const;
 export type CoachKey = (typeof COACH_STEPS)[number];
 
 /**

@@ -7,7 +7,6 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   View,
 } from 'react-native';
@@ -35,13 +34,13 @@ import {
   type PlanData,
 } from '@/data/assistant';
 import { activeCity, isInCityArea } from '@/data/cities';
-import { appleMapsUrl } from '@/data/geo';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
 import { MAX_MESSAGE_CHARS, type ChatTurn } from '@/lib/ai/protocol';
 import { noteAiActivity, refreshAiQuota } from '@/lib/ai/refresh';
+import { openDirections } from '@/lib/directions';
 import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
 import { resolvePlace } from '@/lib/usePlaceSearch';
@@ -148,6 +147,13 @@ function Chat({ first }: { first: boolean }) {
                 };
                 return trackAi(await aiClient.understand(req));
               },
+              // The user's earlier messages, newest first: bindAi runs before the current message
+              // is added, so the history never holds it.
+              earlier: () =>
+                aiMsgRef.current.history
+                  .filter((h) => h.role === 'user')
+                  .map((h) => h.text)
+                  .reverse(),
               usesLeft: () => useAi.getState().remaining(),
               // One id per user message: understand, pick and plan share one daily use.
               pick: async (rest) => {
@@ -304,19 +310,19 @@ function Chat({ first }: { first: boolean }) {
     void reply(() => refine(ctxRef.current, a.patch, deps), false);
   };
 
-  const onPlanDirections = (dest: PlanData['dest']) => {
-    Linking.openURL(appleMapsUrl({ lat: dest.lat, lng: dest.lng }, dest.name)).catch(() =>
-      Alert.alert(t('chat.openFailed')),
-    );
+  const onPlanDirections = async (dest: PlanData['dest']) => {
+    if ((await openDirections({ lat: dest.lat, lng: dest.lng }, dest.name)) === 'failed') {
+      Alert.alert(t('chat.openFailed'));
+    }
   };
 
-  const onDirections = (card: ChatCard) => {
+  const onDirections = async (card: ChatCard) => {
     const dest =
       card.kind === 'restaurant' ? getRestaurant(card.id) : parkings.find((p) => p.id === card.id);
     if (!dest) return;
-    Linking.openURL(appleMapsUrl({ lat: dest.lat, lng: dest.lng }, dest.name)).catch(() =>
-      Alert.alert(t('chat.openFailed')),
-    );
+    if ((await openDirections({ lat: dest.lat, lng: dest.lng }, dest.name)) === 'failed') {
+      Alert.alert(t('chat.openFailed'));
+    }
   };
 
   const submitInput = () => {

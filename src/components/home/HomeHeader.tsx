@@ -5,7 +5,6 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandWordmark } from '@/components/BrandWordmark';
-import { useCoachTarget } from '@/components/coach/registry';
 import { CityButton } from '@/components/CityPicker';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
@@ -19,7 +18,6 @@ function AiPill() {
   const { t } = useTranslation();
   const consent = useAi((s) => s.consent);
   const left = useAi((s) => s.remaining());
-  const coach = useCoachTarget('ai');
   // Throttled; keeps the pill honest after a failed or slow AI call.
   useFocusEffect(
     useCallback(() => {
@@ -29,7 +27,6 @@ function AiPill() {
   if (!aiBaseUrl() || consent !== 'yes') return null;
   return (
     <View
-      {...coach}
       accessible
       accessibilityLabel={t('home.a11yAi', { count: left })}
       style={{
@@ -58,7 +55,6 @@ function AiPill() {
 /** Light header (design V5): logo, city and the AI pill on the warm page. */
 export function HomeHeader() {
   const insets = useSafeAreaInsets();
-  const cityCoach = useCoachTarget('city');
   return (
     <View
       style={{
@@ -74,7 +70,7 @@ export function HomeHeader() {
       <View style={{ flexGrow: 1, flexShrink: 1 }}>
         <BrandWordmark layout="inline" tone="onLight" size={26} header />
       </View>
-      <View {...cityCoach}>
+      <View>
         <CityButton />
       </View>
       <AiPill />

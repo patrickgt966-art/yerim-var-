@@ -9,6 +9,7 @@ import {
 
 import { DEFAULT_CITY, isAvailableCity, setActiveCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
+import type { MapApp } from '@/data/mapApps';
 import { applyLanguage, type LangPref } from '@/i18n';
 
 import { migrateAppState, persistedData } from './migrate';
@@ -29,7 +30,7 @@ export type ActivePark = {
   /** A "go back to the car" notification scheduled on this device. */
   reminder?: ParkReminder;
 } & LatLng;
-export type ParkReminder = { id: string; at: string };
+export type ParkReminder = { id: string; at: string; earlyId?: string };
 export type ParkMode = 'now' | 'twoHours';
 
 /** Recent searches kept in the store. */
@@ -104,10 +105,20 @@ type State = {
   /** The app's language: 'auto' follows the phone (Turkish phones Turkish, others English). */
   lang: LangPref;
   setLang: (l: LangPref) => void;
+  /** The map app directions open in; null asks every time. */
+  mapApp: MapApp | null;
+  setMapApp: (a: MapApp | null) => void;
   /** Most recent first, deduped, at most MAX_RECENT_SEARCHES. */
   recentSearches: string[];
   addRecentSearch: (q: string) => void;
   clearRecentSearches: () => void;
+  /** The reminder length (minutes) the user picked last; a new park schedules it by itself. */
+  lastReminderMin: number | null;
+  setLastReminderMin: (m: number | null) => void;
+  /** Parks the user ended with "Bitir" after at least 10 minutes; gates the rating prompt. */
+  parksDone: number;
+  /** When the App Store rating sheet was last requested (ISO), or null. */
+  ratingAskedAt: string | null;
   setCity: (id: string) => void;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
@@ -140,10 +151,16 @@ export const useApp = create<State>()(
         applyLanguage(lang);
         set({ lang });
       },
+      mapApp: null,
+      setMapApp: (mapApp) => set({ mapApp }),
       recentSearches: [],
       addRecentSearch: (q) =>
         set((s) => ({ recentSearches: addRecentSearch(s.recentSearches, q) })),
       clearRecentSearches: () => set({ recentSearches: [] }),
+      lastReminderMin: null,
+      setLastReminderMin: (lastReminderMin) => set({ lastReminderMin }),
+      parksDone: 0,
+      ratingAskedAt: null,
       // Unavailable or unknown cities are ignored. The data layer follows the store.
       // Recent searches name places of the old city, so a real switch drops them; favorites,
       // Ev/İş and a running park are the user's own and stay.
@@ -219,7 +236,11 @@ export const useApp = create<State>()(
         mode,
         city,
         lang,
+        mapApp,
         recentSearches,
+        lastReminderMin,
+        parksDone,
+        ratingAskedAt,
       }) => ({
         onboarded,
         home,
@@ -230,7 +251,11 @@ export const useApp = create<State>()(
         mode,
         city,
         lang,
+        mapApp,
         recentSearches,
+        lastReminderMin,
+        parksDone,
+        ratingAskedAt,
       }),
     },
   ),

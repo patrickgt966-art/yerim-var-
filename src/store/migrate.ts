@@ -1,4 +1,6 @@
 import { DEFAULT_CITY, isAvailableCity } from '@/data/cities';
+import { isMapApp } from '@/data/mapApps';
+import { REMINDER_CHOICES } from '@/lib/reminderChoices';
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -62,6 +64,9 @@ function sanitizeActive(a: unknown, nowMs: number): Record<string, unknown> | nu
     const r = out.reminder as Record<string, unknown> | null;
     if (!r || typeof r !== 'object' || typeof r.id !== 'string' || timeOf(r.at) == null) {
       delete out.reminder;
+    } else if ('earlyId' in r && typeof r.earlyId !== 'string') {
+      const { earlyId: _bad, ...rest } = r;
+      out.reminder = rest;
     }
   }
   return out;
@@ -103,6 +108,20 @@ export function sanitizeAppState(persisted: unknown): unknown {
   if ('mode' in s && s.mode !== 'now' && s.mode !== 'twoHours') s.mode = 'now';
   if ('city' in s && !isAvailableCity(s.city)) s.city = DEFAULT_CITY;
   if ('lang' in s && s.lang !== 'tr' && s.lang !== 'en' && s.lang !== 'auto') s.lang = 'auto';
+  if ('mapApp' in s && !isMapApp(s.mapApp)) s.mapApp = null;
+  if (
+    'lastReminderMin' in s &&
+    !(REMINDER_CHOICES as readonly unknown[]).includes(s.lastReminderMin)
+  )
+    s.lastReminderMin = null;
+  if ('parksDone' in s)
+    s.parksDone = finite(s.parksDone) && s.parksDone >= 0 ? Math.floor(s.parksDone) : 0;
+  if (
+    'ratingAskedAt' in s &&
+    s.ratingAskedAt != null &&
+    !(typeof s.ratingAskedAt === 'string' && timeOf(s.ratingAskedAt) != null)
+  )
+    s.ratingAskedAt = null;
   return s;
 }
 
@@ -117,6 +136,10 @@ const DATA_KEYS = [
   'city',
   'lang',
   'recentSearches',
+  'mapApp',
+  'lastReminderMin',
+  'parksDone',
+  'ratingAskedAt',
 ] as const;
 
 /** Only the persisted data keys, sanitised: a stray key can never overwrite an action. */

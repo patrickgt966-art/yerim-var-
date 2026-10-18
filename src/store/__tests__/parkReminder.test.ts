@@ -12,6 +12,7 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(),
   requestPermissionsAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(async () => 'notif-1'),
+  setNotificationCategoryAsync: jest.fn(async () => ({})),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
 }));
 
@@ -40,7 +41,13 @@ describe('scheduleParkReminder', () => {
     const r = await scheduleParkReminder(60, text, now);
     expect(r).toEqual({ id: 'notif-1', at: '2026-10-17T13:00:00.000Z' });
     expect(N.scheduleNotificationAsync).toHaveBeenCalledWith({
-      content: { title: 'T', body: 'B', sound: true },
+      content: {
+        title: 'T',
+        body: 'B',
+        sound: true,
+        categoryIdentifier: 'park',
+        data: { kind: 'park' },
+      },
       trigger: { type: 'date', date: new Date('2026-10-17T13:00:00Z') },
     });
   });
@@ -52,11 +59,56 @@ describe('scheduleParkReminder', () => {
     expect(N.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it('also schedules "10 minutes left" for a reminder 30 minutes or more away', async () => {
+    N.getPermissionsAsync!.mockResolvedValue({ granted: true });
+    N.scheduleNotificationAsync!.mockResolvedValueOnce('main').mockResolvedValueOnce('early');
+    const early = { title: 'E', body: 'EB' };
+    const r = await scheduleParkReminder(60, text, now, early);
+    expect(r).toEqual({ id: 'main', at: '2026-10-17T13:00:00.000Z', earlyId: 'early' });
+    expect(N.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+    expect(N.scheduleNotificationAsync).toHaveBeenLastCalledWith({
+      content: {
+        title: 'E',
+        body: 'EB',
+        sound: true,
+        categoryIdentifier: 'park',
+        data: { kind: 'park' },
+      },
+      trigger: { type: 'date', date: new Date('2026-10-17T12:50:00Z') },
+    });
+  });
+
+  it('schedules no early one for a short reminder, or when none is asked for', async () => {
+    N.getPermissionsAsync!.mockResolvedValue({ granted: true });
+    const early = { title: 'E', body: 'EB' };
+    expect(await scheduleParkReminder(15, text, now, early)).toEqual({
+      id: 'notif-1',
+      at: '2026-10-17T12:15:00.000Z',
+    });
+    await scheduleParkReminder(60, text, now);
+    expect(N.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the main reminder when the early one fails', async () => {
+    N.getPermissionsAsync!.mockResolvedValue({ granted: true });
+    N.scheduleNotificationAsync!.mockResolvedValueOnce('main').mockRejectedValueOnce(
+      new Error('x'),
+    );
+    const r = await scheduleParkReminder(60, text, now, { title: 'E', body: 'EB' });
+    expect(r).toEqual({ id: 'main', at: '2026-10-17T13:00:00.000Z' });
+  });
+
   it('cancels quietly, even one that is gone', async () => {
     N.cancelScheduledNotificationAsync!.mockRejectedValueOnce(new Error('gone'));
-    await expect(cancelParkReminder('x')).resolves.toBeUndefined();
+    await expect(cancelParkReminder({ id: 'x' })).resolves.toBeUndefined();
     await cancelParkReminder(undefined);
     expect(N.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels both the reminder and its early one', async () => {
+    await cancelParkReminder({ id: 'main', earlyId: 'early' });
+    expect(N.cancelScheduledNotificationAsync).toHaveBeenCalledWith('main');
+    expect(N.cancelScheduledNotificationAsync).toHaveBeenCalledWith('early');
   });
 });
 
@@ -75,7 +127,23 @@ describe('the park reminder in the store', () => {
     const load = (reminder: unknown) =>
       (migrateAppState({ active: { ...park, reminder } }, 3) as { active: ActivePark }).active;
     expect(load({ id: 'n', at: '2026-10-17T13:00:00Z' }).reminder?.id).toBe('n');
+    expect(load({ id: 'n', at: '2026-10-17T13:00:00Z', earlyId: 'e' }).reminder?.earlyId).toBe('e');
+    expect(load({ id: 'n', at: '2026-10-17T13:00:00Z', earlyId: 4 }).reminder).toEqual({
+      id: 'n',
+      at: '2026-10-17T13:00:00Z',
+    });
     expect(load({ id: 3 })).not.toHaveProperty('reminder');
     expect(load('x')).not.toHaveProperty('reminder');
+  });
+});
+
+describe('the remembered reminder length', () => {
+  it('keeps one of the offered choices and drops anything else', () => {
+    const load = (v: unknown) =>
+      (migrateAppState({ lastReminderMin: v }, 3) as { lastReminderMin: number | null })
+        .lastReminderMin;
+    expect(load(60)).toBe(60);
+    expect(load(45)).toBeNull();
+    expect(load('60')).toBeNull();
   });
 });

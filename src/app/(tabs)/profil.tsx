@@ -10,6 +10,7 @@ import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { activeCity, hasLiveParking } from '@/data/cities';
 import { formatClock } from '@/data/freshness';
+import { MAP_APPS } from '@/data/mapApps';
 import { useParkings } from '@/data/useParkings';
 import type { LangPref } from '@/i18n';
 import { aiBaseUrl } from '@/lib/ai/client';
@@ -31,6 +32,8 @@ export default function ProfileScreen() {
   const setOnboarded = useApp((s) => s.setOnboarded);
   const lang = useApp((s) => s.lang);
   const setLang = useApp((s) => s.setLang);
+  const mapApp = useApp((s) => s.mapApp);
+  const setMapApp = useApp((s) => s.setMapApp);
   const consent = useAi((s) => s.consent);
   const setConsent = useAi((s) => s.setConsent);
 
@@ -77,6 +80,23 @@ export default function ProfileScreen() {
               label={l === 'auto' ? t('profile.langAuto') : LANG_NAMES[l]}
               selected={lang === l}
               onPress={() => setLang(l)}
+            />
+          ))}
+        </View>
+      </Section>
+      <Section title={t('profile.mapApp')}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <Chip
+            label={t('profile.mapAppAsk')}
+            selected={mapApp === null}
+            onPress={() => setMapApp(null)}
+          />
+          {MAP_APPS.map((a) => (
+            <Chip
+              key={a}
+              label={t(`directions.apps.${a}`)}
+              selected={mapApp === a}
+              onPress={() => setMapApp(a)}
             />
           ))}
         </View>

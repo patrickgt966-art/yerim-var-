@@ -1,8 +1,16 @@
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,6 +36,7 @@ import {
   type RestaurantRow,
   type RestaurantSort,
 } from '@/data/restaurants';
+import { currentLocation } from '@/lib/location';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { rankByDistance, useParkings } from '@/data/useParkings';
@@ -80,6 +89,56 @@ function RemovableChip({ label, onPress }: { label: string; onPress: () => void 
   );
 }
 
+/** Slim notice that the list is around a fallback place, with a way to turn location on. */
+function ApproxNotice({
+  text,
+  onTurnOn,
+}: {
+  text: string;
+  /** Only when the reason is that location is off. */
+  onTurnOn?: () => void;
+}) {
+  const c = useColors();
+  const { t } = useTranslation();
+  return (
+    <View
+      style={[
+        asym(18, 6),
+        {
+          marginBottom: 10,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          gap: 6,
+          backgroundColor: c.chipBg,
+        },
+      ]}
+    >
+      <View
+        accessible
+        accessibilityLabel={text}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+      >
+        <Icon name="locate" size={18} color={c.text} strokeWidth={2.2} />
+        <Txt variant="caption" style={{ flex: 1 }}>
+          {text}
+        </Txt>
+      </View>
+      {onTurnOn && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('food.turnOnLocation')}
+          onPress={onTurnOn}
+          style={{ minHeight: HIT, alignSelf: 'flex-start', justifyContent: 'center' }}
+        >
+          <Txt variant="bodyBold" style={{ textDecorationLine: 'underline' }}>
+            {t('food.turnOnLocation')}
+          </Txt>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 export default function RestaurantsScreen() {
   // A new city starts the list over: its target and filters belong to the old one.
   const city = useApp((s) => s.city);
@@ -105,6 +164,7 @@ function Restaurants() {
     quality?: string | string[];
     notcat?: string | string[];
     free?: string | string[];
+    approx?: string | string[];
   }>();
   const requireParking = firstParam(params.park) === '1';
   const parkM = firstParam(params.parkm) === '500' ? 500 : 300;
@@ -197,6 +257,36 @@ function Restaurants() {
   const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
 
   const place = (!outside && firstParam(params.label)) || cityName;
+  // The list is around a fallback place, not the user (location off, or the user is outside).
+  const approxParam = firstParam(params.approx);
+  const approx = approxParam === 'noLocation' || approxParam === 'outside' ? approxParam : null;
+  const turnOnLocation = async () => {
+    try {
+      let perm = await Location.getForegroundPermissionsAsync();
+      if (!perm.granted) {
+        if (!perm.canAskAgain) {
+          void Linking.openSettings();
+          return;
+        }
+        perm = await Location.requestForegroundPermissionsAsync();
+        if (!perm.granted) return;
+      }
+    } catch {
+      return;
+    }
+    const here = await currentLocation(false, 5000);
+    if (here && isInCityArea(here, cityById(cityId))) {
+      router.setParams({
+        lat: String(here.lat),
+        lng: String(here.lng),
+        label: t('results.myLocation'),
+        approx: '',
+      });
+    } else if (here) {
+      // A fix outside the city: the notice now says so instead of "location is off".
+      router.setParams({ approx: 'outside' });
+    }
+  };
   const topEasy = sort === 'parkEase' && visible[0] ? isBest(visible[0].parking) : false;
 
   // The whole header scrolls with the list, so large text never squeezes the rows.
@@ -228,6 +318,14 @@ function Restaurants() {
         <Txt variant="caption" style={{ marginBottom: 10 }}>
           {t('food.pointOutside', { city: cityName })}
         </Txt>
+      )}
+      {approx && (
+        <ApproxNotice
+          text={t(approx === 'noLocation' ? 'food.approxNoLocation' : 'food.approxOutside', {
+            place,
+          })}
+          onTurnOn={approx === 'noLocation' ? () => void turnOnLocation() : undefined}
+        />
       )}
       {(notCat || freeOnly) && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>

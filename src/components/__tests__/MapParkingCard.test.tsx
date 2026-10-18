@@ -1,6 +1,6 @@
 import '@/i18n';
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 
 import MapTab from '@/app/(tabs)/harita';
@@ -72,6 +72,8 @@ jest.mock('@/components/ParkingMap', () => {
 
 beforeEach(() => {
   useApp.getState().setCity('izmir');
+  // A saved choice, so directions open without the chooser.
+  useApp.setState({ mapApp: 'apple' });
   mockPush.mockClear();
   jest.mocked(parkedHere).mockClear();
 });
@@ -85,8 +87,10 @@ it('opens a card for the tapped car park with the free count, directions and "Bu
   expect(screen.getByText('24')).toBeTruthy();
 
   await fireEvent.press(screen.getByLabelText('Alsancak Katlı için yol tarifi'));
-  expect(open).toHaveBeenCalledWith(
-    expect.stringMatching(/^https:\/\/maps\.apple\.com\/\?daddr=38\.437,27\.142&dirflg=d/),
+  await waitFor(() =>
+    expect(open).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/maps\.apple\.com\/\?daddr=38\.437,27\.142&dirflg=d/),
+    ),
   );
 
   await fireEvent.press(screen.getByLabelText('Alsancak Katlı: buraya park ettim'));

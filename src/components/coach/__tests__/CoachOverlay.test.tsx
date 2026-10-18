@@ -33,19 +33,11 @@ const METRICS = {
 
 // Window rects as the targets would report them (measureInWindow).
 const RECTS = {
-  yerim: { x: 162, y: 740, w: 66, h: 66 },
-  ai: { x: 300, y: 60, w: 60, h: 34 },
-  city: { x: 200, y: 56, w: 90, h: 44 },
   search: { x: 16, y: 190, w: 358, h: 130 },
 };
 
-const TEXTS = {
-  yerim:
-    'Bu Yerim, yapay zeka asistanın. Ne yemek istediğini ya da nereye gideceğini yaz, o bulsun.',
-  ai: 'Günlük yapay zeka hakların. Her mesaj 1 hak harcar, gece yenilenir.',
-  city: 'Şehrini buradan değiştir.',
-  search: 'Yemek, yer ya da otopark yaz; ya da hazır örneklerden birine dokun.',
-};
+const SEARCH_TEXT =
+  "Ne yemek istediğini ya da nereye gideceğini yaz. Uzun bir isteğin varsa Yerim'e sor.";
 
 const mount = () =>
   render(
@@ -66,19 +58,19 @@ describe('CoachOverlay', () => {
     jest.useRealTimers();
   });
 
-  it('waits about 600 ms after home has laid out, then shows the first bubble', async () => {
+  it('waits about 600 ms after home has laid out, then shows the search bubble', async () => {
     await mount();
-    expect(screen.queryByLabelText(TEXTS.yerim)).toBeNull();
+    expect(screen.queryByLabelText(SEARCH_TEXT)).toBeNull();
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY - 50));
-    expect(screen.queryByLabelText(TEXTS.yerim)).toBeNull();
+    expect(screen.queryByLabelText(SEARCH_TEXT)).toBeNull();
     await act(() => jest.advanceTimersByTime(100));
-    expect(screen.getByLabelText(TEXTS.yerim)).toBeTruthy();
+    expect(screen.getByLabelText(SEARCH_TEXT)).toBeTruthy();
     expect(screen.getByLabelText('Devam')).toBeTruthy();
     expect(screen.getByLabelText('Geç')).toBeTruthy();
   });
 
-  it('does not start before the home targets are measured or while home is not focused', async () => {
-    useCoachRegistry.setState({ rects: { yerim: RECTS.yerim }, homeFocused: true });
+  it('does not start before the search card is measured or while home is not focused', async () => {
+    useCoachRegistry.setState({ rects: {}, homeFocused: true });
     await mount();
     await act(() => jest.advanceTimersByTime(2000));
     expect(screen.queryByLabelText('Geç')).toBeNull();
@@ -89,31 +81,30 @@ describe('CoachOverlay', () => {
     expect(screen.queryByLabelText('Geç')).toBeNull();
   });
 
-  it('goes through the four steps by tapping the bubble or the backdrop, then is done', async () => {
+  it('starts as soon as the search card is measured, without the city button', async () => {
+    useCoachRegistry.setState({ rects: { search: RECTS.search }, homeFocused: true });
     await mount();
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
+    expect(screen.getByLabelText(SEARCH_TEXT)).toBeTruthy();
+  });
 
-    await fireEvent.press(screen.getByLabelText(TEXTS.yerim));
-    expect(screen.getByLabelText(TEXTS.ai)).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('Devam'));
-    expect(screen.getByLabelText(TEXTS.city)).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText(TEXTS.city));
-    expect(screen.getByLabelText(TEXTS.search)).toBeTruthy();
-    expect(useCoach.getState().coachDone).toBe(false);
+  it('has one step: no step counter, and tapping the bubble or "Devam" ends it', async () => {
+    await mount();
+    await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
+    expect(screen.getByLabelText(SEARCH_TEXT).props.accessibilityValue?.text).toBeUndefined();
+    expect(screen.queryByText(/İpucu/)).toBeNull();
+    expect(screen.getByLabelText(SEARCH_TEXT).props.accessibilityHint).toBe('İpucunu kapatır');
 
-    await fireEvent.press(screen.getByLabelText('Devam'));
+    await fireEvent.press(screen.getByLabelText(SEARCH_TEXT));
     expect(useCoach.getState().coachDone).toBe(true);
     expect(screen.queryByLabelText('Geç')).toBeNull();
   });
 
-  it('skips the ✨ step when its target does not exist', async () => {
-    useCoachRegistry.setState({
-      rects: { yerim: RECTS.yerim, city: RECTS.city, search: RECTS.search },
-    });
+  it('"Devam" on the backdrop ends it too', async () => {
     await mount();
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
-    await fireEvent.press(screen.getByLabelText(TEXTS.yerim));
-    expect(screen.getByLabelText(TEXTS.city)).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Devam'));
+    expect(useCoach.getState().coachDone).toBe(true);
   });
 
   it('"Geç" ends it at once, and it never shows again', async () => {
@@ -121,7 +112,7 @@ describe('CoachOverlay', () => {
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
     await fireEvent.press(screen.getByLabelText('Geç'));
     expect(useCoach.getState().coachDone).toBe(true);
-    expect(screen.queryByLabelText(TEXTS.yerim)).toBeNull();
+    expect(screen.queryByLabelText(SEARCH_TEXT)).toBeNull();
 
     await view.unmount();
     await mount();
