@@ -19,6 +19,7 @@ import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
+import { quartersOf } from '@/data/quarters';
 import {
   isQualifierWord,
   looksLikePlace,
@@ -92,6 +93,7 @@ import {
   pickReasonHolds,
   verifyParkPick,
   verifyPick,
+  distMOf,
   verifyPlan,
   walkMinFromMeters,
 } from '@/lib/ai/verify';
@@ -858,6 +860,7 @@ function rulePick(cards: ChatCard[], ctx: ChatContext, deps: AssistantDeps): Bot
       i,
       kind: 'parking',
       walkMin: walkMinFromMeters(card.distanceM),
+      distM: distMOf(card.distanceM),
       openState: parkOpenAt(p, now, now),
       nonstop: p.nonstop === true,
       free: p.isPaid === null ? null : !p.isPaid,
@@ -1131,7 +1134,12 @@ async function answerText(
   // everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse') {
     // The district against the city's own list: a typo fixed, a quarter moved to place.
-    const found = settleDistrict(routed.out.value, text, activeCity().districts);
+    const found = settleDistrict(
+      routed.out.value,
+      text,
+      activeCity().districts,
+      quartersOf(activeCity().id),
+    );
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
     meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];
@@ -1415,6 +1423,21 @@ async function answerText(
           ),
         );
       }
+    }
+    // The AI named a place we only know under a longer name ("Bebek" -> "Bebek Parkı" in İzmir):
+    // ask before searching there; the chip sends the full name back, which then matches exactly.
+    if (
+      h &&
+      meta.ai?.place &&
+      meta.ai.clarify?.ask !== 'place' &&
+      fold(h.name) !== fold(it.placeQuery)
+    ) {
+      return withNotice(
+        await clarify('place', next, it.food, deps, {
+          ...meta,
+          ai: { ...meta.ai, place: h.name, clarify: { ask: 'place', text: null } },
+        }),
+      );
     }
     if (h) {
       next.place = { label: h.name, lat: h.lat, lng: h.lng };
@@ -2035,6 +2058,9 @@ function runFood(
         ...(ctx.requireParking ? { park: '1' } : {}),
         ...(ctx.parkM === 500 ? { parkm: '500' } : {}),
         ...(ctx.wide ? { wide: '1' } : {}),
+        // What the chat ruled out and the free-parking wish go along, so the list shows the same.
+        ...(ctx.notCat ? { notcat: ctx.notCat } : {}),
+        ...(ctx.requireParking && ctx.freeParking ? { free: '1' } : {}),
       },
     });
     actions.push({
@@ -2381,6 +2407,7 @@ function pickCandidate(card: Extract<ChatCard, { kind: 'restaurant' }>, i: numbe
     i,
     kind: 'restaurant',
     walkMin: walkMinFromMeters(card.distanceM),
+    distM: distMOf(card.distanceM),
     openState: n?.open ?? card.open,
     closesLate: n?.closesLate ?? false,
     parkingM: card.parkingM != null ? Math.round(card.parkingM) : null,
@@ -2604,6 +2631,7 @@ async function askPlan(
         i: index,
         kind: 'restaurant',
         walkMin: walkMinFromMeters(card.distanceM),
+        distM: distMOf(card.distanceM),
         openState: state,
         closesLate: r.openingHours ? closesLate({ openingHoursText: r.openingHours }, at) : false,
         dishMatch: n?.dish ?? 'none',
@@ -2615,6 +2643,7 @@ async function askPlan(
           return {
             p: p++,
             walkMin: walkMinutes(r, x),
+            distM: distMOf(distanceMeters(r, x)),
             parkingFree: x.isPaid === null ? null : !x.isPaid,
             freeSpots: fresh ? x.free : null,
             openState: isNow ? openState(x, at) : openState({ ...x, isOpen: null }, at),
@@ -2737,6 +2766,7 @@ async function askParkPick(
     i,
     kind: 'parking',
     walkMin: walkMinFromMeters(card.distanceM),
+    distM: distMOf(card.distanceM),
     openState: parkOpenAt(p, at, now),
     nonstop: p.nonstop === true,
     free: p.isPaid === null ? null : !p.isPaid,

@@ -18,6 +18,13 @@ Uygulamanın kodu MIT lisanslıdır. Uygulamayla birlikte dağıtılan ve uygula
 - Lisans: portal üzerinden henüz doğrulanmadı. Bu, uygulamayla dağıtılan tarife dosyası için de geçerlidir.
 - Atıf: "İBB Açık Veri / İSPARK". Uygulamada Profil ekranında gösterilir.
 
+## BURULAŞ (Bursa Büyükşehir Belediyesi şirketi)
+
+- Kaynak: https://www.burulas.com.tr/hizmetler/terminal/otopark-tarifesi (Bursa Otobüs Terminali otopark tarifesi; 2026-10-18'de okundu).
+- Gömülü veri: `data/tariffs-bursa.json`, terminal otoparkının resmi tarifesi (`source: "BURULAŞ (Bursa Otobüs Terminali otopark tarifesi)"`), elle tutulur. Uygulama otopark detayında "Resmi tarife" olarak gösterir.
+- Lisans: açık veri lisansı yok; kamuya açık bir ücret ilanıdır. Kullanım koşulları doğrulanmadı.
+- Atıf: "BURULAŞ".
+
 ## Bursa Büyükşehir Belediyesi Açık Veri (Açık Yeşil)
 
 - Bursa için "otopark" veri seti veri betiğinde isteğe bağlı kaynak olarak denenir. Son çalışmada alınamadı; şu an uygulamada bu kaynaktan kayıt yok.

@@ -119,7 +119,7 @@ function RestaurantFavorites() {
   const toggle = useApp((s) => s.toggleFavoriteRestaurant);
   const cityId = useApp((s) => s.city);
   const setCity = useApp((s) => s.setCity);
-  const { data, isPlaceholderData } = useParkings();
+  const { data, isPlaceholderData } = useParkings({ withHidden: true });
   // Saved restaurants of every city stay listed with their city; ids no longer in any bundled
   // data are skipped. Recomputed on a city switch: the active city's data changes with it.
   const items = useMemo(
@@ -229,7 +229,7 @@ export default function FavoritesScreen() {
   const replaceFavoriteId = useApp((s) => s.replaceFavoriteId);
   const cityId = useApp((s) => s.city);
   const setCity = useApp((s) => s.setCity);
-  const { data } = useParkings();
+  const { data } = useParkings({ withHidden: true });
   const now = new Date(useNow(30_000));
   const [tab, setTab] = useState<FavTab>('parkings');
 

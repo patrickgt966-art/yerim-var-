@@ -1,9 +1,10 @@
 import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { isClosedNow } from '@/lib/openNow';
 import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
+import { flaggedPlaceIds, hiddenPlaceIds, useHiddenPlaceIds } from '@/store/reports';
 import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
 import { activeCity } from './cities';
@@ -51,17 +52,23 @@ export const STATIC_ONLY_PLACEHOLDER: ParkingResult = {
 
 // One merge per result object and city, shared by every screen that observes the query.
 // The shared placeholder is the same object for every city, hence the city check.
-const merged = new WeakMap<ParkingResult, { city: string; out: ParkingResult }>();
+const merged = new WeakMap<
+  ParkingResult,
+  { city: string; hidden: ReadonlySet<string>; out: ParkingResult }
+>();
 
 /**
  * Adds bundled OpenStreetMap/İzelman car parks to real data. Sample data is
  * never displayed when the bundled car parks exist: they replace it, marked
  * 'static-only' (the fallbackReason is kept), so no fake counts or pins show.
  */
-export function addStatic(result: ParkingResult): ParkingResult {
+export function addStatic(
+  result: ParkingResult,
+  hidden: ReadonlySet<string> = hiddenPlaceIds(),
+): ParkingResult {
   const city = activeCity().id;
   const hit = merged.get(result);
-  if (hit && hit.city === city) return hit.out;
+  if (hit && hit.city === city && hit.hidden === hidden) return hit.out;
   let out: ParkingResult;
   if (result.source === 'mock') {
     const statics = withStatic([]);
@@ -69,16 +76,28 @@ export function addStatic(result: ParkingResult): ParkingResult {
   } else {
     out = { ...result, parkings: withStatic(result.parkings) };
   }
-  merged.set(result, { city, out });
+  // Car parks reported closed (by this device, or by enough people) are left out.
+  if (hidden.size > 0) out = { ...out, parkings: out.parkings.filter((p) => !hidden.has(p.id)) };
+  merged.set(result, { city, hidden, out });
   return out;
 }
 
-export function useParkings() {
+const NONE: ReadonlySet<string> = new Set();
+
+/**
+ * The selected city's car parks. `withHidden` keeps the ones reported closed (a detail page must
+ * still show the one just reported, and offer to take the report back).
+ */
+export function useParkings({ withHidden = false }: { withHidden?: boolean } = {}) {
   // Follows the selected city: a new key means a new download, never the old city's list.
   const city = useApp((s) => s.city);
+  // A new select when a place is hidden or shown again, so the list is filtered again.
+  const hidden = useHiddenPlaceIds();
+  const keep = withHidden ? NONE : hidden;
+  const select = useCallback((r: ParkingResult) => addStatic(r, keep), [keep]);
   return useQuery({
     ...parkingsQuery(city),
-    select: addStatic,
+    select,
     placeholderData: STATIC_ONLY_PLACEHOLDER,
   });
 }
@@ -159,11 +178,15 @@ type Openable = Partial<Pick<Parking, 'isOpen' | 'nonstop' | 'openingHours' | 'o
  * Input must already be sorted by distance; relative order inside each group
  * is kept.
  */
-export function preferLive<T extends { source: string; distance: number } & Openable>(
+export function preferLive<T extends { id?: string; source: string; distance: number } & Openable>(
   ranked: T[],
   now: Date = new Date(),
 ): T[] {
-  const closed = new Set(ranked.filter((p) => isClosedNow(p, now)));
+  // Closed now, or reported closed by several people: after the others.
+  const flagged = flaggedPlaceIds();
+  const closed = new Set(
+    ranked.filter((p) => isClosedNow(p, now) || (p.id !== undefined && flagged.has(p.id))),
+  );
   const open = closed.size === 0 ? ranked : ranked.filter((p) => !closed.has(p));
   const first = open[0];
   let head: T[] = open;

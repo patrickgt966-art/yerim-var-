@@ -302,12 +302,15 @@ describe('districts and names follow the city', () => {
     expect(it2.kind === 'search' && it2.district).toBeNull();
   });
 
-  it('keeps the izmir typo fix to izmir', () => {
+  it("fixes a district typo in every city, against that city's own districts", () => {
     const typo = parseQuery('bornava balık');
     expect(typo.kind === 'search' && typo.district?.name).toBe('Bornova');
     setActiveCity('istanbul');
     const near = parseQuery('kadikoi balık');
-    expect(near.kind === 'search' && near.district).toBeNull();
+    expect(near.kind === 'search' && near.district?.name).toBe('Kadıköy');
+    // An İzmir district is no district in İstanbul.
+    const other = parseQuery('bornava balık');
+    expect(other.kind === 'search' && other.district).toBeNull();
   });
 
   it('strips the trailing name of the active city only', () => {

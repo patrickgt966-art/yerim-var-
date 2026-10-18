@@ -17,6 +17,8 @@ import { FreshnessBadge, freshnessText, Tag } from './FreshnessBadge';
 import { PBadge } from './PBadge';
 import { SlotStrip } from './SlotStrip';
 import { Txt } from './Txt';
+import { FlaggedLine } from './FlaggedLine';
+import { useIsFlagged } from '@/store/reports';
 
 type Props = {
   parking: RankedParking;
@@ -143,6 +145,7 @@ export function ParkingCard({
   const staticCard = isStatic(p);
   // When isOpen is false the meta line already says "Şu an kapalı".
   const maybeClosed = p.isOpen !== false && openState(p) === 'closed';
+  const flagged = useIsFlagged(p.id);
   const disabled = disabledInfo(p);
   const word = staticCard ? null : levelWord(occupancyLevel(free, p.capacity), t);
   const a11y = staticCard
@@ -157,7 +160,7 @@ export function ParkingCard({
           .filter(Boolean)
           .join(', '),
       })
-    : `${p.name}. ${spokenMeta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}${word ? `, ${word}` : ''}. ${freshnessText(freshness, t)}${disabled ? `. ${disabledText(disabled, t)}` : ''}${maybeClosed ? `. ${t('results.maybeClosed')}` : ''}`;
+    : `${p.name}. ${spokenMeta}. ${free == null ? t('common.unknown') : `${free} ${t('common.free')}`}${word ? `, ${word}` : ''}. ${freshnessText(freshness, t)}${disabled ? `. ${disabledText(disabled, t)}` : ''}${maybeClosed ? `. ${t('results.maybeClosed')}` : ''}${flagged ? `. ${t('report.flagged')}` : ''}`;
 
   if (!featured) {
     return (
@@ -197,6 +200,7 @@ export function ParkingCard({
               {t('results.maybeClosed')}
             </Txt>
           )}
+          {flagged && <FlaggedLine />}
           <DisabledLine info={disabled} />
           <View style={{ marginTop: 9 }}>
             {staticCard ? (
@@ -247,6 +251,7 @@ export function ParkingCard({
               {t('results.maybeClosed')}
             </Txt>
           )}
+          {flagged && <FlaggedLine />}
           <DisabledLine info={disabled} />
           <View style={{ marginTop: 9 }}>
             {staticCard ? (

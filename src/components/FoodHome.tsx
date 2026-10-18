@@ -65,7 +65,11 @@ export async function openFoodNearMe(
 }
 
 // Keyed by city id: a switch must never serve the old city's restaurants.
-let folded: { city: string; list: { r: Restaurant; key: string }[] } | null = null;
+let folded: {
+  city: string;
+  source: Restaurant[];
+  list: { r: Restaurant; key: string }[];
+} | null = null;
 
 /** Same-name chain branches kept in the suggestions (the nearest ones). */
 const MAX_SAME_NAME = 2;
@@ -85,8 +89,9 @@ export function matchRestaurants(
   const q = fold(query.trim());
   if (q.length < 2) return [];
   const city = activeCity().id;
-  if (folded?.city !== city) {
-    folded = { city, list: allRestaurants().map((r) => ({ r, key: fold(r.name) })) };
+  const source = allRestaurants();
+  if (folded?.city !== city || folded.source !== source) {
+    folded = { city, source, list: source.map((r) => ({ r, key: fold(r.name) })) };
   }
   // A complete dish ("pişi") only matches names that carry it as a word, not "Balık Pişiricisi".
   const wholeWord = dishProfile(q)?.dish === q;

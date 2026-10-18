@@ -59,7 +59,9 @@ function mockAi(
 }
 
 const closest = async (req: { candidates: PickCandidate[] }) => {
-  const best = [...req.candidates].sort((a, b) => a.walkMin - b.walkMin)[0]!;
+  // As the prompt says: by metres (minutes are rounded and tie).
+  const near = (c: PickCandidate) => c.distM ?? c.walkMin * 60;
+  const best = [...req.candidates].sort((a, b) => near(a) - near(b))[0]!;
   return {
     ok: true,
     value: { pick: best.i, reasons: ['closest'], runnerUp: null, runnerUpWhy: null, tone: null },

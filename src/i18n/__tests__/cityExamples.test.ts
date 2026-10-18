@@ -6,6 +6,7 @@ import { suggestions } from '@/components/chat/model';
 import type { ChatContext } from '@/data/assistant';
 
 import tr from '../tr';
+import { quartersOf } from '@/data/quarters';
 
 const IZMIR_PLACES = [
   'Kordon',
@@ -176,8 +177,11 @@ describe('city example texts', () => {
     setActiveCity('istanbul');
     const ctx = { sort: 'distance', freeParking: true, place: null } as unknown as ChatContext;
     const out = [...suggestions(ctx, (k, o) => i18n.t(k, o)), understandSystem('istanbul')];
+    // A name both cities have (İstanbul's Göztepe) is İstanbul's own in its quarter list.
+    const own = new Set(quartersOf('istanbul').map((q) => q.n));
     for (const text of out) {
-      for (const place of IZMIR_PLACES) expect(text).not.toContain(place);
+      for (const place of IZMIR_PLACES.filter((p) => !own.has(p)))
+        expect(text).not.toContain(place);
     }
   });
 

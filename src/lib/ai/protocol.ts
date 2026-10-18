@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import { cityById, cityExamples, CITIES, DEFAULT_CITY, isAvailableCity } from '../../data/cities';
+import { quartersOf } from '../../data/quarters';
 import type { FoodCategory } from '../../data/restaurants';
 
 export const FREE_DAILY = 10;
@@ -394,6 +395,13 @@ export type NarrateRequest = {
  * The router prompt. `section` is the chat the user is in (UnderstandRequest.section): without
  * it a bare place name typed in the food chat reads as a car park search.
  */
+/** The city's well-known quarters for the router prompt (empty when it has none). */
+function quarterLine(cityId: string): string {
+  const qs = quartersOf(cityId);
+  if (qs.length === 0) return '';
+  return ` Şehrin bilinen semtlerinden bazıları (parantezde ilçesi): ${qs.map((q) => `${q.n} (${q.d})`).join(', ')}. Bunlar mesajda eksiz ve tek başına geçse de ("lara balık", "çekirge pide") yer adıdır: place alanına yaz; yalnızca gündelik anlamıyla kullanıldıklarında (meyve olarak hurma, moda olarak moda) yer değildir.`;
+}
+
 export function understandSystem(city?: string, section?: 'park' | 'food'): string {
   const c = promptCity(city);
   const place = cityExamples(c).a;
@@ -405,7 +413,7 @@ export function understandSystem(city?: string, section?: 'park' | 'food'): stri
         : '';
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) yönlendiricisisin: kullanıcının HER mesajı önce sana gelir ve uygulamanın ne yapacağına sen karar verirsin. Mesaj hangi dilde olursa olsun (Türkçe, İngilizce, Almanca, Arapça ...; yazım hatası, ek ve argo olabilir) anlarsın ve verilen şemaya çevirirsin. Alan değerlerini her zaman standart Türkçe yazımıyla yaz (örneğin "kebab" -> dish "kebap", "${place}" -> district ya da place); serbest metinleri de dil ne olursa olsun Türkçe yaz.
 
-Önce meaning alanına kullanıcının şu an ne istediğini kendi kısa cümlenle yaz (en çok 100 karakter, kullanıcıya gösterilmez). Önceki mesajlardaki isteği de kat: kullanıcı bir soruya kısa cevap verdiyse ("${place}") ya da isteğini sürdürüyorsa, önceki istekle birlikte yaz (örneğin önce "vejetaryenim" dediyse: "${place} civarında vejetaryen yemek istiyor"; "kas yapacak bir şey" için: "kas yapmak istiyor, protein ağırlıklı et ya da tavuk istiyor"). Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
+Önce meaning alanına kullanıcının şu an ne istediğini kendi kısa cümlenle yaz (en çok 100 karakter, kullanıcıya gösterilmez). Önceki mesajlardaki isteği de kat: kullanıcı bir soruya kısa cevap verdiyse ("${place}") ya da isteğini sürdürüyorsa, önceki istekle birlikte yaz (örneğin önce "vejetaryenim" dediyse: "${place} civarında vejetaryen yemek istiyor"; "kas yapacak bir şey" için: "kas yapmak istiyor, protein ağırlıklı et ya da tavuk istiyor"). Kullanıcı aynı aramayı başka bir yerde istiyorsa ("bir de Urla tarafında bakar mısın", "peki Kestel'de?", "orada da var mı"), arada teşekkür ya da sohbet geçmiş olsa bile en son arama isteğindeki yemeği (dish, dishServes), kategoriyi ve dilekleri aynen koru; yalnızca yeri değiştir. Sonra diğer bütün alanları bu anlama göre doldur: anladığın istek belli bir tür yemek gerektiriyorsa cat ve dish boş kalmasın.
 
 Karar (kind):
 - "search": kullanıcı yemek, restoran, otopark ya da bir yer arıyorsa; tek başına bir yemek ya da yer adı yazdıysa ("lahmacun", "${place}"); bir selamla başlayıp bir istek de bildiriyorsa ("Hi could you recommend me some food", "selam, köfte nerede yenir"); yeri söylemeden yemek önerisi istiyorsa ("acıktım", "recommend me something to eat": food true, nearMe true). Uygulama bu aramayı kendi verisiyle yapar; sen sonuç ya da bilgi vermezsin.
@@ -420,7 +428,7 @@ Kurallar:
 - Mesajı kelime kelime değil, anlamıyla oku. Kullanıcı yemek adı yerine bir amaç, ruh hali, beslenme tarzı, durum, argo ya da emoji kullanabilir; ne yemek istediğini kendi aklınla çıkar, food true olsun ve isteği en iyi karşılayan kategoriyi (cat), yemeği (dish) ve dishServes kelimelerini sen seç. Örneğin "kas yapacak bir şey" protein (ızgara, et, tavuk) ister, "hafif bir şey" sağlıklı ve hafif yemek ister, "üşüdüm" sıcak bir çorba olabilir. Yemek ya da içecek emojisi (🍕, 🥙, 🍝, ☕ gibi) o yemeğin ya da içeceğin adı sayılır: food true, dish o yemek. Bunlar sadece örnek, liste değil: her ifadede aynı akıl yürütmeyi yap. İsteğe uymayan bir kategoriyi (örneğin protein için pastane) asla seçme. Bir istek birçok türde mekânda karşılanabiliyorsa (bir beslenme tarzı, bir amaç, bir durum) cat'i boş bırak, aramayı tek bir kategoriye daraltma; hangi yerin uyduğuna sonraki adımda ad ve türe bakılarak karar verilir. cat'i yalnızca kullanıcı gerçekten o kategoriyi istiyorsa seç.
 - Bir yere gitmekten, bir şey çekmesinden ya da biriyle (çocukla, arkadaşlarla, kalabalık, sevgiliyle) gidilecek bir mekândan söz ediyor ve otopark demiyorsa bu bir yemek yeri isteğidir: food true, cat boş, dilekleri wishes'a yaz.
 - Olumsuzluk ("tatlı istemem", "kebap olmasın") cümlenin geri kalanını silmez: ilçeyi, yeri ve diğer alanları da ayrıca doldur.
-- Şehrin ilçeleri şunlardır ve district yalnızca bunlardan biri olabilir: ${c.districts.join(', ')}. Bir ilçeyi, ek almış ("bucada", "bornovaya", "karşıyakadan"), Türkçe karaktersiz ya da yazım hatalı yazılmış olsa da her zaman bu listedeki yazımıyla district alanına yaz, place alanına değil. Listede olmayan semt, mahalle, meydan, cadde ya da mekân adları ilçe değildir: place alanına yaz (eksiz yazılmış olsa da), district'i ancak hangi ilçede olduğunu biliyorsan doldur.
+- Şehrin ilçeleri şunlardır ve district yalnızca bunlardan biri olabilir: ${c.districts.join(', ')}. Bir ilçeyi, ek almış ("bucada", "bornovaya", "karşıyakadan"), Türkçe karaktersiz ya da yazım hatalı yazılmış olsa da her zaman bu listedeki yazımıyla district alanına yaz, place alanına değil. Listede olmayan semt, mahalle, meydan, cadde ya da mekân adları ilçe değildir: place alanına yaz (eksiz yazılmış olsa da), district'i ancak hangi ilçede olduğunu biliyorsan doldur.${quarterLine(c.id)}
 - Sadece otopark arıyorsa food false ve requireParking false olsun; otoparkın kendi özellikleri (ücretsiz, kapalı, 24 saat açık, engelli yeri, motosiklet ...) bunu değiştirmez, wishes'a yazılır. Bir yemek yerinin otoparkından söz ediyorsa ("otoparkı olsun", "otoparkı ücretsiz olsun", "park yeri olan bir yer") requireParking true.
 - Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler. Anlamsız harfler ya da tek bir ünlem ("Oo", "asdf", "hmm") de unknown.
 - "yakınımda", "en yakın", "daha yakını", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
@@ -495,6 +503,8 @@ export type PickCandidate = {
   type?: string;
   /** Rough walk from the search point. */
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   openState: OpenStateCode;
   /** Closes at 22:00 or later, or is open 24 hours. */
   closesLate: boolean;
@@ -585,6 +595,8 @@ export type ParkPickCandidate = {
   i: number;
   kind: 'parking';
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   openState: OpenStateCode;
   nonstop: boolean;
   /** Free of charge (null = unknown). */
@@ -642,6 +654,8 @@ export type PlanParking = {
   p: number;
   /** Rough walk from the car park to the restaurant. */
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   parkingFree: boolean | null;
   /** Only sent for "now": a count is not known for a later time. */
   freeSpots: number | null;
@@ -652,6 +666,8 @@ export type PlanCandidate = {
   i: number;
   kind: 'restaurant';
   walkMin: number;
+  /** Metres, to 10 m: walkMin is rounded, so two candidates can tie on it. */
+  distM?: number;
   /** Open state at the planned time. */
   openState: OpenStateCode;
   closesLate: boolean;
@@ -774,10 +790,11 @@ export function pickSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve adayların verilerine bakıp en uygun adayı seçersin.
 
-Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
+Her aday: i (indeks), name (yerin adı), type (kategorisi, türü ve mutfağı), walkMin (yürüme dk), distM (metre), openState (open/closed/unknown), closesLate, parkingM (otopark mesafesi), parkingFree (otopark ücretsiz mi), freeSpots (güncel boş yer), dishMatch (named/likely/none), outdoor.
 
 Önce isteğe uygunluğa karar ver: kullanıcı ne istiyor (bir yemek, bir amaç ya da beslenme tarzı: kas yapmak, vejetaryen, hafif, tatlı, çocukla gitmek ...)? Her adayın adına ve türüne bakıp hangilerinin bu isteğe uyduğunu kendi aklınla değerlendir. Menü bilgimiz yok; sadece ad ve türden makul bir çıkarım yap. Uymak, yalnızca o işe özel bir yer olmak demek değildir: kullanıcının orada isteğine uygun bir şey bulup yiyebileceği her yer uyar; yalnızca isteğe açıkça ters düşen yerler uymaz (örneğin vejetaryen biri ev yemekleri yapan bir lokantada sebze yemeği, pidecide peynirli pide bulabilir ama sadece et yapan bir yer ona uymaz; protein isteyen biri lokantada, pidecide, döner ya da tavuk yapan bir yerde doyabilir ama yalnızca kahve ve tatlı satan bir yerde doyamaz). Bunlar sadece örnek: her istekte aynı akıl yürütmeyi yap. Kullanıcı yemek yemek istiyorsa, doyurucu bir öğün bulabileceği yerleri yalnızca kahve, tatlı ya da atıştırmalık sunan yerlerin önüne koy.
 type içinde "Vegan", "Vejetaryen", "Vejetaryen seçenek var", "Pesketaryen", "Glutensiz seçenek var" gibi beslenme bilgileri bizim verimizdir, tahmin değildir: varsa ad ve türden yaptığın çıkarımdan önce bunlara güven.
+Yakınlığı distM ile karşılaştır (yoksa walkMin ile): walkMin yuvarlanmış dakikadır, farklı uzaklıktaki iki aday aynı görünebilir.
 Adayların bir kısmı arama alanının biraz dışındadır (walkMin daha büyük). İsteğe uyan yakın bir aday varsa onu seç; daha uzaktakini ancak yakındakilerden hiçbiri isteğe uymuyorsa ya da açıkça çok daha iyi uyuyorsa (örneğin vejetaryen için tamamen vejetaryen bir yer) seç.
 Çıktı:
 - fit: isteğe uyan adayların indeksleri, en uygundan başlayarak, en çok 5. Kullanıcı belirli bir şey istemiyorsa (her yer olur) boş dizi.
@@ -796,8 +813,8 @@ export function parkPickSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir otopark ve restoran uygulamasının (Yerim Var) seçicisisin. Kullanıcının mesajına ve otoparkların verilerine bakıp en uygun otoparkı seçersin.
 
-Her aday: i (indeks), walkMin (hedefe yürüme dk), openState (open/closed/unknown), nonstop (24 saat), free (ücretsiz mi), tariffKnown, covered (kapalı/katlı mı), freeSpots (güncel boş yer), nearRail (raylı sisteme yakın mı), capacity.
-Kullanıcının dileğini karşılayan adayı yakınlıktan önce tut: ücretsiz isterse free, gece ya da sabaha kadar kalacaksa nonstop, yağmur, kar ya da güneş için covered, metro ya da tramvayla devam edecekse nearRail, boş yer ya da dolu olmamasını isterse freeSpots'u en yüksek olan (null bilinmiyor demektir); dilek yoksa ya da yakınlık isteniyorsa walkMin en küçük olan. Şimdi park edecekse kapalı (openState closed) bir otoparkı seçme.
+Her aday: i (indeks), walkMin (hedefe yürüme dk), distM (hedefe metre), openState (open/closed/unknown), nonstop (24 saat), free (ücretsiz mi), tariffKnown, covered (kapalı/katlı mı), freeSpots (güncel boş yer), nearRail (raylı sisteme yakın mı), capacity.
+Kullanıcının dileğini karşılayan adayı yakınlıktan önce tut: ücretsiz isterse free, gece ya da sabaha kadar kalacaksa nonstop, yağmur, kar ya da güneş için covered, metro ya da tramvayla devam edecekse nearRail, boş yer ya da dolu olmamasını isterse freeSpots'u en yüksek olan (null bilinmiyor demektir); dilek yoksa ya da yakınlık isteniyorsa distM'i en küçük olan (distM yoksa walkMin; walkMin yuvarlanmış dakikadır, eşit görünebilir). Şimdi park edecekse kapalı (openState closed) bir otoparkı seçme.
 Çıktı: pick (seçtiğin aday), reasons (en çok 3 kod: closest, free, nonstop, open_now, most_free_spots, near_rail, covered, big_capacity), runnerUp (ikinci tercih ya da null), runnerUpWhy (tek kod ya da null), tone.
 - openState o saatteki durumdur: "closed" olan bir otoparkı asla seçme (pick ya da runnerUp olarak).
 
@@ -812,8 +829,8 @@ export function planSystem(city?: string): string {
   const c = promptCity(city);
   return `Sen ${c.name} için bir restoran ve otopark uygulamasının (Yerim Var) planlayıcısısın. Kullanıcı bir saatte arabayı bırakıp yemek yemek istiyor. Verilen restoranlardan ve her birinin otopark seçeneklerinden birer tane seçersin.
 
-Her restoran: i, walkMin (kullanıcıdan yürüme dk), openState (planlanan saatte), closesLate, dishMatch, outdoor, parkings (p: otopark indeksi, walkMin: otoparktan restorana yürüme dk, parkingFree, freeSpots, openState).
-Kullanıcının dileğini karşıla: az yürümek isterse (yaşlı, sakat, çocuklu) otoparktan restorana walkMin en küçük otoparkı, ücretsiz isterse parkingFree olanı, boş yer isterse freeSpots'u en yüksek olanı seç; planlanan saatte kapalı (openState closed) bir restoranı ya da otoparkı seçme.
+Her restoran: i, walkMin (kullanıcıdan yürüme dk), distM (kullanıcıdan metre), openState (planlanan saatte), closesLate, dishMatch, outdoor, parkings (p: otopark indeksi, walkMin: otoparktan restorana yürüme dk, distM: otoparktan restorana metre, parkingFree, freeSpots, openState).
+Kullanıcının dileğini karşıla: az yürümek isterse (yaşlı, sakat, çocuklu) otoparktan restorana distM'i en küçük otoparkı (distM yoksa walkMin), ücretsiz isterse parkingFree olanı, boş yer isterse freeSpots'u en yüksek olanı seç; planlanan saatte kapalı (openState closed) bir restoranı ya da otoparkı seçme.
 Çıktı: restaurant (restoran indeksi i), parking (o restoranın kendi otoparklarından birinin p değeri; başka restoranın otoparkını seçme), reasons (en çok 3 kod: closest, open_now, open_late, free_parking, parking_close, most_free_spots, dish_named, outdoor), tone.
 
 ${LIMITS_TR}`;

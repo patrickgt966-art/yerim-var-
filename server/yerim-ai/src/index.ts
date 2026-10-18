@@ -33,6 +33,15 @@ import {
   validQuota,
   validUnderstand,
 } from './quota';
+import {
+  FLAG_AT,
+  networkOf,
+  sameSecret,
+  shortHash,
+  validCity,
+  validReport,
+  validReview,
+} from './reports';
 import { localQuota, objectQuota, type Quota, type QuotaNamespace } from './store';
 
 export { QuotaCounter } from './store';
@@ -48,6 +57,10 @@ export interface Env {
   CHAT_GLOBAL_DAILY?: string;
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
+  /** Distinct networks that must report a place closed (on 2+ days) to flag it (default 3). */
+  REPORT_FLAG_AT?: string;
+  /** The maintainer's key for /admin/* (`wrangler secret put ADMIN_TOKEN`); unset turns them off. */
+  ADMIN_TOKEN?: string;
 }
 
 /** The counters: the Durable Object when bound, else in-process on KV (tests). */
@@ -112,6 +125,22 @@ function unreadableOutput(err: unknown): boolean {
   );
 }
 
+/**
+ * The system prompt as blocks: the city's fixed instructions, cached (each endpoint sends the same
+ * text for every message of the city, so after the first message it is read from the prompt cache
+ * at a tenth of the price, and cache reads do not count toward the input-tokens-per-minute limit),
+ * then what changes per request (the cards line, the language note) after the cache breakpoint.
+ */
+export function cachedSystem(
+  fixed: string,
+  rest = '',
+): { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }[] {
+  return [
+    { type: 'text', text: fixed, cache_control: { type: 'ephemeral' } },
+    ...(rest ? [{ type: 'text' as const, text: rest }] : []),
+  ];
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -159,6 +188,91 @@ async function cancelRoute(req: Request, env: Env): Promise<Response> {
   return json({ remaining });
 }
 
+/**
+ * A "closed / wrong location / wrong info" report from the app. Never calls Anthropic and never
+ * touches the AI counter. The device and its network are kept only hashed with the place.
+ */
+async function reportRoute(req: Request, env: Env): Promise<Response> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const parsed = validReport(raw);
+  if (!parsed) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`report:${ip}`, now, 60))) return json({ error: 'rate_limited' }, 429);
+  const flagAt = Math.max(1, Number(env.REPORT_FLAG_AT) || FLAG_AT);
+  const out = await quota.report(
+    {
+      city: parsed.city,
+      placeId: parsed.placeId,
+      place: parsed.place,
+      kind: parsed.kind,
+      device: await shortHash('place', parsed.placeId, parsed.deviceId),
+      net: await shortHash('net', parsed.placeId, networkOf(ip)),
+      dayDevice: await shortHash('day', parsed.deviceId),
+    },
+    now,
+    flagAt,
+  );
+  if (!out.ok) return json({ error: 'rate_limited', reason: out.reason }, 429);
+  return json({ ok: true, flagged: out.flagged });
+}
+
+/**
+ * The city's places the maintainer hid (`ids`) and the ones flagged by reports (`flagged`).
+ * Public and cacheable for an hour.
+ */
+async function hiddenRoute(req: Request, env: Env): Promise<Response> {
+  const city = validCity(new URL(req.url).searchParams.get('city'));
+  if (!city) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`hidden:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
+  const res = json({ city, ...(await quota.hidden(city, now)) });
+  res.headers.set('cache-control', 'public, max-age=3600');
+  return res;
+}
+
+/**
+ * The maintainer's endpoints, behind `Authorization: Bearer <ADMIN_TOKEN>` (a wrangler secret).
+ * Without the secret they do not exist. GET /admin/flagged?city= lists the flagged and hidden
+ * places; POST /admin/review {city, placeId, action: 'hide' | 'keep'} decides one.
+ */
+async function adminRoute(req: Request, env: Env, path: string): Promise<Response> {
+  if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`admin:${ip}`, now, 200))) return json({ error: 'rate_limited' }, 429);
+  const auth = req.headers.get('Authorization') ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!(await sameSecret(token, env.ADMIN_TOKEN))) return json({ error: 'unauthorized' }, 401);
+  if (req.method === 'GET' && path === '/admin/flagged') {
+    const city = validCity(new URL(req.url).searchParams.get('city'));
+    if (!city) return json({ error: 'bad_request' }, 400);
+    return json({ city, places: await quota.flagged(city, now) });
+  }
+  if (req.method === 'POST' && path === '/admin/review') {
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return json({ error: 'bad_request' }, 400);
+    }
+    const review = validReview(raw);
+    if (!review) return json({ error: 'bad_request' }, 400);
+    await quota.review(review, now);
+    return json({ ok: true });
+  }
+  return json({ error: 'not_found' }, 404);
+}
+
 type Outcome = 'ok' | 'refusal' | 'error';
 
 export default {
@@ -166,6 +280,9 @@ export default {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
+    if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
+    if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
+    if (path.startsWith('/admin/')) return adminRoute(req, env, path);
     if (
       req.method !== 'POST' ||
       !['/understand', '/narrate', '/pick', '/plan', '/chat'].includes(path)
@@ -239,6 +356,18 @@ export default {
     // One log line per AI call (visible with `npx wrangler tail`): endpoint, duration, outcome,
     // uses left. Never the user's text or the device id.
     const started = Date.now();
+    /** Input tokens of the AI call, for the log line: read from the prompt cache, written, uncached. */
+    let tokens: { cacheRead: number; cacheWrite: number; uncached: number } | null = null;
+    const noteTokens = <T>(res: T): T => {
+      const u = (res as { usage?: Record<string, unknown> } | null)?.usage;
+      if (u)
+        tokens = {
+          cacheRead: Number(u.cache_read_input_tokens) || 0,
+          cacheWrite: Number(u.cache_creation_input_tokens) || 0,
+          uncached: Number(u.input_tokens) || 0,
+        };
+      return res;
+    };
     const respond = async (outcome: Outcome, body: unknown, status = 200): Promise<Response> => {
       let logged: Outcome | 'timeout-cancelled' = outcome;
       let remaining = q.remaining;
@@ -259,7 +388,13 @@ export default {
         // The use stays charged; the user still gets the answer.
       }
       console.log(
-        JSON.stringify({ endpoint: path, ms: Date.now() - started, outcome: logged, remaining }),
+        JSON.stringify({
+          endpoint: path,
+          ms: Date.now() - started,
+          outcome: logged,
+          remaining,
+          ...(tokens ?? {}),
+        }),
       );
       return json(body, status);
     };
@@ -295,7 +430,7 @@ export default {
     /** The SDK call, or null when the API answered but the output could not be read. */
     const readable = async <T>(call: () => Promise<T>): Promise<T | null> => {
       try {
-        return await call();
+        return noteTokens(await call());
       } catch (err) {
         if (!unreadableOutput(err)) throw err;
         console.error('output unreadable', errorDetail(err));
@@ -309,10 +444,12 @@ export default {
 
       if (understandReq) {
         const cards = understandReq.lastCards;
-        const system = cards
-          ? `${understandSystem(understandReq.city, understandReq.section)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
-          : understandSystem(understandReq.city, understandReq.section) +
-            langNote(understandReq.lang);
+        const system = cachedSystem(
+          understandSystem(understandReq.city, understandReq.section),
+          (cards
+            ? `\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+            : '') + langNote(understandReq.lang),
+        );
         // An unusable answer was billed: "unknown", and the use is kept.
         const unknown = async (outcome: Outcome = 'error') =>
           respond(outcome, {
@@ -341,9 +478,12 @@ export default {
 
       if (chatReq) {
         const cards = chatReq.lastCards;
-        const system = cards
-          ? `${chatSystem(chatReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(chatReq.lang)}`
-          : chatSystem(chatReq.city) + langNote(chatReq.lang);
+        const system = cachedSystem(
+          chatSystem(chatReq.city),
+          (cards
+            ? `\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
+            : '') + langNote(chatReq.lang),
+        );
         const response = await readable(() =>
           client.messages.parse({
             model: MODEL,
@@ -375,9 +515,10 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system:
-              (park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city)) +
+            system: cachedSystem(
+              park ? parkPickSystem(pickReq.city) : pickSystem(pickReq.city),
               langNote(pickReq.lang),
+            ),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(park ? parkPickModelSchema(n) : pickModelSchema(n)),
@@ -409,7 +550,7 @@ export default {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: planSystem(planReq.city) + langNote(planReq.lang),
+            system: cachedSystem(planSystem(planReq.city), langNote(planReq.lang)),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(planModelSchema(planReq.candidates.length, total)),
@@ -439,18 +580,20 @@ export default {
 
       if (narrateReq) {
         const { text, where, what, total, withParking, results } = narrateReq;
-        const response = await client.messages.create({
-          model: MODEL,
-          max_tokens: 1024,
-          system: narrateSystem(narrateReq.city) + langNote(narrateReq.lang),
-          output_config: { effort: 'low' },
-          messages: [
-            {
-              role: 'user',
-              content: JSON.stringify({ text, where, what, total, withParking, results }),
-            },
-          ],
-        });
+        const response = noteTokens(
+          await client.messages.create({
+            model: MODEL,
+            max_tokens: 1024,
+            system: cachedSystem(narrateSystem(narrateReq.city), langNote(narrateReq.lang)),
+            output_config: { effort: 'low' },
+            messages: [
+              {
+                role: 'user',
+                content: JSON.stringify({ text, where, what, total, withParking, results }),
+              },
+            ],
+          }),
+        );
         if (response.stop_reason === 'refusal') return billedFail('refusal', noOutput('refusal'));
         let reply = '';
         for (const block of response.content) {

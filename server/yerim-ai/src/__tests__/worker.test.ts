@@ -403,7 +403,10 @@ describe('the log line', () => {
 });
 
 describe('city', () => {
-  const systemOfLastCall = () => (mockParse.mock.calls.at(-1)![0] as { system: string }).system;
+  const systemOfLastCall = () =>
+    (mockParse.mock.calls.at(-1)![0] as { system: { text: string }[] }).system
+      .map((b) => b.text)
+      .join('');
 
   it('a request with city istanbul gets the İstanbul prompt; without a city it is İzmir', async () => {
     const env = envOf(fakeKV());

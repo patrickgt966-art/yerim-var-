@@ -8,6 +8,7 @@ import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
 import { fold } from './search';
 import type { Parking } from './types';
+import { flaggedPlaceIds, hiddenPlaceIds } from '../store/reports';
 
 /**
  * Restaurants, cafés and bars from OpenStreetMap, bundled with the app and
@@ -100,9 +101,10 @@ export function toRestaurant(r: FoodRecord): Restaurant {
 const caches = new Map<string, Restaurant[]>();
 const byIds = new Map<string, Map<string, Restaurant>>();
 
-/** The active city's restaurants; empty while its data files are placeholders. */
-export function allRestaurants(): Restaurant[] {
-  const id = activeCity().id;
+const visible = new Map<string, { hidden: ReadonlySet<string>; list: Restaurant[] }>();
+
+/** Every restaurant of the active city, hidden ones included. */
+function cityRestaurants(id: string): Restaurant[] {
   let list = caches.get(id);
   if (!list) {
     list = [
@@ -114,11 +116,28 @@ export function allRestaurants(): Restaurant[] {
   return list;
 }
 
+/**
+ * The active city's restaurants; empty while its data files are placeholders. Places reported
+ * closed (by this device, or by enough people) are left out.
+ */
+export function allRestaurants(): Restaurant[] {
+  const id = activeCity().id;
+  const list = cityRestaurants(id);
+  const hidden = hiddenPlaceIds();
+  if (hidden.size === 0) return list;
+  const v = visible.get(id);
+  if (v && v.hidden === hidden) return v.list;
+  const out = list.filter((r) => !hidden.has(r.id));
+  visible.set(id, { hidden, list: out });
+  return out;
+}
+
+/** A restaurant by id, hidden or not: a favorite or a shared link still opens. */
 export function getRestaurant(id: string): Restaurant | null {
   const city = activeCity().id;
   let map = byIds.get(city);
   if (!map) {
-    map = new Map(allRestaurants().map((r) => [r.id, r]));
+    map = new Map(cityRestaurants(city).map((r) => [r.id, r]));
     byIds.set(city, map);
   }
   return map.get(id) ?? null;
@@ -829,6 +848,16 @@ function parkEaseScore(row: RestaurantRow, cat?: FoodCategory): number {
   return score;
 }
 
+/** Places several people reported closed go after the others, in their order. */
+function flaggedLast(rows: RestaurantRow[]): RestaurantRow[] {
+  const flagged = flaggedPlaceIds();
+  if (flagged.size === 0 || !rows.some((row) => flagged.has(row.r.id))) return rows;
+  return [
+    ...rows.filter((row) => !flagged.has(row.r.id)),
+    ...rows.filter((row) => flagged.has(row.r.id)),
+  ];
+}
+
 export function rankRestaurants(
   rows: RestaurantRow[],
   sort: RestaurantSort,
@@ -838,19 +867,21 @@ export function rankRestaurants(
   if (sort === 'distance') {
     const eff = (row: RestaurantRow) =>
       row.r.distanceM + (row.r.verified ? 0 : UNVERIFIED_PENALTY_M);
-    return out.sort((a, b) => eff(a) - eff(b));
+    return flaggedLast(out.sort((a, b) => eff(a) - eff(b)));
   }
   const score = new Map(out.map((row) => [row, parkEaseScore(row, cat)]));
-  return out.sort((a, b) => {
-    // 100 m buckets so info richness decides between similar scores.
-    const ba = Math.floor(score.get(a)! / 100);
-    const bb = Math.floor(score.get(b)! / 100);
-    if (ba !== bb) return ba - bb;
-    const ia = infoScore(a.r);
-    const ib = infoScore(b.r);
-    if (ia !== ib) return ib - ia;
-    return a.r.distanceM - b.r.distanceM;
-  });
+  return flaggedLast(
+    out.sort((a, b) => {
+      // 100 m buckets so info richness decides between similar scores.
+      const ba = Math.floor(score.get(a)! / 100);
+      const bb = Math.floor(score.get(b)! / 100);
+      if (ba !== bb) return ba - bb;
+      const ia = infoScore(a.r);
+      const ib = infoScore(b.r);
+      if (ia !== ib) return ib - ia;
+      return a.r.distanceM - b.r.distanceM;
+    }),
+  );
 }
 
 /** Rows whose nearest car park is known and within `maxM` metres. */

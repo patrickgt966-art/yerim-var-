@@ -215,12 +215,11 @@ function withinOneEdit(a: string, b: string): boolean {
   return long.slice(i + 1) === short.slice(i);
 }
 
-/** Folded district name equal to the word (within one typo in İzmir only), or null. */
+/** Folded district name of the active city equal to the word, within one typo, or null. */
 function nearDistrict(word: string): string | null {
-  const typos = activeCity().id === 'izmir';
   for (const d of districtsOfCity()) {
     const name = fold(d.name);
-    if (typos ? withinOneEdit(word, name) : word === name) return name;
+    if (withinOneEdit(word, name)) return name;
   }
   return null;
 }

@@ -274,6 +274,15 @@ describe('car park picks', () => {
     }
   });
 
+  it('"closest" goes by metres: two car parks one minute away are not both the nearest', () => {
+    const tied = [park(0, { walkMin: 1, distM: 120 }), park(1, { walkMin: 1, distM: 40 })];
+    expect(parkReasonHolds('closest', tied[0]!, tied)).toBe(false);
+    expect(parkReasonHolds('closest', tied[1]!, tied)).toBe(true);
+    // An older request without metres still compares minutes.
+    const old = [park(0, { walkMin: 1 }), park(1, { walkMin: 1 })];
+    expect(parkReasonHolds('closest', old[0]!, old)).toBe(true);
+  });
+
   it('drops a lying "free" for a paid car park and ignores the pick if nothing is left', () => {
     expect(verifyParkPick(pr({ pick: 1, reasons: ['free'] }), all)).toBeNull();
     expect(verifyParkPick(pr({ pick: 1, reasons: ['free', 'closest'] }), all)).toBeNull();

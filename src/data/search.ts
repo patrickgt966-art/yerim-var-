@@ -347,6 +347,9 @@ export function searchPlaces(query: string, limit = 6): SearchHit[] {
     if (exact && e.kind === 'town') adjust += 50;
     // The district itself beats any same-named village (the dedupe below then drops the village).
     if (exact && e.official) adjust += 60;
+    // Among same-named places, one far out of the city ("Ortaköy" village near Silivri) yields to
+    // the one people mean; a far place with no namesake still comes first, as the only exact hit.
+    if (exact && !e.official && e.d > FAR_M) adjust -= 60;
     if (words.length === 1 && e.kind === 'parking') adjust -= 30;
     if (e.kind === 'university' || e.kind === 'hospital') adjust += institutionBoost;
     scored.push({ e, score: score + adjust });

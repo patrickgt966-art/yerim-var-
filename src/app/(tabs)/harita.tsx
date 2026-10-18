@@ -39,6 +39,7 @@ import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
 import { asym, brand, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHiddenPlaceIds } from '@/store/reports';
 
 /** Same short wait as the pin picker; the next visit checks again. */
 const LOCATION_TIMEOUT_MS = 3000;
@@ -137,9 +138,10 @@ export default function MapTab() {
     () => (data && mapCenter ? rankByDistance(data.parkings, mapCenter, 4000) : []),
     [data, mapCenter],
   );
+  const hidden = useHiddenPlaceIds();
   const restaurants = useMemo(
-    () => (mode === 'food' && mapCenter ? restaurantsForMap(mapCenter) : undefined),
-    [mode, mapCenter],
+    () => (mode === 'food' && mapCenter && hidden ? restaurantsForMap(mapCenter) : undefined),
+    [mode, mapCenter, hidden],
   );
 
   useAnnounce(

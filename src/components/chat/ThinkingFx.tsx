@@ -1,47 +1,15 @@
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
 import { ROUTER_TIMEOUT_MS } from '@/lib/ai/protocol';
 import { brand, useColors } from '@/theme';
-
-/** A softly breathing ✨ while the AI reads the message; still when reduce-motion is on. */
-export function ThinkingSparkle() {
-  const reduce = useReducedMotion();
-  const s = useSharedValue(1);
-  useEffect(() => {
-    if (reduce) {
-      s.value = 1;
-      return;
-    }
-    const ease = Easing.inOut(Easing.ease);
-    s.value = withRepeat(
-      withSequence(
-        withTiming(1.18, { duration: 700, easing: ease }),
-        withTiming(0.9, { duration: 700, easing: ease }),
-      ),
-      -1,
-      true,
-    );
-  }, [reduce, s]);
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: s.value }, { rotate: `${(s.value - 1) * 40}deg` }],
-    opacity: 0.75 + (s.value - 0.9) * 0.9,
-  }));
-  return (
-    <Animated.View style={style} accessible={false}>
-      <Text style={{ fontSize: 18, lineHeight: 22 }}>✨</Text>
-    </Animated.View>
-  );
-}
 
 /**
  * A thin bar that fills over the router's wait (fast at first, then slower), so a long answer

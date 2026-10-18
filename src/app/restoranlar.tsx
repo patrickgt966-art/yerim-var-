@@ -17,6 +17,8 @@ import { cityById, isInCityArea } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 import {
   FOOD_CATEGORIES,
+  matchesCategory,
+  nearestParking,
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
@@ -32,6 +34,7 @@ import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
+import { useHiddenPlaceIds } from '@/store/reports';
 
 type Filter = 'all' | FoodCategory;
 
@@ -100,6 +103,8 @@ function Restaurants() {
     wide?: string | string[];
     dish?: string | string[];
     quality?: string | string[];
+    notcat?: string | string[];
+    free?: string | string[];
   }>();
   const requireParking = firstParam(params.park) === '1';
   const parkM = firstParam(params.parkm) === '500' ? 500 : 300;
@@ -107,6 +112,11 @@ function Restaurants() {
   const dishRaw = firstParam(params.dish)?.trim();
   const dish = dishRaw ? dishRaw.slice(0, 40) : null;
   const quality = firstParam(params.quality) === '1';
+  // From the chat: a category ruled out ("kebap olmasın") and "only free car parks"; both removable.
+  const [notCat, setNotCat] = useState<FoodCategory | null>(
+    () => FOOD_CATEGORIES.find((x) => x === firstParam(params.notcat)) ?? null,
+  );
+  const [freeOnly, setFreeOnly] = useState(firstParam(params.free) === '1');
   const { data, isPlaceholderData } = useParkings();
   const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilterState] = useState<Filter>(initial);
@@ -135,9 +145,11 @@ function Restaurants() {
     return parsed && !isInCityArea(parsed, home) ? home.center : parsed;
   }, [parsed, cityId]);
 
+  // A place reported closed leaves the list at once.
+  const hidden = useHiddenPlaceIds();
   const all = useMemo(
-    () => (target ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
-    [target, wide],
+    () => (target && hidden ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
+    [target, wide, hidden],
   );
   // A category never falls back to unrelated places: it searches wider instead.
   const active: Filter = filter;
@@ -148,7 +160,10 @@ function Restaurants() {
         : null,
     [target, active, wide],
   );
-  const shown = inCat ? inCat.items : all;
+  const shown = useMemo(() => {
+    const items = inCat ? inCat.items : all;
+    return notCat ? items.filter((r) => !matchesCategory(r, notCat)) : items;
+  }, [inCat, all, notCat]);
   const widenedKm = inCat && inCat.radiusM > 1000 ? inCat.radiusM / 1000 : null;
 
   // Nearest car park per row, with its free count only when it is fresh.
@@ -166,7 +181,10 @@ function Restaurants() {
     [built, sort, active, isPlaceholderData],
   );
 
-  const visible = requireParking ? withParkingWithin(rows, parkM) : rows;
+  const parked = requireParking || freeOnly ? withParkingWithin(rows, parkM) : rows;
+  const visible = freeOnly
+    ? parked.filter((row) => nearestParking(row.r, data?.parkings ?? [])?.parking.isPaid === false)
+    : parked;
 
   const orderedVisible = useMemo(() => {
     const i = selectedId ? visible.findIndex((x) => x.r.id === selectedId) : -1;
@@ -210,6 +228,20 @@ function Restaurants() {
         <Txt variant="caption" style={{ marginBottom: 10 }}>
           {t('food.pointOutside', { city: cityName })}
         </Txt>
+      )}
+      {(notCat || freeOnly) && (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          {notCat && (
+            <Chip
+              label={t('food.exceptChip', { cat: t(`food.cats.${notCat}`) })}
+              selected
+              onPress={() => setNotCat(null)}
+            />
+          )}
+          {freeOnly && (
+            <Chip label={t('food.freeParkingChip')} selected onPress={() => setFreeOnly(false)} />
+          )}
+        </View>
       )}
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />

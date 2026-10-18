@@ -475,6 +475,25 @@ describe('clarify (job 3)', () => {
     expect(ai.pick).not.toHaveBeenCalled();
   });
 
+  it('asks when the place the AI read is only part of a longer name ("Bebek" -> "Bebek Parkı")', async () => {
+    const { ai, deps } = mockAi({
+      understand: async () =>
+        okU(search({ district: null, place: 'Bebek', dish: 'kuru fasulye', cat: 'lokanta' })),
+    });
+    const r = await answer('Bebek kuru fasulye', emptyContext('food'), deps);
+    expect(r.reply.cards).toEqual([]);
+    expect(r.reply.actions[0]).toEqual({ kind: 'say', label: 'Bebek Parkı', text: 'Bebek Parkı' });
+    expect(r.reply.actions[1]).toMatchObject({ label: 'chat.clarifyNotPlace' });
+    expect(ai.pick).not.toHaveBeenCalled();
+    // The chip's answer names the place exactly: no second question, the search runs there.
+    const { deps: d2 } = mockAi({
+      understand: async () =>
+        okU(search({ district: null, place: 'Bebek Parkı', dish: 'kuru fasulye', cat: 'lokanta' })),
+    });
+    const again = await answer('Bebek Parkı', r.ctx, d2);
+    expect(again.ctx.place?.label).toBe('Bebek Parkı');
+  });
+
   it('uses the template when the wording fails validation', async () => {
     for (const text of ['Konak otopark ücretsiz mi?', 'Saat kaçta 3 kişi?', null]) {
       const { deps } = mockAi({ understand: ask('district', text) });

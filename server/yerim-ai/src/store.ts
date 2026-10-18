@@ -17,6 +17,17 @@ import {
   type KV,
   type UseTaken,
 } from './quota';
+import {
+  addReport,
+  flaggedPlaces,
+  hiddenPlaces,
+  reviewPlace,
+  type FlaggedPlace,
+  type PlaceKind,
+  type ReportKind,
+  type ReportOutcome,
+  type ReviewRequest,
+} from './reports';
 
 const CALL_TTL_SECONDS = 172800;
 const DEFAULT_TTL_SECONDS = 172800;
@@ -38,7 +49,21 @@ export type QuotaOp =
   | { op: 'release'; deviceId: string; messageId: string; now: number }
   | { op: 'resetCall'; callKey: string }
   | { op: 'releaseIfCancelled'; deviceId: string; messageId: string; now: number }
-  | { op: 'cancel'; deviceId: string; messageId: string; now: number };
+  | { op: 'cancel'; deviceId: string; messageId: string; now: number }
+  | ({ op: 'report'; now: number; flagAt: number } & ReportFields)
+  | { op: 'hidden'; city: string; now: number }
+  | { op: 'flagged'; city: string; now: number }
+  | ({ op: 'review'; now: number } & ReviewRequest);
+
+type ReportFields = {
+  city: string;
+  placeId: string;
+  place: PlaceKind;
+  kind: ReportKind;
+  device: string;
+  net: string;
+  dayDevice: string;
+};
 
 /**
  * The start of an AI call: the same message and stage asked again with other content is a
@@ -68,6 +93,26 @@ export async function runOp(kv: KV, o: QuotaOp): Promise<unknown> {
       return takeCancelMark(kv, o.deviceId, o.messageId, new Date(o.now));
     case 'cancel':
       return cancelUse(kv, o.deviceId, o.messageId, new Date(o.now));
+    case 'report': {
+      const { city, placeId, place, kind, device, net, dayDevice } = o;
+      return addReport(
+        kv,
+        { city, placeId, place, kind, device, net, dayDevice },
+        new Date(o.now),
+        o.flagAt,
+      );
+    }
+    case 'hidden':
+      return hiddenPlaces(kv, o.city, new Date(o.now));
+    case 'flagged':
+      return flaggedPlaces(kv, o.city, new Date(o.now));
+    case 'review':
+      await reviewPlace(
+        kv,
+        { city: o.city, placeId: o.placeId, action: o.action },
+        new Date(o.now),
+      );
+      return null;
     default:
       throw new Error('unknown quota op');
   }
@@ -90,6 +135,10 @@ export interface Quota {
   /** Gives the use back when the client cancelled this message; the new remaining, or null. */
   releaseIfCancelled(deviceId: string, messageId: string, now: Date): Promise<number | null>;
   cancel(deviceId: string, messageId: string, now: Date): Promise<{ remaining: number }>;
+  report(r: ReportFields, now: Date, flagAt: number): Promise<ReportOutcome>;
+  hidden(city: string, now: Date): Promise<{ ids: string[]; flagged: string[] }>;
+  flagged(city: string, now: Date): Promise<FlaggedPlace[]>;
+  review(r: ReviewRequest, now: Date): Promise<void>;
 }
 
 function quotaClient(send: (o: QuotaOp) => Promise<unknown>): Quota {
@@ -114,6 +163,18 @@ function quotaClient(send: (o: QuotaOp) => Promise<unknown>): Quota {
       (await send({ op: 'cancel', deviceId, messageId, now: now.getTime() })) as {
         remaining: number;
       },
+    report: async (r, now, flagAt) =>
+      (await send({ op: 'report', ...r, now: now.getTime(), flagAt })) as ReportOutcome,
+    hidden: async (city, now) =>
+      (await send({ op: 'hidden', city, now: now.getTime() })) as {
+        ids: string[];
+        flagged: string[];
+      },
+    flagged: async (city, now) =>
+      (await send({ op: 'flagged', city, now: now.getTime() })) as FlaggedPlace[],
+    review: async (r, now) => {
+      await send({ op: 'review', ...r, now: now.getTime() });
+    },
   };
 }
 
