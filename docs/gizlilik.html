@@ -63,6 +63,8 @@
 <p>Bir restoranı ya da otoparkı "Kapanmış", "Konumu yanlış" ya da "Bilgisi yanlış" diye bildirirsen sunucumuza yalnızca yerin kimliği, seçtiğin sebep ve şehir gider. Rastgele cihaz kimliğin ve bağlı olduğun ağ (IP adresinin ilk kısmı), aynı kişinin bir yeri birden fazla saymaması için yalnızca o yere özel, geri çözülemeyen birer karma (hash) olarak saklanır; farklı yerlere yaptığın bildirimler birbirine bağlanamaz. Bildirimler ilk kayıttan 180 gün sonra silinir. Farklı ağlardan ve farklı günlerde yeterince "Kapanmış" bildirimi gelirse o yerin yanında herkese "kapanmış olabilir" uyarısı çıkar ve sırada aşağı iner. Bildirimler tek başına bir yeri kimseden gizlemez; herkesten gizlemeye, kontrol ettikten sonra biz karar veririz. Kendi "Kapanmış" bildirimin o yeri hemen senin cihazında gizler; yerin sayfasından geri alabilirsin. IP adresin yalnızca kötüye kullanımı sınırlayan günlük sayaç için kullanılır ve 49 saat içinde silinir.</p>
 <p>Ayrıntı yazmak istersen ("Ayrıntı yaz") GitHub'da otoparkın adı ve kimliği önceden doldurulmuş bir kayıt sayfası açılır. Göndermezsen hiçbir şey paylaşılmaz. GitHub kayıtları herkese açıktır; içine kişisel bilgi yazma.</p>
 
+<p>Paylaştığın bir bağlantı yerimvar.app'te bir sayfa açar; sayfa yalnızca bağlantının kendi taşıdığını (yerin adı, adresi, konumu) gösterir. Sayfa hiçbir şey kaydetmez, çerez ve analitik kullanmaz.</p>
+
 <h2>Çocuklar</h2>
 <p>Uygulama kimseden kimliğine bağlı veri toplamaz; çocuklardan da. Yerim ✨ isteğe bağlıdır ve yalnızca onayla çalışır.</p>
 
@@ -110,6 +112,8 @@
 <p>Calling a restaurant or opening its website or Instagram page opens the relevant app or site. Asking for directions passes the destination coordinates (and, for walking directions, the starting point) to the Apple Maps app. These follow their own privacy rules.</p>
 <p>If you report a restaurant or car park as "Closed", "Wrong location" or "Wrong info", our server receives only the place's ID, the reason you chose and the city. Your random device ID and your network (the first part of your IP address) are stored only as one-way hashes tied to that place, so the same person cannot count more than once and reports on different places cannot be linked. Reports are deleted 180 days after the first one. When enough "Closed" reports come from different networks on different days, everyone sees a "may be closed" note on the place and it is ranked lower. Reports alone never hide a place from anyone; hiding it for everyone is our decision, after checking. Your own "Closed" report hides the place on your device at once; you can undo it on the place's page. Your IP address is used only for a daily anti-abuse counter, deleted within 49 hours.</p>
 <p>If you want to write details ("Write details"), GitHub opens with the car park's name and ID prefilled. Nothing is shared unless you submit it. GitHub issues are public, so do not include personal information.</p>
+
+<p>A link you share opens a page on yerimvar.app that only shows what the link itself carries (the place's name, address and location). The page stores nothing and uses no cookies or analytics.</p>
 
 <h2>Children</h2>
 <p>The app collects no data linked to anyone's identity, including children's. Yerim ✨ is optional and only works with consent.</p>

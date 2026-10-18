@@ -118,7 +118,7 @@ export default function ParkingDetail() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('share.a11y', { name: p.name })}
-                onPress={() => void shareText(placeShareText(p, t))}
+                onPress={() => void shareText(placeShareText('p', p, t))}
                 style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
               >
                 <Icon name="share" size={24} color={c.text} />
