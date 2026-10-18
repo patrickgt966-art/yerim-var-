@@ -9,7 +9,6 @@ import { Cravings } from '@/components/home/Cravings';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { NearbyCard } from '@/components/home/NearbyCard';
 import { QuickActions } from '@/components/home/QuickActions';
-import { QuickGo } from '@/components/home/QuickGo';
 import { ExampleQuestions, SearchCard } from '@/components/home/SearchCard';
 import { useNearbyHome } from '@/components/home/useNearbyHome';
 import { useColors, useTabBarSpace } from '@/theme';
@@ -37,7 +36,6 @@ export default function HomeScreen() {
         <HomeHeader />
         <SearchCard />
         <QuickActions nearby={nearby} />
-        <QuickGo />
         <ExampleQuestions />
         <ActiveStrip />
         <Cravings />
