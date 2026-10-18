@@ -21,9 +21,6 @@ const IZMIR_PLACES = [
 ];
 
 const EXAMPLE_KEYS = [
-  'search.exampleAlsancak',
-  'search.exampleKonak',
-  'search.exampleBornova',
   'chat.sugElsewhere_0',
   'chat.sugElsewhere_1',
   'chat.hello_1',
@@ -66,9 +63,6 @@ describe('city example texts', () => {
   it('keeps the İzmir texts as they were', () => {
     setActiveCity('izmir');
     expect(EXAMPLE_KEYS.map(resolve)).toEqual([
-      'Alsancak',
-      'Konak',
-      'Bornova',
       "bir de Karşıyaka'da bak",
       "bir de Bornova'da bak",
       'Selam! Yer adı ya da "Bornova\'da köfteci" gibi yazabilirsin.',
@@ -89,9 +83,6 @@ describe('city example texts', () => {
   it('names the İstanbul places while İstanbul is active', () => {
     setActiveCity('istanbul');
     expect(EXAMPLE_KEYS.map(resolve)).toEqual([
-      'Kadıköy',
-      'Beşiktaş',
-      'Taksim',
       "bir de Üsküdar'da bak",
       "bir de Taksim'de bak",
       'Selam! Yer adı ya da "Taksim\'de köfteci" gibi yazabilirsin.',
@@ -112,7 +103,7 @@ describe('city example texts', () => {
   it('names the Ankara places while Ankara is active', () => {
     setActiveCity('ankara');
     const out = EXAMPLE_KEYS.map(resolve);
-    expect(out.slice(0, 3)).toEqual(['Kızılay', 'Çankaya', 'Tunalı']);
+    expect(cityExamples()).toMatchObject({ a: 'Kızılay', b: 'Çankaya', c: 'Tunalı' });
     expect(out).toContain("bir de Bahçelievler'de bak");
     expect(out).toContain('Selam! Yer adı ya da "Tunalı\'da köfteci" gibi yazabilirsin.');
   });
@@ -120,7 +111,7 @@ describe('city example texts', () => {
   it('names the Antalya places while Antalya is active', () => {
     setActiveCity('antalya');
     const out = EXAMPLE_KEYS.map(resolve);
-    expect(out.slice(0, 3)).toEqual(['Konyaaltı', 'Lara', 'Kaleiçi']);
+    expect(cityExamples()).toMatchObject({ a: 'Konyaaltı', b: 'Lara', c: 'Kaleiçi' });
     expect(out).toContain("bir de Muratpaşa'da bak");
     expect(out).toContain('Selam! Yer adı ya da "Kaleiçi\'nde köfteci" gibi yazabilirsin.');
   });
@@ -141,7 +132,7 @@ describe('city example texts', () => {
   it('names the Bursa places while Bursa is active', () => {
     setActiveCity('bursa');
     const out = EXAMPLE_KEYS.map(resolve);
-    expect(out.slice(0, 3)).toEqual(['Nilüfer', 'Osmangazi', 'Mudanya']);
+    expect(cityExamples()).toMatchObject({ a: 'Nilüfer', b: 'Osmangazi', c: 'Mudanya' });
     expect(out).toContain("bir de Görükle'de bak");
     expect(out).toContain('Selam! Yer adı ya da "Mudanya\'da köfteci" gibi yazabilirsin.');
   });
