@@ -3,6 +3,7 @@
 // scripts, no logging. Everything a share page shows comes from the link itself.
 import gizlilikHtml from '../../../docs/gizlilik.html';
 import ogImage from '../../../assets/icon.png';
+import logoImage from '../../../assets/brand/wordmark.png';
 import { PLACE_RE } from './reports';
 
 /** The optional App Store settings from wrangler.toml [vars] (empty strings when not set). */
@@ -46,8 +47,7 @@ const CSS = `
 *{box-sizing:border-box}
 body{margin:0;background:#FBF7F1;color:#0B3C49;font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 main{max-width:480px;margin:0 auto;padding:24px 16px 32px}
-.logo{font-weight:800;font-size:24px;margin:0 0 20px}
-.logo span{color:#FF8A1F}
+.logo{display:block;margin:0 auto 16px;max-width:100%;height:auto}
 .card{background:#fff;border-radius:22px 22px 22px 6px;padding:20px;box-shadow:0 2px 12px rgba(11,60,73,.08)}
 h1{font-size:24px;line-height:1.25;margin:0 0 6px;font-weight:800;overflow-wrap:anywhere}
 .kind{margin:0 0 16px;color:#4F6F78;overflow-wrap:anywhere}
@@ -64,7 +64,7 @@ footer a{color:#0B3C49}
   .trim()
   .replace(/\n/g, '');
 
-const WORDMARK = '<p class="logo">Yerim <span>Var</span></p>';
+const LOGO = '<img class="logo" src="/logo.png" alt="Yerim Var" width="160" height="110">';
 
 const FOOTER =
   '<footer><p>Yerim Var: yemek ve park, bir arada.</p><p><a href="/gizlilik">Gizlilik</a></p></footer>';
@@ -83,7 +83,7 @@ function page(opts: { title: string; head: string; body: string; env: SiteEnv })
     `<!doctype html><html lang="tr"><head><meta charset="utf-8">` +
       `<meta name="viewport" content="width=device-width, initial-scale=1">` +
       `<title>${esc(opts.title)}</title>${banner}${opts.head}<style>${CSS}</style></head>` +
-      `<body><main>${WORDMARK}${opts.body}${FOOTER}</main></body></html>`,
+      `<body><main>${opts.body}${FOOTER}</main></body></html>`,
   );
 }
 
@@ -102,7 +102,7 @@ export function homePage(env: SiteEnv, req?: Request): Response {
       `<meta property="og:type" content="website">` +
       `<meta name="twitter:card" content="summary">`,
     body:
-      `<div class="card"><p class="pitch">${esc(desc)}</p>` +
+      `<div class="card">${LOGO}<p class="pitch">${esc(desc)}</p>` +
       `<ul><li>otoparkı yakın restoranlar</li><li>canlı boş yer (İzmir, İstanbul)</li>` +
       `<li>hesap yok, reklam yok, takip yok</li></ul>${appButton(env)}</div>`,
   });
@@ -144,7 +144,7 @@ export function sharePage(kind: 'r' | 'p', id: string, req: Request, env: SiteEn
       `<meta property="og:type" content="website">` +
       `<meta name="twitter:card" content="summary">`,
     body:
-      `<div class="card"><h1>${esc(name)}</h1>` +
+      `<div class="card">${LOGO}<h1>${esc(name)}</h1>` +
       `<p class="kind">${kindLabel}${address ? ` · ${esc(address)}` : ''}</p>` +
       `<a class="btn secondary" href="${esc(apple)}">Apple Haritalar'da aç</a>` +
       `<a class="btn secondary" href="${esc(google)}">Google Haritalar'da aç</a>` +
@@ -158,6 +158,16 @@ export const privacyPage = (): Response => html(gizlilikHtml, CSP_TEXT);
 /** GET /og.png: the share preview image (the app icon). */
 export const ogImagePage = (): Response =>
   new Response(ogImage, {
+    headers: {
+      'content-type': 'image/png',
+      'cache-control': 'public, max-age=604800',
+      'x-content-type-options': 'nosniff',
+    },
+  });
+
+/** GET /logo.png: the Yerim Var wordmark shown at the top of every page. */
+export const logoImagePage = (): Response =>
+  new Response(logoImage, {
     headers: {
       'content-type': 'image/png',
       'cache-control': 'public, max-age=604800',
@@ -188,6 +198,7 @@ export function siteRoute(path: string, req: Request, env: SiteEnv): Response | 
   if (path === '/') return homePage(env, req);
   if (path === '/gizlilik') return privacyPage();
   if (path === '/og.png') return ogImagePage();
+  if (path === '/logo.png') return logoImagePage();
   if (path === '/.well-known/apple-app-site-association') return appSiteAssociation(env);
   const m = /^\/([rp])\/([^/]+)$/.exec(path);
   if (m) {
