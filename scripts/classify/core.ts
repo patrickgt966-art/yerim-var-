@@ -82,6 +82,9 @@ export function systemPrompt(): string {
     '- Yalnızca verilen ada, OSM türüne, mutfak etiketlerine ve ilçeye bakarak karar ver.',
     '- Bilgi uydurma. Emin değilsen unknown de.',
     '- Bir mekân birden fazla şey satabilir: ana işini seç.',
+    '- Nargile / hookah / shisha / lounge mekânları: adında yemek sözcüğü yoksa not_food seç.',
+    '- Adı bir Türk tatlısı ya da hamur tatlısı sözcüğüyle kurulmuşsa (-ci, -cı, -cisi, -cısı, evi, salonu, dünyası gibi eklerle) dessert seç. Sık örnekler: şambali, revani, tulumba, kazandibi, sütlaç, baklava, künefe, kadayıf, lokma, profiterol, ekler, şekerpare, halka tatlı, aşure, güllaç, keşkül, irmik helvası.',
+    '- Adı bir yemek sözcüğüyle kurulmuşsa mekân o yemeği satar: o yemeğin türünü seç. Örnekler: Melemenci → breakfast, Çiğbörekçi → fast, Mantıcı → lokanta, Kokoreççi → meat, Midyeci → fish.',
     '- confidence: high = ad ya da etiket türü açıkça söylüyor; medium = büyük olasılıkla; low = zayıf tahmin.',
     '- Her öğe için tam bir cevap ver; i değerini aynen yaz.',
   ].join('\n');

@@ -66,6 +66,19 @@ describe('prompt', () => {
     expect(text).toMatch(/uydurma/);
   });
 
+  it('has the rules for hookah places, dessert-word names and dish-word names', () => {
+    const text = systemPrompt();
+    expect(text).toMatch(/Nargile \/ hookah \/ shisha \/ lounge.*not_food/);
+    expect(text).toMatch(/tatlı.*-ci, -cı, -cisi, -cısı, evi, salonu, dünyası.*dessert/);
+    for (const w of ['şambali', 'revani', 'tulumba', 'kazandibi', 'sütlaç', 'baklava', 'künefe', 'kadayıf', 'lokma', 'profiterol', 'ekler', 'şekerpare', 'halka tatlı', 'aşure', 'güllaç', 'keşkül', 'irmik helvası']) {
+      expect(text).toContain(w);
+    }
+    expect(text).toMatch(/yemek sözcüğüyle kurulmuşsa.*o yemeğin türünü seç/);
+    for (const ex of ['Melemenci → breakfast', 'Çiğbörekçi → fast', 'Mantıcı → lokanta', 'Kokoreççi → meat', 'Midyeci → fish']) {
+      expect(text).toContain(ex);
+    }
+  });
+
   it('is identical on every call (stable for the prompt cache)', () => {
     expect(systemPrompt()).toBe(systemPrompt());
     expect(systemPrompt()).not.toMatch(/\d{4}-\d{2}-\d{2}/);
