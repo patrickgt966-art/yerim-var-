@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 
 import { parkCost, tariffFor } from '@/data/tariffs';
 import type { Parking } from '@/data/types';
+import { openState } from '@/lib/openNow';
 import type { ParkMode } from '@/store/app';
 
 /** `spoken` swaps symbols (₺, /, ~) for words so VoiceOver reads them naturally. */
@@ -12,13 +13,12 @@ export function priceText(
   spoken = false,
 ): string | null {
   const tariff = tariffFor(p.id);
-  if (tariff?.hourly != null) {
-    if (mode === 'twoHours')
-      return t(spoken ? 'common.a11yTwoHourCost' : 'common.twoHourCost', {
-        price: parkCost(p.id, tariff.hourly, 120),
-      });
+  // The 2-hour cost comes from the bands when they can be read (many tariffs have no "0-1 Saat").
+  const twoHours = tariff && mode === 'twoHours' ? parkCost(p.id, tariff.hourly, 120) : null;
+  if (twoHours != null)
+    return t(spoken ? 'common.a11yTwoHourCost' : 'common.twoHourCost', { price: twoHours });
+  if (tariff?.hourly != null && mode !== 'twoHours')
     return t(spoken ? 'common.a11yPerHour' : 'common.perHour', { price: tariff.hourly });
-  }
   if (p.isPaid === false) return t('common.freeOfCharge');
   if (p.isPaid === true) return t('common.paid');
   return null;
@@ -36,7 +36,8 @@ export function metaLine(
       : null,
     priceText(p, t, mode, spoken),
     p.isIndoor == null ? null : p.isIndoor ? t('common.indoor') : t('common.outdoor'),
-    p.isOpen === false
+    // A cached "closed" flag past its freshness limit only counts when the hours agree.
+    p.isOpen === false && openState(p) === 'closed'
       ? t('common.closed')
       : p.nonstop
         ? t(spoken ? 'common.a11yNonstop' : 'common.nonstop')

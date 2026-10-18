@@ -1,9 +1,10 @@
-import { t } from 'i18next';
+import i18next, { t } from 'i18next';
 
 import { activeCity } from './cities';
 import { staticParkingsFile } from './cityData';
-import { gridIndex, near } from './geo';
+import { distanceMeters, gridIndex, near } from './geo';
 import { cleanName } from './names';
+import { isHeavyVehicleName } from './tariffs';
 import type { Parking, StaticSource } from './types';
 
 /**
@@ -78,27 +79,75 @@ export function toParking(r: StaticRecord, generatedAt: string): Parking {
   };
 }
 
-// Keyed by city id: switching city must never serve another city's car parks.
+// Keyed by city id and language: switching city must never serve another city's car parks, and
+// the generic names ("Otopark · X yakını") are built in the language active at that time.
 const caches = new Map<string, Parking[]>();
 
-/** Converted lazily so i18n is ready and startup stays fast. Empty for a placeholder file. */
+/**
+ * Converted lazily so i18n is ready and startup stays fast. Empty for a placeholder file. Bus,
+ * truck and minibus parks ("Tır Parkı", "Otobüs Otoparkı") are left out: the app is for cars.
+ */
 export function staticParkings(): Parking[] {
   const id = activeCity().id;
-  let list = caches.get(id);
+  const key = `${id}|${i18next.language ?? ''}`;
+  let list = caches.get(key);
   if (!list) {
     const file = staticParkingsFile(id);
     const generatedAt = file.generatedAt ?? new Date(0).toISOString();
-    list = (file.parkings ?? []).map((r) => toParking(r, generatedAt));
-    caches.set(id, list);
+    list = (file.parkings ?? [])
+      .filter((r) => !isHeavyVehicleName(r.name))
+      .map((r) => toParking(r, generatedAt));
+    caches.set(key, list);
   }
   return list;
 }
 
-/** Live records first; static ones are added unless they duplicate a live one. */
+/** Name words without the generic ones, for "is this the same car park?". */
+const NAME_FILLER = new Set(['otopark', 'otoparkı', 'otoparki', 'katlı', 'yol', 'kenarı', 'açık']);
+function nameKey(name: string): string {
+  return name
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w && !NAME_FILLER.has(w))
+    .sort()
+    .join(' ');
+}
+
+/**
+ * Live records first; static ones are added unless they duplicate a live one. Within
+ * DUPLICATE_RADIUS_M a static record is the live one's twin when it is the static record
+ * nearest to it, carries the same name, or has no name of its own. A differently named car
+ * park next door (another street segment, a garage beside a kerb) stays.
+ */
 export function withStatic(live: Parking[], statics: Parking[] = staticParkings()): Parking[] {
   if (live.length === 0) return [...statics];
-  // Grid lookup instead of live × static distance checks.
-  const index = gridIndex(live, DUPLICATE_RADIUS_M);
-  const extra = statics.filter((s) => near(index, s, DUPLICATE_RADIUS_M).length === 0);
+  // Grid lookups instead of live × static distance checks.
+  const liveIndex = gridIndex(live, DUPLICATE_RADIUS_M);
+  const staticIndex = gridIndex(statics, DUPLICATE_RADIUS_M);
+  const twins = new Set<Parking>();
+  for (const l of live) {
+    const close = near(staticIndex, l, DUPLICATE_RADIUS_M);
+    // Its namesake when there is one, else the nearest record.
+    const key = nameKey(l.name);
+    let best: Parking | null = close.find((s) => nameKey(s.name) === key) ?? null;
+    let bestM = Infinity;
+    if (!best) {
+      for (const s of close) {
+        const m = distanceMeters(l, s);
+        if (m < bestM) {
+          best = s;
+          bestM = m;
+        }
+      }
+    }
+    if (best) twins.add(best);
+  }
+  const extra = statics.filter((s) => {
+    const close = near(liveIndex, s, DUPLICATE_RADIUS_M);
+    if (close.length === 0) return true;
+    if (twins.has(s) || s.genericName) return false;
+    const key = nameKey(s.name);
+    return !close.some((l) => nameKey(l.name) === key);
+  });
   return [...live, ...extra];
 }

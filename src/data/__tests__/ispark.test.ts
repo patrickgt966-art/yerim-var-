@@ -55,6 +55,15 @@ describe('normalizeIspark', () => {
     expect(p).toMatchObject({ lat: 41.1687, lng: 29.0572, isIndoor: true });
   });
 
+  it('never shows the street-parking count and leaves bus parks out', () => {
+    const street = { ...sample[0], parkID: 900, parkType: 'YOL ÜSTÜ', capacity: 30, emptyCapacity: 1 };
+    const bus = { ...sample[0], parkID: 901, parkName: 'Alibeyköy Cep Otogarı Otobüs Otoparkı' };
+    const truck = { ...sample[0], parkID: 902, parkName: 'Gazi TIR Parkı' };
+    const list = normalizeIspark([sample[0], street, bus, truck], at);
+    expect(list.map((p) => p.id)).toEqual(['ispark-101', 'ispark-900']);
+    expect(list[1]).toMatchObject({ capacity: 30, free: null });
+  });
+
   it('treats more free bays than bays as unknown', () => {
     expect(byId('ispark-104')?.free).toBeNull();
     expect(byId('ispark-104')?.capacity).toBe(120);

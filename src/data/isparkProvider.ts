@@ -1,15 +1,17 @@
 import { z } from 'zod';
 
 import { SchemaDriftError } from './izmirProvider';
+import { heavyVehicleTariff, isHeavyVehicleName } from './tariffs';
 import type { Parking, ParkingProvider } from './types';
 
 /**
  * İBB (İstanbul) open data: İSPARK car parks with live free spaces.
  *
- * The shape below is taken from open-source clients of the endpoint. It is
- * documented, NOT verified against a live response: the sandbox this was
- * written in cannot reach api.ibb.gov.tr. Re-check it (and CORS, headers,
- * update frequency) on a device before relying on it.
+ * The shape below is checked against a live capture of the endpoint
+ * (data/raw/ispark-sample.json, 2026-10-17, tested in isparkLive.test.ts):
+ * string coordinates, `isOpen` 0/1, `parkType` "KAPALI OTOPARK" / "AÇIK
+ * OTOPARK" / "YOL ÜSTÜ", and a placeholder `emptyCapacity` of 1 on every street
+ * record. CORS, response headers and the update frequency are still unmeasured.
  */
 export const ISPARK_PARKING_URL = 'https://api.ibb.gov.tr/ispark/Park';
 
@@ -74,6 +76,8 @@ export function normalizeIspark(raw: unknown, fetchedAt: string): Parking[] {
 
   const out: Parking[] = [];
   const seen = new Set<string>();
+  // Valid records left out on purpose (bus / truck parks): not a sign of schema drift.
+  let skipped = 0;
   for (const item of raw) {
     const parsed = RecordSchema.safeParse(item);
     if (!parsed.success) continue;
@@ -85,15 +89,22 @@ export function normalizeIspark(raw: unknown, fetchedAt: string): Parking[] {
     // Duplicate ids would break list keys and favourites: keep the first.
     if (seen.has(id)) continue;
     seen.add(id);
-    // 0 means "not counted" (street parking), not a car park with no bays.
+    // A bus or truck park ("… Otobüs Otoparkı", a tariff for buses only) is no place for a car.
+    if (isHeavyVehicleName(r.parkName) || heavyVehicleTariff(id)) {
+      skipped++;
+      continue;
+    }
+    // 0 means "not counted", not a car park with no bays.
     const total = wholeOrNull(r.capacity);
     const capacity = total != null && total > 0 ? total : null;
-    let free = wholeOrNull(r.emptyCapacity);
+    const type = r.parkType ? typeKey(r.parkType) : '';
+    // Street parking ("YOL ÜSTÜ") is not counted: the live list sends emptyCapacity 1 for every
+    // such record, open or closed (data/raw/ispark-sample.json). A placeholder, not a free count.
+    let free = type.startsWith('YOL ÜSTÜ') ? null : wholeOrNull(r.emptyCapacity);
     // More free bays than bays is a broken count: unknown, not clamped.
     if (free != null && capacity != null && free > capacity) free = null;
     const hours = r.workHours?.trim() ?? '';
     const nonstop = ROUND_THE_CLOCK.test(hours) ? true : null;
-    const type = r.parkType ? typeKey(r.parkType) : '';
     out.push({
       id,
       name: r.parkName.slice(0, MAX_NAME_LENGTH),
@@ -118,7 +129,7 @@ export function normalizeIspark(raw: unknown, fetchedAt: string): Parking[] {
     });
   }
   // Most records failing validation means the schema changed under us.
-  if (out.length < raw.length / 2) {
+  if (out.length + skipped < raw.length / 2) {
     throw new SchemaDriftError(`Kayıtların çoğu geçersiz (${out.length}/${raw.length})`);
   }
   return out;
