@@ -1,13 +1,15 @@
 import type { TFunction } from 'i18next';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
+import { backToCar } from '@/lib/parkHere';
 import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
-import { brand, fonts } from '@/theme';
+import { brand, fonts, HIT } from '@/theme';
 
 import { Button } from './Button';
 import { ParkReminder } from './ParkReminder';
@@ -19,6 +21,36 @@ export function confirmEndPark(t: TFunction, endPark: () => void) {
     { text: t('common.cancel'), style: 'cancel' },
     { text: t('favorites.endConfirmYes'), style: 'destructive', onPress: endPark },
   ]);
+}
+
+/** A park started by mistake can be undone for this long. */
+const UNDO_MS = 10 * 60_000;
+
+/** "Yanlışlıkla mı? Geri al": ends the park without asking, for the first 10 minutes (key it by the start time). */
+export function UndoPark({ active }: { active: ActivePark }) {
+  const { t } = useTranslation();
+  const endPark = useApp((s) => s.endPark);
+  const started = new Date(active.startedAt).getTime();
+  const [expired, setExpired] = useState(() => Date.now() - started >= UNDO_MS);
+  useEffect(() => {
+    if (expired) return;
+    const id = setTimeout(() => setExpired(true), Math.max(0, UNDO_MS - (Date.now() - started)));
+    return () => clearTimeout(id);
+  }, [expired, started]);
+  if (expired || active.confirmedAt) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('park.undo')}
+      onPress={endPark}
+      hitSlop={4}
+      style={{ minHeight: HIT, justifyContent: 'center', alignSelf: 'flex-start' }}
+    >
+      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 14 }} color={brand.navy}>
+        {t('park.undo')}
+      </Txt>
+    </Pressable>
+  );
 }
 
 /** "Hâlâ park hâlinde misin?" with Evet / Bitir; shown for parks older than 12 h. */
@@ -124,6 +156,12 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
           )}
         </View>
       </View>
+      <Button
+        kind="secondary"
+        label={t('park.backToCar')}
+        onPress={() => void backToCar(active)}
+        style={{ alignSelf: 'stretch' }}
+      />
       {stale ? (
         <StillParkedPrompt />
       ) : (
@@ -134,6 +172,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
             onPress={() => confirmEndPark(t, endPark)}
             style={{ alignSelf: 'stretch' }}
           />
+          <UndoPark key={active.startedAt} active={active} />
         </>
       )}
     </View>

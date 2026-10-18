@@ -30,7 +30,7 @@ export type ActivePark = {
   /** A "go back to the car" notification scheduled on this device. */
   reminder?: ParkReminder;
 } & LatLng;
-export type ParkReminder = { id: string; at: string };
+export type ParkReminder = { id: string; at: string; earlyId?: string };
 export type ParkMode = 'now' | 'twoHours';
 
 /** Recent searches kept in the store. */
@@ -112,6 +112,9 @@ type State = {
   recentSearches: string[];
   addRecentSearch: (q: string) => void;
   clearRecentSearches: () => void;
+  /** The reminder length (minutes) the user picked last; a new park schedules it by itself. */
+  lastReminderMin: number | null;
+  setLastReminderMin: (m: number | null) => void;
   setCity: (id: string) => void;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
@@ -150,6 +153,8 @@ export const useApp = create<State>()(
       addRecentSearch: (q) =>
         set((s) => ({ recentSearches: addRecentSearch(s.recentSearches, q) })),
       clearRecentSearches: () => set({ recentSearches: [] }),
+      lastReminderMin: null,
+      setLastReminderMin: (lastReminderMin) => set({ lastReminderMin }),
       // Unavailable or unknown cities are ignored. The data layer follows the store.
       // Recent searches name places of the old city, so a real switch drops them; favorites,
       // Ev/İş and a running park are the user's own and stay.
@@ -227,6 +232,7 @@ export const useApp = create<State>()(
         lang,
         mapApp,
         recentSearches,
+        lastReminderMin,
       }) => ({
         onboarded,
         home,
@@ -239,6 +245,7 @@ export const useApp = create<State>()(
         lang,
         mapApp,
         recentSearches,
+        lastReminderMin,
       }),
     },
   ),

@@ -1,10 +1,13 @@
-import type { TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Linking, Pressable, View } from 'react-native';
 
-import { parkCost } from '@/data/tariffs';
-import { REMINDER_CHOICES, scheduleParkReminder } from '@/lib/reminders';
+import {
+  earlyReminderText,
+  REMINDER_CHOICES,
+  reminderText,
+  scheduleParkReminder,
+} from '@/lib/reminders';
 import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
 import { useColors } from '@/theme';
@@ -17,24 +20,13 @@ const clock = (iso: string) => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-/** What the notification says: the car park, and the estimated cost by then when known. */
-function reminderText(active: ActivePark, minutes: number, t: TFunction) {
-  const elapsed = (Date.now() - new Date(active.startedAt).getTime()) / 60000;
-  const cost = parkCost(active.parkingId, active.hourly, elapsed + minutes);
-  return {
-    title: t('park.reminderTitle'),
-    body:
-      cost != null
-        ? t('park.reminderBodyCost', { name: active.name, price: cost })
-        : t('park.reminderBody', { name: active.name }),
-  };
-}
-
 /** "Hatırlat: 30 dk · 1 sa · 2 sa · 3 sa", or the time it is set for with a cancel. */
 export function ParkReminder({ active }: { active: ActivePark }) {
   const c = useColors();
   const { t } = useTranslation();
   const setParkReminder = useApp((s) => s.setParkReminder);
+  const lastMin = useApp((s) => s.lastReminderMin);
+  const setLastReminderMin = useApp((s) => s.setLastReminderMin);
   const [busy, setBusy] = useState(false);
   const now = useNow();
   const r = active.reminder;
@@ -60,7 +52,13 @@ export function ParkReminder({ active }: { active: ActivePark }) {
   const choose = async (minutes: number) => {
     if (busy) return;
     setBusy(true);
-    const set = await scheduleParkReminder(minutes, reminderText(active, minutes, t));
+    setLastReminderMin(minutes);
+    const set = await scheduleParkReminder(
+      minutes,
+      reminderText(active, minutes, t),
+      new Date(),
+      earlyReminderText(active, t),
+    );
     setBusy(false);
     if (set) {
       setParkReminder(set);
@@ -78,16 +76,19 @@ export function ParkReminder({ active }: { active: ActivePark }) {
         {t('park.reminderAsk')}
       </Txt>
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-        {REMINDER_CHOICES.map((m) => (
-          <Chip
-            key={m}
-            selected={false}
-            label={
-              m < 60 ? t('park.inMinutes', { count: m }) : t('park.inHours', { count: m / 60 })
-            }
-            onPress={() => void choose(m)}
-          />
-        ))}
+        {/* The last choice comes first. */}
+        {[...REMINDER_CHOICES]
+          .sort((a, b) => Number(b === lastMin) - Number(a === lastMin))
+          .map((m) => (
+            <Chip
+              key={m}
+              selected={false}
+              label={
+                m < 60 ? t('park.inMinutes', { count: m }) : t('park.inHours', { count: m / 60 })
+              }
+              onPress={() => void choose(m)}
+            />
+          ))}
       </View>
     </View>
   );

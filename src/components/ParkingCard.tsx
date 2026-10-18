@@ -7,6 +7,7 @@ import { levelWord } from '@/lib/a11y';
 import { disabledInfo, type DisabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
+import { directionsOnly } from '@/lib/parkHere';
 import { isStatic, sourceLabel, staticHeadline } from '@/lib/staticInfo';
 import { useApp } from '@/store/app';
 import { asym, fonts, statusTone, useColors } from '@/theme';
@@ -267,12 +268,19 @@ export function ParkingCard({
           <BigCount free={free} capacity={p.capacity} size={40} />
         )}
       </View>
-      <View style={{ marginTop: 12, flexDirection: 'row', gap: 10 }}>
+      <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <Button
           label={t('results.parkHere')}
           accessibilityLabel={`${t('results.parkHere')}: ${p.name}`}
           onPress={onParkHere}
-          style={{ flex: 1 }}
+          style={{ flexGrow: 1, flexBasis: 150 }}
+        />
+        <Button
+          label={t('results.directionsOnly')}
+          accessibilityLabel={`${t('results.directionsOnly')}: ${p.name}`}
+          kind="secondary"
+          onPress={() => void directionsOnly(p)}
+          style={{ minWidth: 96 }}
         />
         <Button
           label={t('results.details')}

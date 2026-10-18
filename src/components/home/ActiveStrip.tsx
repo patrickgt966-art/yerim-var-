@@ -2,11 +2,12 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
-import { confirmEndPark, StillParkedPrompt } from '@/components/ActiveParkCard';
+import { confirmEndPark, StillParkedPrompt, UndoPark } from '@/components/ActiveParkCard';
 import { Txt } from '@/components/Txt';
 import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
+import { backToCar } from '@/lib/parkHere';
 import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
 import { brand, fonts, HIT } from '@/theme';
@@ -71,6 +72,22 @@ export function ActiveStrip() {
             </Txt>
           </View>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('park.backToCar')}
+          onPress={() => void backToCar(active)}
+          style={{
+            minHeight: HIT,
+            minWidth: HIT,
+            paddingHorizontal: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 15 }} color={brand.navy}>
+            {t('park.backToCar')}
+          </Txt>
+        </Pressable>
         {!stale && (
           <Pressable
             accessibilityRole="button"
@@ -90,7 +107,7 @@ export function ActiveStrip() {
           </Pressable>
         )}
       </View>
-      {stale && <StillParkedPrompt />}
+      {stale ? <StillParkedPrompt /> : <UndoPark key={active.startedAt} active={active} />}
     </View>
   );
 }

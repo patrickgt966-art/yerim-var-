@@ -23,7 +23,7 @@ import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
-import { parkHere } from '@/lib/parkHere';
+import { directionsOnly, parkHere } from '@/lib/parkHere';
 import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongData } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
@@ -236,7 +236,19 @@ export default function ParkingDetail() {
           </View>
         )}
 
-        <Button label={t('results.parkHere')} onPress={() => parkHere(p)} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <Button
+            label={t('results.parkHere')}
+            onPress={() => parkHere(p)}
+            style={{ flexGrow: 1, flexBasis: 150 }}
+          />
+          <Button
+            label={t('results.directionsOnly')}
+            kind="secondary"
+            onPress={() => void directionsOnly(p)}
+            style={{ minWidth: 96 }}
+          />
+        </View>
 
         <Section
           title={t('detail.tariff')}

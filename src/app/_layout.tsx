@@ -21,7 +21,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { warmUpParkings } from '@/data/useParkings';
 import { watchParkActivity } from '@/lib/parkActivity';
 import { refreshHiddenPlaces } from '@/lib/placeReports';
-import { cancelParkReminder, setUpReminders } from '@/lib/reminders';
+import { listenParkNotifications } from '@/lib/parkNotifications';
+import { cancelParkReminder, registerParkCategory, setUpReminders } from '@/lib/reminders';
 import { useApp } from '@/store/app';
 import { useReports } from '@/store/reports';
 import { useHydrated } from '@/store/useHydrated';
@@ -49,9 +50,12 @@ else useApp.persist.onFinishHydration(warmHydratedCity);
 // A park reminder belongs to its park: ending the park, starting another or clearing the reminder
 // cancels the scheduled notification, whichever screen did it.
 setUpReminders();
+listenParkNotifications();
 useApp.subscribe((s, prev) => {
-  const old = prev.active?.reminder?.id;
-  if (old && old !== s.active?.reminder?.id) void cancelParkReminder(old);
+  const old = prev.active?.reminder;
+  if (old && old.id !== s.active?.reminder?.id) void cancelParkReminder(old);
+  // The notification buttons are text, so they follow the language.
+  if (s.lang !== prev.lang) void registerParkCategory();
   if (s.city !== prev.city) refreshHidden();
 });
 
