@@ -1,3 +1,4 @@
+/* eslint-disable import/no-unresolved -- SDK lives in server/yerim-ai/node_modules, absent in the main CI job. */
 /**
 One-time (incremental) AI classification of the places whose food category the rules do not read
  * from a name keyword or a cuisine tag (src/data/restaurants.ts: categorySource): places in no
