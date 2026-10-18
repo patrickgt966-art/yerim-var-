@@ -19,6 +19,7 @@ import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
+import { quartersOf } from '@/data/quarters';
 import {
   isQualifierWord,
   looksLikePlace,
@@ -1133,7 +1134,12 @@ async function answerText(
   // everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse') {
     // The district against the city's own list: a typo fixed, a quarter moved to place.
-    const found = settleDistrict(routed.out.value, text, activeCity().districts);
+    const found = settleDistrict(
+      routed.out.value,
+      text,
+      activeCity().districts,
+      quartersOf(activeCity().id),
+    );
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
     meta.wishes = [...new Set([...meta.wishes, ...(found.wishes ?? [])])];

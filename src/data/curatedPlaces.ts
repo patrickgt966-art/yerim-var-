@@ -260,6 +260,23 @@ export const CITY_CURATED_PLACES: Record<string, CuratedPlace[]> = {
       lng: 30.6597,
       aliases: ['migros', 'migros avm', '5m migros'],
     },
+    // Resort towns people name bare ("belekte balık"); the town centres.
+    {
+      name: 'Belek',
+      district: 'Serik',
+      kind: 'area',
+      lat: 36.8625,
+      lng: 31.0555,
+      aliases: ['belek'],
+    },
+    {
+      name: 'Side',
+      district: 'Manavgat',
+      kind: 'area',
+      lat: 36.7672,
+      lng: 31.3889,
+      aliases: ['side', 'side antik kent'],
+    },
     {
       name: 'Kleopatra Plajı',
       district: 'Alanya',

@@ -1,3 +1,4 @@
+import type { Quarter } from './quarters';
 import { fold } from './search';
 import type { Understanding } from '@/lib/ai/protocol';
 
@@ -124,24 +125,63 @@ export function districtInText(
 }
 
 /**
+ * The quarter of `quarters` that a word of the text names (outside `skip`), case ending and missing
+ * Turkish letters aside, or null. Exact only: a quarter is a short everyday-looking name, so a typo
+ * is left to the AI. A `common` name ("moda", "hurma") counts only when said as a place: with an
+ * "in/from" ending ("hurmada") or before an area word ("moda tarafında").
+ */
+export function quarterInText(
+  text: string,
+  quarters: readonly Quarter[],
+  skip: readonly string[] = [],
+): Quarter | null {
+  if (quarters.length === 0) return null;
+  const skipped = new Set(skip.flatMap((s) => fold(s).split(' ')).filter(Boolean));
+  const words = text
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}'’]+/u)
+    .filter(Boolean);
+  for (const [k, word] of words.entries()) {
+    const w = key(word);
+    const forms = stems(w);
+    if (forms.some((st) => skipped.has(st))) continue;
+    const next = words[k + 1] ? key(words[k + 1]!) : '';
+    const placed = AREA_WORDS.some((a) => next.startsWith(a));
+    for (const q of quarters) {
+      const n = key(q.n);
+      if (!forms.includes(n)) continue;
+      if (!q.common || placed || LOCATED.some((e) => w === n + e)) return q;
+    }
+  }
+  return null;
+}
+
+/**
  * The AI's search with its district settled against the city's own list, the way the app reads
  * it: a district typed wrong or without Turkish letters becomes the city's spelling; a name that
  * is not a district (a quarter such as Karaköy or Kızılay) moves to `place`; a district the AI
  * wrote into place moves to `district`. With neither a district nor a place, a district named in
  * the text (exactly) is used, unless the AI read that word as the dish (İzmir's Menemen). A place
  * the AI named is never overridden by another word of the sentence ("Karşıyaka'dan geçiyorum,
- * Alsancak'ta balık"). Other kinds pass through.
+ * Alsancak'ta balık"). A well-known quarter of the city (`quarters`) written bare in the text
+ * ("lara balık") is the place when the AI named none. Other kinds pass through.
  */
 export function settleDistrict<T extends Understanding>(
   u: T,
   text: string,
   districts: readonly string[],
+  quarters: readonly Quarter[] = [],
 ): T {
   if (u.kind !== 'search') return u;
-  return settled(u as Search, text, districts) as T;
+  return settled(u as Search, text, districts, quarters) as T;
 }
 
-function settled(s: Search, text: string, districts: readonly string[]): Search {
+function settled(
+  s: Search,
+  text: string,
+  districts: readonly string[],
+  quarters: readonly Quarter[],
+): Search {
   if (s.district) {
     const hit = matchDistrict(s.district, districts);
     if (hit) return { ...s, district: hit };
@@ -150,9 +190,14 @@ function settled(s: Search, text: string, districts: readonly string[]): Search 
   // A district written into place ("Bornova").
   const asPlace = s.place ? matchDistrict(s.place, districts) : null;
   if (asPlace) return { ...s, district: asPlace, place: null };
-  if (s.nearMe || s.place) return s;
   // appleQuery often repeats the district, so it does not count.
   const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
+  // A quarter the AI missed ("lara balık" read as near me). Not when it asked which place was meant.
+  if (!s.place && s.clarify?.ask !== 'place') {
+    const q = quarterInText(text, quarters, skip);
+    if (q) return { ...s, place: q.n, nearMe: false };
+  }
+  if (s.nearMe || s.place) return s;
   const found = districtInText(text, districts, skip);
   return found ? { ...s, district: found } : s;
 }

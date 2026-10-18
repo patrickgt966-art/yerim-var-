@@ -27,6 +27,7 @@ import {
 } from '@/data/eval/aiBigCases';
 import { cityById } from '@/data/cities';
 import { settleDistrict } from '@/data/districtMatch';
+import { quartersOf } from '@/data/quarters';
 import {
   EXTREME_PARK_CASES,
   EXTREME_PICK_CASES,
@@ -150,7 +151,10 @@ async function main(): Promise<void> {
           ? { kind: 'unknown' }
           : toUnderstanding(response.parsed_output);
       // As the app reads it: the district settled against the city's own list.
-      return scoreUnderstanding(c, settleDistrict(u, c.text, cityById(city).districts));
+      return scoreUnderstanding(
+        c,
+        settleDistrict(u, c.text, cityById(city).districts, quartersOf(city)),
+      );
     }
     if (job.type === 'park') {
       const c = job.c;

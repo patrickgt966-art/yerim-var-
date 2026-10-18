@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import { cityById, cityExamples, CITIES, DEFAULT_CITY, isAvailableCity } from '../../data/cities';
+import { quartersOf } from '../../data/quarters';
 import type { FoodCategory } from '../../data/restaurants';
 
 export const FREE_DAILY = 10;
@@ -394,6 +395,13 @@ export type NarrateRequest = {
  * The router prompt. `section` is the chat the user is in (UnderstandRequest.section): without
  * it a bare place name typed in the food chat reads as a car park search.
  */
+/** The city's well-known quarters for the router prompt (empty when it has none). */
+function quarterLine(cityId: string): string {
+  const qs = quartersOf(cityId);
+  if (qs.length === 0) return '';
+  return ` Şehrin bilinen semtlerinden bazıları (parantezde ilçesi): ${qs.map((q) => `${q.n} (${q.d})`).join(', ')}. Bunlar mesajda eksiz ve tek başına geçse de ("lara balık", "çekirge pide") yer adıdır: place alanına yaz; yalnızca gündelik anlamıyla kullanıldıklarında (meyve olarak hurma, moda olarak moda) yer değildir.`;
+}
+
 export function understandSystem(city?: string, section?: 'park' | 'food'): string {
   const c = promptCity(city);
   const place = cityExamples(c).a;
@@ -420,7 +428,7 @@ Kurallar:
 - Mesajı kelime kelime değil, anlamıyla oku. Kullanıcı yemek adı yerine bir amaç, ruh hali, beslenme tarzı, durum, argo ya da emoji kullanabilir; ne yemek istediğini kendi aklınla çıkar, food true olsun ve isteği en iyi karşılayan kategoriyi (cat), yemeği (dish) ve dishServes kelimelerini sen seç. Örneğin "kas yapacak bir şey" protein (ızgara, et, tavuk) ister, "hafif bir şey" sağlıklı ve hafif yemek ister, "üşüdüm" sıcak bir çorba olabilir. Yemek ya da içecek emojisi (🍕, 🥙, 🍝, ☕ gibi) o yemeğin ya da içeceğin adı sayılır: food true, dish o yemek. Bunlar sadece örnek, liste değil: her ifadede aynı akıl yürütmeyi yap. İsteğe uymayan bir kategoriyi (örneğin protein için pastane) asla seçme. Bir istek birçok türde mekânda karşılanabiliyorsa (bir beslenme tarzı, bir amaç, bir durum) cat'i boş bırak, aramayı tek bir kategoriye daraltma; hangi yerin uyduğuna sonraki adımda ad ve türe bakılarak karar verilir. cat'i yalnızca kullanıcı gerçekten o kategoriyi istiyorsa seç.
 - Bir yere gitmekten, bir şey çekmesinden ya da biriyle (çocukla, arkadaşlarla, kalabalık, sevgiliyle) gidilecek bir mekândan söz ediyor ve otopark demiyorsa bu bir yemek yeri isteğidir: food true, cat boş, dilekleri wishes'a yaz.
 - Olumsuzluk ("tatlı istemem", "kebap olmasın") cümlenin geri kalanını silmez: ilçeyi, yeri ve diğer alanları da ayrıca doldur.
-- Şehrin ilçeleri şunlardır ve district yalnızca bunlardan biri olabilir: ${c.districts.join(', ')}. Bir ilçeyi, ek almış ("bucada", "bornovaya", "karşıyakadan"), Türkçe karaktersiz ya da yazım hatalı yazılmış olsa da her zaman bu listedeki yazımıyla district alanına yaz, place alanına değil. Listede olmayan semt, mahalle, meydan, cadde ya da mekân adları ilçe değildir: place alanına yaz (eksiz yazılmış olsa da), district'i ancak hangi ilçede olduğunu biliyorsan doldur.
+- Şehrin ilçeleri şunlardır ve district yalnızca bunlardan biri olabilir: ${c.districts.join(', ')}. Bir ilçeyi, ek almış ("bucada", "bornovaya", "karşıyakadan"), Türkçe karaktersiz ya da yazım hatalı yazılmış olsa da her zaman bu listedeki yazımıyla district alanına yaz, place alanına değil. Listede olmayan semt, mahalle, meydan, cadde ya da mekân adları ilçe değildir: place alanına yaz (eksiz yazılmış olsa da), district'i ancak hangi ilçede olduğunu biliyorsan doldur.${quarterLine(c.id)}
 - Sadece otopark arıyorsa food false ve requireParking false olsun; otoparkın kendi özellikleri (ücretsiz, kapalı, 24 saat açık, engelli yeri, motosiklet ...) bunu değiştirmez, wishes'a yazılır. Bir yemek yerinin otoparkından söz ediyorsa ("otoparkı olsun", "otoparkı ücretsiz olsun", "park yeri olan bir yer") requireParking true.
 - Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler. Anlamsız harfler ya da tek bir ünlem ("Oo", "asdf", "hmm") de unknown.
 - "yakınımda", "en yakın", "daha yakını", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.

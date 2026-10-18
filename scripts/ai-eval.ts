@@ -22,6 +22,7 @@ import { zodOutputFormat } from '../server/yerim-ai/node_modules/@anthropic-ai/s
 
 import { cityById } from '@/data/cities';
 import { settleDistrict } from '@/data/districtMatch';
+import { quartersOf } from '@/data/quarters';
 import { PICK_CASES, UNDERSTAND_CASES } from '@/data/eval/aiCases';
 import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
 import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
@@ -89,7 +90,7 @@ function intentFromUnderstanding(u: Understanding, text: string, want?: string):
   if (u.kind === 'unknown' && (want === 'gibberish' || want === 'empty')) return { kind: want };
   if (u.kind === 'unknown') return { ...NOTHING_SET, text: fold(text) };
   // The chat cases are İzmir's.
-  const s = settleDistrict(u, text, cityById('izmir').districts);
+  const s = settleDistrict(u, text, cityById('izmir').districts, quartersOf('izmir'));
   const district = s.district
     ? (IZMIR_DISTRICTS.find((d) => fold(d.name) === fold(s.district!)) ?? null)
     : null;
@@ -213,7 +214,12 @@ async function main(): Promise<void> {
       // As the app reads it: the district settled against the city's own list.
       return scoreUnderstanding(
         c,
-        settleDistrict(u, c.text, cityById(c.city ?? 'izmir').districts),
+        settleDistrict(
+          u,
+          c.text,
+          cityById(c.city ?? 'izmir').districts,
+          quartersOf(c.city ?? 'izmir'),
+        ),
       );
     });
   }
