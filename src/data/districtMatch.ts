@@ -21,6 +21,9 @@ const SUFFIXES = [
   'e',
 ];
 
+/** The endings of "in" and "from" a place: a word with one of them is meant as a place. */
+const LOCATED = ['nda', 'nde', 'dan', 'den', 'tan', 'ten', 'da', 'de', 'ta', 'te'];
+
 /** The name folded with no spaces: "Göl­başı" (a soft hyphen) and "Golbasi" are the same. */
 const key = (s: string) => fold(s).replace(/ /g, '');
 
@@ -59,9 +62,9 @@ function stems(word: string): string[] {
 export function matchDistrict(
   word: string,
   districts: readonly string[],
-  opts: { typos?: boolean } = {},
+  opts: { typos?: boolean | 'located' } = {},
 ): string | null {
-  const typos = opts.typos !== false;
+  const typos = opts.typos ?? true;
   const low = word.toLocaleLowerCase('tr').replace(/['’`]/g, '');
   const w = key(word);
   if (!w) return null;
@@ -77,6 +80,8 @@ export function matchDistrict(
     for (const s of stems(w)) {
       if (s === n) return name;
       if (!typos || s.length < 5 || s[0] !== n[0]) continue;
+      // 'located': a typo only on a stem that carried a place ending ("sicanda", "maamakta").
+      if (typos === 'located' && !LOCATED.some((e) => w === s + e)) continue;
       const cost = edits(s, n);
       if (cost <= (n.length >= 8 ? 2 : 1) && (!best || cost < best.cost)) best = { name, cost };
     }
@@ -85,9 +90,10 @@ export function matchDistrict(
 }
 
 /**
- * The first word of the text (outside `skip`) that names a district exactly, case ending and
- * missing Turkish letters aside, or null. No typos here: across a whole sentence, everyday words
- * sit one letter from a district ("çabuk" Çubuk, "serin" Serik, "tuzlu" Tuzla).
+ * The first word of the text (outside `skip`) that names a district, case ending and missing
+ * Turkish letters aside, or null. A typo counts only on a word that carries a place ending ("in" /
+ * "from": "sicanda", "kciorende"): bare everyday words sit one letter from a district ("çabuk"
+ * Çubuk, "serin" Serik, "tuzlu" Tuzla).
  */
 export function districtInText(
   text: string,
@@ -102,7 +108,7 @@ export function districtInText(
   for (const word of words) {
     // "Menemen'i" is the dish the AI named, case ending or not.
     if (stems(key(word)).some((st) => skipped.has(st))) continue;
-    const hit = matchDistrict(word, districts, { typos: false });
+    const hit = matchDistrict(word, districts, { typos: 'located' });
     if (hit) return hit;
   }
   return null;

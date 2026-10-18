@@ -81,6 +81,11 @@ describe('districtInText', () => {
     expect(districtInText('konuk ağırlayacağız', izmir)).toBeNull();
     // Without Turkish letters is not a typo.
     expect(districtInText('sislide doner', istanbul)).toBe('Şişli');
+    // A typo counts on a word with a place ending, never on a bare word.
+    expect(districtInText('sicanda iyi lahmcun', ankara)).toBe('Sincan');
+    expect(districtInText('kciorende iyi lahmcun', ankara)).toBe('Keçiören');
+    expect(districtInText('maamakta iyi lamacun', ankara)).toBe('Mamak');
+    expect(districtInText('sincn lahmacun', ankara)).toBeNull();
   });
 });
 
