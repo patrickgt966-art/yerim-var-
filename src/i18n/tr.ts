@@ -288,6 +288,10 @@ const tr = {
   favorites: {
     title: 'Favoriler',
     empty: 'Henüz favorin yok. Bir otoparkın detayında yıldıza bas.',
+    otherCity: '{{cityLoc}} kayıtlı',
+    otherCityTitle: '{{name}} başka bir şehirde',
+    otherCityBody: 'Bu yer {{cityLoc}}. Açmak için şehri {{city}} olarak değiştirelim mi?',
+    switchCity: 'Şehri {{city}} yap',
     activeTitle: 'Aktif park',
     elapsed: 'Geçen süre',
     estCost: 'Tahmini ücret',

@@ -295,6 +295,10 @@ const en = {
   favorites: {
     title: 'Favourites',
     empty: 'No favourites yet. Tap the star on a car park’s details.',
+    otherCity: 'Saved in {{city}}',
+    otherCityTitle: '{{name}} is in another city',
+    otherCityBody: 'This place is in {{city}}. Switch the city to {{city}} to open it?',
+    switchCity: 'Switch to {{city}}',
     activeTitle: 'Active parking',
     elapsed: 'Time elapsed',
     estCost: 'Estimated cost',

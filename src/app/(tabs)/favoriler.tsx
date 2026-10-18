@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActiveParkCard } from '@/components/ActiveParkCard';
+import { cityOfPlace, findFavoriteRestaurant, openInCity } from '@/components/favoriteCity';
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -13,13 +14,7 @@ import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
 import { useNow } from '@/lib/useNow';
 import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
-import {
-  cuisineLabels,
-  getRestaurant,
-  kindLabel,
-  parkingInfo,
-  type Restaurant,
-} from '@/data/restaurants';
+import { cuisineLabels, kindLabel, parkingInfo } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { useApp } from '@/store/app';
@@ -122,22 +117,33 @@ function RestaurantFavorites() {
   const { t } = useTranslation();
   const ids = useApp((s) => s.favoriteRestaurants);
   const toggle = useApp((s) => s.toggleFavoriteRestaurant);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
   const { data, isPlaceholderData } = useParkings();
-  // Ids no longer in the bundled data are skipped silently.
+  // Saved restaurants of every city stay listed with their city; ids no longer in any bundled
+  // data are skipped. Recomputed on a city switch: the active city's data changes with it.
   const items = useMemo(
-    () => ids.map((id) => getRestaurant(id)).filter((r): r is Restaurant => r != null),
-    [ids],
+    () =>
+      ids
+        .map((id) => findFavoriteRestaurant(id))
+        .filter((x): x is NonNullable<typeof x> => x != null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the lookup reads the active city
+    [ids, cityId],
   );
   if (items.length === 0) return <Txt secondary>{t('favorites.emptyRestaurants')}</Txt>;
   const parkings = data?.parkings ?? [];
   const now = new Date();
   return (
     <>
-      {items.map((r) => {
+      {items.map(({ r, city }) => {
         const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t).slice(0, 2)]
           .filter(Boolean)
           .join(' · ');
-        const { parking, nearbyCount } = parkingInfo(r, parkings, now);
+        // Another city's car parks are not loaded: say where the place is instead.
+        const elsewhere = city.id !== cityId;
+        const { parking, nearbyCount } = elsewhere
+          ? { parking: null, nearbyCount: 0 }
+          : parkingInfo(r, parkings, now);
         const near = parking
           ? t('food.nearbyParkings', {
               count: Math.max(nearbyCount, 1),
@@ -150,7 +156,9 @@ function RestaurantFavorites() {
           parking && parking.free != null && parking.at
             ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
             : null;
-        const parkText = [near, free].filter(Boolean).join(' · ');
+        const parkText = elsewhere
+          ? t('favorites.otherCity', { city: city.name, cityLoc: city.locative })
+          : [near, free].filter(Boolean).join(' · ');
         return (
           <View
             key={r.id}
@@ -174,7 +182,11 @@ function RestaurantFavorites() {
                 meta,
                 parking: parkText,
               })}
-              onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
+              onPress={() =>
+                openInCity(city, r.name, t, setCity, () =>
+                  router.push({ pathname: '/restoran/[id]', params: { id: r.id } }),
+                )
+              }
               style={{ flex: 1, minHeight: HIT, gap: 3, justifyContent: 'center' }}
             >
               <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
@@ -215,6 +227,8 @@ export default function FavoritesScreen() {
   const favorites = useApp((s) => s.favorites);
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const replaceFavoriteId = useApp((s) => s.replaceFavoriteId);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
   const { data } = useParkings();
   const now = new Date(useNow(30_000));
   const [tab, setTab] = useState<FavTab>('parkings');
@@ -247,7 +261,10 @@ export default function FavoritesScreen() {
         <Txt secondary>{t('favorites.empty')}</Txt>
       ) : (
         favorites.map((f) => {
-          const p = data ? resolveFavoriteParking(f, data.parkings) : null;
+          // A car park saved in another city: listed with its city, opened after switching to it.
+          const savedIn = cityOfPlace(f);
+          const elsewhere = savedIn && savedIn.id !== cityId ? savedIn : undefined;
+          const p = data && !elsewhere ? resolveFavoriteParking(f, data.parkings) : null;
           const fresh = p ? getFreshness(p, now) : null;
           const free = p ? visibleFree(p, now) : null;
           // Only fresh counts are shown; anything else reads as no count / unknown, in grey.
@@ -256,13 +273,15 @@ export default function FavoritesScreen() {
               ? fresh
               : null;
           const level = live && p ? occupancyLevel(free, p.capacity) : 'unknown';
-          const status = live
-            ? level === 'full'
-              ? t('favorites.fullAt', { time: formatClock(live.at) })
-              : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
-            : fresh?.kind === 'noData'
-              ? t('favorites.noCount')
-              : t('common.unknown');
+          const status = elsewhere
+            ? t('favorites.otherCity', { city: elsewhere.name, cityLoc: elsewhere.locative })
+            : live
+              ? level === 'full'
+                ? t('favorites.fullAt', { time: formatClock(live.at) })
+                : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
+              : fresh?.kind === 'noData'
+                ? t('favorites.noCount')
+                : t('common.unknown');
           return (
             <View
               key={f.id}
@@ -283,7 +302,9 @@ export default function FavoritesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
                 onPress={() =>
-                  router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } })
+                  openInCity(elsewhere, f.name, t, setCity, () =>
+                    router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } }),
+                  )
                 }
                 style={{
                   flex: 1,

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { cityOfPlace } from '@/components/favoriteCity';
 import { FreshnessBadge, StatusBadge, Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
 import { SampleBanner } from '@/components/SampleBanner';
@@ -52,6 +53,12 @@ export default function ParkingDetail() {
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  // A saved car park of another city is not in this city's data: offer its city, no dead end.
+  const savedFav = useApp((s) => s.favorites.find((f) => f.id === id));
+  const savedIn = savedFav ? cityOfPlace(savedFav) : undefined;
+  const otherCity = savedIn && savedIn.id !== cityId ? savedIn : undefined;
 
   if (!p) {
     return (
@@ -67,7 +74,22 @@ export default function ParkingDetail() {
         {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
         ) : (
-          <Txt secondary>{t('detail.notFound')}</Txt>
+          <View style={{ gap: 12 }}>
+            <Txt secondary>
+              {otherCity
+                ? t('favorites.otherCityBody', {
+                    city: otherCity.name,
+                    cityLoc: otherCity.locative,
+                  })
+                : t('detail.notFound')}
+            </Txt>
+            {otherCity && (
+              <Button
+                label={t('favorites.switchCity', { city: otherCity.name })}
+                onPress={() => setCity(otherCity.id)}
+              />
+            )}
+          </View>
         )}
       </View>
     );
