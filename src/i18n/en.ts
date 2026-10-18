@@ -46,6 +46,11 @@ const en = {
     noLiveBanner: 'No live free-space data in {{city}}; car parks are shown with their capacity.',
     offline: 'No internet',
     offlineBanner: 'No internet. Last data {{time}} ({{age}} ago). Old numbers are hidden.',
+    // Age in offlineBanner's {{age}}.
+    ageMinutes: '{{count}} min',
+    ageHours: '{{count}} h',
+    ageDays_one: '{{count}} day',
+    ageDays_other: '{{count}} days',
   },
   onboarding: {
     tagline: "Tell us what you want to eat; we'll find the restaurant and the parking.",
@@ -93,6 +98,10 @@ const en = {
     close: 'Close',
     a11ySelected: '{{name}}, selected, occupancy data available',
     a11yRow: '{{name}}, occupancy data available',
+    // Cities with bundled car parks only (no live free counts).
+    staticOnly: 'Car park locations',
+    a11ySelectedStatic: '{{name}}, selected, no live occupancy data',
+    a11yRowStatic: '{{name}}, no live occupancy data',
     a11ySoon: '{{name}}, coming soon',
   },
   search: {

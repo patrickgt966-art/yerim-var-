@@ -1,4 +1,4 @@
-import { getFreshness, occupancyLevel, visibleFree } from '../freshness';
+import { getFreshness, liveFlagFresh, occupancyLevel, visibleFree } from '../freshness';
 import type { Parking } from '../types';
 
 const now = new Date('2026-10-07T12:00:00Z');
@@ -69,5 +69,17 @@ describe('occupancyLevel', () => {
     expect(occupancyLevel(3, 80)).toBe('few');
     expect(occupancyLevel(14, 60)).toBe('plenty');
     expect(occupancyLevel(6, 100)).toBe('few');
+  });
+});
+
+describe('liveFlagFresh', () => {
+  it('trusts a live flag for as long as a free count', () => {
+    expect(liveFlagFresh({ fetchedAt: minsAgo(5), updatedAt: null }, now)).toBe(true);
+    expect(liveFlagFresh({ fetchedAt: minsAgo(15), updatedAt: null }, now)).toBe(true);
+    expect(liveFlagFresh({ fetchedAt: minsAgo(16), updatedAt: null }, now)).toBe(false);
+    // The measurement time, when given, wins over the download time.
+    expect(liveFlagFresh({ fetchedAt: minsAgo(1), updatedAt: minsAgo(30) }, now)).toBe(false);
+    expect(liveFlagFresh({ fetchedAt: 'bozuk' }, now)).toBe(false);
+    expect(liveFlagFresh({}, now)).toBe(true);
   });
 });

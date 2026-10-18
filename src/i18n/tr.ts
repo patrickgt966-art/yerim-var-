@@ -45,6 +45,10 @@ const tr = {
       '{{place}} canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.',
     offline: 'İnternet yok',
     offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
+    // Age in offlineBanner's {{age}}.
+    ageMinutes: '{{count}} dk',
+    ageHours: '{{count}} sa',
+    ageDays: '{{count}} gün',
   },
   onboarding: {
     tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
@@ -92,6 +96,10 @@ const tr = {
     close: 'Kapat',
     a11ySelected: '{{name}}, seçili, doluluk verisi var',
     a11yRow: '{{name}}, doluluk verisi var',
+    // Cities with bundled car parks only (no live free counts).
+    staticOnly: 'Otopark konumları',
+    a11ySelectedStatic: '{{name}}, seçili, canlı doluluk verisi yok',
+    a11yRowStatic: '{{name}}, canlı doluluk verisi yok',
     a11ySoon: '{{name}}, yakında',
   },
   search: {

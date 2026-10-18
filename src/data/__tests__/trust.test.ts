@@ -1,3 +1,6 @@
+import '@/i18n';
+import { changeLanguage } from 'i18next';
+
 import { formatAge, lacksFreshCounts } from '../freshness';
 import { IzmirOpenDataProvider } from '../izmirProvider';
 import { loadParkings } from '../repository';
@@ -47,6 +50,18 @@ describe('tariffs and freshness helpers', () => {
     expect(formatAge(5 * 60_000)).toBe('5 dk');
     expect(formatAge(2 * 3600_000)).toBe('2 sa');
     expect(formatAge(50 * 3600_000)).toBe('2 gün');
+  });
+
+  it('formatAge follows the UI language', async () => {
+    await changeLanguage('en');
+    try {
+      expect(formatAge(5 * 60_000)).toBe('5 min');
+      expect(formatAge(2 * 3600_000)).toBe('2 h');
+      expect(formatAge(26 * 3600_000)).toBe('1 day');
+      expect(formatAge(50 * 3600_000)).toBe('2 days');
+    } finally {
+      await changeLanguage('tr');
+    }
   });
 
   it('lacksFreshCounts is true when only stale or static data exists', () => {
