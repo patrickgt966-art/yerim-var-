@@ -1,5 +1,6 @@
 import raw from '../../data/places.json';
 import { activeCity, cityById, isInCityArea } from './cities';
+import { CITY_CURATED_PLACES } from './curatedPlaces';
 import { placesFile, railFile } from './cityData';
 import { distanceMeters, type LatLng } from './geo';
 
@@ -160,6 +161,6 @@ export const CURATED_PLACES: CuratedPlace[] = [
   },
 ];
 
-/** Curated places of the active city; only İzmir has any. */
+/** Curated places of the active city (İzmir's above, the others' in curatedPlaces.ts). */
 export const curatedPlaces = (): CuratedPlace[] =>
-  activeCity().id === 'izmir' ? CURATED_PLACES : [];
+  activeCity().id === 'izmir' ? CURATED_PLACES : (CITY_CURATED_PLACES[activeCity().id] ?? []);
