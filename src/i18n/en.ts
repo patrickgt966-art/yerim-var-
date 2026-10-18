@@ -256,6 +256,20 @@ const en = {
     monthly: 'Monthly pass',
     freeMinutes: 'First {{count}} min free',
     tariffSource: 'Rate source: {{source}}',
+    bandHours: '{{from}}–{{to}} h',
+    bandMinHours: '{{from}} min–{{to}} h',
+    bandFullDay: 'Full day',
+    bandDaily: 'Daily',
+    bandEvent: 'Event',
+    bandValet: 'Valet',
+    bandFor: '{{band}} · {{vehicle}}',
+    vehicle: {
+      car: 'Car',
+      van: 'Minibus, van',
+      truck: 'Truck',
+      lorry: 'Lorry',
+      bus: 'Bus',
+    },
     report: 'Report wrong info',
     favoriteAdd: 'Add to favourites',
     favoriteRemove: 'Remove from favourites',
@@ -633,11 +647,16 @@ const en = {
     actAsDish: 'Search as a dish',
     districtUnknownThing: 'I couldn\'t find a place or dish called "{{q}}" in {{district}}.',
     actDistrictFood: 'Restaurants in {{district}}',
-    foodFound_0:
-      'Found {{count}} {{what}} around {{where}}; {{withPark}} have a car park nearby. Easiest parking first:',
-    foodFound_1:
-      'Found {{count}} {{what}} for {{where}}. {{withPark}} have a car park within 300 m:',
-    foodFoundPark: 'Found {{count}} {{what}} with a car park nearby around {{where}}:',
+    foodFound_0_one:
+      'Found 1 place ({{what}}) around {{where}}. With a car park nearby: {{withPark}}. Easiest parking first:',
+    foodFound_0_other:
+      'Found {{count}} {{what}} around {{where}}. With a car park nearby: {{withPark}}. Easiest parking first:',
+    foodFound_1_one:
+      'Found 1 place ({{what}}) for {{where}}. With a car park within 300 m: {{withPark}}.',
+    foodFound_1_other:
+      'Found {{count}} {{what}} for {{where}}. With a car park within 300 m: {{withPark}}.',
+    foodFoundPark_one: 'Found 1 place ({{what}}) with a car park nearby around {{where}}:',
+    foodFoundPark_other: 'Found {{count}} {{what}} with a car park nearby around {{where}}:',
     dishNamed_one: 'Found {{count}} place with "{{dish}}" in its name and put it at the top.',
     dishNamed_other:
       'Found {{count}} places with "{{dish}}" in their name and put them at the top.',
@@ -680,7 +699,8 @@ const en = {
     nearest: 'Sorted closest first.',
     wideNow: 'I looked in a wider area.',
     wideAlready: 'These are what come up in a wider area too.',
-    foodFoundFree: 'Found {{count}} {{what}} with free parking around {{where}}:',
+    foodFoundFree_one: 'Found 1 place ({{what}}) with free parking around {{where}}:',
+    foodFoundFree_other: 'Found {{count}} {{what}} with free parking around {{where}}:',
     foodNoFreePark:
       'There are {{what}} around {{where}}, but none I know of with free parking. What now?',
     parkNoFree: "I don't know of any free car parks around {{where}}. What now?",

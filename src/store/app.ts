@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { createJSONStorage, persist, type PersistStorage, type StateStorage } from 'zustand/middleware';
+import {
+  createJSONStorage,
+  persist,
+  type PersistStorage,
+  type StateStorage,
+} from 'zustand/middleware';
 
 import { DEFAULT_CITY, isAvailableCity, setActiveCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
@@ -45,9 +50,7 @@ export function addRecentSearch(list: string[], q: string): string[] {
  * unreadable value (an app killed mid-write, a full disk) reads as nothing stored, so the app
  * starts with defaults instead of hanging on the splash screen, and a failed write is dropped.
  */
-export function safeJSONStorage<S>(
-  getStorage: () => StateStorage,
-): PersistStorage<S> {
+export function safeJSONStorage<S>(getStorage: () => StateStorage): PersistStorage<S> {
   const json = createJSONStorage<S>(getStorage)!;
   return {
     getItem: async (name) => {

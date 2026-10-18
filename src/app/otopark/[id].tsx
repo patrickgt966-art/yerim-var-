@@ -11,6 +11,7 @@ import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
+import { tariffBandLabel, tariffSourceLabel } from '@/components/tariffLabel';
 import { Txt } from '@/components/Txt';
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { findAppleParking } from '@/data/appleParkings';
@@ -230,7 +231,7 @@ export default function ParkingDetail() {
           {tariff ? (
             <>
               {tariff.bands.map((b) => (
-                <Row key={b.label} label={b.label} value={`₺${b.price}`} />
+                <Row key={b.label} label={tariffBandLabel(b.label, t)} value={`₺${b.price}`} />
               ))}
               {!!tariff.monthly && <Row label={t('detail.monthly')} value={`₺${tariff.monthly}`} />}
               {!!tariff.freeMinutes && (
@@ -239,7 +240,7 @@ export default function ParkingDetail() {
                 </Txt>
               )}
               <Txt variant="caption" secondary>
-                {t('detail.tariffSource', { source: tariff.source })}
+                {t('detail.tariffSource', { source: tariffSourceLabel(tariff.source, t) })}
               </Txt>
             </>
           ) : (
