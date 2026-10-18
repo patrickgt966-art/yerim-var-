@@ -51,7 +51,9 @@ export default function RestaurantDetail() {
   const r = getRestaurant(id ?? '');
   const target = useMemo(() => (r ? { lat: r.lat, lng: r.lng } : null), [r]);
   const tel = r?.phone ? telUrl(r.phone) : null;
-  const { ranked, isLoading } = useRanked(target, NEAR_RADIUS_M);
+  const { ranked, isLoading, isPlaceholderData, isFetching } = useRanked(target, NEAR_RADIUS_M);
+  // Only the bundled car parks are known while the first live download runs: not yet "none".
+  const parkingsLoading = isLoading || (isPlaceholderData && isFetching);
   const isFav = useIsFavoriteRestaurant(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavoriteRestaurant);
   const mapRef = useRef<MapView>(null);
@@ -190,7 +192,7 @@ export default function RestaurantDetail() {
             {t('food.parkTitle')}
           </Txt>
           {list.length === 0 ? (
-            <Txt secondary>{isLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
+            <Txt secondary>{parkingsLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
           ) : (
             list.map((p, i) => (
               <View key={p.id} style={{ gap: 6 }}>
