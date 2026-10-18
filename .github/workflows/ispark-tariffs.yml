@@ -22,13 +22,21 @@ concurrency:
 jobs:
   tariffs:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - run: node scripts/fetch-ispark-tariffs.mjs
+
+      # The app's checks on the new data, here: a push or pull request made with GITHUB_TOKEN
+      # does not start other workflows, so ci.yml never runs on it. Failing checks stop the run
+      # before anything is committed or proposed.
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test -- --ci
 
       # Script changes on a working branch: commit the tariffs to that branch.
       - name: Commit to branch
@@ -50,5 +58,8 @@ jobs:
           branch: data/ispark-tariffs
           title: 'chore(data): refresh İSPARK tariffs'
           commit-message: 'chore(data): refresh İSPARK tariffs'
-          body: 'Automated run of `scripts/fetch-ispark-tariffs.mjs`.'
+          body: |
+            Automated run of `scripts/fetch-ispark-tariffs.mjs`.
+
+            Typecheck and tests already passed on these tariffs in the İSPARK tariffs run. CI does not start on its own for this pull request (it was opened with the workflow token); close and reopen it to run CI.
           add-paths: data/tariffs-ispark.json

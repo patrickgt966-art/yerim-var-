@@ -15,6 +15,12 @@ on:
 permissions:
   contents: read
 
+# The live evals share the org's per-minute token limit: one at a time, the next one waits
+# (same group as ai-eval-big.yml and ai-eval-extreme.yml).
+concurrency:
+  group: ai-eval-live
+  cancel-in-progress: false
+
 jobs:
   eval:
     runs-on: ubuntu-latest
