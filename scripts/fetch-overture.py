@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Fetch food places in Izmir and Istanbul provinces from Overture Maps and write
-data/food-overture-<city>.json (deduped against data/food-<city>.json from OpenStreetMap).
+"""Fetch food places in the İzmir, İstanbul, Ankara, Bursa and Antalya provinces (CITIES) from
+Overture Maps and write data/food-overture-<city>.json (deduped against data/food-<city>.json
+from OpenStreetMap).
+
+An Overture outage never fails the run: the data-refresh job runs this after the (hours-long)
+OpenStreetMap refresh, and a failing step would throw that refresh away. Failed cities keep their
+files, are noted in data/sources-report.md and raise a GitHub Actions error annotation;
+YERIM_OVERTURE_STRICT=1 makes a total failure exit 1 instead.
 
 Usage: [OVERTURE_RELEASE=2025-10-22.0] [YERIM_CITIES=istanbul] python scripts/fetch-overture.py
 Needs Python 3.11+, pyarrow and shapely (pip install pyarrow shapely).
@@ -751,8 +757,14 @@ def main():
     if unknown:
         fail(f"unknown city {', '.join(unknown)} (valid: {', '.join(x['id'] for x in CITIES)})")
     cities = [c for c in CITIES if not wanted or c['id'] in wanted]
-    s3 = open_s3()
-    release = find_release(s3)
+    try:
+        s3 = open_s3()
+        release = find_release(s3)
+    except Exception as e:  # bucket or listing down: every city keeps its file
+        for city in cities:
+            append_failure(city, f'Overture açılamadı ({type(e).__name__}: {e})')
+        give_up(f'Overture unreachable ({type(e).__name__}: {e}); no city updated')
+        return
     print(f'Overture release: {release}')
     # The web-check budget and URL cap are split in proportion to each city's candidate count;
     # the cache and blocklist are shared (keyed by URL / id).
@@ -775,8 +787,17 @@ def main():
             print(f"error: {city['id']}: {e}", file=sys.stderr)
             failed.append(city['id'])
             append_failure(city, f'hata ({type(e).__name__}: {e})')
-    # Succeeded cities must still be committed, so only a total failure fails the step.
+    # Succeeded cities (and the OSM refresh before this step) must still be committed.
     if failed and len(failed) == len(cities):
+        give_up(f"every city failed ({', '.join(failed)})")
+    elif failed:
+        print(f"::warning::Overture: {', '.join(failed)} failed; their files were kept")
+
+
+def give_up(msg):
+    """A total Overture failure: annotate the run; fail it only when YERIM_OVERTURE_STRICT=1."""
+    print(f'::error::Overture: {msg}')
+    if os.environ.get('YERIM_OVERTURE_STRICT') == '1':
         sys.exit(1)
 
 

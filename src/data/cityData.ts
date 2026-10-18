@@ -3,10 +3,10 @@ import type { FoodRecord } from './restaurants';
 import type { StaticRecord } from './staticParkings';
 
 /**
- * The bundled data files of each city. Every loader `require`s inside a
- * switch, so a city's JSON is only parsed once that city is in use. A city
- * without files (not open yet) gets an empty file. The İstanbul, Ankara, Bursa and Antalya files are
- * placeholders until the data-refresh workflow fills them, so every field
+ * The bundled data files of each city (all five are filled by the data-refresh workflow:
+ * scripts/fetch-sources.mjs and scripts/fetch-overture.py). Every loader `require`s inside a
+ * switch, so a city's JSON is only parsed once that city is in use. A city without files (not
+ * open yet) gets an empty file, and a refresh may leave out optional keys, so every field
  * except `items` is optional.
  */
 export type PlaceRow = { n: string; a: number; o: number; k: string };
