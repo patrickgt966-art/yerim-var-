@@ -52,7 +52,7 @@ const tr = {
     next: 'Devam',
     cityTitle: 'Hangi şehirdesin?',
     citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
-    citySourceIspark: 'Canlı otopark: İSPARK, 243 otopark',
+    citySourceIspark: 'Canlı otopark: İSPARK',
     citySourceStatic: 'Canlı otopark verisi yok; otoparklar kapasite bilgisiyle',
     cityA11yRow: '{{name}}, {{source}}',
     cityA11ySelected: '{{name}}, seçili, {{source}}',
@@ -66,7 +66,7 @@ const tr = {
     aiHonest: 'Restoran ve otopark bilgileri açık veriden gelir; yapay zeka bilgi uydurmaz.',
     locTitle: 'Yakınındakileri göster',
     locBody:
-      'Konumunu yalnızca yakındaki yerleri sıralamak için kullanırız. Konumun cihazından çıkmaz. İzin vermesen de aramayı kullanabilirsin.',
+      "Konumunu yakındaki yerleri sıralamak için kullanırız; sunucumuza hiç gönderilmez. Otopark araması ve adres bulma için yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar'a gider. İzin vermesen de aramayı kullanabilirsin.",
     allow: 'Konuma izin ver',
     skip: 'Şimdilik değil',
     a11yStart: 'Başla, uygulamaya geç',
@@ -241,7 +241,7 @@ const tr = {
     sourceIspark: 'İBB Açık Veri / İSPARK',
     sourceMock: 'Deneme bilgisi (gerçek değil)',
     sourceIzelman:
-      'İzmir Büyükşehir Belediyesi Açık Veri (CC BY 4.0), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
+      'İzmir Büyükşehir Belediyesi Açık Veri Portalı (İzmir Büyükşehir Belediyesi Açık Veri Lisansı), İzelman otopark envanteri, 2022. Boş yer bilgisi yok.',
     sourceBursa: 'Bursa Büyükşehir Belediyesi Açık Yeşil, otopark veri seti. Boş yer bilgisi yok.',
     sourceApple: 'Apple Haritalar. Boş yer bilgisi yok.',
     sourceOsm:
@@ -332,11 +332,11 @@ const tr = {
     noAccount: 'Hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Boş yer sayıları: İzmir için İzmir Büyükşehir Belediyesi Açık Veri Portalı (CC BY 4.0), İstanbul için İBB Açık Veri / İSPARK. Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL). Bu otoparklarda boş yer bilgisi yok. Restoranlar: OpenStreetMap (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Yerim Var resmî bir belediye uygulaması değildir.',
+      'Boş yer sayıları: İzmir için İzmir Büyükşehir Belediyesi Açık Veri Portalı (İzmir Büyükşehir Belediyesi Açık Veri Lisansı), İstanbul için İBB Açık Veri / İSPARK. Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL). Bu otoparklarda boş yer bilgisi yok. Restoranlar: OpenStreetMap (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Yerim Var resmî bir belediye uygulaması değildir.',
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
-      "Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Arama yaparken yazdığın metin ve yaklaşık bölgen (~100 m) Apple Haritalar'a gider. Belediyeye giden tek istek boş yer bilgisidir. ✨ Akıllı yardım kullanıldığında sohbete yazdığın mesaj, cevap için Anthropic'in Claude yapay zekâsına gönderilir; konumun gönderilmez. Günlük hak sayacı için rastgele bir cihaz numarası tutulur, 2 gün içinde silinir.",
+      "Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Konumun sunucumuza hiç gönderilmez. Arama yaparken yazdığın metin, otopark araması ve adres bulma için de yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar'a gider. Belediyeye giden tek istek boş yer bilgisidir. ✨ Akıllı yardım açıksa sohbete yazdığın mesaj, cevap için Anthropic'in Claude yapay zekâsına gönderilir; yanında yakındaki yerlerin adları ve yürüme süreleri de gider, bu yüzden yaklaşık bölgen anlaşılabilir. Koordinatların gönderilmez. Günlük hak sayacı için rastgele bir cihaz numarası tutulur, 2 gün içinde silinir.",
     licenses: 'Açık kaynak lisansları',
     licensesBody:
       'Kod: MIT. Yazı tipleri Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
@@ -651,7 +651,7 @@ const tr = {
     aiDown: 'Yapay zekaya ulaşılamadı; kendi bilgimle cevapladım.',
     aiConsentTitle: '✨ Akıllı yardım',
     aiConsentBody:
-      "Açarsan sohbete yazdığın mesajlar, cevap için Anthropic'in Claude yapay zekâsına gönderilir. Konumun gönderilmez. Günde 10 mesaj ücretsiz.",
+      "Açarsan, bundan sonra sohbete yazdığın mesajlar cevap için Anthropic'in Claude yapay zekâsına gönderilir. Yanında yakındaki yerlerin adları ve yürüme süreleri de gider, bu yüzden yaklaşık bölgen anlaşılabilir; koordinatların hiç gönderilmez. Günde 10 mesaj ücretsiz.",
     aiConsentYes: 'Aç',
     aiConsentNo: 'Şimdilik hayır',
     aiSetting: '✨ Akıllı yardım',

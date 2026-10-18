@@ -12,6 +12,10 @@ const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({ router: { replace: (...a: unknown[]) => mockReplace(...a) } }));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('@/lib/location', () => ({ currentLocation: jest.fn() }));
+const mockRequestPermission = jest.fn(async () => ({ granted: true }));
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: () => mockRequestPermission(),
+}));
 
 // Reanimated needs the native worklets runtime: static stand-ins are enough here.
 jest.mock('react-native-reanimated', () => {
@@ -70,7 +74,7 @@ describe('onboarding', () => {
     await press('Başla, uygulamaya geç');
     expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
     expect(screen.getByText('Canlı otopark: İzmir Büyükşehir')).toBeTruthy();
-    expect(screen.getByText('Canlı otopark: İSPARK, 243 otopark')).toBeTruthy();
+    expect(screen.getByText('Canlı otopark: İSPARK')).toBeTruthy();
     // Ankara, Bursa and Antalya share the static-only line.
     expect(
       screen.getAllByText('Canlı otopark verisi yok; otoparklar kapasite bilgisiyle'),
@@ -183,16 +187,19 @@ describe('onboarding', () => {
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
   });
 
-  it('asks for the location, then finishes', async () => {
+  it('asks for the location, then finishes without waiting for a fix', async () => {
     await mount();
     await press('Başla, uygulamaya geç');
     await next();
     await next();
     (currentLocation as jest.Mock).mockClear();
+    mockRequestPermission.mockClear();
     await act(async () => {
       await fireEvent.press(screen.getByText('Konuma izin ver'));
     });
-    expect(currentLocation).toHaveBeenCalledWith(true);
+    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    // A GPS fix may never come indoors: the step does not wait for one.
+    expect(currentLocation).not.toHaveBeenCalled();
     expect(useApp.getState().onboarded).toBe(true);
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)');
   });

@@ -53,7 +53,7 @@ const en = {
     next: 'Next',
     cityTitle: 'Which city are you in?',
     citySourceIzmir: 'Live parking: İzmir Metropolitan Municipality',
-    citySourceIspark: 'Live parking: İSPARK, 243 car parks',
+    citySourceIspark: 'Live parking: İSPARK',
     citySourceStatic: 'No live parking data; car parks shown with capacity',
     cityA11yRow: '{{name}}, {{source}}',
     cityA11ySelected: '{{name}}, selected, {{source}}',
@@ -67,7 +67,7 @@ const en = {
     aiHonest: "Restaurant and car park info comes from open data; the AI doesn't make things up.",
     locTitle: "Show what's nearby",
     locBody:
-      "We only use your location to sort nearby places. It never leaves your device. You can still search if you don't allow it.",
+      "We use your location to sort nearby places; it is never sent to our server. For car park search and address lookup, a rounded location (about 100 m) is sent to Apple Maps. You can still search if you don't allow it.",
     allow: 'Allow location',
     skip: 'Not now',
     a11yStart: 'Get started and go to the app',
@@ -248,7 +248,7 @@ const en = {
     sourceIspark: 'İBB Open Data / İSPARK',
     sourceMock: 'Sample data (not real)',
     sourceIzelman:
-      'İzmir Metropolitan Municipality Open Data (CC BY 4.0), İzelman car park inventory, 2022. No free-space info.',
+      'İzmir Metropolitan Municipality Open Data Portal (İzmir Metropolitan Municipality Open Data License), İzelman car park inventory, 2022. No free-space info.',
     sourceBursa:
       'Bursa Metropolitan Municipality Açık Yeşil, car park dataset. No free-space info.',
     sourceApple: 'Apple Maps. No free-space info.',
@@ -341,11 +341,11 @@ const en = {
     noAccount: 'No account. Your favourites and active parking stay on this device only.',
     data: 'Data sources',
     dataBody:
-      'Free-space counts: İzmir Metropolitan Municipality Open Data Portal (CC BY 4.0) for İzmir, İBB Open Data / İSPARK for İstanbul. Other car parks and search suggestions: © OpenStreetMap contributors (ODbL). These car parks have no free-space info. Restaurants: OpenStreetMap (ODbL) and Overture Maps (CDLA-Permissive-2.0). Yerim Var is not an official municipal app.',
+      'Free-space counts: İzmir Metropolitan Municipality Open Data Portal (İzmir Metropolitan Municipality Open Data License) for İzmir, İBB Open Data / İSPARK for İstanbul. Other car parks and search suggestions: © OpenStreetMap contributors (ODbL). These car parks have no free-space info. Restaurants: OpenStreetMap (ODbL) and Overture Maps (CDLA-Permissive-2.0). Yerim Var is not an official municipal app.',
     lastFetch: 'Last data fetch: {{time}}',
     privacy: 'Privacy',
     privacyBody:
-      "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. When you search, the text you type and your approximate area (~100 m) are sent to Apple Maps. The only request sent to the municipality is for free-space info. When ✨ Smart help is used, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply; your location is not sent. A random device ID is kept for the daily usage counter and deleted within 2 days.",
+      "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. Your location is never sent to our server. When you search, the text you type is sent to Apple Maps, and for car park search and address lookup so is a rounded location (about 100 m). The only request sent to the municipality is for free-space info. When ✨ Smart help is on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. A random device ID is kept for the daily usage counter and deleted within 2 days.",
     licenses: 'Open source licenses',
     licensesBody:
       'Code: MIT. Fonts Bricolage Grotesque and Plus Jakarta Sans: SIL Open Font License 1.1.',
@@ -683,7 +683,7 @@ const en = {
     aiDown: "Couldn't reach the AI; I answered with what I know.",
     aiConsentTitle: '✨ Smart help',
     aiConsentBody:
-      "If you turn this on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply. Your location is not sent. 10 free messages a day.",
+      "If you turn this on, the messages you type from then on are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. 10 free messages a day.",
     aiConsentYes: 'Turn on',
     aiConsentNo: 'Not now',
     aiSetting: '✨ Smart help',

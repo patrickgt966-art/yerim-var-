@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
+import { roundArea } from '@/data/appleParkings';
 import { cityById, isInCityArea } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
@@ -59,7 +60,8 @@ function PickLocation() {
     clearTimeout(timer.current);
     const id = ++lookupId.current;
     timer.current = setTimeout(() => {
-      void reverseStreet(p).then((a) => {
+      // Apple's geocoder only gets a ~100 m point (what the privacy texts promise), never the GPS fix.
+      void reverseStreet(roundArea(p)).then((a) => {
         if (id === lookupId.current) setStreet(a?.street ?? null);
       });
     }, REVERSE_DEBOUNCE_MS);

@@ -1,7 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { PBadge } from '@/components/PBadge';
@@ -26,6 +26,9 @@ import { parseLatLng } from '@/lib/params';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors, useTabBarSpace } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+/** Same short wait as the pin picker; the next visit checks again. */
+const LOCATION_TIMEOUT_MS = 3000;
 
 type Mode = 'parkings' | 'food';
 
@@ -71,7 +74,8 @@ export default function MapTab() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      void currentLocation(false).then((loc) => {
+      // Never wait long for a fix: without one the map opens at the city centre.
+      void currentLocation(false, LOCATION_TIMEOUT_MS).then((loc) => {
         if (cancelled) return;
         const inside = !!loc && isInCityArea(loc, city);
         setOutside(!!loc && !inside);
@@ -129,7 +133,15 @@ export default function MapTab() {
       : null,
   );
 
-  if (!mapCenter) return <View style={{ flex: 1 }} />;
+  if (!mapCenter) {
+    return (
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}
+      >
+        <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
+      </View>
+    );
+  }
 
   const bigText = fontScale > 1.2;
   const showBanner =
