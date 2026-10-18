@@ -310,8 +310,9 @@ export default {
       if (understandReq) {
         const cards = understandReq.lastCards;
         const system = cards
-          ? `${understandSystem(understandReq.city)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
-          : understandSystem(understandReq.city) + langNote(understandReq.lang);
+          ? `${understandSystem(understandReq.city, understandReq.section)}\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.${langNote(understandReq.lang)}`
+          : understandSystem(understandReq.city, understandReq.section) +
+            langNote(understandReq.lang);
         // An unusable answer was billed: "unknown", and the use is kept.
         const unknown = async (outcome: Outcome = 'error') =>
           respond(outcome, {
@@ -365,7 +366,8 @@ export default {
         return respond('ok', said);
       }
 
-      // Candidates carry facts only (no names); the output schemas bound every index.
+      // Restaurant candidates carry names (to judge fit; the app drops free text that repeats
+      // one); the rest are facts, and the output schemas bound every index.
       if (pickReq) {
         const park = pickReq.candidates[0]?.kind === 'parking';
         const n = pickReq.candidates.length;

@@ -149,6 +149,30 @@ describe('city in the system prompts', () => {
   });
 });
 
+describe('the router prompt and the chat section', () => {
+  it('tells the router which chat the user is in', () => {
+    const food = understandSystem('izmir', 'food');
+    const park = understandSystem('izmir', 'park');
+    expect(food.startsWith(understandSystem('izmir'))).toBe(true);
+    expect(food).toContain('yemek bölümünde');
+    expect(food).toMatch(/ilçe adı .* yemek aramasıdır: food true/);
+    expect(park).toContain('otopark bölümünde');
+    expect(park).toMatch(/otopark aramasıdır: food false/);
+    expect(understandSystem('izmir')).not.toContain('BÖLÜM');
+  });
+
+  it('lets the chat reply steer back to parking by name', () => {
+    const p = understandSystem('izmir');
+    expect(p).toContain('yemek ya da otoparka dön');
+    expect(p).not.toMatch(/"ücretsiz", otopark,/);
+    expect(p).toContain('"otopark" sözcüklerini kullanabilirsin');
+  });
+
+  it('tells the car park picker never to pick a closed one', () => {
+    expect(parkPickSystem('izmir')).toContain('"closed" olan bir otoparkı asla seçme');
+  });
+});
+
 describe('CitySchema', () => {
   it('accepts exactly the open cities', () => {
     for (const c of CITIES) expect(CitySchema.safeParse(c.id).success).toBe(c.available);
