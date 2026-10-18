@@ -423,6 +423,7 @@ const tr = {
     footerOverture:
       'Veri: Overture Maps (CDLA-Permissive-2.0). Bilgi eski olabilir. Yer kapanmış ya da taşınmış olabilir.',
     unverified: 'Bilgi eski olabilir',
+    estimatedKind: 'Türü tahmini',
     a11yUnverified: 'Bu kaydın bilgileri eski olabilir; yer kapanmış ya da taşınmış olabilir',
     kinds: {
       restaurant: 'Restoran',

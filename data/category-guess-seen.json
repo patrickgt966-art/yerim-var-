@@ -1,0 +1,4 @@
+{
+  "$comment": "Place ids scripts/classify-places.ts has already asked about and that need no entry in data/category-guess.json (unknown, low confidence, or the same category the rules give). Read only by the script, never bundled by the app.",
+  "seen": []
+}

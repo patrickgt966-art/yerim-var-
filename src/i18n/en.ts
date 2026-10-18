@@ -438,6 +438,7 @@ const en = {
     footerOverture:
       'Data: Overture Maps (CDLA-Permissive-2.0). Info may be out of date. The place may have closed or moved.',
     unverified: 'Info may be out of date',
+    estimatedKind: 'Type estimated',
     a11yUnverified: 'This listing may be out of date; the place may have closed or moved',
     kinds: {
       restaurant: 'Restaurant',

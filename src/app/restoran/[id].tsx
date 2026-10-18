@@ -14,7 +14,14 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import { distanceMeters, walkMinutes } from '@/data/geo';
-import { cuisineLabels, dietLabels, getRestaurant, kindLabel, telUrl } from '@/data/restaurants';
+import {
+  cuisineLabels,
+  dietLabels,
+  getRestaurant,
+  isEstimatedKind,
+  kindLabel,
+  telUrl,
+} from '@/data/restaurants';
 import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongRestaurant } from '@/lib/report';
 import { placeShareText, shareText } from '@/lib/share';
@@ -88,6 +95,7 @@ export default function RestaurantDetail() {
 
   const meta = [
     kindLabel(r.kind, t),
+    isEstimatedKind(r) ? t('food.estimatedKind') : null,
     ...dietLabels(r.diets, t),
     ...cuisineLabels(r.cuisines, t),
     r.address,

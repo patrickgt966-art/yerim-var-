@@ -40,6 +40,7 @@ import {
   kindLabel,
   matchesCategory,
   getRestaurant,
+  isEstimatedKind,
   nearestParking,
   NEAREST_PARKING_RADIUS_M,
   rankRestaurants,
@@ -792,7 +793,7 @@ function isConversational(text: string, it: QueryIntent, wishes: Wish[]): boolea
   const named = () => {
     const hit = searchPlacesStrict(it.placeQuery, 1)[0];
     if (hit && qWords.every((w) => hasWordStart(fold(hit.name), w))) return true;
-    return allRestaurants().some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
+    return allRestaurants(true).some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
   };
   if (toks.some((w) => CONVO_STRONG.has(w))) return true;
   // A verb stem ("gireceğime", "bulamadım") is chit-chat, unless a name only starts like one.
@@ -1235,7 +1236,7 @@ async function answerText(
     !!it.dish &&
     dishProfile(fold(it.dish), false) !== null;
   if (!knownDish && folded.split(' ').length >= 2) {
-    const matches = allRestaurants().filter((r) => fold(r.name).startsWith(folded));
+    const matches = allRestaurants(true).filter((r) => fold(r.name).startsWith(folded));
     const first = matches[0];
     if (first) {
       const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
@@ -1489,7 +1490,7 @@ async function answerText(
         const hasAll = (hay: string) => qWords.every((w) => hasWordStart(hay, w));
         const named = it.cat
           ? []
-          : allRestaurants().filter(
+          : allRestaurants(true).filter(
               (r) =>
                 hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
             );
@@ -1696,10 +1697,14 @@ function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date, hit?: Dish
   const catKey = categoryOf(r);
   // deps.t is the plain i18n function; cuisineLabels wants i18next's TFunction type.
   const tf = deps.t as Parameters<typeof cuisineLabels>[1];
-  const label = cuisineLabels(r.cuisines, tf)[0] ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  const cuisine = cuisineLabels(r.cuisines, tf)[0];
+  const label = cuisine ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  // A category that is only the AI's estimate says so (a cuisine tag is data, no marker).
+  const marked =
+    !cuisine && label && isEstimatedKind(r) ? `${label} (${deps.t('food.estimatedKind')})` : label;
   const near = row.parking ? nearestParking(r, deps.parkings) : null;
   return {
-    ...(label && label.length <= 20 ? { cat: label } : {}),
+    ...(label && label.length <= 20 ? { cat: marked } : {}),
     open: r.openingHours ? openState({ openingHoursText: r.openingHours }, now) : 'unknown',
     parkingPaid: near?.parking.isPaid ?? null,
     // row.parking.free is already null unless the reading is fresh (same rules as visibleFree).
@@ -2475,7 +2480,9 @@ function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): Pic
   const kind = kindLabel(r.kind, tf);
   // Diets come right after the category: they are data, not a guess, and must not be clipped.
   const parts = [
-    ...(cat ? [t(`food.cats.${cat}`)] : []),
+    ...(cat
+      ? [t(`food.cats.${cat}`) + (isEstimatedKind(r) ? ` (${t('food.estimatedKind')})` : '')]
+      : []),
     ...dietLabels(r.diets, tf),
     ...(kind ? [kind] : []),
     ...cuisineLabels(r.cuisines, tf),
