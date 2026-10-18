@@ -7,6 +7,7 @@ import { parkCost } from '@/data/tariffs';
 import { durationText } from '@/lib/format';
 import { needsStillParkedPrompt } from '@/lib/park';
 import { backToCar } from '@/lib/parkHere';
+import { maybeAskForRating } from '@/lib/rating';
 import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
 import { brand, fonts, HIT } from '@/theme';
@@ -15,11 +16,24 @@ import { Button } from './Button';
 import { ParkReminder } from './ParkReminder';
 import { Txt } from './Txt';
 
+/** A park ended with "Bitir" counts as a done park (for the rating prompt) after this long. */
+const COUNTS_AS_DONE_MS = 10 * 60_000;
+/** Lets the end confirm close before the rating sheet may appear. */
+const RATING_DELAY_MS = 1500;
+
 /** Shared by home and Favoriler so the wording and the confirm are identical. */
 export function confirmEndPark(t: TFunction, endPark: () => void) {
+  const end = () => {
+    const active = useApp.getState().active;
+    const lasted = active ? Date.now() - new Date(active.startedAt).getTime() : 0;
+    endPark();
+    if (lasted < COUNTS_AS_DONE_MS) return;
+    useApp.setState((s) => ({ parksDone: s.parksDone + 1 }));
+    setTimeout(() => void maybeAskForRating(), RATING_DELAY_MS);
+  };
   Alert.alert(t('favorites.endConfirmTitle'), t('favorites.endConfirmBody'), [
     { text: t('common.cancel'), style: 'cancel' },
-    { text: t('favorites.endConfirmYes'), style: 'destructive', onPress: endPark },
+    { text: t('favorites.endConfirmYes'), style: 'destructive', onPress: end },
   ]);
 }
 

@@ -115,6 +115,10 @@ type State = {
   /** The reminder length (minutes) the user picked last; a new park schedules it by itself. */
   lastReminderMin: number | null;
   setLastReminderMin: (m: number | null) => void;
+  /** Parks the user ended with "Bitir" after at least 10 minutes; gates the rating prompt. */
+  parksDone: number;
+  /** When the App Store rating sheet was last requested (ISO), or null. */
+  ratingAskedAt: string | null;
   setCity: (id: string) => void;
   setOnboarded: (v: boolean) => void;
   setHome: (p: SavedPlace | null) => void;
@@ -155,6 +159,8 @@ export const useApp = create<State>()(
       clearRecentSearches: () => set({ recentSearches: [] }),
       lastReminderMin: null,
       setLastReminderMin: (lastReminderMin) => set({ lastReminderMin }),
+      parksDone: 0,
+      ratingAskedAt: null,
       // Unavailable or unknown cities are ignored. The data layer follows the store.
       // Recent searches name places of the old city, so a real switch drops them; favorites,
       // Ev/İş and a running park are the user's own and stay.
@@ -233,6 +239,8 @@ export const useApp = create<State>()(
         mapApp,
         recentSearches,
         lastReminderMin,
+        parksDone,
+        ratingAskedAt,
       }) => ({
         onboarded,
         home,
@@ -246,6 +254,8 @@ export const useApp = create<State>()(
         mapApp,
         recentSearches,
         lastReminderMin,
+        parksDone,
+        ratingAskedAt,
       }),
     },
   ),

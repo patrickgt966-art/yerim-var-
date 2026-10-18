@@ -21,6 +21,7 @@ import {
   understandSystem,
   type Understanding,
 } from '../../../src/lib/ai/protocol';
+import { ADMIN_PAGE_HTML } from './adminPage';
 import {
   aiLimits,
   ipKey,
@@ -273,6 +274,21 @@ async function adminRoute(req: Request, env: Env, path: string): Promise<Respons
   return json({ error: 'not_found' }, 404);
 }
 
+/** GET /admin: the maintainer's page. Only the UI; it holds no secret and no data. */
+function adminPageRoute(env: Env): Response {
+  if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404);
+  return new Response(ADMIN_PAGE_HTML, {
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-frame-options': 'DENY',
+      'referrer-policy': 'no-referrer',
+      'content-security-policy':
+        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'",
+    },
+  });
+}
+
 type Outcome = 'ok' | 'refusal' | 'error';
 
 export default {
@@ -282,6 +298,7 @@ export default {
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
     if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
     if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
+    if (req.method === 'GET' && path === '/admin') return adminPageRoute(env);
     if (path.startsWith('/admin/')) return adminRoute(req, env, path);
     if (
       req.method !== 'POST' ||

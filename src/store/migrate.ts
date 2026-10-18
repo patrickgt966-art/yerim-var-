@@ -114,6 +114,14 @@ export function sanitizeAppState(persisted: unknown): unknown {
     !(REMINDER_CHOICES as readonly unknown[]).includes(s.lastReminderMin)
   )
     s.lastReminderMin = null;
+  if ('parksDone' in s)
+    s.parksDone = finite(s.parksDone) && s.parksDone >= 0 ? Math.floor(s.parksDone) : 0;
+  if (
+    'ratingAskedAt' in s &&
+    s.ratingAskedAt != null &&
+    !(typeof s.ratingAskedAt === 'string' && timeOf(s.ratingAskedAt) != null)
+  )
+    s.ratingAskedAt = null;
   return s;
 }
 
@@ -130,6 +138,8 @@ const DATA_KEYS = [
   'recentSearches',
   'mapApp',
   'lastReminderMin',
+  'parksDone',
+  'ratingAskedAt',
 ] as const;
 
 /** Only the persisted data keys, sanitised: a stray key can never overwrite an action. */

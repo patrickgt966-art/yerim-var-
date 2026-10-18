@@ -164,6 +164,29 @@ describe('/admin', () => {
     expect((await admin(env, '/admin/flagged?city=izmir', {}, '')).status).toBe(401);
   });
 
+  it('serves the maintainer page only with ADMIN_TOKEN, as plain UI under a strict CSP', async () => {
+    const page = (env: Env) =>
+      worker.fetch(
+        new Request('https://w.test/admin', { headers: { 'CF-Connecting-IP': '7.7.7.7' } }),
+        env,
+      );
+    const off = await page(envOf(fakeKV()));
+    expect(off.status).toBe(404);
+    expect(await off.json()).toEqual({ error: 'not_found' });
+    const res = await page({ ...envOf(fakeKV()), ADMIN_TOKEN: 'sekret' } as Env);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+    expect(res.headers.get('referrer-policy')).toBe('no-referrer');
+    expect(res.headers.get('content-security-policy')).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'",
+    );
+    const body = await res.text();
+    expect(body).toContain('Yönetici anahtarı');
+    expect(body).not.toContain('sekret');
+  });
+
   it('lists flagged places; hide hides them for everyone, keep clears the reports', async () => {
     const env = { ...envOf(fakeKV()), ADMIN_TOKEN: 'sekret' } as Env;
     await flagIt(env);

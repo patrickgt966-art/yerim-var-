@@ -37,6 +37,10 @@ Her yapay zekâ çağrısı için tek satır JSON yazılır: `{"endpoint":"/unde
 cd server/yerim-ai && npx wrangler tail --format pretty
 ```
 
+## Yönetici sayfası
+
+İşaretlenen yerleri görmek ve gizlemek için tarayıcıda `https://<worker>/admin` adresini aç ve yönetici anahtarını (`ADMIN_TOKEN`) gir; anahtar yalnızca o sekmenin `sessionStorage` alanında kalır, sayfanın kendisinde anahtar ya da veri yoktur. `ADMIN_TOKEN` tanımlı değilse sayfa 404 döner. `GET /admin/flagged?city=` ve `POST /admin/review` için `curl` komutları (`Authorization: Bearer <ADMIN_TOKEN>`) eskisi gibi çalışır.
+
 ## Gizlilik
 
 Gönderilenler: mesaj metni, kısa sohbet geçmişi, seçili şehrin kimliği, rastgele cihaz kimliği ve `/pick` için uygulamanın kendi verisinden yakındaki yerlerin herkese açık adı, türü ve bilgileri (yürüme süresi, otopark uzaklığı, ücretsiz mi, boş yer, açık mı). Konum (koordinat) asla gönderilmez. Hak sayaçları (cihaz kimliği ve IP adresine bağlı) `QuotaCounter` Durable Object'inde tutulur ve en geç 49 saat içinde silinir: süreleri ilk yazıldıkları anda 48 saat olarak konur, sonraki yazmalar uzatmaz; süresi dolanları saatlik bir alarm siler.
