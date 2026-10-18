@@ -115,7 +115,7 @@ GET https://api.ibb.gov.tr/ispark/Park
 GET https://api.ibb.gov.tr/ispark/ParkDetay?id=<parkID>
 ```
 
-- `Park`: anahtarsız, JSON dizi, 243 kayıt (son örnekte 244). Alanlar: `parkID`, `parkName`, `lat` ve `lng` (metin), `capacity`, `emptyCapacity`, `workHours` ("24 Saat"), `parkType` ("KAPALI OTOPARK", "AÇIK OTOPARK"…), `freeTime` (dakika), `district`, `isOpen` (1/0). Uygulama bu uç noktayı kullanır (`src/data/isparkProvider.ts`); biçim örnekle uyuşuyor.
+- `Park`: anahtarsız, JSON dizi, yaklaşık 244 kayıt. Alanlar: `parkID`, `parkName`, `lat` ve `lng` (metin), `capacity`, `emptyCapacity`, `workHours` ("24 Saat"), `parkType` ("KAPALI OTOPARK", "AÇIK OTOPARK"…), `freeTime` (dakika), `district`, `isOpen` (1/0). Uygulama bu uç noktayı kullanır (`src/data/isparkProvider.ts`); biçim örnekle uyuşuyor.
 - **Zaman damgası yok** (listede). Tazelik İzmir'deki gibi indirme anından ölçülür.
 - `ParkDetay?id=`: ek olarak `updateDate` ("16.10.2026 18:45:25"), `monthlyFee`, `tariff` ("0-1 Saat : 110,00;1-2 Saat : 140,00;…"), `address` ve `areaPolygon`. Uygulama bunu çalışırken çağırmaz: `scripts/fetch-ispark-tariffs.mjs` her otoparkın `tariff` ve `monthlyFee` alanlarını `data/tariffs-ispark.json` dosyasına yazar (244 otopark, haftalık, `.github/workflows/ispark-tariffs.yml`), uygulama bu dosyayı gömülü taşır ve "Resmi tarife" olarak gösterir.
 - Doğrulanamayanlar: güncelleme sıklığı, yanıt başlıkları, veri lisansı, telefondan erişim.
