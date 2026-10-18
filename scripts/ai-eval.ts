@@ -115,6 +115,14 @@ function intentFromUnderstanding(u: Understanding, text: string, want?: string):
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** As the Worker's cachedSystem: the fixed prompt is cached across cases. */
+const cachedSystem = (text: string) => [
+  { type: 'text' as const, text, cache_control: { type: 'ephemeral' as const } },
+];
+
+/** 1234567 -> "1 234 567". */
+const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
 async function main(): Promise<void> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -126,6 +134,8 @@ async function main(): Promise<void> {
   const rows: Row[] = [];
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheWriteTokens = 0;
 
   for (const [i, c] of CHAT_CASES.entries()) {
     if (i > 0) await sleep(DELAY_MS);
@@ -134,11 +144,13 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 2048,
-        system: UNDERSTAND_SYSTEM,
+        system: cachedSystem(UNDERSTAND_SYSTEM),
         output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
         messages: [{ role: 'user', content: c.text }],
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       const understanding: Understanding =
         response.stop_reason === 'refusal' || !response.parsed_output
@@ -181,7 +193,7 @@ async function main(): Promise<void> {
   }
   lines.push(`Errors: ${rows.filter((r) => r.error).length}`);
   lines.push(
-    `Tokens: input ${inputTokens}, output ${outputTokens}, total ${inputTokens + outputTokens}`,
+    `Tokens: input ${fmt(inputTokens)} · cache read ${fmt(cacheReadTokens)} · cache write ${fmt(cacheWriteTokens)} · output ${fmt(outputTokens)}`,
   );
   // The hard cases: what the app does with real messages now.
   type Hard = { name: string; pass: boolean; misses: string[] };
@@ -201,11 +213,13 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 2048,
-        system: understandSystem(c.city),
+        system: cachedSystem(understandSystem(c.city)),
         output_config: { effort: 'low', format: zodOutputFormat(UnderstandingModelSchema) },
         messages: toMessages(c.history ?? [], c.text),
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       const u: Understanding =
         response.stop_reason === 'refusal' || !response.parsed_output
@@ -229,13 +243,15 @@ async function main(): Promise<void> {
       const response = await client.messages.parse({
         model: MODEL,
         max_tokens: 1024,
-        system: pickSystem('izmir'),
+        system: cachedSystem(pickSystem('izmir')),
         output_config: { effort: 'low', format: zodOutputFormat(pickModelSchema(n)) },
         messages: [
           { role: 'user', content: JSON.stringify({ text: c.text, candidates: c.candidates }) },
         ],
       });
       inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
       outputTokens += response.usage.output_tokens;
       return scorePick(c, toPick(response.parsed_output, n) as PickResponse | null);
     });
@@ -248,7 +264,7 @@ async function main(): Promise<void> {
     ...hard.filter((h) => !h.pass).map((h) => `  FAIL ${h.name} -> ${h.misses.join('; ')}`),
   );
   lines[lines.length - 1] =
-    `Tokens: input ${inputTokens}, output ${outputTokens}, total ${inputTokens + outputTokens}`;
+    `Tokens: input ${fmt(inputTokens)} · cache read ${fmt(cacheReadTokens)} · cache write ${fmt(cacheWriteTokens)} · output ${fmt(outputTokens)}`;
 
   const report = lines.join('\n');
   console.log(report);
