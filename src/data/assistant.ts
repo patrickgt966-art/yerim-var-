@@ -40,6 +40,7 @@ import {
   kindLabel,
   matchesCategory,
   getRestaurant,
+  isEstimatedKind,
   nearestParking,
   NEAREST_PARKING_RADIUS_M,
   rankRestaurants,
@@ -101,6 +102,8 @@ import { disabledInfo } from '@/lib/disabledSpots';
 import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { tariffFor } from '@/data/tariffs';
+import i18n from '@/i18n';
+import { daypartOf, foodReply, foundNameReply, parkReply } from '@/data/replyText';
 
 export type ChatPlace = { label: string; lat: number; lng: number };
 
@@ -790,7 +793,7 @@ function isConversational(text: string, it: QueryIntent, wishes: Wish[]): boolea
   const named = () => {
     const hit = searchPlacesStrict(it.placeQuery, 1)[0];
     if (hit && qWords.every((w) => hasWordStart(fold(hit.name), w))) return true;
-    return allRestaurants().some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
+    return allRestaurants(true).some((r) => qWords.every((w) => hasWordStart(fold(r.name), w)));
   };
   if (toks.some((w) => CONVO_STRONG.has(w))) return true;
   // A verb stem ("gireceğime", "bulamadım") is chit-chat, unless a name only starts like one.
@@ -1233,7 +1236,7 @@ async function answerText(
     !!it.dish &&
     dishProfile(fold(it.dish), false) !== null;
   if (!knownDish && folded.split(' ').length >= 2) {
-    const matches = allRestaurants().filter((r) => fold(r.name).startsWith(folded));
+    const matches = allRestaurants(true).filter((r) => fold(r.name).startsWith(folded));
     const first = matches[0];
     if (first) {
       const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
@@ -1262,7 +1265,7 @@ async function answerText(
           ]
         : [];
       const found: BotMessage = {
-        text: t('chat.foundName', { name: first.name, count: matches.length }),
+        text: foundNameReply(first.name, matches.length, t, text, i18n.language),
         cards,
         actions,
       };
@@ -1487,7 +1490,7 @@ async function answerText(
         const hasAll = (hay: string) => qWords.every((w) => hasWordStart(hay, w));
         const named = it.cat
           ? []
-          : allRestaurants().filter(
+          : allRestaurants(true).filter(
               (r) =>
                 hasAll(fold(r.name)) || r.cuisines.some((c) => hasAll(fold(c.replace(/_/g, ' ')))),
             );
@@ -1694,10 +1697,14 @@ function cardNarr(row: RestaurantRow, deps: AssistantDeps, now: Date, hit?: Dish
   const catKey = categoryOf(r);
   // deps.t is the plain i18n function; cuisineLabels wants i18next's TFunction type.
   const tf = deps.t as Parameters<typeof cuisineLabels>[1];
-  const label = cuisineLabels(r.cuisines, tf)[0] ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  const cuisine = cuisineLabels(r.cuisines, tf)[0];
+  const label = cuisine ?? (catKey ? deps.t(`food.cats.${catKey}`) : '');
+  // A category that is only the AI's estimate says so (a cuisine tag is data, no marker).
+  const marked =
+    !cuisine && label && isEstimatedKind(r) ? `${label} (${deps.t('food.estimatedKind')})` : label;
   const near = row.parking ? nearestParking(r, deps.parkings) : null;
   return {
-    ...(label && label.length <= 20 ? { cat: label } : {}),
+    ...(label && label.length <= 20 ? { cat: marked } : {}),
     open: r.openingHours ? openState({ openingHoursText: r.openingHours }, now) : 'unknown',
     parkingPaid: near?.parking.isPaid ?? null,
     // row.parking.free is already null unless the reading is fresh (same rules as visibleFree).
@@ -1987,19 +1994,36 @@ function runFood(
   const list = prefs ? preferRows(shown, prefs, hits) : shown;
 
   if (shown.length > 0) {
-    let text = ctx.requireParking
-      ? t(freeOnly ? 'chat.foodFoundFree' : 'chat.foodFoundPark', {
-          where,
-          count: shown.length,
-          what,
-        })
-      : variant(t, 'chat.foodFound', 2, seed, {
-          where,
-          count: ordered.length,
-          what,
-          withPark: withPark.length,
-        });
-    text = dishPrefix + text;
+    // Facts for the reply come from the cards the user will see (the first MAX_CARDS of the list).
+    const seen = list.slice(0, MAX_CARDS);
+    const firstPark = seen[0]?.parking;
+    const hoursStates = seen
+      .filter((row) => !!row.r.openingHours)
+      .map((row) => openState({ openingHoursText: row.r.openingHours }, now))
+      .filter((s) => s !== 'unknown');
+    let text = foodReply(
+      {
+        where,
+        what,
+        count: ctx.requireParking ? shown.length : ordered.length,
+        withPark: withPark.length,
+        requireParking: ctx.requireParking,
+        freeOnly,
+        nearestWalkMin: firstPark ? walkMinFromMeters(firstPark.distanceM) : null,
+        freeParkCount: seen.filter(
+          (row) => nearestParking(row.r, deps.parkings)?.parking.isPaid === false,
+        ).length,
+        openNowCount: hoursStates.filter((s) => s === 'open').length,
+        knownHoursCount: hoursStates.length,
+        daypart: daypartOf(istanbulClock(now).minutes),
+        // Places matched to a dish are named by what you can get there, never by a shop type.
+        dish: hits.size > 0 && dishName ? dishName : null,
+        dishPrefix,
+      },
+      t,
+      seed,
+      i18n.language,
+    );
     if (quality) text = t('chat.noRatings') + '\n' + text;
     if (prefs?.at) {
       const known = list.slice(0, MAX_CARDS).some((row) => openAt(row.r, prefs.at!) === 'open');
@@ -2202,9 +2226,25 @@ function runPark(
   const ranked = prefs ? preferParkings(list, prefs, now) : list;
 
   if (list.length > 0) {
-    let text = variant(t, 'chat.parkFound', 2, seed, { where, count: list.length });
+    const nearest = list[0]!;
+    let text = parkReply(
+      {
+        where,
+        count: list.length,
+        nearestName: nearest.p.name,
+        nearestWalkMin: walkMinFromMeters(nearest.d),
+        nearestFree: visibleFree(nearest.p, now),
+        liveCount: list.filter((x) => visibleFree(x.p, now) !== null).length,
+        freeOfChargeCount: list.filter((x) => x.p.isPaid === false).length,
+      },
+      t,
+      seed,
+      i18n.language,
+    );
     const fresh = list.filter((x) => visibleFree(x.p, now) !== null).length;
-    if (fresh > 0) text += ' ' + t('chat.parkFresh', { count: fresh });
+    // The live-spots highlight (fresh free count of the nearest) already says it: no second sentence.
+    if (fresh > 0 && visibleFree(nearest.p, now) === null)
+      text += ' ' + t('chat.parkFresh', { count: fresh });
     if (prefs) text += ' ' + parkPrefLines(ranked.slice(0, MAX_CARDS), prefs, now, t).join(' ');
     const cards: ChatCard[] = ranked.slice(0, MAX_CARDS).map(({ p, d }) => ({
       kind: 'parking',
@@ -2440,7 +2480,9 @@ function withLabel(c: PickCandidate, card: ChatCard, t: AssistantDeps['t']): Pic
   const kind = kindLabel(r.kind, tf);
   // Diets come right after the category: they are data, not a guess, and must not be clipped.
   const parts = [
-    ...(cat ? [t(`food.cats.${cat}`)] : []),
+    ...(cat
+      ? [t(`food.cats.${cat}`) + (isEstimatedKind(r) ? ` (${t('food.estimatedKind')})` : '')]
+      : []),
     ...dietLabels(r.diets, tf),
     ...(kind ? [kind] : []),
     ...cuisineLabels(r.cuisines, tf),

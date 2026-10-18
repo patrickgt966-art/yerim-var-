@@ -105,3 +105,10 @@ export function staticParkingsFile(id: string = activeCity().id): StaticFile {
       return {};
   }
 }
+
+/** The one-time AI category guess (scripts/classify-places.ts): place id to category, all cities. */
+export type CategoryGuessFile = { items?: Record<string, string> };
+
+export function categoryGuessFile(): CategoryGuessFile {
+  return require('../../data/category-guess.json');
+}

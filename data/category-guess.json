@@ -1,0 +1,6 @@
+{
+  "$comment": "Estimated food category of places whose category the name rules in src/data/restaurants.ts do not read from a name or cuisine tag. Written by scripts/classify-places.ts (Anthropic Message Batches API, claude-haiku-5-5; run it from the Classify places workflow or: npx tsx scripts/classify-places.ts [--dry-run] [--limit N]). items: place id -> food category id (replaces the place's kind-only fallback category) or not_food; only high/medium confidence answers (not_food only when high), and only answers that change something. The ids already asked about are in data/category-guess-seen.json, which the app does not bundle. Empty until the first run.",
+  "generatedAt": null,
+  "model": null,
+  "items": {}
+}

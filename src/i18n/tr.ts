@@ -423,6 +423,7 @@ const tr = {
     footerOverture:
       'Veri: Overture Maps (CDLA-Permissive-2.0). Bilgi eski olabilir. Yer kapanmış ya da taşınmış olabilir.',
     unverified: 'Bilgi eski olabilir',
+    estimatedKind: 'Türü tahmini',
     a11yUnverified: 'Bu kaydın bilgileri eski olabilir; yer kapanmış ya da taşınmış olabilir',
     kinds: {
       restaurant: 'Restoran',
@@ -574,7 +575,78 @@ const tr = {
     distance: '{{km}} km',
     a11yUser: 'Sen: {{text}}',
     a11yBot: 'Yerim: {{text}}',
-    foundName: '"{{name}}" buldum. Bu isimde {{count}} yer var, en yakını üstte:',
+    foundName_0: '"{{name}}" buldum. Bu isimde {{count}} yer var, en yakını üstte:',
+    foundName_1: 'Bu isimde {{count}} yer çıktı: "{{name}}". En yakını üstte.',
+    foundName_2: '"{{name}}" diye {{count}} yer buldum, yakından uzağa sıraladım:',
+    reply: {
+      foodLead_0:
+        '{{where}} civarında {{count}} {{what}} buldum, {{withPark}} tanesinin yakınında otopark var.',
+      foodLead_1:
+        '{{where}} çevresinde {{what}} için {{count}} yer var; {{withPark}} tanesinin yakınında otopark var.',
+      foodLead_2:
+        '{{count}} {{what}} çıktı {{where}} civarında, {{withPark}} tanesinin otoparkı yakın.',
+      foodLead_3:
+        '{{where}} çevresinde {{count}} {{what}} listeledim; {{withPark}} tanesinin yakınında otopark bulunuyor.',
+      foodLead_4:
+        '{{where}} civarındaki {{count}} {{what}} arasında {{withPark}} tanesinin yakınında otopark var.',
+      foodPlainLead_0: '{{where}} civarında {{count}} {{what}} buldum.',
+      foodPlainLead_1: '{{where}} çevresinde {{what}} için {{count}} yer var.',
+      foodPlainLead_2: '{{count}} {{what}} çıktı {{where}} civarında.',
+      foodParkLead_0: '{{where}} civarında yakınında otopark olan {{count}} {{what}} buldum.',
+      foodParkLead_1: '{{where}} çevresinde otoparklı {{count}} {{what}} çıktı.',
+      foodParkLead_2:
+        '{{count}} {{what}} buldum {{where}} civarında; hepsinin yakınında otopark var.',
+      foodParkLead_3:
+        '{{where}} çevresinde yakınında otopark bulunan {{count}} {{what}} listeledim.',
+      foodParkLead_4: '{{where}} için otoparklı seçenekler: {{count}} {{what}}.',
+      foodFreeLead_0: '{{where}} civarında otoparkı ücretsiz olan {{count}} {{what}} buldum.',
+      foodFreeLead_1: '{{where}} çevresinde yakındaki otoparkı ücretsiz {{count}} {{what}} çıktı.',
+      foodFreeLead_2:
+        '{{count}} {{what}} buldum {{where}} civarında; hepsinin yakın otoparkı ücretsiz.',
+      foodFreeLead_3: '{{where}} civarında ücretsiz otoparklı {{count}} {{what}} var.',
+      foodFreeLead_4: 'Ücretsiz otoparka yakın {{count}} {{what}} listeledim {{where}} çevresinde.',
+      foodDishLead_0:
+        '{{where}} civarında {{dish}} bulabileceğin {{count}} yer buldum, {{withPark}} tanesinin yakınında otopark var.',
+      foodDishLead_1:
+        '{{dish}} için {{where}} çevresinde {{count}} yer var; {{withPark}} tanesinin yakınında otopark var.',
+      foodDishLead_2:
+        '{{where}} civarında {{dish}} için {{count}} yer çıktı, {{withPark}} tanesinin otoparkı yakın.',
+      foodDishLead_3:
+        '{{where}} çevresinde {{dish}} bulabileceğin {{count}} yeri listeledim; {{withPark}} tanesinin yakınında otopark bulunuyor.',
+      foodDishLead_4:
+        '{{dish}} için {{where}} civarında {{count}} yer görünüyor, {{withPark}} tanesinin yakınında otopark var.',
+      foodDishPlainLead_0: '{{where}} civarında {{dish}} bulabileceğin {{count}} yer buldum.',
+      foodDishPlainLead_1: '{{dish}} için {{where}} çevresinde {{count}} yer var.',
+      foodDishPlainLead_2: '{{where}} civarında {{dish}} için {{count}} yer çıktı.',
+      foodDishParkLead_0:
+        '{{where}} civarında {{dish}} bulabileceğin, yakınında otopark olan {{count}} yer buldum.',
+      foodDishParkLead_1: '{{dish}} için {{where}} çevresinde otoparklı {{count}} yer çıktı.',
+      foodDishParkLead_2:
+        '{{where}} civarında {{dish}} için {{count}} yer buldum; hepsinin yakınında otopark var.',
+      foodDishParkLead_3:
+        '{{where}} çevresinde {{dish}} bulabileceğin, yakınında otopark bulunan {{count}} yeri listeledim.',
+      foodDishParkLead_4: '{{dish}} için {{where}} civarında otoparklı seçenekler: {{count}} yer.',
+      foodDishFreeLead_0:
+        '{{where}} civarında {{dish}} bulabileceğin, otoparkı ücretsiz olan {{count}} yer buldum.',
+      foodDishFreeLead_1:
+        '{{dish}} için {{where}} çevresinde yakındaki otoparkı ücretsiz {{count}} yer çıktı.',
+      foodDishFreeLead_2:
+        '{{where}} civarında {{dish}} için {{count}} yer buldum; hepsinin yakın otoparkı ücretsiz.',
+      foodDishFreeLead_3:
+        '{{where}} civarında {{dish}} bulabileceğin, ücretsiz otoparklı {{count}} yer var.',
+      foodDishFreeLead_4:
+        '{{dish}} için ücretsiz otoparka yakın {{count}} yer listeledim {{where}} çevresinde.',
+      parkLead_0: '{{where}} civarında {{count}} otopark buldum.',
+      parkLead_1: '{{where}} çevresinde {{count}} otopark var.',
+      parkLead_2: '{{count}} otopark çıktı {{where}} civarında.',
+      parkLead_3: '{{where}} için {{count}} otopark listeledim.',
+      parkLead_4: '{{where}} civarında {{count}} otopark görünüyor.',
+      hlWalk: 'En öndekinin otoparkına ~{{n}} dk yürüyorsun.',
+      hlFreePark: 'Gösterdiklerimden {{n}} tanesinin otoparkı ücretsiz.',
+      hlOpen: 'Gösterdiklerimden şu an açık olduğunu bildiğim {{n}} yer var.',
+      hlParkLive: 'En yakını {{name}}, ~{{min}} dk yürüme; şu an {{free}} boş yer var.',
+      hlPark: 'En yakını {{name}}, ~{{min}} dk yürüme.',
+    },
     hello_0: 'Selam! Nereye gidiyorsun ya da ne yemek istersin?',
     hello_1: 'Selam! Yer adı ya da "{{cLoc}} köfteci" gibi yazabilirsin.',
     hello_2: 'Selam! Park yeri mi, yemek mi?',
@@ -617,11 +689,6 @@ const tr = {
     actAsDish: 'Yemek olarak ara',
     districtUnknownThing: '{{inDistrict}} "{{q}}" diye bir yer ya da yemek bulamadım.',
     actDistrictFood: '{{inDistrict}} restoranlar',
-    foodFound_0:
-      '{{where}} civarında {{count}} {{what}} var, {{withPark}} tanesinin yanında otopark var. Parkı kolay olanlar üstte:',
-    foodFound_1:
-      '{{where}} için {{count}} {{what}} var. {{withPark}} tanesinin 300 m içinde otoparkı var:',
-    foodFoundPark: '{{where}} civarında yanında otopark olan {{count}} {{what}} buldum:',
     dishNamed: 'Adında "{{dish}}" geçen {{count}} yer buldum, onları üste koydum.',
     dishUnknown:
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
@@ -655,13 +722,10 @@ const tr = {
     nearest: 'En yakından başlayarak sıraladım.',
     wideNow: 'Daha geniş alanda baktım.',
     wideAlready: 'Daha geniş alanda da bunlar çıkıyor.',
-    foodFoundFree: '{{where}} civarında otoparkı ücretsiz olan {{count}} {{what}} buldum:',
     foodNoFreePark:
       '{{where}} civarında {{what}} var ama otoparkının ücretsiz olduğunu bildiğim yok. Ne yapalım?',
     parkNoFree: '{{where}} civarında ücretsiz olduğunu bildiğim otopark yok. Ne yapalım?',
     actDropFree: 'Ücretli de olsun',
-    parkFound_0: '{{where}} civarında {{count}} otopark var. En yakınları:',
-    parkFound_1: '{{where}} için {{count}} otopark buldum:',
     parkFresh: '{{count}} tanesinde güncel boş yer bilgisi var.',
     parkNone: '{{where}} civarında otopark bulamadım. Daha geniş bakayım mı?',
     nearYou: 'Konumun',

@@ -96,7 +96,7 @@ export function matchRestaurants(
   const q = fold(query.trim());
   if (q.length < 2) return [];
   const city = activeCity().id;
-  const source = allRestaurants();
+  const source = allRestaurants(true); // a place the category guess calls not food is still found by name
   if (folded?.city !== city || folded.source !== source) {
     folded = { city, source, list: source.map((r) => ({ r, key: fold(r.name) })) };
   }

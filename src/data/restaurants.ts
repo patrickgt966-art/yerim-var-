@@ -1,7 +1,7 @@
 import i18next, { type TFunction } from 'i18next';
 
 import { activeCity } from './cities';
-import { foodFile, foodOvertureFile } from './cityData';
+import { categoryGuessFile, foodFile, foodOvertureFile } from './cityData';
 import { getFreshness } from './freshness';
 import { BREAD_MODIFIER_WORDS, FOOD_LEXICON, MODIFIERS } from './foodLexicon';
 import { distanceMeters, type LatLng } from './geo';
@@ -102,6 +102,7 @@ const caches = new Map<string, Restaurant[]>();
 const byIds = new Map<string, Map<string, Restaurant>>();
 
 const visible = new Map<string, { hidden: ReadonlySet<string>; list: Restaurant[] }>();
+const listed = new Map<string, Restaurant[]>();
 
 /** Every restaurant of the active city, hidden ones included. */
 function cityRestaurants(id: string): Restaurant[] {
@@ -116,19 +117,32 @@ function cityRestaurants(id: string): Restaurant[] {
   return list;
 }
 
+/** The city's restaurants without the places the category guess says are not food places. */
+function listedRestaurants(id: string): Restaurant[] {
+  const list = cityRestaurants(id);
+  let out = listed.get(id);
+  if (!out) {
+    out = list.some(isNotFood) ? list.filter((r) => !isNotFood(r)) : list;
+    listed.set(id, out);
+  }
+  return out;
+}
+
 /**
  * The active city's restaurants; empty while its data files are placeholders. Places reported
- * closed (by this device, or by enough people) are left out.
+ * closed (by this device, or by enough people) are left out, and so are places the estimated
+ * category (data/category-guess.json) calls not food, unless `includeNotFood` (a search by name).
  */
-export function allRestaurants(): Restaurant[] {
+export function allRestaurants(includeNotFood = false): Restaurant[] {
   const id = activeCity().id;
-  const list = cityRestaurants(id);
+  const list = includeNotFood ? cityRestaurants(id) : listedRestaurants(id);
   const hidden = hiddenPlaceIds();
   if (hidden.size === 0) return list;
-  const v = visible.get(id);
+  const key = includeNotFood ? `${id}:all` : id;
+  const v = visible.get(key);
   if (v && v.hidden === hidden) return v.list;
   const out = list.filter((r) => !hidden.has(r.id));
-  visible.set(id, { hidden, list: out });
+  visible.set(key, { hidden, list: out });
   return out;
 }
 
@@ -404,9 +418,20 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'kumru',
       'bakery',
       'boulangerie',
+      'pisi',
+      'pisici',
+      'katmer',
+      'menemen',
+      'bazlama',
+      'brunch',
+      'pancake',
+      'kahvaltici',
     ],
   },
-  soup: { cuisines: ['soup'], names: ['corba', 'iskembe', 'kelle paca', 'paca'] },
+  soup: {
+    cuisines: ['soup'],
+    names: ['corba', 'iskembe', 'kelle paca', 'paca', 'kelle', 'beyran', 'tarhana'],
+  },
   meat: {
     cuisines: ['steak_house', 'kebab', 'grill', 'barbecue', 'meat', 'meatball', 'köfte', 'kofte'],
     names: [
@@ -422,15 +447,56 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'ciger',
       'kokorec',
       'tantuni',
+      'iskender',
+      'iskenderci',
+      'beyti',
+      'ali nazik',
+      'tandir',
+      'kuzu tandir',
+      'kuzu cevirme',
+      'kavurma',
+      'kaburga',
+      'cop sis',
+      'cag kebap',
+      'sirdan',
+      'sogus',
+      'aspava',
+      'pilic',
+      'tavukcu',
+      'tavuk',
+      // City names count only inside a phrase ("Adana Cafe" is not a kebab place).
+      'adana kebap',
+      'urfa kebap',
+      'adana sofrasi',
+      'urfa sofrasi',
+      'adanali',
+      'urfali',
     ],
     notNames: ['cig kofte', 'cigkofte'],
   },
   // Lokanta has no cuisine tag of its own: it is the plain restaurant that fits
   // no other category (see matchesCategory) plus the names below.
   lokanta: {
-    names: ['lokanta', 'ev yemek', 'pilav', 'esnaf', 'sofrasi', 'mutfagi'],
+    names: [
+      'lokanta',
+      'ev yemek',
+      'pilav',
+      'esnaf',
+      'sofrasi',
+      'mutfagi',
+      'manti',
+      'mantici',
+      'guvec',
+      'sarma',
+      'sulu yemek',
+      'kuru fasulye',
+      'zeytinyagli',
+      'dolma',
+    ],
     // "Kore Mutfağı" is a world-cuisine place, not a home-style lokanta.
     notNames: [
+      // "Midye Dolmacı" is a fish stand, not a lokanta.
+      'midye',
       'asya mutfagi',
       'kore mutfagi',
       'hint mutfagi',
@@ -440,14 +506,55 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'japon mutfagi',
     ],
   },
-  fish: { cuisines: ['seafood', 'fish', 'fish_and_chips'], names: ['balik', 'alabalik', 'midye'] },
+  fish: {
+    cuisines: ['seafood', 'fish', 'fish_and_chips'],
+    names: [
+      'balik',
+      'alabalik',
+      'midye',
+      'hamsi',
+      'ahtapot',
+      'kalamar',
+      'karides',
+      'sardalya',
+      'palamut',
+      'lufer',
+      'kefal',
+      'levrek',
+      'cipura',
+      'barbun',
+      'istavrit',
+      'deniz urunleri',
+    ],
+  },
   // Juice bars are often mapped as a plain restaurant ("Energy Vitamin"): the name makes them a café.
   cafe: {
     kinds: ['cafe'],
     cuisines: ['coffee_shop'],
-    names: ['vitamin', 'meyve suyu', 'smoothie', 'juice', 'taze sikma'],
-    // "Vitamin Pide ve Kebap" is not a juice bar.
+    names: [
+      'vitamin',
+      'meyve suyu',
+      'smoothie',
+      'juice',
+      'taze sikma',
+      'cafe',
+      'kafe',
+      'coffee',
+      'kahve',
+      'kahvesi',
+      'cay bahcesi',
+      'kiraathanesi',
+      'kahvehane',
+      'boza',
+    ],
+    // "Vitamin Pide ve Kebap" is not a juice bar; "Cafe & Patisserie" is a dessert place (SWEET_NAMES).
     notNames: [
+      'tatli',
+      'pastane',
+      'patisserie',
+      'dondurma',
+      'baklava',
+      'kunefe',
       'kebap',
       'kebab',
       'pide',
@@ -459,7 +566,11 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'lahmacun',
     ],
   },
-  meyhane: { kinds: ['bar', 'pub', 'biergarten'], cuisines: ['meyhane'], names: ['meyhane'] },
+  meyhane: {
+    kinds: ['bar', 'pub', 'biergarten'],
+    cuisines: ['meyhane'],
+    names: ['meyhane', 'meze', 'mezeci', 'raki', 'raki balik'],
+  },
   fast: {
     kinds: ['fast_food'],
     cuisines: [
@@ -479,7 +590,27 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'cig_kofte',
       'çiğköfte',
     ],
-    names: ['doner', 'burger', 'pizza', 'pide', 'lahmacun', 'cig kofte', 'cigkofte'],
+    names: [
+      'doner',
+      'burger',
+      'pizza',
+      'pide',
+      'lahmacun',
+      'cig kofte',
+      'cigkofte',
+      'durum',
+      'durumcu',
+      'tost',
+      'tostcu',
+      'kumpir',
+      'etli ekmek',
+      'cig borek',
+      'sandvic',
+      'wrap',
+      'bufe',
+      'hot dog',
+      'komagene',
+    ],
   },
   world: {
     cuisines: [
@@ -566,12 +697,54 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'hint mutfagi',
       'cin lokantasi',
       'cin mutfagi',
+      'makarna',
+      'kore',
+      'korean',
+      'hint',
+      'indian',
+      'arap',
+      'tapas',
+      'italian',
+      'mexican',
+      'french',
+      'fransiz',
+      'greek',
+      'yunan',
+      'asya',
     ],
   },
   dessert: {
     kinds: ['ice_cream', 'pastry', 'confectionery'],
     cuisines: ['dessert', 'ice_cream', 'cake', 'pastry', 'donut', 'waffle', 'pancake', 'crepe'],
-    names: ['tatli', 'pastane', 'patisserie', 'dondurma', 'baklava', 'kunefe'],
+    names: [
+      'tatli',
+      'pastane',
+      'patisserie',
+      'dondurma',
+      'baklava',
+      'kunefe',
+      'waffle',
+      'lokma',
+      'lokmaci',
+      'muhallebi',
+      'muhallebici',
+      'lokum',
+      'ekler',
+      'profiterol',
+      'helva',
+      'kadayif',
+      'magnolia',
+      'kurabiye',
+      'macaron',
+      'donut',
+      'cikolata',
+      'chocolate',
+      // Bare "pasta" is ambiguous (cake or noodle): only the shop words count.
+      'pastanesi',
+      'pasta evi',
+      'pastacilik',
+      'pasta salonu',
+    ],
   },
 };
 
@@ -696,7 +869,7 @@ const OTHER_CUISINES = new Set(
   Object.values(CATEGORY_RULES).flatMap((rule) => rule.cuisines ?? []),
 );
 
-export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
+function matchesByRules(r: Restaurant, cat: FoodCategory): boolean {
   if (cat === 'meyhane') return isPubName(r) || matchesRule(r, 'meyhane');
   if (isPubName(r) || isExcluded(r)) return false;
   if (cat !== 'lokanta') return matchesRule(r, cat);
@@ -706,22 +879,101 @@ export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
   // A tag of another category (Italian, sushi) is not a lokanta; a tag we do not know yet
   // ("kımız", "mushrooms") does not keep a sit-down place out of every category.
   if (r.cuisines.some((c) => !LOKANTA_CUISINES.includes(c) && OTHER_CUISINES.has(c))) return false;
-  return !FOOD_CATEGORIES.some((k) => k !== 'lokanta' && matchesCategory(r, k));
+  return !FOOD_CATEGORIES.some((k) => k !== 'lokanta' && matchesByRules(r, k));
 }
 
-/** Best category for the card icon: cuisine tag, then name, then kind. */
-export function categoryOf(r: Restaurant): FoodCategory | null {
+/** Best category by the rules alone: cuisine tag, then name, then kind. */
+export function categoryByRules(r: Restaurant): FoodCategory | null {
   if (isPubName(r)) return 'meyhane';
   if (isExcluded(r)) return null;
   // The place's own first cuisine tag decides ("Ada balık": fish before breakfast).
-  const byName = nameCategories(r).find((k) => matchesCategory(r, k));
+  const byName = nameCategories(r).find((k) => matchesByRules(r, k));
   for (const c of r.cuisines) {
     const cat = FOOD_CATEGORIES.find((k) => CATEGORY_RULES[k].cuisines?.includes(c));
     // A cuisine tag is weaker than a name that says what is served ("Milos Balık" tagged greek).
     if (cat === 'world' && byName && byName !== 'world') return byName;
-    if (cat && matchesCategory(r, cat)) return cat;
+    if (cat && matchesByRules(r, cat)) return cat;
   }
-  return byName ?? FOOD_CATEGORIES.find((cat) => matchesCategory(r, cat)) ?? null;
+  return byName ?? FOOD_CATEGORIES.find((cat) => matchesByRules(r, cat)) ?? null;
+}
+
+/**
+ * Where the rules' category of a place comes from: 'rules' = a name keyword, a pub name or a
+ * cuisine tag says it; 'fallback' = only the OSM kind does (a plain restaurant becomes lokanta, a
+ * plain cafe / fast_food / bar / bakery gets its kind's category); null = the rules give none.
+ */
+export function categorySource(r: Restaurant): 'rules' | 'fallback' | null {
+  const cat = categoryByRules(r);
+  if (!cat) return null;
+  if (cat === 'meyhane') {
+    const rule = CATEGORY_RULES.meyhane;
+    return isPubName(r) ||
+      nameCategories(r).includes('meyhane') ||
+      r.cuisines.some((c) => rule.cuisines?.includes(c))
+      ? 'rules'
+      : 'fallback';
+  }
+  if (cat === 'lokanta') {
+    return nameCategories(r).includes('lokanta') ||
+      r.cuisines.some((c) => LOKANTA_CUISINES.includes(c))
+      ? 'rules'
+      : 'fallback';
+  }
+  return nameCategories(r).includes(cat) ||
+    r.cuisines.some((c) => CATEGORY_RULES[cat].cuisines?.includes(c))
+    ? 'rules'
+    : 'fallback';
+}
+
+/**
+ * The one-time AI guess (data/category-guess.json, scripts/classify-places.ts) for places whose
+ * category the rules do not read from the name or a cuisine tag: a food category, or 'not_food'.
+ * Ids are the stable OSM / Overture ids.
+ */
+type Guess = FoodCategory | 'not_food';
+let guesses: Map<string, Guess> | null = null;
+
+function guessOfId(id: string): Guess | null {
+  if (!guesses) {
+    guesses = new Map();
+    for (const [pid, cat] of Object.entries(categoryGuessFile().items ?? {})) {
+      if (cat === 'not_food' || (FOOD_CATEGORIES as string[]).includes(cat)) {
+        guesses.set(pid, cat as Guess);
+      }
+    }
+  }
+  return guesses.get(id) ?? null;
+}
+
+/**
+ * The guessed food category of a place. A rule match (name keyword, cuisine tag) always wins, and
+ * so does an exclusion (hotel, market, hookah, club ...); a guess replaces a kind-only fallback.
+ */
+function guessedCategory(r: Restaurant): FoodCategory | null {
+  const g = guessOfId(r.id);
+  if (!g || g === 'not_food') return null;
+  return categorySource(r) === 'fallback' ? g : null;
+}
+
+/** True when the category guess calls this place not food (a name or tag rule match still wins). */
+function isNotFood(r: Restaurant): boolean {
+  return guessOfId(r.id) === 'not_food' && categorySource(r) !== 'rules';
+}
+
+/** True when the place's category is only the AI's estimate, not read from its name or tags. */
+export function isEstimatedKind(r: Restaurant): boolean {
+  return guessedCategory(r) !== null;
+}
+
+/** An estimate replaces the kind-only fallback; otherwise the rules decide. */
+export function matchesCategory(r: Restaurant, cat: FoodCategory): boolean {
+  const guessed = guessedCategory(r);
+  return guessed !== null ? guessed === cat : matchesByRules(r, cat);
+}
+
+/** Best category for the card icon: cuisine tag, then name, then the estimate, then kind. */
+export function categoryOf(r: Restaurant): FoodCategory | null {
+  return guessedCategory(r) ?? categoryByRules(r);
 }
 
 /** Search rings for a category: widen until enough places turn up. */
@@ -809,8 +1061,9 @@ function isStand(r: Restaurant): boolean {
   return (name.includes('midye') || name.includes('kokorec')) && !name.includes('balik');
 }
 
-/** True when `r` only loosely fits the meyhane or lokanta category. */
-function isWeakMatch(r: Restaurant, cat: FoodCategory): boolean {
+/** True when `r` only loosely fits the category: meyhane / lokanta, or an estimated category. */
+export function isWeakMatch(r: Restaurant, cat: FoodCategory): boolean {
+  if (guessedCategory(r) === cat) return true; // only the AI estimate says so
   if (cat === 'meyhane') {
     return !(fold(r.name).includes('meyhane') || r.cuisines.includes('meyhane'));
   }
@@ -948,7 +1201,6 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'beyran',
     'iskembe corba',
     'kelle',
-    'sogus',
     'sehriye corba',
     'mantar corba',
     'dugun corbasi',
@@ -1037,6 +1289,7 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'sucuk',
     'mumbar',
     'sirdan',
+    'sogus',
     'tepsi kebabi',
     'simit kebabi',
     'sogan kebabi',

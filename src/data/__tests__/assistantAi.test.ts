@@ -959,7 +959,7 @@ describe('audit fixes: the AI reading is the search', () => {
     u = search({ district: null, cat: 'meat', dish: 'kebap', requireParking: false });
     const noPark = await answer('otopark şart değil', park.ctx, deps);
     expect(noPark.ctx.requireParking).toBe(false);
-    expect(noPark.reply.text).not.toContain('chat.foodFoundPark');
+    expect(noPark.reply.text).not.toContain('chat.reply.foodParkLead');
   });
 
   it('a district and a place from the AI: the place is searched, not the district centre', async () => {

@@ -1,6 +1,6 @@
 # Yapılacaklar
 
-Son güncelleme: 18 Ekim 2026.
+Son güncelleme: 18 Ekim 2026 (akşam).
 
 ## Sıradaki büyük işler (bu sırayla)
 
@@ -10,7 +10,7 @@ Son güncelleme: 18 Ekim 2026.
    - Arama cevaplarının metnini de yapay zeka yazsın (bilgiler yine bizim veriden, dil daha doğal).
    - Takip sorularını daha iyi anlasın ("diyet menü" → semt sorusu → "yakınımda" zincirini tek istekte birleştirsin).
 4. **Menü verisi.** Elimizde yok: vejetaryen gibi istekler yerin adı, türü ve varsa beslenme etiketine (OSM `diet:*`, Overture kategorileri) göre yargılanıyor; etiketsiz yerlerde yalnızca ad ve tür var.
-5. **"Burası kapanmış" düğmesi.** Kullanıcı bildirimleriyle kapanmış yerleri gizlemek (Cloudflare sunucusu artık var).
+5. ~~**"Burası kapanmış" düğmesi.**~~ Yapıldı: bildirimler yeri işaretler, gizleme kararı yönetim sayfasında (`yerimvar.app/admin`).
 
 ### Şehirlerde kalanlar
 
@@ -20,7 +20,7 @@ Son güncelleme: 18 Ekim 2026.
 
 ## Şimdi yapılabilir (hesap gerekmez)
 
-1. **Sohbet "Listede aç" düğmesi**: liste "hariç" ve "ücretsiz otopark" filtrelerini taşımıyor.
+1. ~~**Sohbet "Listede aç" düğmesi**~~ Yapıldı: liste "hariç" ve "ücretsiz otopark" filtrelerini taşıyor.
 2. **Yemek sözlüğü**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~380 yemek).
 3. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
 4. ~~**İngilizce arayüz.**~~ Yapıldı (`src/i18n/en.ts`; telefon Türkçe değilse İngilizce, Profil'den değişir).
@@ -65,17 +65,42 @@ Son güncelleme: 18 Ekim 2026.
 
 ## Apple Developer hesabından sonra
 
-- Dev build (Expo Go yerine) — Apple araması kodda var, Expo Go'da kapalı
-- Apple Haritalar araması ve toplu doğrulama
-- Yürüme süreleri, widget'lar
-- App Store'a gönderim (onay kartı ve gizlilik metni hazır)
+Ödeme 18 Ekim'de yapıldı, onay bekleniyor. Onay gelince gerekenler: **Team ID** (developer.apple.com → Account → Membership details) ve bir **Expo hesabı** (expo.dev).
+
+**Hesap onayını beklerken hazırlanabilecekler**
+- Universal Link (uygulama tarafı): `app.json` içine `ios.associatedDomains: ["applinks:yerimvar.app"]` ve `/r/[id]`, `/p/[id]` bağlantılarını restoran/otopark ekranına yönlendiren ekranlar. Team ID gelince worker'da `APPLE_TEAM_ID` doldurulup deploy edilecek (`/.well-known/apple-app-site-association` hazır).
+- `eas.json` kontrolü: development, preview (TestFlight) ve production profilleri.
+
+**Onaydan sonra**
+1. `npx eas-cli@latest build --platform ios --profile production` → TestFlight ile telefona kurulum.
+2. Cihazda denenecekler: Canlı Etkinlik (kilit ekranı, Dynamic Island), bildirim düğmeleri ("Yol tarifi", "15 dk uzat"), 10 dk uyarısı, puan isteği, harita seçimi (yüklü uygulamalar), Apple araması.
+3. App Store Connect kaydı: metinler `docs/app-store.md` içinde; gizlilik adresi `https://yerimvar.app/gizlilik`; App Privacy formu (Device ID, Other User Content, takip yok).
+4. Mağaza ekran görüntüleri (6.9" iPhone; ilk karede canlı boş yer sayısı).
+5. Yayınlanınca: `server/yerim-ai/wrangler.toml` içinde `APP_STORE_URL` ve `APP_STORE_ID` doldurulup deploy (sitede "Yerim Var'ı indir" düğmesi çıkar).
+6. Sonra: ana ekran widget'ı, uygulama içinde rota çizgisi (otoparktan restorana yürüme), Apple ile toplu yer doğrulaması.
+
+## Sıradaki küçük işler (hesap gerekmez)
+
+- Semt sayfalarının görünümü (yerimvar.app): bağlantılar uygulamanın etiket stiline.
+- Ağır yazım hataları: "isgender", "aalnya", "muanya", "sicanda" gibi yazımlar için genel harf benzerliği kuralı.
+- Plan paylaşımı da yerimvar.app bağlantısıyla (şu an Apple Haritalar bağlantısı).
+- Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).
 
 ## Karar bekleyenler
 
 - Ana sayfa: A mı B mi?
-- Apple Developer hesabı (yıllık 99$)
-- GitHub Pages (gizlilik sayfası için)
 - Destek e-posta adresi, geri bildirim formu
+
+## Tamamlananlar (17–18 Ekim)
+
+- Yer bildirimi (kapanmış / konum / bilgi yanlış): yeri işaretler, gizleme kararı `yerimvar.app/admin` sayfasında.
+- Park: Canlı Etkinlik, "Arabama dön", bildirim düğmeleri, 10 dk uyarısı, son süreyi hatırlama, pencere yerine "Geri al", puan isteği.
+- Yol tarifi uygulaması seçimi (Apple, Google, Yandex, Waze).
+- Tanıtım 2 ekran, ana sayfanın açık temasında ve gerçek logoyla; ipucu turu 1 adım.
+- Klavyedeki "Ara" ad yazılınca doğrudan açıyor; konum kapalıyken liste bunu söylüyor.
+- Yerim ✨: semtler, ilçe yazım hataları her şehirde, sohbetteki ilçeyi koruma, metre hassasiyeti, istem önbelleği (test maliyeti ~0,5 $ → ~0,12 $).
+- yerimvar.app: paylaşım sayfaları, gizlilik sayfası, 2.239 semt sayfası (otopark, restoran, yemek türü), Google Search Console ve site haritası; www yönlendirmesi, SPF/DMARC.
+- Mağaza metinleri: `docs/app-store.md`.
 
 ## Tamamlananlar (12–16 Ekim)
 

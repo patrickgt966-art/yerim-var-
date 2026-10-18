@@ -63,15 +63,30 @@ describe('the English strings', () => {
 });
 
 describe('English "found" replies', () => {
-  const opts = { what: 'fish restaurants', where: 'Alsancak', withPark: 1 };
-  it.each(['chat.foodFound_0', 'chat.foodFound_1', 'chat.foodFoundPark', 'chat.foodFoundFree'])(
-    '%s reads right for one result and for several',
-    (key) => {
-      const en = i18n.getFixedT('en');
-      const one = en(key, { ...opts, count: 1 });
-      expect(one).toMatch(/^Found 1 place \(fish restaurants\)/);
-      expect(one).not.toMatch(/\b1 have\b/);
-      expect(en(key, { ...opts, count: 4 })).toMatch(/^Found 4 fish restaurants/);
-    },
-  );
+  const opts = { what: 'fish restaurants', dish: 'fries', where: 'Alsancak', withPark: 1 };
+  const leads = [
+    ...[0, 1, 2, 3, 4].flatMap((i) => [
+      `chat.reply.foodLead_${i}`,
+      `chat.reply.foodParkLead_${i}`,
+      `chat.reply.foodFreeLead_${i}`,
+      `chat.reply.parkLead_${i}`,
+      `chat.reply.foodDishLead_${i}`,
+      `chat.reply.foodDishParkLead_${i}`,
+      `chat.reply.foodDishFreeLead_${i}`,
+    ]),
+    ...[0, 1, 2].flatMap((i) => [
+      `chat.reply.foodPlainLead_${i}`,
+      `chat.reply.foodDishPlainLead_${i}`,
+    ]),
+  ];
+  it.each(leads)('%s reads right for one result and for several', (key) => {
+    const en = i18n.getFixedT('en');
+    const one = en(key, { ...opts, count: 1 });
+    expect(one).not.toMatch(/\b1 (fish restaurants|car parks|places)\b/);
+    expect(one).not.toMatch(/\b1 have\b/);
+    expect(one).not.toContain('{{');
+    const many = en(key, { ...opts, count: 4, withPark: 3 });
+    expect(many).not.toMatch(/\b4 (place|car park)\b/);
+    expect(many).not.toContain('{{');
+  });
 });

@@ -1,0 +1,55 @@
+name: Classify places
+
+# One-time (incremental) AI classification of the places the name rules leave in no food category
+# (scripts/classify-places.ts, Anthropic Message Batches API). It costs a few cents and only asks
+# about places not in data/category-guess.json or data/category-guess-seen.json yet. The result is proposed as a pull request.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Classify at most this many places (empty: all new places)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: classify-places-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    # The batch usually ends within an hour; the API allows up to 24 h, the script polls every minute.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix server/yerim-ai
+      - name: Classify places
+        shell: bash
+        run: npx tsx scripts/classify-places.ts ${LIMIT:+--limit "$LIMIT"} | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LIMIT: ${{ inputs.limit }}
+
+      # Propose the update as a pull request (a push to main is never made).
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: data/category-guess
+          title: 'chore(data): estimated categories for uncategorised places'
+          commit-message: 'chore(data): estimated categories for uncategorised places'
+          body: |
+            Automated run of `scripts/classify-places.ts` (Anthropic Message Batches API). Adds only places not in `data/category-guess.json` or `data/category-guess-seen.json` yet; see the Classify places run summary for the counts and the cost.
+
+            Check the diff before merging. CI does not start on its own for this pull request (it was opened with the workflow token); close and reopen it to run CI.
+          add-paths: |
+            data/category-guess.json
+            data/category-guess-seen.json

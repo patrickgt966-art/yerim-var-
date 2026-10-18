@@ -109,7 +109,50 @@ describe('assistant', () => {
     const r = await answer('Konak', emptyContext('park'), deps);
     expect(r.reply.cards.length).toBeGreaterThan(0);
     expect(r.reply.cards.every((c) => c.kind === 'parking')).toBe(true);
-    expect(r.reply.text.startsWith('chat.parkFound_')).toBe(true);
+    expect(r.reply.text).toMatch(/^Chat\.reply\.parkLead_/); // the lead starts a sentence: capital
+    // The lead carries the place and how many car parks were found.
+    expect(r.reply.text).toContain('"where":"Konak"');
+    const count = Number(/"count":(\d+)/.exec(r.reply.text)?.[1]);
+    expect(count).toBeGreaterThanOrEqual(r.reply.cards.length);
+  });
+
+  it('words a dish search by what you can get, a category search by the category noun', async () => {
+    const dish = await answer('lahmacun', emptyContext('food'), deps);
+    expect(dish.reply.text).toContain('chat.dishNamed');
+    expect(dish.reply.text).toMatch(
+      /chat\.reply\.foodDish(Plain)?Lead_\d \{[^}]*"dish":"lahmacun"/i,
+    );
+    const cat = await answer('balıkçı', emptyContext('food'), deps);
+    expect(cat.reply.text).toMatch(
+      /chat\.reply\.food(Plain)?Lead_\d \{[^}]*"what":"chat\.noun\.fish"/i,
+    );
+    expect(cat.reply.text).not.toContain('foodDish');
+  });
+
+  it('does not say the live-spots count twice in a car park reply', async () => {
+    const stamp = new Date().toISOString();
+    const fresh = (p: Parking): Parking => ({
+      ...p,
+      source: 'izmir-open-data',
+      free: 7,
+      updatedAt: stamp,
+      fetchedAt: stamp,
+    });
+    const all = await answer('Konak', emptyContext('park'), {
+      ...deps,
+      parkings: parkings.map(fresh),
+    });
+    expect(all.reply.text).toContain('chat.reply.hlParkLive');
+    expect(all.reply.text).not.toContain('chat.parkFresh');
+    // Some fresh, some not: whichever way the nearest one falls, one of the two sentences, never both.
+    const some = await answer('Konak', emptyContext('park'), {
+      ...deps,
+      parkings: parkings.map((p, i) => (i % 3 === 0 ? fresh(p) : p)),
+    });
+    const live = some.reply.text.includes('chat.reply.hlParkLive');
+    const count = some.reply.text.includes('chat.parkFresh');
+    expect(live && count).toBe(false);
+    expect(live || count).toBe(true);
   });
 
   it('offers the map picker for unknown text', async () => {
@@ -137,7 +180,7 @@ describe('assistant', () => {
 
   it('finds a restaurant by name', async () => {
     const r = await answer('Bülent Börek', emptyContext('park'), deps);
-    expect(r.reply.text.startsWith('chat.foundName')).toBe(true);
+    expect(r.reply.text).toMatch(/^Chat\.foundName/);
     expect(r.reply.cards[0]?.name.startsWith('Bülent Börek')).toBe(true);
   });
 
@@ -354,7 +397,8 @@ describe('assistant', () => {
       expect(r.ctx.requireParking).toBe(true);
       expect(r.ctx.freeParking).toBe(true);
       expect(r.ctx.cat).toBe('fish');
-      expect(r.reply.text.startsWith('chat.foodFoundFree')).toBe(true);
+      expect(r.reply.text).toMatch(/^Chat\.reply\.foodFreeLead_/);
+      expect(r.reply.text).toMatch(/"count":\d+/);
       expect(r.reply.cards.map((c) => c.id)).toContain(first.id);
       for (const c of r.reply.cards) {
         const rest = allRestaurants().find((x) => x.id === c.id)!;
@@ -865,7 +909,7 @@ describe('a district plus a word that is no dish, name or place', () => {
     expect(r.reply.text).toContain(JSON.stringify(inD).slice(1, -1));
     expect(r.reply.text).toContain(`"q":"${word}"`);
     expect(r.reply.cards).toEqual([]);
-    expect(r.reply.text).not.toContain('chat.foodFound');
+    expect(r.reply.text).not.toContain('chat.reply.food');
     expect(r.ctx).toEqual(emptyContext(section));
     // Two ways on: look for it as a dish, or the district's restaurants.
     expect(r.reply.actions.map((a) => a.label.split(' ')[0])).toEqual([
@@ -888,7 +932,9 @@ describe('a district plus a word that is no dish, name or place', () => {
     const food = await refine(r.ctx, (plainFood as { patch: Partial<typeof r.ctx> }).patch, deps);
     expect(food.ctx).toMatchObject({ section: 'food', cat: null, dish: null });
     expect(food.ctx.place?.label).toBe('Bornova');
-    expect(food.reply.text).toContain('chat.foodFound');
+    expect(food.reply.text).toMatch(
+      /chat\.reply\.food(Plain)?Lead_\d \{[^}]*"where":"[^"]+"[^}]*"count":\d+/i,
+    );
     expect(food.reply.cards.length).toBeGreaterThan(0);
   });
 

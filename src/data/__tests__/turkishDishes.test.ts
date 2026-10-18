@@ -854,7 +854,7 @@ describe('round 6: order words, city styles, new dishes and drinks, famous stree
     expect(read('Yarım Ekmek')).toMatchObject({ cat: null, placeQuery: 'yarim ekmek' });
     expect(read('Büyük Efes')).toMatchObject({ cat: null, placeQuery: 'buyuk efes' });
     const { reply, cards } = await first('Yarım Ekmek');
-    expect(reply.text).toContain('chat.foundName');
+    expect(reply.text).toMatch(/chat\.foundName/i);
     expect(cards[0]?.name).toBe('Yarım Ekmek');
   });
 

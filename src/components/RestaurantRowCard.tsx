@@ -14,6 +14,7 @@ import {
   categoryOf,
   cuisineLabels,
   formatDistance,
+  isEstimatedKind,
   kindLabel,
   type RestaurantRow,
 } from '@/data/restaurants';
@@ -56,6 +57,7 @@ export function RestaurantRowCard({
   const metaParts = (walkKey: 'food.walk' | 'food.a11yWalk') =>
     [
       kindLabel(r.kind, t),
+      isEstimatedKind(r) ? t('food.estimatedKind') : null,
       ...cuisineLabels(r.cuisines, t).slice(0, 2),
       // Far results of a widened search: a plain distance, "~60 dk yürüme" would mislead.
       widened && r.distanceM > FAR_WALK_M
