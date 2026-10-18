@@ -153,6 +153,20 @@ describe('other pages', () => {
     expect(text).not.toContain('noindex');
   });
 
+  it('the home page lists the open cities with links to their pages', async () => {
+    const { text } = await get('/');
+    expect(text).toContain('<h2>Şehirler</h2>');
+    for (const [id, name] of [
+      ['izmir', 'İzmir'],
+      ['istanbul', 'İstanbul'],
+      ['ankara', 'Ankara'],
+      ['antalya', 'Antalya'],
+      ['bursa', 'Bursa'],
+    ]) {
+      expect(text).toContain(`<a href="/${id}">${name}</a>`);
+    }
+  });
+
   it('/gizlilik serves the privacy page as html', async () => {
     const { res, text } = await get('/gizlilik');
     expect(res.status).toBe(200);
