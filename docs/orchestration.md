@@ -19,11 +19,16 @@ işleri paralel koşturmak (hız).
 | `command-runner` | haiku | lint / tsc / jest / expo-doctor; sadece durum | doğrulama adımları |
 | `code-reviewer` | sonnet | diff'i spec'e ve AGENTS.md kurallarına göre inceler | her PR |
 | `risk-reviewer` | opus | maliyet, veri kaybı, gizlilik, release | sadece yüksek riskli dosyalar (aşağıda) |
-| `i18n-docs` | haiku | i18n key parity, README/docs satırları, prettier | review sonrası mekanik kuyruk |
 
 Yüksek riskli dosyalar (risk-reviewer zorunlu): `src/lib/ai/**`, `server/yerim-ai/**`,
 `src/store/migrate.ts`, cihaz dışına veri gönderen her şey (`location`, `report`, `share`),
 `app.json`, `eas.json`, `wrangler.toml`, `.github/workflows/**`.
+
+## Fast path (önce buna bak)
+
+Görev 1–2 dosya, ~20 satırdan az, yeni i18n key / store şeması / Expo API gerektirmiyorsa: Opus
+doğrudan düzenler → `command-runner` → bitti. Spec + subagent round-trip'i değişikliğin kendisinden
+pahalıdır. Yüksek riskli dosyaya dokunuyorsa `risk-reviewer` fast path'te de zorunlu.
 
 ## Standart akış
 
@@ -42,8 +47,7 @@ Yüksek riskli dosyalar (risk-reviewer zorunlu): `src/lib/ai/**`, `server/yerim-
    Kırmızı → ilgili coder'a sadece failing file:line ile geri gönder, tüm diff'i değil.
 6. **Review**: `code-reviewer` (sonnet). Yüksek riskli dosya varsa ek olarak `risk-reviewer` (opus).
    BLOCKER varsa 3'e dön.
-7. **Kuyruk** (haiku): `i18n-docs` key parity + docs + prettier.
-8. **Merge kararı** (Opus): test çıktısı + review verdict'leri kanıt. "Çalışıyor" cümlesi kanıt değildir.
+7. **Merge kararı** (Opus): test çıktısı + review verdict'leri kanıt. "Çalışıyor" cümlesi kanıt değildir.
 
 ## Maliyet kuralları
 
@@ -54,6 +58,7 @@ Yüksek riskli dosyalar (risk-reviewer zorunlu): `src/lib/ai/**`, `server/yerim-
 - Escalation: sonnet aynı spec'te iki kez başarısız olursa spec'i düzelt (genelde sorun spec'tedir).
   Üçüncü denemede o modülü opus ile koş. "Her ihtimale karşı opus" yok.
 - Opus'u subagent olarak sadece `risk-reviewer`'da kullan.
+- i18n parity `src/i18n/__tests__/en.test.ts` ile jest'te yakalanır; prettier Edit/Write sonrası hook ile çalışır. İkisi için ayrı agent yok.
 - Canlı AI eval'leri (`ai-eval*.yml`) her koşuda para yakar; `protocol.ts` veya prompt değişmediyse
   tetikleme. Değiştiyse önce `limit` ile küçük koş.
 - Paralellik sadece dosya kümeleri kesişmeyen işler için. Kesişiyorsa sıralı yap; merge conflict
@@ -84,3 +89,4 @@ BİTİŞ: <hangi komut, hangi exit code> — çıktıyı raporla, yorumlama.
 - Coder'lar: sadece `npx tsc --noEmit` (hızlı geri bildirim)
 - `test-writer`: sadece kendi yazdığı test dosyaları
 - `command-runner`: lint + tam jest + expo-doctor — tek otorite; aynı komutu iki agent'a koşturma
+- Prettier: `.claude/settings.json` PostToolUse hook'u, her Edit/Write sonrası otomatik
