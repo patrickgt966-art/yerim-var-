@@ -1,5 +1,5 @@
 import { cityById } from '../cities';
-import { districtInText, matchDistrict, settleDistrict } from '../districtMatch';
+import { districtInText, matchDistrict, settleDish, settleDistrict } from '../districtMatch';
 import type { Understanding } from '@/lib/ai/protocol';
 
 const izmir = cityById('izmir').districts;
@@ -201,5 +201,134 @@ describe('settleDistrict', () => {
       );
       expect(u).toMatchObject({ district: 'Karşıyaka' });
     });
+  });
+});
+
+describe('heavy typos: district and dish read from the text when the AI missed them', () => {
+  it('reads a bare typo before a where-word or an area word as a place', () => {
+    expect(districtInText('kunafa aalnya nerde', antalya)).toBe('Alanya');
+    expect(districtInText('midiye muanya nerede', bursa)).toBe('Mudanya');
+    expect(districtInText('kunafa aalnya civarı', antalya)).toBe('Alanya');
+    // Without a where-word or ending the bare typo stays a word.
+    expect(districtInText('aalnya kunafa', antalya)).toBeNull();
+  });
+
+  it('settles the district of "kunafa aalnya nerde" and "midiye muanya nerde"', () => {
+    expect(settleDistrict(search({ food: false }), 'kunafa aalnya nerde', antalya)).toMatchObject({
+      district: 'Alanya',
+    });
+    expect(settleDistrict(search({ food: false }), 'midiye muanya nerde', bursa)).toMatchObject({
+      district: 'Mudanya',
+      dish: 'midye',
+      food: true,
+    });
+  });
+
+  it('takes a district from the text when the AI answered near me without a near-me word', () => {
+    for (const text of ['sicanda künefee yeri varmı', 'sicanda iyi lahmcun']) {
+      expect(settleDistrict(search({ nearMe: true }), text, ankara)).toMatchObject({
+        district: 'Sincan',
+        nearMe: false,
+      });
+    }
+    // The text says near me itself: the AI's near me stays.
+    expect(
+      settleDistrict(search({ nearMe: true }), 'yakınımda sicanda iyi lahmacun', ankara),
+    ).toMatchObject({ district: null, nearMe: true });
+    // No district in the text: near me stays.
+    expect(settleDistrict(search({ nearMe: true }), 'iyi lahmacun', ankara)).toMatchObject({
+      district: null,
+      nearMe: true,
+    });
+  });
+
+  it('reads the dish the AI missed', () => {
+    const missed = { dish: null, food: false } as const;
+    expect(settleDistrict(search(missed), 'isgender koonak nerde', izmir)).toMatchObject({
+      dish: 'iskender',
+      food: true,
+    });
+    expect(settleDistrict(search(missed), 'iskendr yenimahaalle nerde', ankara)).toMatchObject({
+      dish: 'iskender',
+      food: true,
+      district: 'Yenimahalle',
+    });
+    expect(
+      settleDistrict(search({ ...missed, nearMe: true }), 'sicanda künefee yeri varmı', ankara),
+    ).toMatchObject({ district: 'Sincan', dish: 'kunefe', food: true });
+    expect(
+      settleDistrict(search({ ...missed, nearMe: true }), 'sicanda iyi lahmcun', ankara),
+    ).toMatchObject({ district: 'Sincan', dish: 'lahmacun', food: true });
+  });
+
+  it('leaves a search alone when the AI named a dish or category, or said food', () => {
+    expect(settleDish(search({ dish: 'pide' }), 'iskendr nerde', [])).toMatchObject({
+      dish: 'pide',
+    });
+    expect(settleDish(search({ cat: 'fish' }), 'iskendr nerde', [])).toMatchObject({ dish: null });
+    expect(settleDish(search({ food: true }), 'iskendr nerde', [])).toMatchObject({ dish: null });
+    expect(settleDish({ kind: 'unknown' }, 'iskendr nerde', [])).toEqual({ kind: 'unknown' });
+  });
+
+  it('does not make a dish of an everyday word', () => {
+    const everyday = [
+      'nerede',
+      'nerde',
+      'yerler',
+      'güzel',
+      'akşam',
+      'sabah',
+      'bakar',
+      'misin',
+      'varmı',
+      'yakın',
+      'civar',
+      'tarafta',
+      'burada',
+      'şimdi',
+      'yemek',
+      'yiyecek',
+      'istiyorum',
+      'arıyorum',
+      'otopark',
+      'park',
+      'ucuz',
+      'pahalı',
+      'sessiz',
+      'çocuk',
+      'aile',
+      'arkadaş',
+      'sevgili',
+      'lütfen',
+      'öneri',
+      'tavsiye',
+      'mekan',
+      'restoran',
+      'manzaralı',
+      'kalabalık',
+      'rahat',
+      'eğlenceli',
+      'yakınımda',
+      'buralarda',
+      'civarında',
+      'tarafında',
+      'merkez',
+      'gidelim',
+      'bulabilir',
+      'önerir',
+      'hangisi',
+      'nasıl',
+      'teşekkürler',
+      'merhaba',
+      'selamlar',
+      'tatlı',
+    ];
+    for (const word of everyday) {
+      const text = `${word} nerde`;
+      expect([word, settleDistrict(search({ food: false }), text, ankara)]).toEqual([
+        word,
+        expect.objectContaining({ dish: null, food: false }),
+      ]);
+    }
   });
 });

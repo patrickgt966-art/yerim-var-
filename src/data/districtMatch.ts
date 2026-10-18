@@ -1,4 +1,7 @@
 import type { Quarter } from './quarters';
+import { DISHES, dishProfile } from './dishes';
+import { FOOD_LEXICON } from './foodLexicon';
+import { parseQuery } from './intent';
 import { fold } from './search';
 import type { Understanding } from '@/lib/ai/protocol';
 
@@ -27,6 +30,9 @@ const LOCATED = ['nda', 'nde', 'dan', 'den', 'tan', 'ten', 'da', 'de', 'ta', 'te
 
 /** Words that make the word before them a place ("kas tarafında", "bebek civarı"). */
 const AREA_WORDS = ['taraf', 'civar', 'semt', 'yakin', 'merkez'];
+
+/** Words that ask where ("kunafa aalnya nerde"): the word before one is meant as a place. */
+const WHERE_WORDS = ['nerede', 'nerde', 'nereye', 'nereden', 'neresi'];
 
 /** The name folded with no spaces: "Göl­başı" (a soft hyphen) and "Golbasi" are the same. */
 const key = (s: string) => fold(s).replace(/ /g, '');
@@ -101,7 +107,8 @@ export function matchDistrict(
  * The first word of the text (outside `skip`) that names a district, case ending and missing
  * Turkish letters aside, or null. A typo counts only on a word that carries a place ending ("in" /
  * "from": "sicanda", "kciorende"): bare everyday words sit one letter from a district ("çabuk"
- * Çubuk, "serin" Serik, "tuzlu" Tuzla).
+ * Çubuk, "serin" Serik, "tuzlu" Tuzla). A word right before a where-word ("aalnya nerde") or an
+ * area word ("aalnya civarı") is said as a place too, so it may carry a typo bare.
  */
 export function districtInText(
   text: string,
@@ -116,9 +123,14 @@ export function districtInText(
   for (const [k, word] of words.entries()) {
     // "Menemen'i" is the dish the AI named, case ending or not.
     if (stems(key(word)).some((st) => skipped.has(st))) continue;
+    if (stems(key(word.split(/['’]/)[0]!)).some((st) => skipped.has(st))) continue;
     const next = words[k + 1] ? key(words[k + 1]!) : '';
     const placed = AREA_WORDS.some((a) => next.startsWith(a));
-    const hit = matchDistrict(word, districts, { typos: 'located', placed });
+    const asked = WHERE_WORDS.includes(next);
+    const hit = matchDistrict(word, districts, {
+      typos: placed || asked ? true : 'located',
+      placed,
+    });
     if (hit) return hit;
   }
   return null;
@@ -187,7 +199,8 @@ export function settleDistrict<T extends Understanding>(
   earlier: readonly string[] = [],
 ): T {
   if (u.kind !== 'search') return u;
-  return settled(u as Search, text, districts, quarters, earlier) as T;
+  const r = settled(u as Search, text, districts, quarters, earlier);
+  return settleDish(r, text, placeWords(r, text, districts, quarters)) as T;
 }
 
 function settled(
@@ -224,7 +237,82 @@ function settled(
     const q = quarterInText(text, quarters, skip);
     if (q) return { ...s, place: q.n, nearMe: false };
   }
-  if (s.nearMe || s.place) return s;
+  if (s.place) return s;
+  if (s.nearMe) {
+    // The AI's "near me" with no near-me word in the text: a district the text names wins.
+    const said = parseQuery(text);
+    if (said.kind === 'search' && said.nearMe) return s;
+    const named = districtInText(text, districts, skip);
+    return named ? { ...s, district: named, nearMe: false } : s;
+  }
   const found = districtInText(text, districts, skip);
   return found ? { ...s, district: found } : s;
+}
+
+/** True for a where-word, an area word or a near-me word: never a dish. */
+function isPlaceWord(w: string): boolean {
+  if (WHERE_WORDS.includes(w) || AREA_WORDS.some((a) => w.startsWith(a))) return true;
+  const q = parseQuery(w);
+  return q.kind === 'search' && q.nearMe;
+}
+
+/**
+ * The AI's search with the dish read from the text when the AI named neither a dish nor a category
+ * and did not say food ("iskendr yenimahaalle nerde"). Words of 5 letters or more outside
+ * `skipWords` (the district / place / quarter words) are tried with `dishProfile` (one typo); a word
+ * of 7 letters or more may also be two edits from a one-word dish name of 7 letters or more with
+ * the same first letter. Other kinds pass through.
+ */
+export function settleDish<T extends Understanding>(
+  u: T,
+  text: string,
+  skipWords: readonly string[],
+): T {
+  if (u.kind !== 'search' || u.dish || u.cat || u.food === true) return u;
+  const skipped = new Set(skipWords.map((w) => key(w)));
+  const words = text
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
+  for (const word of words) {
+    const w = key(word);
+    if (w.length < 5 || stems(w).some((st) => skipped.has(st)) || isPlaceWord(w)) continue;
+    let hit = dishProfile(w);
+    // A typo keeps the first letter ("kalabalık" is not a typo of "alabalık").
+    if (hit && fold(hit.dish)[0] !== w[0]) hit = null;
+    if (!hit && w.length >= 7 && !FOOD_LEXICON.has(w)) {
+      hit =
+        DISHES.find((p) => {
+          const n = key(p.dish);
+          return n.length >= 7 && !p.dish.includes(' ') && n[0] === w[0] && edits(w, n) <= 2;
+        }) ?? null;
+    }
+    if (hit) return { ...u, dish: hit.dish, cat: hit.cat, food: true };
+  }
+  return u;
+}
+
+/** Words of the text that name the settled district, place or a quarter: they are not the dish. */
+function placeWords(
+  r: Search,
+  text: string,
+  districts: readonly string[],
+  quarters: readonly Quarter[],
+): string[] {
+  const placeKeys = new Set([r.district, r.place].flatMap((v) => (v ? fold(v).split(' ') : [])));
+  const q = quarterInText(text, quarters);
+  if (q)
+    fold(q.n)
+      .split(' ')
+      .forEach((k) => placeKeys.add(k));
+  return text
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean)
+    .filter(
+      (w) =>
+        stems(key(w)).some((st) => placeKeys.has(st)) ||
+        (r.district && matchDistrict(w, [r.district]) === r.district) ||
+        matchDistrict(w, districts, { typos: 'located' }) !== null,
+    );
 }
