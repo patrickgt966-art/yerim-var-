@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import {
+  createJSONStorage,
+  persist,
+  type PersistStorage,
+  type StateStorage,
+} from 'zustand/middleware';
 
 import { DEFAULT_CITY, isAvailableCity, setActiveCity } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
@@ -38,6 +43,53 @@ export function addRecentSearch(list: string[], q: string): string[] {
   if (!text) return list;
   const key = recentKey(text);
   return [text, ...list.filter((x) => recentKey(x) !== key)].slice(0, MAX_RECENT_SEARCHES);
+}
+
+/**
+ * AsyncStorage through JSON, but a read or write that fails never breaks hydration: a corrupt or
+ * unreadable value (an app killed mid-write, a full disk) reads as nothing stored, so the app
+ * starts with defaults instead of hanging on the splash screen, and a failed write is dropped.
+ */
+export function safeJSONStorage<S>(getStorage: () => StateStorage): PersistStorage<S> {
+  const json = createJSONStorage<S>(getStorage)!;
+  return {
+    getItem: async (name) => {
+      try {
+        return await json.getItem(name);
+      } catch {
+        try {
+          await getStorage().removeItem(name);
+        } catch {
+          // Nothing more to do: the next write replaces it.
+        }
+        return null;
+      }
+    },
+    setItem: async (name, value) => {
+      try {
+        await json.setItem(name, value);
+      } catch {
+        // Kept in memory; the next change tries again.
+      }
+    },
+    removeItem: async (name) => {
+      try {
+        await json.removeItem(name);
+      } catch {
+        // Ignored, as above.
+      }
+    },
+  };
+}
+
+// Hydration that still fails (e.g. a migration that throws) falls back to the defaults.
+let hydrationFailed = false;
+const failListeners = new Set<() => void>();
+/** True when hydration ended in an error; the app then runs on the default state. */
+export const didHydrationFail = () => hydrationFailed;
+export function onHydrationFail(cb: () => void): () => void {
+  failListeners.add(cb);
+  return () => failListeners.delete(cb);
 }
 
 type State = {
@@ -151,7 +203,12 @@ export const useApp = create<State>()(
         applyLanguage(merged.lang);
         return merged;
       },
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: safeJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (_state, error) => {
+        if (!error) return;
+        hydrationFailed = true;
+        failListeners.forEach((cb) => cb());
+      },
       partialize: ({
         onboarded,
         home,

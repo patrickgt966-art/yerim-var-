@@ -5,12 +5,14 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { cityOfPlace } from '@/components/favoriteCity';
 import { FreshnessBadge, StatusBadge, Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
 import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
 import { SlotStrip } from '@/components/SlotStrip';
+import { tariffBandLabel, tariffSourceLabel } from '@/components/tariffLabel';
 import { Txt } from '@/components/Txt';
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { findAppleParking } from '@/data/appleParkings';
@@ -51,6 +53,12 @@ export default function ParkingDetail() {
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
+  const cityId = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  // A saved car park of another city is not in this city's data: offer its city, no dead end.
+  const savedFav = useApp((s) => s.favorites.find((f) => f.id === id));
+  const savedIn = savedFav ? cityOfPlace(savedFav) : undefined;
+  const otherCity = savedIn && savedIn.id !== cityId ? savedIn : undefined;
 
   if (!p) {
     return (
@@ -66,7 +74,22 @@ export default function ParkingDetail() {
         {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
         ) : (
-          <Txt secondary>{t('detail.notFound')}</Txt>
+          <View style={{ gap: 12 }}>
+            <Txt secondary>
+              {otherCity
+                ? t('favorites.otherCityBody', {
+                    city: otherCity.name,
+                    cityLoc: otherCity.locative,
+                  })
+                : t('detail.notFound')}
+            </Txt>
+            {otherCity && (
+              <Button
+                label={t('favorites.switchCity', { city: otherCity.name })}
+                onPress={() => setCity(otherCity.id)}
+              />
+            )}
+          </View>
         )}
       </View>
     );
@@ -229,7 +252,7 @@ export default function ParkingDetail() {
           {tariff ? (
             <>
               {tariff.bands.map((b) => (
-                <Row key={b.label} label={b.label} value={`₺${b.price}`} />
+                <Row key={b.label} label={tariffBandLabel(b.label, t)} value={`₺${b.price}`} />
               ))}
               {!!tariff.monthly && <Row label={t('detail.monthly')} value={`₺${tariff.monthly}`} />}
               {!!tariff.freeMinutes && (
@@ -238,7 +261,7 @@ export default function ParkingDetail() {
                 </Txt>
               )}
               <Txt variant="caption" secondary>
-                {t('detail.tariffSource', { source: tariff.source })}
+                {t('detail.tariffSource', { source: tariffSourceLabel(tariff.source, t) })}
               </Txt>
             </>
           ) : (

@@ -8,6 +8,7 @@ import type { LatLng } from '@/data/geo';
 import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/restaurants';
 import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
+import { isClosedNow } from '@/lib/openNow';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 
 const PARK_RADIUS_M = 2000;
@@ -98,10 +99,25 @@ export function useNearbyHome(): NearbyHome {
     () =>
       ranked.find((p) => {
         const f = getFreshness(p);
-        return (f.kind === 'live' || f.kind === 'updated') && p.free != null && p.free > 0;
+        return (
+          !isClosedNow(p) &&
+          (f.kind === 'live' || f.kind === 'updated') &&
+          p.free != null &&
+          p.free > 0
+        );
       }) ?? null,
     [ranked],
   );
+
+  // `ranked` puts live car parks first; the "nearest" line means the truly nearest one (an open
+  // one when there is any).
+  const nearestWalk = useMemo(() => {
+    const open = ranked.filter((p) => !isClosedNow(p));
+    const pool = open.length > 0 ? open : ranked;
+    let best: RankedParking | null = null;
+    for (const p of pool) if (!best || p.distance < best.distance) best = p;
+    return best?.walk ?? null;
+  }, [ranked]);
 
   return {
     here,
@@ -113,6 +129,6 @@ export function useNearbyHome(): NearbyHome {
     parks,
     foods,
     nearestFree,
-    nearestWalk: ranked[0]?.walk ?? null,
+    nearestWalk,
   };
 }

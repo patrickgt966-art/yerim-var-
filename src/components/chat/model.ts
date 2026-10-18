@@ -1,5 +1,8 @@
+import i18n from 'i18next';
+
 import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
 import { cityExamples } from '@/data/cities';
+import { HISTORY_LIMIT, type ChatTurn } from '@/lib/ai/protocol';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -21,10 +24,11 @@ export type CardModel = {
   label: string;
 };
 
+/** "1,2 km" in Turkish (decimal comma, as everywhere else in the app), "1.2 km" in English. */
 export function formatDistance(m: number, t: T): string {
-  return m < 1000
-    ? t('chat.distanceM', { m: Math.max(1, Math.round(m)) })
-    : t('chat.distance', { km: (m / 1000).toFixed(1) });
+  if (m < 1000) return t('chat.distanceM', { m: Math.max(1, Math.round(m)) });
+  const km = (m / 1000).toFixed(1);
+  return t('chat.distance', { km: i18n.language === 'en' ? km : km.replace('.', ',') });
 }
 
 /** The reason is a "likely" one when it does not start like the "name has the dish" sentence. */
@@ -33,19 +37,25 @@ function isLikelyReason(reason: string, t: T): boolean {
   return !reason.startsWith(named);
 }
 
+/**
+ * `countsStale`: the reply is older than a free count may be shown (UPDATED_MAX_AGE_MS), so its
+ * counts and the "easy parking" badge built on them are dropped, as everywhere else in the app.
+ */
 export function cardModel(
   card: ChatCard,
   index: number,
   sort: ChatContext['sort'] | undefined,
   t: T,
+  countsStale = false,
 ): CardModel {
   const distance = formatDistance(card.distanceM, t);
   if (card.kind === 'parking') {
+    const cardFree = countsStale ? null : card.free;
     const pill =
       card.open === 'closed'
         ? t('chat.closed')
-        : card.free != null
-          ? t('chat.freeCount', { count: card.free })
+        : cardFree != null
+          ? t('chat.freeCount', { count: cardFree })
           : card.capacity != null
             ? t('chat.capacity', { count: card.capacity })
             : null;
@@ -71,7 +81,7 @@ export function cardModel(
   const lead = card.reason ?? card.narr?.cat ?? null;
   const subline = [lead, openText].filter(Boolean).join(' · ') || null;
 
-  const free = card.narr?.parkingFree ?? null;
+  const free = countsStale ? null : (card.narr?.parkingFree ?? null);
   const paid = card.narr?.parkingPaid ?? null;
   const pill =
     card.parkingM != null
@@ -195,4 +205,18 @@ export function suggestions(ctx: ChatContext, t: T): string[] {
     .includes(ex.d.toLocaleLowerCase('tr'));
   out.push(t(inD ? 'chat.sugElsewhere_1' : 'chat.sugElsewhere_0', ex));
   return out;
+}
+
+/**
+ * The earlier turns sent with a message to the AI: only those from index `from` on (the first
+ * message after the AI consent), at most HISTORY_LIMIT. Nothing written before consent is sent.
+ */
+export function aiHistory(
+  messages: readonly { role: ChatTurn['role']; text: string }[],
+  from: number,
+): ChatTurn[] {
+  return messages
+    .slice(Math.min(from, messages.length))
+    .slice(-HISTORY_LIMIT)
+    .map((m) => ({ role: m.role, text: m.text }));
 }

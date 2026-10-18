@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  AppState,
   Linking,
   Pressable,
   ScrollView,
@@ -106,6 +107,20 @@ function Results() {
     };
   }, [target, t, city]);
 
+  // Back from the Settings app with location turned on: look again for the user's position.
+  useEffect(() => {
+    if (notice !== 'denied' || initial.parsed) return;
+    const sub = AppState.addEventListener('change', (status) => {
+      if (status !== 'active') return;
+      Location.getForegroundPermissionsAsync()
+        .then((perm) => {
+          if (perm.granted) setTarget(null);
+        })
+        .catch(() => {});
+    });
+    return () => sub.remove();
+  }, [notice, initial.parsed]);
+
   const nearMode = firstParam(params.near) === '1';
   const { ranked, data, isLoading, isPlaceholderData, isError, isFetching, refetch, widenedKm } =
     useRanked(target);
@@ -159,10 +174,11 @@ function Results() {
     return best?.id ?? null;
   }, [filtered]);
 
+  // Null when no car park in the list has a count we may show: unknown is never "0 free".
   const totalFree = filtered.reduce<number | null>((sum, p) => {
     const f = visibleFree(p);
-    return f == null || sum == null ? sum : sum + f;
-  }, 0);
+    return f == null ? sum : (sum ?? 0) + f;
+  }, null);
   // Cached counts are too old and the download is still running.
   // While only the bundled car parks show (first download running), say live counts are coming.
   const liveIncoming =

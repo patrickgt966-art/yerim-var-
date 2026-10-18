@@ -13,7 +13,7 @@ import { ParkingMap } from '@/components/ParkingMap';
 import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
-import { cityById } from '@/data/cities';
+import { cityById, isInCityArea } from '@/data/cities';
 import type { LatLng } from '@/data/geo';
 import {
   FOOD_CATEGORIES,
@@ -84,7 +84,8 @@ export default function RestaurantsScreen() {
 }
 
 function Restaurants() {
-  const cityName = cityById(useApp((s) => s.city)).name;
+  const cityId = useApp((s) => s.city);
+  const cityName = cityById(cityId).name;
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -122,10 +123,17 @@ function Restaurants() {
     setSelectedId(null);
   };
 
-  const target = useMemo<LatLng | null>(
+  const parsed = useMemo<LatLng | null>(
     () => parseLatLng(params.lat, params.lng),
     [params.lat, params.lng],
   );
+  // Only the active city's restaurants are bundled: a point outside it (a saved Ev/İş or a
+  // search hit from another city) falls back to the city centre, and the list says so.
+  const outside = !!parsed && !isInCityArea(parsed, cityById(cityId));
+  const target = useMemo<LatLng | null>(() => {
+    const home = cityById(cityId);
+    return parsed && !isInCityArea(parsed, home) ? home.center : parsed;
+  }, [parsed, cityId]);
 
   const all = useMemo(
     () => (target ? restaurantsNear(target, wide ? 15000 : 1000, 600) : []),
@@ -170,7 +178,7 @@ function Restaurants() {
   );
   const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
 
-  const place = firstParam(params.label) || cityName;
+  const place = (!outside && firstParam(params.label)) || cityName;
   const topEasy = sort === 'parkEase' && visible[0] ? isBest(visible[0].parking) : false;
 
   // The whole header scrolls with the list, so large text never squeezes the rows.
@@ -198,6 +206,11 @@ function Restaurants() {
         })}
         {widenedKm && visible.length > 0 ? `\n${t('food.widened', { km: widenedKm })}` : ''}
       </Txt>
+      {outside && (
+        <Txt variant="caption" style={{ marginBottom: 10 }}>
+          {t('food.pointOutside', { city: cityName })}
+        </Txt>
+      )}
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
       </View>
@@ -221,7 +234,8 @@ function Restaurants() {
           onPress={() => setSort('distance')}
         />
       </View>
-      {all.length > 0 && (
+      {/* A category chosen before opening must stay changeable, even with nothing within 1 km. */}
+      {(all.length > 0 || active !== 'all') && (
         <View style={{ marginBottom: 12 }}>
           {wrapChips ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{categoryChips}</View>

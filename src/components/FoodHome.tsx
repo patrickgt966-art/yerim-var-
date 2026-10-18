@@ -1,7 +1,4 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { activeCity, isInCityArea } from '@/data/cities';
 import { dishProfile } from '@/data/dishes';
@@ -9,21 +6,12 @@ import { distanceMeters, type LatLng } from '@/data/geo';
 import { popularPlaces } from '@/data/places';
 import {
   allRestaurants,
-  FOOD_CATEGORIES,
   hasWordForm,
-  kindLabel,
   type FoodCategory,
   type Restaurant,
 } from '@/data/restaurants';
 import { fold } from '@/data/search';
 import { currentLocation } from '@/lib/location';
-import { asym, brand, fonts, HIT, useColors } from '@/theme';
-
-import { CATEGORY_ICON } from './foodCategory';
-import { Icon } from './Icon';
-import { Txt } from './Txt';
-
-export type HomeMode = 'park' | 'food';
 
 export type FoodOpts = { park?: boolean; dish?: string; quality?: boolean };
 
@@ -76,62 +64,6 @@ export async function openFoodNearMe(
   openFood(target, shown, cat, opts);
 }
 
-/** Otopark / Restoran switch shown on the hero. */
-export function ModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: HomeMode;
-  onChange: (m: HomeMode) => void;
-}) {
-  const { t } = useTranslation();
-  const options: { id: HomeMode; label: string }[] = [
-    { id: 'park', label: t('food.modeOtopark') },
-    { id: 'food', label: t('food.modeRestoran') },
-  ];
-  return (
-    <View
-      accessibilityRole="tablist"
-      accessibilityLabel={t('food.modeLabel')}
-      style={[
-        asym(14, 4),
-        { flexDirection: 'row', padding: 3, backgroundColor: 'rgba(255,255,255,0.10)' },
-      ]}
-    >
-      {options.map((o) => {
-        const selected = mode === o.id;
-        return (
-          <Pressable
-            key={o.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={o.label}
-            onPress={() => onChange(o.id)}
-            style={[
-              asym(11, 3),
-              {
-                minHeight: HIT,
-                paddingHorizontal: 14,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: selected ? brand.white : 'transparent',
-              },
-            ]}
-          >
-            <Txt
-              variant="bodyBold"
-              color={selected ? brand.navy : brand.line}
-              style={{ fontSize: 14 }}
-            >
-              {o.label}
-            </Txt>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 // Keyed by city id: a switch must never serve the old city's restaurants.
 let folded: { city: string; list: { r: Restaurant; key: string }[] } | null = null;
 
@@ -176,103 +108,4 @@ export function matchRestaurants(
     if (out.length >= limit) break;
   }
   return out;
-}
-
-/** Restaurant-name suggestions, shown above place suggestions. */
-export function RestaurantSuggestions({ matches }: { matches: Restaurant[] }) {
-  const c = useColors();
-  const { t } = useTranslation();
-  return (
-    <>
-      {matches.map((r, i) => {
-        const sub = [kindLabel(r.kind, t), r.address].filter(Boolean).join(' · ');
-        return (
-          <Pressable
-            key={r.id}
-            accessibilityRole="button"
-            accessibilityLabel={sub ? `${r.name}, ${sub}` : r.name}
-            onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
-            style={({ pressed }) => ({
-              minHeight: HIT + 4,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              justifyContent: 'center',
-              borderTopWidth: i === 0 ? 0 : 1,
-              borderTopColor: c.line,
-              backgroundColor: pressed ? c.surface : c.card,
-            })}
-          >
-            <Txt variant="bodyBold" numberOfLines={2}>
-              {r.name}
-            </Txt>
-            {sub !== '' && (
-              <Txt variant="caption" secondary numberOfLines={2}>
-                {sub}
-              </Txt>
-            )}
-          </Pressable>
-        );
-      })}
-    </>
-  );
-}
-
-/** Large tappable category cards. */
-export function CategoryGrid() {
-  const c = useColors();
-  const { t } = useTranslation();
-  const [pending, setPending] = useState<FoodCategory | null>(null);
-
-  const open = async (cat: FoodCategory) => {
-    if (pending) return;
-    setPending(cat);
-    await openFoodNearMe(t('results.myLocation'), cat);
-    setPending(null);
-  };
-
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-      {FOOD_CATEGORIES.map((cat) => (
-        <Pressable
-          key={cat}
-          accessibilityRole="button"
-          accessibilityLabel={t('food.a11yCategory', { name: t(`food.cats.${cat}`) })}
-          accessibilityState={{ busy: pending === cat }}
-          onPress={() => open(cat)}
-          style={[
-            asym(22, 6),
-            {
-              flexBasis: '47%',
-              flexGrow: 1,
-              minHeight: 96,
-              padding: 14,
-              gap: 10,
-              justifyContent: 'space-between',
-              backgroundColor: c.card,
-              borderWidth: 1,
-              borderColor: c.line,
-            },
-          ]}
-        >
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: brand.cream,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {pending === cat ? (
-              <ActivityIndicator color={brand.navy} accessibilityLabel={t('a11y.loading')} />
-            ) : (
-              <Icon name={CATEGORY_ICON[cat]} size={24} color={brand.navy} />
-            )}
-          </View>
-          <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{t(`food.cats.${cat}`)}</Txt>
-        </Pressable>
-      ))}
-    </View>
-  );
 }

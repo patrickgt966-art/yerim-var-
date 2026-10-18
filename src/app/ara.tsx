@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { handOffQuestion } from '@/components/chat/handoff';
 import { openFood } from '@/components/FoodHome';
 import { Icon } from '@/components/Icon';
 import { EmptyState, type SearchSection } from '@/components/search/EmptyState';
@@ -39,9 +40,10 @@ export default function SearchScreen() {
     const q = text.trim();
     if (!q) return;
     addRecent(q);
+    handOffQuestion(q);
     router.replace({
       pathname: '/sohbet',
-      params: { q, section: fixedSection ?? sectionFor(parseQuery(q)) },
+      params: { section: fixedSection ?? sectionFor(parseQuery(q)) },
     });
   };
   const openPlace = (target: LatLng, label: string) =>
