@@ -165,6 +165,8 @@ describe('validateFreeText: chat zone (small talk)', () => {
   it.each([
     'Size de iyi günler! Park yeri mi, yemek mi?',
     'Selam! Ben Yerim, yemek ya da otopark bulurum.',
+    'Merhaba! Ben Yerim Var asistanı, yemek ya da otopark bulmana yardım ederim.',
+    "Hi! I'm the Yerim Var assistant, I find food and parking.",
     'Rica ederim, ne demek 😄',
     'Görüşürüz! İyi yolculuklar.',
   ])('accepts "%s"', (text) => {

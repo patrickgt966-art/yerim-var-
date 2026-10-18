@@ -68,6 +68,19 @@ describe('districtInText', () => {
     expect(districtInText('kardesim doner golbasi', ankara)).toBe('Gölbaşı');
     expect(districtInText('ya urlada baklava önerin varmı', izmir)).toBe('Urla');
     expect(districtInText('menemen yiyelim', izmir, ['menemen'])).toBeNull();
+    expect(districtInText("Menemen'i nerede yiyebilirim", izmir, ['menemen'])).toBeNull();
+    expect(districtInText('menemeni en iyi kim yapar', izmir, ['menemen'])).toBeNull();
+  });
+
+  it('never takes an everyday word one letter from a district', () => {
+    expect(districtInText('çabuk bir şeyler yiyelim', ankara)).toBeNull();
+    expect(districtInText('evden çıktım acıktım', ankara)).toBeNull();
+    expect(districtInText('serin bir mekan', antalya)).toBeNull();
+    expect(districtInText('kepek ekmeği', antalya)).toBeNull();
+    expect(districtInText('tuzlu bir şeyler', istanbul)).toBeNull();
+    expect(districtInText('konuk ağırlayacağız', izmir)).toBeNull();
+    // Without Turkish letters is not a typo.
+    expect(districtInText('sislide doner', istanbul)).toBe('Şişli');
   });
 });
 
@@ -85,6 +98,15 @@ describe('settleDistrict', () => {
   it('reads a district from the text when the AI left it out', () => {
     const u = settleDistrict(search({ dish: 'döner' }), 'kardesim doner golbasi', ankara);
     expect(u).toMatchObject({ district: 'Gölbaşı' });
+  });
+
+  it('keeps the place the AI named over another district in the sentence', () => {
+    const u = settleDistrict(
+      search({ place: 'Alsancak', cat: 'fish' }),
+      "Karşıyaka'dan geçiyorum, Alsancak'ta balık",
+      izmir,
+    );
+    expect(u).toMatchObject({ district: null, place: 'Alsancak' });
   });
 
   it('takes a district the AI wrote into place', () => {

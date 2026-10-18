@@ -56,7 +56,12 @@ function stems(word: string): string[] {
  * same first letter. A shorter name ("Kaş", "Buca", "Tire") must be typed with its own letters,
  * so "kas" (muscle) is never Kaş.
  */
-export function matchDistrict(word: string, districts: readonly string[]): string | null {
+export function matchDistrict(
+  word: string,
+  districts: readonly string[],
+  opts: { typos?: boolean } = {},
+): string | null {
+  const typos = opts.typos !== false;
   const low = word.toLocaleLowerCase('tr').replace(/['’`]/g, '');
   const w = key(word);
   if (!w) return null;
@@ -71,7 +76,7 @@ export function matchDistrict(word: string, districts: readonly string[]): strin
     }
     for (const s of stems(w)) {
       if (s === n) return name;
-      if (s.length < 5 || s[0] !== n[0]) continue;
+      if (!typos || s.length < 5 || s[0] !== n[0]) continue;
       const cost = edits(s, n);
       if (cost <= (n.length >= 8 ? 2 : 1) && (!best || cost < best.cost)) best = { name, cost };
     }
@@ -79,7 +84,11 @@ export function matchDistrict(word: string, districts: readonly string[]): strin
   return best?.name ?? null;
 }
 
-/** The first word of the text (outside `skip`) that names a district, or null. */
+/**
+ * The first word of the text (outside `skip`) that names a district exactly, case ending and
+ * missing Turkish letters aside, or null. No typos here: across a whole sentence, everyday words
+ * sit one letter from a district ("çabuk" Çubuk, "serin" Serik, "tuzlu" Tuzla).
+ */
 export function districtInText(
   text: string,
   districts: readonly string[],
@@ -91,8 +100,9 @@ export function districtInText(
     .split(/[^\p{L}'’]+/u)
     .filter(Boolean);
   for (const word of words) {
-    if (skipped.has(key(word))) continue;
-    const hit = matchDistrict(word, districts);
+    // "Menemen'i" is the dish the AI named, case ending or not.
+    if (stems(key(word)).some((st) => skipped.has(st))) continue;
+    const hit = matchDistrict(word, districts, { typos: false });
     if (hit) return hit;
   }
   return null;
@@ -101,9 +111,11 @@ export function districtInText(
 /**
  * The AI's search with its district settled against the city's own list, the way the app reads
  * it: a district typed wrong or without Turkish letters becomes the city's spelling; a name that
- * is not a district (a quarter such as Karaköy or Kızılay) moves to `place`; with no district, one
- * named in the text is used, unless the AI read that word as the dish or a place (İzmir's
- * Menemen is also a dish), or one the AI wrote into place. Other kinds pass through.
+ * is not a district (a quarter such as Karaköy or Kızılay) moves to `place`; a district the AI
+ * wrote into place moves to `district`. With neither a district nor a place, a district named in
+ * the text (exactly) is used, unless the AI read that word as the dish (İzmir's Menemen). A place
+ * the AI named is never overridden by another word of the sentence ("Karşıyaka'dan geçiyorum,
+ * Alsancak'ta balık"). Other kinds pass through.
  */
 export function settleDistrict<T extends Understanding>(
   u: T,
@@ -123,9 +135,9 @@ function settled(s: Search, text: string, districts: readonly string[]): Search 
   // A district written into place ("Bornova").
   const asPlace = s.place ? matchDistrict(s.place, districts) : null;
   if (asPlace) return { ...s, district: asPlace, place: null };
-  if (s.nearMe) return s;
-  // A business name ("Konak Pide") keeps its words; appleQuery often repeats the district, so it does not count.
-  const skip = [s.dish, s.place, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
+  if (s.nearMe || s.place) return s;
+  // appleQuery often repeats the district, so it does not count.
+  const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
   const found = districtInText(text, districts, skip);
   return found ? { ...s, district: found } : s;
 }

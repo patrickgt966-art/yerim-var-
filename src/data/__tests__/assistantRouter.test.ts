@@ -108,9 +108,9 @@ describe('the router: every message goes to Haiku first', () => {
     const r = await answer("Bornova'da bir yer", emptyContext('food'), deps);
     expect(r.ctx.place?.label).toBe('Konak');
     expect(r.ctx.cat).toBe('fish');
-    // A district of the city's own list, typed wrong, still counts (settleDistrict).
+    // A district of the city's own list named in the text still counts (settleDistrict).
     const quiet = mockAi(async () => searchU({ district: null, cat: 'fish', nearMe: false }));
-    const q = await answer('bornvada bir yer', emptyContext('food'), quiet.deps);
+    const q = await answer('bornovada bir yer', emptyContext('food'), quiet.deps);
     expect(q.ctx.place?.label).toBe('Bornova');
     expect(q.ctx.cat).toBe('fish');
     // A quarter the AI wrote as a district is not dropped: it is searched as a place.
