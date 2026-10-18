@@ -43,6 +43,7 @@ describe('matchDistrict', () => {
   it('keeps short names exact, with their own letters', () => {
     expect(matchDistrict('kaşta', antalya)).toBe('Kaş');
     expect(matchDistrict('kas', antalya)).toBeNull();
+    expect(matchDistrict('kas', antalya, { placed: true })).toBe('Kaş');
     expect(matchDistrict('bucada', izmir)).toBe('Buca');
     expect(matchDistrict('mama', ankara)).toBeNull();
   });
@@ -86,6 +87,10 @@ describe('districtInText', () => {
     expect(districtInText('kciorende iyi lahmcun', ankara)).toBe('Keçiören');
     expect(districtInText('maamakta iyi lamacun', ankara)).toBe('Mamak');
     expect(districtInText('sincn lahmacun', ankara)).toBeNull();
+    // A short name without its letters, said as a place.
+    expect(districtInText('tavuk pilav canim cekti kas tarafinda bir yer', antalya)).toBe('Kaş');
+    expect(districtInText('kanka yok kasta olsun', antalya)).toBe('Kaş');
+    expect(districtInText('kas yapmak istiyorum protein lazim', antalya)).toBeNull();
   });
 });
 

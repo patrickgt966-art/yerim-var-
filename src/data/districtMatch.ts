@@ -24,6 +24,9 @@ const SUFFIXES = [
 /** The endings of "in" and "from" a place: a word with one of them is meant as a place. */
 const LOCATED = ['nda', 'nde', 'dan', 'den', 'tan', 'ten', 'da', 'de', 'ta', 'te'];
 
+/** Words that make the word before them a place ("kas tarafında", "bebek civarı"). */
+const AREA_WORDS = ['taraf', 'civar', 'semt', 'yakin', 'merkez'];
+
 /** The name folded with no spaces: "Göl­başı" (a soft hyphen) and "Golbasi" are the same. */
 const key = (s: string) => fold(s).replace(/ /g, '');
 
@@ -62,7 +65,7 @@ function stems(word: string): string[] {
 export function matchDistrict(
   word: string,
   districts: readonly string[],
-  opts: { typos?: boolean | 'located' } = {},
+  opts: { typos?: boolean | 'located'; placed?: boolean } = {},
 ): string | null {
   const typos = opts.typos ?? true;
   const low = word.toLocaleLowerCase('tr').replace(/['’`]/g, '');
@@ -75,6 +78,10 @@ export function matchDistrict(
       const own = name.toLocaleLowerCase('tr');
       const rest = low.startsWith(own) ? low.slice(own.length) : null;
       if (rest !== null && (rest === '' || SUFFIXES.includes(fold(rest)))) return name;
+      // Typed without its letters ("kas"), a short name counts only when it is said as a place:
+      // with an "in/from" ending ("kasta") or before an area word ("kas tarafında").
+      if (opts.placed && w === n) return name;
+      if (typos === 'located' && LOCATED.some((e) => w === n + e)) return name;
       continue;
     }
     for (const s of stems(w)) {
@@ -105,10 +112,12 @@ export function districtInText(
     .toLocaleLowerCase('tr')
     .split(/[^\p{L}'’]+/u)
     .filter(Boolean);
-  for (const word of words) {
+  for (const [k, word] of words.entries()) {
     // "Menemen'i" is the dish the AI named, case ending or not.
     if (stems(key(word)).some((st) => skipped.has(st))) continue;
-    const hit = matchDistrict(word, districts, { typos: 'located' });
+    const next = words[k + 1] ? key(words[k + 1]!) : '';
+    const placed = AREA_WORDS.some((a) => next.startsWith(a));
+    const hit = matchDistrict(word, districts, { typos: 'located', placed });
     if (hit) return hit;
   }
   return null;
