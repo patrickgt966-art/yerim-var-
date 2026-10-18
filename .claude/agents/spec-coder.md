@@ -1,6 +1,6 @@
 ---
 name: spec-coder
-description: Implements a written spec, then stops.
+description: Patches existing lines named in a spec, then stops. Cannot create files; needs no new i18n keys. Otherwise use ui-coder or server-coder.
 model: sonnet
 effort: high
 tools: Read, Edit, Bash

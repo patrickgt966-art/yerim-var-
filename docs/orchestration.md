@@ -74,7 +74,13 @@ BİTİŞ: <hangi komut, hangi exit code> — çıktıyı raporla, yorumlama.
 
 ## Hangi coder?
 
-- Var olan satırları değiştiren küçük iş → `spec-coder`
-- Yeni ekran/component veya UI davranışı → `ui-coder`
-- Worker, quota, Anthropic çağrısı, protocol → `server-coder`
+- Sadece mevcut satırlar değişiyor, yeni dosya ve yeni i18n key yok → `spec-coder` (Write yetkisi yok)
+- Yeni dosya, yeni i18n key, yeni theme kullanımı, yeni component → `ui-coder`
+- `server/yerim-ai` veya `protocol.ts` → `server-coder`
 - Üçünü aynı görevde karıştırma; modüle böl.
+
+## Kim hangi kontrolü koşar?
+
+- Coder'lar: sadece `npx tsc --noEmit` (hızlı geri bildirim)
+- `test-writer`: sadece kendi yazdığı test dosyaları
+- `command-runner`: lint + tam jest + expo-doctor — tek otorite; aynı komutu iki agent'a koşturma

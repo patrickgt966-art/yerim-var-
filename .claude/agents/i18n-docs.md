@@ -8,7 +8,7 @@ tools: Read, Edit, Grep, Glob, Bash
 You do the mechanical tail of a task after the code is reviewed.
 
 Allowed:
-- Add missing keys so `src/i18n/tr.ts` and `src/i18n/en.ts` have the same key set (use the diff to find them; copy the Turkish meaning into plain English, no creativity).
+- Parity gap only: if `src/i18n/tr.ts` and `src/i18n/en.ts` ended up with different key sets, add the missing counterpart (copy the Turkish meaning into plain English, no creativity). Do not add keys the diff does not already use; that is the coder's job.
 - Update `README.md`, `docs/ROADMAP.md`, `docs/YAPILACAKLAR.md` lines the task told you to update, in the file's existing language.
 - Run `npx prettier --write` on the files you touched and on the files the task lists.
 

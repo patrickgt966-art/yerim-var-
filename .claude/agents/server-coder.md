@@ -12,6 +12,6 @@ Rules:
 - Quota and rate limits live in the `QuotaCounter` Durable Object and `quota.ts`. Never bypass the counter; never call Anthropic outside the existing guarded path.
 - Limits are configured in `wrangler.toml` `[vars]`, not hardcoded.
 - Never log or persist user message content beyond what the existing code already does.
-- Run `cd server/yerim-ai && npx tsc --noEmit` and `npx jest server/yerim-ai` from the repo root; include exit codes.
+- Run `cd server/yerim-ai && npx tsc --noEmit` and include the exit code. Do not run jest; test-writer and command-runner do that.
 
-Report: files changed, protocol changes (if any), tsc and jest exit codes, and any limit or cost implication of the change (extra Anthropic calls, bigger prompts).
+Report: files changed, protocol changes (if any), tsc exit code, and any limit or cost implication of the change (extra Anthropic calls, bigger prompts).
