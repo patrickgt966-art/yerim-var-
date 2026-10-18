@@ -1,7 +1,7 @@
 // Reports: kept on the device at once, sent anonymously, and the server's hidden list filters
 // the restaurants and car parks.
 
-import { allRestaurants, getRestaurant } from '@/data/restaurants';
+import { allRestaurants, getRestaurant, rankRestaurants } from '@/data/restaurants';
 import { addStatic } from '@/data/useParkings';
 import { refreshHiddenPlaces, sendPlaceReport } from '@/lib/placeReports';
 import { useAi } from '@/store/ai';
@@ -60,7 +60,7 @@ describe('refreshHiddenPlaces', () => {
   });
 
   it('keeps the old list when the fetch fails', async () => {
-    useReports.getState().setServer('izmir', ['a'], 0);
+    useReports.getState().setServer('izmir', ['a'], [], 0);
     await refreshHiddenPlaces('izmir', { fetchImpl: reply({}, false) as unknown as typeof fetch });
     expect(useReports.getState().server.izmir?.ids).toEqual(['a']);
   });
@@ -88,5 +88,16 @@ describe('hidden places in the data', () => {
     expect(addStatic(result).parkings.some((p) => p.id === gone)).toBe(false);
     useReports.getState().removeMine(gone);
     expect(addStatic(result).parkings.length).toBe(before.length);
+  });
+});
+
+describe('flagged places', () => {
+  it('keeps a flagged restaurant but ranks it after the others', () => {
+    const [a, b] = allRestaurants();
+    const rows = [a!, b!].map((r, i) => ({ r: { ...r, distanceM: i * 10 }, parking: null }));
+    useReports.getState().setServer('izmir', [], [a!.id]);
+    const ranked = rankRestaurants(rows as never, 'distance');
+    expect(ranked.map((x) => x.r.id)).toEqual([b!.id, a!.id]);
+    expect(allRestaurants().some((r) => r.id === a!.id)).toBe(true);
   });
 });

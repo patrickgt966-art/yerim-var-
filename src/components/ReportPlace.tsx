@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { sendPlaceReport } from '@/lib/placeReports';
-import { REPORT_KINDS, useReports, type ReportKind } from '@/store/reports';
+import { REPORT_KINDS, useIsFlagged, useReports, type ReportKind } from '@/store/reports';
+import { useColors } from '@/theme';
 
 import { Button } from './Button';
 import { Chip } from './Chip';
@@ -28,6 +29,8 @@ export function ReportPlace({ placeId, place, name, label, onDetails }: Props) {
   const { t } = useTranslation();
   const mine = useReports((s) => s.mine[placeId]);
   const removeMine = useReports((s) => s.removeMine);
+  const flagged = useIsFlagged(placeId);
+  const c = useColors();
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState<'ok' | 'offline' | null>(null);
 
@@ -59,6 +62,11 @@ export function ReportPlace({ placeId, place, name, label, onDetails }: Props) {
   if (!open) {
     return (
       <View style={{ gap: 8 }}>
+        {flagged ? (
+          <Txt variant="label" color={c.full}>
+            {t('report.flagged')}
+          </Txt>
+        ) : null}
         {sent ? (
           <Txt variant="caption" secondary accessibilityLiveRegion="polite">
             {t(sent === 'ok' ? 'report.thanks' : 'report.thanksOffline')}

@@ -8,7 +8,7 @@ import { distanceMeters, type LatLng } from './geo';
 import { cleanName } from './names';
 import { fold } from './search';
 import type { Parking } from './types';
-import { hiddenPlaceIds } from '@/store/reports';
+import { flaggedPlaceIds, hiddenPlaceIds } from '../store/reports';
 
 /**
  * Restaurants, cafés and bars from OpenStreetMap, bundled with the app and
@@ -848,6 +848,16 @@ function parkEaseScore(row: RestaurantRow, cat?: FoodCategory): number {
   return score;
 }
 
+/** Places several people reported closed go after the others, in their order. */
+function flaggedLast(rows: RestaurantRow[]): RestaurantRow[] {
+  const flagged = flaggedPlaceIds();
+  if (flagged.size === 0 || !rows.some((row) => flagged.has(row.r.id))) return rows;
+  return [
+    ...rows.filter((row) => !flagged.has(row.r.id)),
+    ...rows.filter((row) => flagged.has(row.r.id)),
+  ];
+}
+
 export function rankRestaurants(
   rows: RestaurantRow[],
   sort: RestaurantSort,
@@ -857,19 +867,21 @@ export function rankRestaurants(
   if (sort === 'distance') {
     const eff = (row: RestaurantRow) =>
       row.r.distanceM + (row.r.verified ? 0 : UNVERIFIED_PENALTY_M);
-    return out.sort((a, b) => eff(a) - eff(b));
+    return flaggedLast(out.sort((a, b) => eff(a) - eff(b)));
   }
   const score = new Map(out.map((row) => [row, parkEaseScore(row, cat)]));
-  return out.sort((a, b) => {
-    // 100 m buckets so info richness decides between similar scores.
-    const ba = Math.floor(score.get(a)! / 100);
-    const bb = Math.floor(score.get(b)! / 100);
-    if (ba !== bb) return ba - bb;
-    const ia = infoScore(a.r);
-    const ib = infoScore(b.r);
-    if (ia !== ib) return ib - ia;
-    return a.r.distanceM - b.r.distanceM;
-  });
+  return flaggedLast(
+    out.sort((a, b) => {
+      // 100 m buckets so info richness decides between similar scores.
+      const ba = Math.floor(score.get(a)! / 100);
+      const bb = Math.floor(score.get(b)! / 100);
+      if (ba !== bb) return ba - bb;
+      const ia = infoScore(a.r);
+      const ib = infoScore(b.r);
+      if (ia !== ib) return ib - ia;
+      return a.r.distanceM - b.r.distanceM;
+    }),
+  );
 }
 
 /** Rows whose nearest car park is known and within `maxM` metres. */

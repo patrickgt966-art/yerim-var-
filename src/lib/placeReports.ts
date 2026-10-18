@@ -56,7 +56,10 @@ export async function sendPlaceReport(
   return (out as { ok?: unknown } | null)?.ok === true;
 }
 
-/** Fetches the places the server hides in the city, unless fetched in the last few hours. */
+/**
+ * Fetches the city's places the maintainer hid and the ones flagged by reports, unless fetched in
+ * the last few hours.
+ */
 export async function refreshHiddenPlaces(
   city: string = activeCity().id,
   { force = false, fetchImpl = fetch }: { force?: boolean; fetchImpl?: typeof fetch } = {},
@@ -69,10 +72,10 @@ export async function refreshHiddenPlaces(
     fetchImpl,
   )) as {
     ids?: unknown;
+    flagged?: unknown;
   } | null;
   if (!out || !Array.isArray(out.ids)) return;
-  useReports.getState().setServer(
-    city,
-    out.ids.filter((x): x is string => typeof x === 'string'),
-  );
+  const strs = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  useReports.getState().setServer(city, strs(out.ids), strs(out.flagged));
 }

@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { isClosedNow } from '@/lib/openNow';
 import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
-import { hiddenPlaceIds, useHiddenPlaceIds } from '@/store/reports';
+import { flaggedPlaceIds, hiddenPlaceIds, useHiddenPlaceIds } from '@/store/reports';
 import { useAppleParkings, withApple } from './appleParkings';
 import { deviceCache } from './cache';
 import { activeCity } from './cities';
@@ -178,11 +178,15 @@ type Openable = Partial<Pick<Parking, 'isOpen' | 'nonstop' | 'openingHours' | 'o
  * Input must already be sorted by distance; relative order inside each group
  * is kept.
  */
-export function preferLive<T extends { source: string; distance: number } & Openable>(
+export function preferLive<T extends { id?: string; source: string; distance: number } & Openable>(
   ranked: T[],
   now: Date = new Date(),
 ): T[] {
-  const closed = new Set(ranked.filter((p) => isClosedNow(p, now)));
+  // Closed now, or reported closed by several people: after the others.
+  const flagged = flaggedPlaceIds();
+  const closed = new Set(
+    ranked.filter((p) => isClosedNow(p, now) || (p.id !== undefined && flagged.has(p.id))),
+  );
   const open = closed.size === 0 ? ranked : ranked.filter((p) => !closed.has(p));
   const first = open[0];
   let head: T[] = open;

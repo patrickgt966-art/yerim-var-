@@ -18,6 +18,8 @@ import {
   type RestaurantRow,
 } from '@/data/restaurants';
 import { asym, brand, fonts, useColors } from '@/theme';
+import { FlaggedLine } from './FlaggedLine';
+import { useIsFlagged } from '@/store/reports';
 
 const EASY_PARK_M = 200;
 /** Beyond this the walking time stops being a useful hint. */
@@ -49,6 +51,7 @@ export function RestaurantRowCard({
   const c = useColors();
   const { t } = useTranslation();
   const { r, parking, nearbyCount } = row;
+  const flagged = useIsFlagged(r.id);
   const cat = categoryOf(r);
   const metaParts = (walkKey: 'food.walk' | 'food.a11yWalk') =>
     [
@@ -79,11 +82,11 @@ export function RestaurantRowCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t('food.a11yRow', {
+      accessibilityLabel={`${t('food.a11yRow', {
         name: r.name,
         meta: metaParts('food.a11yWalk'),
         parking: parkText,
-      })}
+      })}${flagged ? `. ${t('report.flagged')}` : ''}`}
       onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
       style={[
         asym(22, 6),
@@ -136,6 +139,7 @@ export function RestaurantRowCard({
         <Txt variant="caption" secondary numberOfLines={2}>
           {meta}
         </Txt>
+        {flagged && <FlaggedLine />}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
           <PBadge size={18} />
           <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>

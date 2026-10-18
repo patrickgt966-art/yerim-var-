@@ -33,7 +33,15 @@ import {
   validQuota,
   validUnderstand,
 } from './quota';
-import { HIDE_AT, shortHash, validCity, validReport } from './reports';
+import {
+  FLAG_AT,
+  networkOf,
+  sameSecret,
+  shortHash,
+  validCity,
+  validReport,
+  validReview,
+} from './reports';
 import { localQuota, objectQuota, type Quota, type QuotaNamespace } from './store';
 
 export { QuotaCounter } from './store';
@@ -49,8 +57,10 @@ export interface Env {
   CHAT_GLOBAL_DAILY?: string;
   AI_DAILY_PER_IP?: string;
   CHAT_MIN_INTERVAL_MS?: string;
-  /** Distinct devices that must report a place closed before /hidden lists it (default 3). */
-  REPORT_HIDE_AT?: string;
+  /** Distinct networks that must report a place closed (on 2+ days) to flag it (default 3). */
+  REPORT_FLAG_AT?: string;
+  /** The maintainer's key for /admin/* (`wrangler secret put ADMIN_TOKEN`); unset turns them off. */
+  ADMIN_TOKEN?: string;
 }
 
 /** The counters: the Durable Object when bound, else in-process on KV (tests). */
@@ -164,7 +174,7 @@ async function cancelRoute(req: Request, env: Env): Promise<Response> {
 
 /**
  * A "closed / wrong location / wrong info" report from the app. Never calls Anthropic and never
- * touches the AI counter. The device is kept only hashed with the place.
+ * touches the AI counter. The device and its network are kept only hashed with the place.
  */
 async function reportRoute(req: Request, env: Env): Promise<Response> {
   let raw: unknown;
@@ -179,23 +189,28 @@ async function reportRoute(req: Request, env: Env): Promise<Response> {
   const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
   const quota = quotaOf(env);
   if (!(await quota.ipGuard(`report:${ip}`, now, 60))) return json({ error: 'rate_limited' }, 429);
-  const hideAt = Math.max(1, Number(env.REPORT_HIDE_AT) || HIDE_AT);
+  const flagAt = Math.max(1, Number(env.REPORT_FLAG_AT) || FLAG_AT);
   const out = await quota.report(
     {
       city: parsed.city,
       placeId: parsed.placeId,
+      place: parsed.place,
       kind: parsed.kind,
       device: await shortHash('place', parsed.placeId, parsed.deviceId),
+      net: await shortHash('net', parsed.placeId, networkOf(ip)),
       dayDevice: await shortHash('day', parsed.deviceId),
     },
     now,
-    hideAt,
+    flagAt,
   );
   if (!out.ok) return json({ error: 'rate_limited', reason: out.reason }, 429);
-  return json({ ok: true, hidden: out.hidden });
+  return json({ ok: true, flagged: out.flagged });
 }
 
-/** The ids of the city's places hidden by reports. Public and cacheable for an hour. */
+/**
+ * The city's places the maintainer hid (`ids`) and the ones flagged by reports (`flagged`).
+ * Public and cacheable for an hour.
+ */
 async function hiddenRoute(req: Request, env: Env): Promise<Response> {
   const city = validCity(new URL(req.url).searchParams.get('city'));
   if (!city) return json({ error: 'bad_request' }, 400);
@@ -203,9 +218,43 @@ async function hiddenRoute(req: Request, env: Env): Promise<Response> {
   const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
   const quota = quotaOf(env);
   if (!(await quota.ipGuard(`hidden:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
-  const res = json({ city, ids: await quota.hidden(city, now) });
+  const res = json({ city, ...(await quota.hidden(city, now)) });
   res.headers.set('cache-control', 'public, max-age=3600');
   return res;
+}
+
+/**
+ * The maintainer's endpoints, behind `Authorization: Bearer <ADMIN_TOKEN>` (a wrangler secret).
+ * Without the secret they do not exist. GET /admin/flagged?city= lists the flagged and hidden
+ * places; POST /admin/review {city, placeId, action: 'hide' | 'keep'} decides one.
+ */
+async function adminRoute(req: Request, env: Env, path: string): Promise<Response> {
+  if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`admin:${ip}`, now, 200))) return json({ error: 'rate_limited' }, 429);
+  const auth = req.headers.get('Authorization') ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!(await sameSecret(token, env.ADMIN_TOKEN))) return json({ error: 'unauthorized' }, 401);
+  if (req.method === 'GET' && path === '/admin/flagged') {
+    const city = validCity(new URL(req.url).searchParams.get('city'));
+    if (!city) return json({ error: 'bad_request' }, 400);
+    return json({ city, places: await quota.flagged(city, now) });
+  }
+  if (req.method === 'POST' && path === '/admin/review') {
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return json({ error: 'bad_request' }, 400);
+    }
+    const review = validReview(raw);
+    if (!review) return json({ error: 'bad_request' }, 400);
+    await quota.review(review, now);
+    return json({ ok: true });
+  }
+  return json({ error: 'not_found' }, 404);
 }
 
 type Outcome = 'ok' | 'refusal' | 'error';
@@ -217,6 +266,7 @@ export default {
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
     if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
     if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
+    if (path.startsWith('/admin/')) return adminRoute(req, env, path);
     if (
       req.method !== 'POST' ||
       !['/understand', '/narrate', '/pick', '/plan', '/chat'].includes(path)

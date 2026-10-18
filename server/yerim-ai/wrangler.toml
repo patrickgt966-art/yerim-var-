@@ -5,6 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # ANTHROPIC_API_KEY is set with `wrangler secret put ANTHROPIC_API_KEY`
 # and is never committed to the repo.
+# ADMIN_TOKEN (optional) turns on /admin/flagged and /admin/review: `wrangler secret put ADMIN_TOKEN`.
 
 [[kv_namespaces]]
 binding = "QUOTA"
@@ -42,6 +43,9 @@ AI_DAILY_PER_IP = "100"
 # Minimum time between two new AI messages of one device, in milliseconds (all endpoints).
 # Follow-up calls of an already counted message are exempt. Default 1000.
 CHAT_MIN_INTERVAL_MS = "1000"
-# Bu kadar farklı cihaz "kapanmış" deyince yer herkesten gizlenir (/hidden). Varsayılan 3.
-# Distinct devices reporting a place closed before it is hidden for everyone. Default 3.
-REPORT_HIDE_AT = "3"
+# Bu kadar farklı ağdan, en az 2 farklı günde "kapanmış" denince yer işaretlenir: uygulamada
+# "kapanmış olabilir" uyarısı çıkar, sırada aşağı iner. Herkesten gizlemek yöneticinin kararıdır
+# (/admin/review, ADMIN_TOKEN gizli anahtarı ile). Varsayılan 3.
+# Distinct networks (on 2+ days) reporting a place closed before it is flagged. Hiding it for
+# everyone is the maintainer's call (/admin/review with the ADMIN_TOKEN secret). Default 3.
+REPORT_FLAG_AT = "3"
