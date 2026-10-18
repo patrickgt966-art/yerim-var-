@@ -505,7 +505,8 @@ describe('assistant', () => {
 
     it('the AI decides what to eat and where; the rules only fill what it left empty', async () => {
       const r = await answer(
-        'bornovada romantik köfteci',
+        // The text names no district, so the AI's Konak stands (a district the text named would win).
+        'deniz kenarında romantik köfteci',
         emptyContext('food'),
         aiDeps({
           understand: async () => ({

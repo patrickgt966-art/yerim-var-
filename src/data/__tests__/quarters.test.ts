@@ -80,3 +80,42 @@ describe('a quarter written bare', () => {
     });
   });
 });
+
+describe("the AI's district against the text", () => {
+  const d = cityById('ankara').districts;
+  const search = (over: Record<string, unknown>) =>
+    ({
+      kind: 'search',
+      district: null,
+      place: null,
+      nearMe: false,
+      dish: null,
+      dishServes: null,
+      clarify: null,
+      ...over,
+    }) as never;
+
+  it('a district the text names wins over one it does not ("sicanda" read as Çankaya)', () => {
+    expect(settleDistrict(search({ district: 'Çankaya' }), 'sicanda iyi lahmcun', d)).toMatchObject(
+      {
+        district: 'Sincan',
+      },
+    );
+  });
+
+  it("keeps the AI's district when the text names it, names no other, or names a place", () => {
+    expect(settleDistrict(search({ district: 'Çankaya' }), 'çankayada lahmacun', d)).toMatchObject({
+      district: 'Çankaya',
+    });
+    expect(settleDistrict(search({ district: 'Çankaya' }), 'kebap olsun', d)).toMatchObject({
+      district: 'Çankaya',
+    });
+    expect(
+      settleDistrict(
+        search({ district: 'Çankaya', place: 'Kızılay' }),
+        'sincandan geçiyorum kızılayda döner',
+        d,
+      ),
+    ).toMatchObject({ district: 'Çankaya', place: 'Kızılay' });
+  });
+});

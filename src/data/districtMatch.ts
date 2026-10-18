@@ -156,6 +156,14 @@ export function quarterInText(
   return null;
 }
 
+/** True when a word of the text names `district`, with a case ending or a typo. */
+function mentions(text: string, district: string): boolean {
+  return text
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}'’]+/u)
+    .some((w) => w && matchDistrict(w, [district]) === district);
+}
+
 /**
  * The AI's search with its district settled against the city's own list, the way the app reads
  * it: a district typed wrong or without Turkish letters becomes the city's spelling; a name that
@@ -182,16 +190,23 @@ function settled(
   districts: readonly string[],
   quarters: readonly Quarter[],
 ): Search {
+  // appleQuery often repeats the district, so it does not count.
+  const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
   if (s.district) {
     const hit = matchDistrict(s.district, districts);
-    if (hit) return { ...s, district: hit };
-    return { ...s, district: null, place: s.place ?? s.district };
+    if (!hit) return { ...s, district: null, place: s.place ?? s.district };
+    // The AI's district is nowhere in the text, but a word of it names another one ("sicanda"
+    // read as Çankaya): the user's word wins. Not when the AI named a place, whose district it
+    // gave ("Kızılay" in Çankaya, "Karşıyaka'dan geçiyorum, Alsancak'ta").
+    if (!s.place && !mentions(text, hit)) {
+      const said = districtInText(text, districts, skip);
+      if (said && said !== hit) return { ...s, district: said };
+    }
+    return { ...s, district: hit };
   }
   // A district written into place ("Bornova").
   const asPlace = s.place ? matchDistrict(s.place, districts) : null;
   if (asPlace) return { ...s, district: asPlace, place: null };
-  // appleQuery often repeats the district, so it does not count.
-  const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
   // A quarter the AI missed ("lara balık" read as near me). Not when it asked which place was meant.
   if (!s.place && s.clarify?.ask !== 'place') {
     const q = quarterInText(text, quarters, skip);
