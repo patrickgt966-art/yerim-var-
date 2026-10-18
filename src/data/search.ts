@@ -205,22 +205,33 @@ function buildIndex(): Entry[] {
 }
 
 const townLists = new Map<string, (LatLng & { name: string })[]>();
+/** A town node this close to a district centre of the same name is that district's town. */
+const SAME_TOWN_M = 3000;
 
 /** The neighbourhood a point is in, by the nearest place of kind town; none farther than `maxM`. */
 export function areaName(p: LatLng, maxM = 2500): string | undefined {
-  const name = nearestTown(p);
-  if (!name) return undefined;
-  const t = townLists.get(activeCity().id)?.find((x) => x.name === name);
-  return t && distanceMeters(p, t) <= maxM ? name : undefined;
+  const t = nearestTownAt(p);
+  return t && t.d <= maxM ? t.name : undefined;
 }
 
 function nearestTown(p: LatLng): string | undefined {
+  return nearestTownAt(p)?.name;
+}
+
+function nearestTownAt(p: LatLng): { name: string; d: number } | undefined {
   const id = activeCity().id;
   let towns = townLists.get(id);
   if (!towns) {
     towns = rawPlaces()
       .filter((t) => t.k === 'town')
       .map((t) => ({ name: cleanName(t.n), lat: t.a, lng: t.o }));
+    // OSM lacks the town node of some districts (Beyoğlu, Konak) or has the name only for a far
+    // village (Kadıköy): the district's own centre counts as a town too.
+    const own = towns;
+    const centres = activeCity().districtCenters.filter(
+      (d) => !own.some((t) => fold(t.name) === fold(d.name) && distanceMeters(t, d) <= SAME_TOWN_M),
+    );
+    towns = [...towns, ...centres.map((d) => ({ name: d.name, lat: d.lat, lng: d.lng }))];
     townLists.set(id, towns);
   }
   let best: string | undefined;
@@ -232,7 +243,7 @@ function nearestTown(p: LatLng): string | undefined {
       best = t.name;
     }
   }
-  return best;
+  return best === undefined ? undefined : { name: best, d: bestD };
 }
 
 /** Query words that carry meaning, with generic nouns mapped to a known place. */

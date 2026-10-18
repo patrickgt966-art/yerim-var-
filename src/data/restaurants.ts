@@ -1,4 +1,4 @@
-import type { TFunction } from 'i18next';
+import i18next, { type TFunction } from 'i18next';
 
 import { activeCity } from './cities';
 import { foodFile, foodOvertureFile } from './cityData';
@@ -557,13 +557,8 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
 };
 
 /** Categories the name alone points to ("Bülent Börek" → breakfast). */
-function nameCategories(r: Restaurant): FoodCategory[] {
-  const name = fold(r.name);
-  return FOOD_CATEGORIES.filter((cat) => {
-    const rule = CATEGORY_RULES[cat];
-    if (!rule.names || rule.notNames?.some((k) => name.includes(k))) return false;
-    return rule.names.some((k) => hasWordForm(name, k));
-  });
+function nameCategories(r: Restaurant): readonly FoodCategory[] {
+  return nameFacts(r.name).cats;
 }
 
 /** Folded name parts of places that are not a meal stop (shown only under "Tümü" or Meyhane). */
@@ -581,8 +576,7 @@ const NOT_FOOD_NAMES = [
 ];
 
 function isExcluded(r: Restaurant): boolean {
-  const name = fold(r.name);
-  return NOT_FOOD_NAMES.some((k) => hasWordStart(name, k));
+  return nameFacts(r.name).excluded;
 }
 
 /** Whole-word "bar"/"pub" ("Barbaros" is not a bar), prefixes for the longer words. */
@@ -590,16 +584,44 @@ const PUB_WORDS = ['gastropub', 'cocktail', 'kokteyl', 'meyhane', 'birahane'];
 
 /** The name says pub/bar/cocktail: such a place is Meyhane & Bar only, whatever its cuisine tag. */
 function isPubName(r: Restaurant): boolean {
-  const tokens = fold(r.name)
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  return tokens.some(
-    (w) =>
-      w === 'pub' ||
-      // "Espresso Bar" is a café, so a bare "bar" only counts for non-café kinds.
-      (w === 'bar' && r.kind !== 'cafe') ||
-      PUB_WORDS.some((p) => w.startsWith(p)),
-  );
+  const f = nameFacts(r.name);
+  // "Espresso Bar" is a café, so a bare "bar" only counts for non-café kinds.
+  return f.pub || (f.bar && r.kind !== 'cafe');
+}
+
+/** What a name alone says, worked out once per name: the category filters ask it many times. */
+type NameFacts = {
+  folded: string;
+  cats: readonly FoodCategory[];
+  excluded: boolean;
+  /** A pub / cocktail / meyhane word. */
+  pub: boolean;
+  /** A bare "bar" word. */
+  bar: boolean;
+};
+
+const nameFactsCache = new Map<string, NameFacts>();
+const NAME_FACTS_MAX = 200_000;
+
+function nameFacts(name: string): NameFacts {
+  let f = nameFactsCache.get(name);
+  if (f) return f;
+  const folded = fold(name);
+  const tokens = folded.split(/[^a-z0-9]+/).filter(Boolean);
+  f = {
+    folded,
+    cats: FOOD_CATEGORIES.filter((cat) => {
+      const rule = CATEGORY_RULES[cat];
+      if (!rule.names || rule.notNames?.some((k) => folded.includes(k))) return false;
+      return rule.names.some((k) => hasWordForm(folded, k));
+    }),
+    excluded: NOT_FOOD_NAMES.some((k) => hasWordStart(folded, k)),
+    pub: tokens.some((w) => w === 'pub' || PUB_WORDS.some((p) => w.startsWith(p))),
+    bar: tokens.includes('bar'),
+  };
+  if (nameFactsCache.size >= NAME_FACTS_MAX) nameFactsCache.clear();
+  nameFactsCache.set(name, f);
+  return f;
 }
 
 const COFFEE_NAMES = ['coffee', 'kahve', 'cafe', 'kafe'];
@@ -615,7 +637,7 @@ const SWEET_NAMES = [
 
 function matchesRule(r: Restaurant, cat: Exclude<FoodCategory, 'lokanta'>): boolean {
   const rule = CATEGORY_RULES[cat];
-  const name = fold(r.name);
+  const name = nameFacts(r.name).folded;
   // A coffee shop / café is not a dessert place, unless it says tatlı/dondurma/pastane.
   if (
     cat === 'dessert' &&
@@ -1633,8 +1655,9 @@ export function parkingInfo(
   return { parking: parkingSummary(restaurant, [best], now), nearbyCount: count };
 }
 
-/** "1,8 km" from 1 km up, otherwise "650 m". */
-export function formatDistance(m: number): string {
+/** "1,8 km" (Turkish) or "1.8 km" (English) from 1 km up, otherwise "650 m". */
+export function formatDistance(m: number, lang: string = i18next.language ?? 'tr'): string {
   if (m < 1000) return `${Math.round(m)} m`;
-  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+  const km = (m / 1000).toFixed(1);
+  return `${lang.startsWith('tr') ? km.replace('.', ',') : km} km`;
 }
