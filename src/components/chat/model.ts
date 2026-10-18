@@ -1,5 +1,6 @@
 import type { ChatAction, ChatCard, ChatContext } from '@/data/assistant';
 import { cityExamples } from '@/data/cities';
+import { HISTORY_LIMIT, type ChatTurn } from '@/lib/ai/protocol';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -195,4 +196,18 @@ export function suggestions(ctx: ChatContext, t: T): string[] {
     .includes(ex.d.toLocaleLowerCase('tr'));
   out.push(t(inD ? 'chat.sugElsewhere_1' : 'chat.sugElsewhere_0', ex));
   return out;
+}
+
+/**
+ * The earlier turns sent with a message to the AI: only those from index `from` on (the first
+ * message after the AI consent), at most HISTORY_LIMIT. Nothing written before consent is sent.
+ */
+export function aiHistory(
+  messages: readonly { role: ChatTurn['role']; text: string }[],
+  from: number,
+): ChatTurn[] {
+  return messages
+    .slice(Math.min(from, messages.length))
+    .slice(-HISTORY_LIMIT)
+    .map((m) => ({ role: m.role, text: m.text }));
 }

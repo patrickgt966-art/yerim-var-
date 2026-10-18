@@ -5,6 +5,7 @@ import {
   AccessibilityInfo,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -17,7 +18,9 @@ import { BotBubble, TypingBubble, UserBubble, type ChatMessage } from '@/compone
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { Composer } from '@/components/chat/Composer';
 import { ConsentCard } from '@/components/chat/ConsentCard';
-import { suggestions } from '@/components/chat/model';
+import { takeHandedOffQuestion } from '@/components/chat/handoff';
+import { aiHistory, suggestions } from '@/components/chat/model';
+import { ruleQuery } from '@/components/chat/ruleQuery';
 import { Txt } from '@/components/Txt';
 import {
   answer,
@@ -37,7 +40,7 @@ import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
-import { HISTORY_LIMIT, type ChatTurn } from '@/lib/ai/protocol';
+import { type ChatTurn } from '@/lib/ai/protocol';
 import { noteAiActivity, refreshAiQuota } from '@/lib/ai/refresh';
 import { currentLocation } from '@/lib/location';
 import { firstParam } from '@/lib/params';
@@ -114,6 +117,9 @@ function Chat({ first }: { first: boolean }) {
   // Re-evaluated on every store change, so it follows `used` and `day`.
   const left = useAi((s) => s.remaining());
   const aiOn = aiClient !== null && consent === 'yes';
+  // Messages from before the consent are never sent to the AI, not even as history: it starts
+  // at the first message after the user said yes (all of them when consent was given earlier).
+  const aiFromRef = useRef(consent === 'yes' ? 0 : Infinity);
 
   const deps = useMemo<AssistantDeps>(
     () => ({
@@ -180,7 +186,8 @@ function Chat({ first }: { first: boolean }) {
   const [typing, setTyping] = useState(false);
   /** The reply waits for the AI: the typing bubble says so. */
   const [thinking, setThinking] = useState(false);
-  const [input, setInput] = useState('');
+  // A `q` in the link only fills the input (see the opening effect below).
+  const [input, setInput] = useState(() => (first && q ? q : ''));
   const [ctx, setCtx] = useState<ChatContext>(() => emptyContext(section));
   const ctxRef = useRef(ctx);
   const typingRef = useRef(false);
@@ -191,6 +198,28 @@ function Chat({ first }: { first: boolean }) {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  useEffect(() => {
+    if (consent !== 'yes') aiFromRef.current = Infinity;
+    else if (aiFromRef.current === Infinity) aiFromRef.current = messagesRef.current.length;
+  }, [consent]);
+
+  // The keyboard covers the home indicator: no safe-area padding under the input while it is up.
+  const [keyboardUp, setKeyboardUp] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardUp(true),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardUp(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   // Show the server's real count when the chat opens.
   useEffect(() => {
@@ -203,9 +232,7 @@ function Chat({ first }: { first: boolean }) {
     aiMsgRef.current = {
       messageId: `u${Date.now().toString(36)}${idRef.current}`,
       text,
-      history: messagesRef.current
-        .slice(-HISTORY_LIMIT)
-        .map((m) => ({ role: m.role, text: m.text })),
+      history: aiHistory(messagesRef.current, aiFromRef.current),
     };
   };
   const addUser = (text: string) =>
@@ -253,9 +280,12 @@ function Chat({ first }: { first: boolean }) {
   const send = async (raw: string) => {
     const text = raw.trim();
     if (!text || typingRef.current) return;
-    bindAi(text);
+    // The user sees what they typed or tapped; a tapped ready-made phrase reaches the assistant
+    // in the form its rules read.
+    const query = ruleQuery(text);
+    bindAi(query);
     addUser(text);
-    await reply(() => answer(text, ctxRef.current, deps));
+    await reply(() => answer(query, ctxRef.current, deps));
   };
 
   const onAction = (a: ChatAction) => {
@@ -296,10 +326,13 @@ function Chat({ first }: { first: boolean }) {
     void send(text);
   };
 
+  // A question handed over by the app is asked at once. A `q` in the link only fills the input:
+  // a link from outside the app (yerimvar://sohbet?q=...) must never send a message by itself.
   useEffect(() => {
-    if (started.current || !q || !first) return;
+    if (started.current) return;
     started.current = true;
-    void send(q);
+    const handed = takeHandedOffQuestion();
+    if (first && handed) void send(handed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -393,7 +426,7 @@ function Chat({ first }: { first: boolean }) {
         onSubmit={submitInput}
         suggestions={picks}
         onPick={(text) => void send(text)}
-        bottom={Math.max(insets.bottom, 8)}
+        bottom={keyboardUp ? 8 : Math.max(insets.bottom, 8)}
       />
     </KeyboardAvoidingView>
   );
