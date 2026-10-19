@@ -75,7 +75,10 @@
       }
     },
     "extra": {
-      "aiUrl": "https://yerim-ai.patrickgt966.workers.dev"
+      "aiUrl": "https://yerim-ai.patrickgt966.workers.dev",
+      "eas": {
+        "projectId": "49d178c0-2b98-4026-91fe-5be005a83e26"
+      }
     },
     "plugins": [
       "expo-router",
@@ -110,6 +113,7 @@
           "widgets": []
         }
       ]
-    ]
+    ],
+    "owner": "patrickhub"
   }
 }
