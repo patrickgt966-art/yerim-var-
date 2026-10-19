@@ -261,6 +261,10 @@ function frame(
 
 const link = (href: string, text: string): string => `<a href="${esc(href)}">${esc(text)}</a>`;
 
+/** A link drawn as a rounded chip, like the app's category chips. */
+const pill = (href: string, text: string): string =>
+  `<a class="pill" href="${esc(href)}">${esc(text)}</a>`;
+
 const parkingLink = (p: SiteParking): string =>
   link(shareLink('p', { id: p.id, name: p.name, lat: p.lat, lng: p.lng }), p.name);
 const restaurantLink = (r: SiteRestaurant): string =>
@@ -285,9 +289,9 @@ function siblingLinks(
 ): string {
   const items = exist
     .filter((e) => e.type !== self)
-    .map((e) => `<li>${link(areaPath(ctx.city, area, e.type), e.label)}</li>`);
-  items.push(`<li>${link(cityPath(ctx.city), `${ctx.city.name} semtleri`)}</li>`);
-  return `<h2>${esc(area.name)} için diğer sayfalar</h2><ul class="links">${items.join('')}</ul>`;
+    .map((e) => `<li>${pill(areaPath(ctx.city, area, e.type), e.label)}</li>`);
+  items.push(`<li>${pill(cityPath(ctx.city), `${ctx.city.name} semtleri`)}</li>`);
+  return `<h2>${esc(area.name)} için diğer sayfalar</h2><ul class="pills">${items.join('')}</ul>`;
 }
 
 export type PageLink = { type: string; label: string };
@@ -451,8 +455,8 @@ export function cityPage(ctx: PageContext, areas: readonly AreaWithPages[]): Pag
     const items = list
       .map(
         (a) =>
-          `<li><strong>${esc(a.area.name)}</strong>: ` +
-          a.pages.map((p) => link(areaPath(city, a.area, p.type), p.label)).join(' · ') +
+          `<li><strong>${esc(a.area.name)}</strong>` +
+          `<div class="pills">${a.pages.map((p) => pill(areaPath(city, a.area, p.type), p.label)).join('')}</div>` +
           '</li>',
       )
       .join('');

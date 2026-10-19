@@ -1,4 +1,6 @@
 import {
+  commonLast,
+  commonShop,
   dishProfile,
   GENERIC_DISH_STEMS,
   hasExactDish,
@@ -219,8 +221,10 @@ export type PlanData = {
   steps: string[];
   /** "Neden: ..." line made of verified reason templates, or null. */
   why: string | null;
-  /** The car park to navigate to. */
-  dest: { lat: number; lng: number; name: string };
+  /** The car park to navigate to; `id` + `kind` let the share text link to our own page. */
+  dest: { lat: number; lng: number; name: string; id?: string; kind?: 'p' };
+  /** The restaurant the plan ends at, when it has one (shared as our own link). */
+  place?: { id: string; name: string; lat: number; lng: number };
 };
 
 export type AssistantDeps = {
@@ -1733,8 +1737,11 @@ function adHocProfile(
   return { dish: first, cat: cat ?? 'lokanta', serves, label: first };
 }
 
-/** How a place fits a searched dish: 1 = the name or cuisine says it, 2 = it very likely serves it. */
-type DishHit = { tier: 1 | 2; byName: boolean };
+/**
+ * How a place fits a searched dish: 1 = the name or cuisine says it, 2 = it very likely serves it.
+ * `common` (tier 2 only) is the shop type that usually also has the dish, not a specialist.
+ */
+type DishHit = { tier: 1 | 2; byName: boolean; common?: string };
 
 /**
  * The words of a dish that a place's name must carry to be "named after it". A modifier
@@ -1780,7 +1787,10 @@ function dishClassifier(
     if (byName || byCuisine) {
       return { tier: 1, byName };
     }
-    return profile && likelyServes(profile, n, r.cuisines) ? { tier: 2, byName: false } : null;
+    if (!profile) return null;
+    if (likelyServes(profile, n, r.cuisines)) return { tier: 2, byName: false };
+    const common = commonShop(profile, n);
+    return common ? { tier: 2, byName: false, common } : null;
   };
 }
 
@@ -1851,8 +1861,14 @@ function preferRows(rows: RestaurantRow[], p: Prefs, hits: Map<string, DishHit>)
     (p.parking && row.parking && row.parking.distanceM <= GROUP_PARKING_M ? 1 : 0) +
     (p.at && openAt(row.r, p.at) === 'open' ? 1 : 0);
   return rows
-    .map((row, i) => ({ row, i, tier: hits.get(row.r.id)?.tier ?? 0, s: score(row) }))
-    .sort((a, b) => a.tier - b.tier || b.s - a.s || a.i - b.i)
+    .map((row, i) => ({
+      row,
+      i,
+      tier: hits.get(row.r.id)?.tier ?? 0,
+      common: hits.get(row.r.id)?.common ? 1 : 0,
+      s: score(row),
+    }))
+    .sort((a, b) => a.tier - b.tier || a.common - b.common || b.s - a.s || a.i - b.i)
     .map((x) => x.row);
 }
 
@@ -1918,7 +1934,8 @@ function runFood(
         (hit.tier === 1 ? t1 : t2).push(row);
       }
       // The places that only very likely serve it: the typical ones for the dish first.
-      if (profile && ctx.sort !== 'distance') t2 = likelyFirst(t2, profile);
+      if (profile)
+        t2 = ctx.sort !== 'distance' ? likelyFirst(t2, profile) : commonLast(t2, profile);
       return { t1, t2 };
     };
     let { t1, t2 } = tiered(searchRadiusM);
@@ -1938,15 +1955,23 @@ function runFood(
     }
     if (t1.length + t2.length > 0) {
       ordered = [...t1, ...t2];
+      const common = t2.filter((row) => hits.get(row.r.id)?.common);
+      const specialists = t2.length - common.length;
       dishPrefix =
         (widened ? t('chat.dishWider', { dish: dishName }) + ' ' : '') +
         (t1.length > 0
           ? t('chat.dishNamed', { dish: dishName, count: t1.length })
-          : t('chat.dishLikely', {
-              dish: dishName,
-              count: t2.length,
-              label: profile?.label ?? '',
-            })) +
+          : specialists === 0
+            ? t('chat.dishCommon', {
+                dish: dishName,
+                count: common.length,
+                shop: hits.get(common[0]!.r.id)!.common,
+              })
+            : t('chat.dishLikely', {
+                dish: dishName,
+                count: specialists,
+                label: profile?.label ?? '',
+              })) +
         ' ';
     } else {
       // A whole sentence the rules took for a dish is not quoted back as one.
@@ -2033,6 +2058,7 @@ function runFood(
       const hit = hits.get(id);
       if (!hit) return undefined;
       if (hit.byName) return t('chat.reasonNamed', { dish: dishName });
+      if (hit.common) return t('chat.reasonCommon', { dish: dishName, shop: hit.common });
       // A cuisine-tag match is not "in the name": word it as a likely fit.
       return profile ? t('chat.reasonLikely', { dish: dishName, label: profile.label }) : undefined;
     };
@@ -2741,7 +2767,8 @@ async function askPlan(
       t('chat.planEat', { name: e.r.name, state: eat }),
     ],
     why: t('chat.planWhy', { reasons: reasons.join(', ') }),
-    dest: { lat: park.lat, lng: park.lng, name: park.name },
+    dest: { lat: park.lat, lng: park.lng, name: park.name, id: park.id, kind: 'p' },
+    place: { id: e.r.id, name: e.r.name, lat: e.r.lat, lng: e.r.lng },
   };
   return { ok: true, plan, tone: v.tone, remaining: res.remaining };
 }
@@ -2878,7 +2905,13 @@ function parkOnlyPlan(done: ParkPickDone, place: ChatPlace | null, deps: Assista
         : t('chat.planWalk', { count: done.cand.walkMin }),
     ],
     why: t('chat.planWhy', { reasons: done.reasons.join(', ') }),
-    dest: { lat: done.park.lat, lng: done.park.lng, name: done.park.name },
+    dest: {
+      lat: done.park.lat,
+      lng: done.park.lng,
+      name: done.park.name,
+      id: done.park.id,
+      kind: 'p',
+    },
   };
 }
 

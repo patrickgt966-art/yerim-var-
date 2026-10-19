@@ -1,7 +1,7 @@
 import '@/i18n';
 
 import { answer, emptyContext, type AssistantDeps } from '../assistant';
-import { dishProfile, GENERIC_DISH_STEMS, likelyServes, typicalMatch } from '../dishes';
+import { commonShop, dishProfile, GENERIC_DISH_STEMS, likelyServes, typicalMatch } from '../dishes';
 import { CITY_STYLES, ORDER_WORDS } from '../foodLexicon';
 import { distanceMeters } from '../geo';
 import { IZMIR_DISTRICTS, parseQuery } from '../intent';
@@ -120,14 +120,14 @@ const phrasings = (dish: string) =>
 
 const BAD_TEXT = ['chat.placeNotFound', 'dishUnknown', 'dishOrPlace', 'dishNotFound', 'foodNone'];
 
-/** The top card is a place whose name or cuisine fits the dish's profile (or names a word of the dish). */
+/** The top card is a place whose name or cuisine fits the dish's profile, a shop type that usually has it, or names a word of the dish. */
 function topCardFits(dish: string, cardId: string, cardName: string): boolean {
   const profile = dishProfile(fold(dish));
   // A generic word ("ev yemeği", "balık") is a plain category answer, not a dish match.
   if (!profile || GENERIC_DISH_STEMS.has(dishStem(fold(dish)))) return true;
   const name = fold(cardName);
   const cuisines = getRestaurant(cardId)?.cuisines ?? [];
-  if (likelyServes(profile, name, cuisines)) return true;
+  if (likelyServes(profile, name, cuisines) || commonShop(profile, name)) return true;
   return fold(dish)
     .split(' ')
     .some((w) => w.length >= 3 && name.includes(w));
@@ -650,9 +650,13 @@ describe('round 5: missing dishes, district-named dishes, a leading dish with "d
         const top = (await answer(p, emptyContext('food'), deps)).reply.cards[0];
         const place = top?.kind === 'restaurant' ? getRestaurant(top.id) : undefined;
         expect(place).toBeDefined();
-        // A künefeci / tatlıcı / muhallebici / helvacı, not a gelato shop.
+        // A künefeci / tatlıcı / muhallebici / helvacı (or a shop type that usually has it), not a gelato shop.
         expect(fold(top?.name ?? '')).not.toMatch(/gelato|dondurmaci/);
-        expect(likelyServes(dishProfile(fold(dish))!, fold(top!.name), place!.cuisines)).toBe(true);
+        const profile = dishProfile(fold(dish))!;
+        const fits =
+          likelyServes(profile, fold(top!.name), place!.cuisines) ||
+          commonShop(profile, fold(top!.name)) !== null;
+        expect(fits).toBe(true);
       }
     }
   });

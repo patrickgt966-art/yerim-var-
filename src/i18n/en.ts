@@ -282,6 +282,8 @@ const en = {
     a11y: 'Share {{name}}',
     a11yPlan: 'Share the plan',
     footer: 'Found with Yerim Var 📍',
+    planPark: 'Car park',
+    planPlace: 'Place',
   },
   park: {
     reminderAsk: 'Want a reminder to head back to your car?',
@@ -786,10 +788,16 @@ const en = {
       'No place is named "{{dish}}", but I found {{count}} place of the kind that serves it; it very likely has it.',
     dishLikely_other:
       'No place is named "{{dish}}", but I found {{count}} places of the kind that serve it; they very likely have it.',
+    // {{shop}} is a Turkish shop type ("kebapçı"); the dish is usual there but not certain.
+    dishCommon_one:
+      'No place is named "{{dish}}", but it usually turns up at a {{shop}}-type place; I found {{count}}.',
+    dishCommon_other:
+      'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
     dishWider: 'Not many places for {{dish}} nearby, so I looked a bit wider.',
     reasonNamed: 'Has {{dish}} in its name',
     // {{label}} is a Turkish type word ("pide salonu"), so the English text leaves it out.
     reasonLikely: 'Very likely has {{dish}}',
+    reasonCommon: '{{shop}}; usually has {{dish}}',
     dishNotFound:
       'I couldn\'t find a place that makes "{{dish}}". Shall we look at home-cooking places nearby?',
     actLokanta: 'Home cooking nearby',

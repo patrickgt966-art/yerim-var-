@@ -85,6 +85,11 @@ export function systemPrompt(): string {
     '- Nargile / hookah / shisha / lounge mekânları: adında yemek sözcüğü yoksa not_food seç.',
     '- Adı bir Türk tatlısı ya da hamur tatlısı sözcüğüyle kurulmuşsa (-ci, -cı, -cisi, -cısı, evi, salonu, dünyası gibi eklerle) dessert seç. Sık örnekler: şambali, revani, tulumba, kazandibi, sütlaç, baklava, künefe, kadayıf, lokma, profiterol, ekler, şekerpare, halka tatlı, aşure, güllaç, keşkül, irmik helvası.',
     '- Adı bir yemek sözcüğüyle kurulmuşsa mekân o yemeği satar: o yemeğin türünü seç. Örnekler: Melemenci → breakfast, Çiğbörekçi → fast, Mantıcı → lokanta, Kokoreççi → meat, Midyeci → fish.',
+    '- soup yalnızca ADDA çorba sözcüğü geçiyorsa seçilir: çorba / çorbacı, işkembe, kelle (kelle-paça), paça, tarhana, soup, shorba / şorba, beyran. Adında bunlardan biri yoksa asla soup seçme; soup küçük geleneksel lokantalar için genel bir kutu değildir.',
+    '- Ad bir yemeği ya da o yemeğin satıcısını söylüyorsa o yemeğin türünü seç: köfte / köfteci / tava / tavacı / ciğer → meat; kuru fasulye / fasulyeci, pilav, ev yemekleri → lokanta; trileçe, sütlaç, muhallebi, sütçü (tatlı satan süt tatlıcısı anlamında) → dessert; nohut / nohutçu, muhlama → daha açık bir tür yoksa lokanta.',
+    '- Turşu, peynir, kuru meyve, baharat satan yerler ve kasaplar (turşucu, peynirci, kuruyemiş, baharat, kasap; adında ızgara / mangal / lokanta gibi bir pişirme sözcüğü yoksa) → not_food.',
+    '- Yalnızca bir kişi adı + usta varsa ve adda yemek sözcüğü yoksa → unknown.',
+    '- Örnekler (uydurma adlar): Gül Çorba Salonu → soup, Karadeniz İşkembecisi → soup, Köfteci Ramiz → meat, Tavacı Necati Usta → meat, Fasulyeci Sabri → lokanta, Nohutçu Selim → lokanta, Trileçe Durağı → dessert, Turşucu Rıza → not_food, Peynirci Halil → not_food, Kasap Ömer → not_food, Kasap Ömer Izgara → meat, Salih Usta → unknown.',
     '- confidence: high = ad ya da etiket türü açıkça söylüyor; medium = büyük olasılıkla; low = zayıf tahmin.',
     '- Her öğe için tam bir cevap ver; i değerini aynen yaz.',
   ].join('\n');
@@ -232,6 +237,44 @@ export const GUESS_COMMENT =
 export const SEEN_COMMENT =
   'Place ids scripts/classify-places.ts has already asked about and that need no entry in data/category-guess.json (unknown, low confidence, or the same category the rules give). Read only by the script, never bundled by the app.';
 
+/** `--recheck` values (repeatable or comma lists) as food categories; throws on anything else. */
+export function parseRecheck(values: readonly string[]): FoodCategory[] {
+  const out: FoodCategory[] = [];
+  for (const raw of values.flatMap((v) => v.split(','))) {
+    const v = raw.trim();
+    if (v === '') continue;
+    if (!(FOOD_CATEGORIES as readonly string[]).includes(v)) {
+      throw new Error(`--recheck needs food categories (${FOOD_CATEGORIES.join(', ')}), got "${v}"`);
+    }
+    if (!out.includes(v as FoodCategory)) out.push(v as FoodCategory);
+  }
+  return out;
+}
+
+/**
+ * Recheck candidates: places whose current guess in `items` is one of `cats`, whatever `seen` says,
+ * in a stable order (by id), at most `limit`.
+ */
+export function pickRecheck<T extends { id: string }>(
+  places: readonly T[],
+  items: Readonly<Record<string, string>>,
+  cats: readonly string[],
+  limit = Infinity,
+): T[] {
+  const wanted = places.filter((p) => Object.hasOwn(items, p.id) && cats.includes(items[p.id]!));
+  return pickCandidates(wanted, new Set(), limit);
+}
+
+/**
+ * What a recheck answer does to a guess: a food category (high / medium) or not_food (high) is the
+ * new guess (the same as the old one counts as kept); unknown, low, and not_food below high remove it.
+ */
+export function recheckOutcome(a: Classified): { store: string } | { remove: true } {
+  if (a.cat === UNKNOWN || a.confidence === 'low') return { remove: true };
+  if (a.cat === NOT_FOOD && a.confidence !== 'high') return { remove: true };
+  return { store: a.cat };
+}
+
 /** Ids already answered, in `items` or `seen`: later runs skip them. */
 export function doneIds(items: Record<string, string>, seen: readonly string[]): Set<string> {
   return new Set([...Object.keys(items), ...seen]);
@@ -284,6 +327,51 @@ export function mergeGuess(
       items: sortedKeys(items),
     },
     seen: { $comment: SEEN_COMMENT, seen: [...seen].sort() },
+  };
+}
+
+export type RecheckSummary = { kept: number; changed: Record<string, number>; removed: number };
+
+/**
+ * Applies recheck answers to the guess file: replaces or removes the guesses of the given ids
+ * (ids with no current guess are ignored) and adds the removed ones to `seen`.
+ */
+export function mergeRecheck(
+  existing: Partial<GuessFile> | null,
+  existingSeen: readonly string[],
+  fresh: readonly { id: string; answer: Classified }[],
+  meta: { generatedAt: string; model: string },
+): { guess: GuessFile; seen: SeenFile; summary: RecheckSummary } {
+  const items: Record<string, string> = { ...(existing?.items ?? {}) };
+  const seen = new Set(existingSeen);
+  const summary: RecheckSummary = { kept: 0, changed: {}, removed: 0 };
+  const done = new Set<string>();
+  for (const { id, answer } of fresh) {
+    if (!Object.hasOwn(items, id) || done.has(id)) continue;
+    done.add(id);
+    const old = items[id]!;
+    const out = recheckOutcome(answer);
+    if ('remove' in out) {
+      delete items[id];
+      seen.add(id);
+      summary.removed += 1;
+    } else if (out.store === old) {
+      summary.kept += 1;
+    } else {
+      items[id] = out.store;
+      const key = `${old}→${out.store}`;
+      summary.changed[key] = (summary.changed[key] ?? 0) + 1;
+    }
+  }
+  return {
+    guess: {
+      $comment: GUESS_COMMENT,
+      generatedAt: meta.generatedAt,
+      model: meta.model,
+      items: sortedKeys(items),
+    },
+    seen: { $comment: SEEN_COMMENT, seen: [...seen].sort() },
+    summary,
   };
 }
 

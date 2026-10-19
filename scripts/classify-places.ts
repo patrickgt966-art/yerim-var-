@@ -10,9 +10,13 @@ One-time (incremental) AI classification of the places whose food category the r
  * places, all in one batch, polled every 60 s. Later runs only ask about places that are in neither
  * `items` of data/category-guess.json nor in data/category-guess-seen.json (script only, never bundled).
  *
- * Usage: ANTHROPIC_API_KEY=... npx tsx scripts/classify-places.ts [--dry-run] [--limit N]
+ * Usage: ANTHROPIC_API_KEY=... npx tsx scripts/classify-places.ts [--dry-run] [--limit N] [--recheck cat[,cat]]
  *   --dry-run  print the candidates per city and the estimated cost, then stop (needs no key)
  *   --limit N  ask about at most N places (cities in order)
+ *   --recheck  ask again about the places whose current guess is one of these categories (repeatable
+ *              or a comma list; the seen file is ignored for them). A new food category or not_food
+ *              replaces the guess; unknown / low removes it (the place goes back to the app's own
+ *              fallback) and is added to seen.
  * The pure parts (chunks, prompt, parsing, merge, cost) are in scripts/classify/core.ts.
  */
 import './site/nativeStubs'; // must stay first: it stands in for react-native
@@ -43,10 +47,13 @@ import {
   emptyUsage,
   estimateCost,
   mergeGuess,
+  mergeRecheck,
   nearestDistrict,
   parseAnswer,
   parseCustomId,
+  parseRecheck,
   pickCandidates,
+  pickRecheck,
   textOf,
   type Candidate,
   type Classified,
@@ -59,7 +66,7 @@ const OUT = path.join(ROOT, 'data/category-guess.json');
 const SEEN = path.join(ROOT, 'data/category-guess-seen.json');
 const POLL_MS = 60_000;
 
-function readArgs(argv: string[]): { dryRun: boolean; limit: number } {
+function readArgs(argv: string[]): { dryRun: boolean; limit: number; recheck: FoodCategory[] } {
   let limit = Infinity;
   const at = argv.findIndex((a) => a === '--limit' || a.startsWith('--limit='));
   if (at >= 0) {
@@ -71,7 +78,17 @@ function readArgs(argv: string[]): { dryRun: boolean; limit: number } {
       limit = n;
     }
   }
-  return { dryRun: argv.includes('--dry-run'), limit };
+  const recheck: string[] = [];
+  argv.forEach((a, k) => {
+    if (a === '--recheck') {
+      const v = argv[k + 1];
+      if (v === undefined || v.startsWith('--')) throw new Error('--recheck needs a category');
+      recheck.push(v);
+    } else if (a.startsWith('--recheck=')) recheck.push(a.slice('--recheck='.length));
+  });
+  const cats = parseRecheck(recheck);
+  if (recheck.length > 0 && cats.length === 0) throw new Error('--recheck needs a category');
+  return { dryRun: argv.includes('--dry-run'), limit, recheck: cats };
 }
 
 function readExisting(): { guess: GuessFile; seen: string[] } {
@@ -95,7 +112,7 @@ function districtCenters(names: readonly string[]): { name: string; lat: number;
 type Chunk = { city: string; places: Candidate[] };
 
 async function main(): Promise<void> {
-  const { dryRun, limit } = readArgs(process.argv.slice(2));
+  const { dryRun, limit, recheck } = readArgs(process.argv.slice(2));
   const existing = readExisting();
   const done = doneIds(existing.guess.items, existing.seen);
   console.log(
@@ -103,7 +120,9 @@ async function main(): Promise<void> {
       `${path.relative(ROOT, SEEN)}: ${existing.seen.length} seen`,
   );
 
-  // Candidates per open city: in no category by the rules, not asked about yet.
+  if (recheck.length > 0) console.log(`recheck: places guessed as ${recheck.join(', ')} (seen file ignored)`);
+  // Candidates per open city: in no category by the rules, not asked about yet (with --recheck:
+  // the places whose current guess is one of the given categories).
   const byCity: { city: string; places: Candidate[] }[] = [];
   let left = limit;
   for (const city of CITIES.filter((c) => c.available)) {
@@ -112,7 +131,10 @@ async function main(): Promise<void> {
     const centers = districtCenters(city.districts);
     // Not read from a name keyword or cuisine tag: no category at all, or only the kind's fallback.
     const open = allRestaurants().filter((r) => categorySource(r) !== 'rules');
-    const picked = pickCandidates(open, done, left);
+    const picked =
+      recheck.length > 0
+        ? pickRecheck(open, existing.guess.items, recheck, left)
+        : pickCandidates(open, done, left);
     left -= picked.length;
     const sources = picked.map((r) => categorySource(r));
     const none = sources.filter((x) => x === null).length;
@@ -211,16 +233,27 @@ async function main(): Promise<void> {
   }
 
   if (fresh.length > 0) {
-    const merged = mergeGuess(existing.guess, existing.seen, fresh, {
-      generatedAt: new Date().toISOString(),
-      model: MODEL,
-    });
+    const meta = { generatedAt: new Date().toISOString(), model: MODEL };
+    const merged =
+      recheck.length > 0
+        ? mergeRecheck(existing.guess, existing.seen, fresh, meta)
+        : mergeGuess(existing.guess, existing.seen, fresh, meta);
     fs.writeFileSync(OUT, JSON.stringify(merged.guess, null, 2) + '\n');
     fs.writeFileSync(SEEN, JSON.stringify(merged.seen, null, 2) + '\n');
     console.log(
       `wrote ${path.relative(ROOT, OUT)}: ${Object.keys(merged.guess.items).length} classified; ` +
         `${path.relative(ROOT, SEEN)}: ${merged.seen.seen.length} seen`,
     );
+    if ('summary' in merged) {
+      const { kept, changed, removed } = merged.summary;
+      const moves = Object.entries(changed).sort(([a], [b]) => (a < b ? -1 : 1));
+      const n = moves.reduce((sum, [, c]) => sum + c, 0);
+      console.log(
+        `recheck ${recheck.join(', ')}: ${kept} kept, ${n} changed` +
+          (moves.length > 0 ? ` (${moves.map(([k, c]) => `${k} ${c}`).join(', ')})` : '') +
+          `, ${removed} removed`,
+      );
+    }
   } else {
     console.log('no usable answers; file unchanged.');
   }
