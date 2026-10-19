@@ -46,7 +46,28 @@ park yeri,boş yer,ispark,izmir,istanbul,ankara,bursa,antalya,otoparkı,lokanta,
 **Yaş sınırı:** 4+ (yapay zekâ sohbeti için Apple'ın sorduğu "kullanıcı içeriği" sorularını
 dürüstçe yanıtla; sohbet kişiler arası değil).
 
-**Destek adresi / Gizlilik adresi:** GitHub Pages'te yayınlanan `docs/gizlilik.html`.
+**Destek adresi:** `https://yerimvar.app` · **Gizlilik adresi:** `https://yerimvar.app/gizlilik`
+
+**Fiyat:** Ücretsiz · **Satış ülkeleri:** önce yalnızca Türkiye (AB'de satış için "trader status"
+beyanı gerekir; Türkiye'de gerekmez).
+
+### App Privacy formu (App Store Connect → App Privacy)
+- Veri toplama: **Evet, toplanıyor**.
+- **Identifiers → Device ID:** Uygulama işlevi (günlük ✨ hakkı sayacı). Kimliğe bağlı değil, takip yok.
+- **User Content → Other User Content:** Uygulama işlevi (Yerim'e yazılan mesajlar, yer bildirimleri).
+  Kimliğe bağlı değil, takip yok.
+- Konum: **toplanmıyor** (konum cihazda kalır, sunucuya gitmez).
+- Takip (tracking): **Hayır**.
+
+### TestFlight → Test Information (dış test için)
+**Beta App Description:**
+> Yerim Var, gideceğin restoranın yanında park etmenin kolay olup olmadığını gösterir. İzmir, İstanbul, Ankara, Bursa ve Antalya'da otoparkları ve otoparkı yakın restoranları listeler; İzmir ve İstanbul'da canlı boş yer sayısı vardır. Yerim asistanına kendi cümlenle yazabilirsin.
+
+**What to Test:**
+> Yemek ya da semt arayıp sonuçlara bak (ör. "Alsancak'ta balık", "Kadıköy'de otopark"). Bir otoparkta "Park ettim" de, hatırlatıcı kur, kilit ekranındaki süreyi ve bildirimi dene. Yerim'e birkaç soru sor. Yanlış ya da kapanmış bir yer görürsen yerin sayfasından bildir; uygulamadaki hatalar için TestFlight'tan ekran görüntüsüyle geri bildirim gönder.
+
+**Feedback Email / Contact:** geliştirici hesabındaki e-posta (herkese görünmez).
+**Sign-in required:** Hayır.
 
 ### İnceleme notu (App Review Information → Notes)
 > Hesap gerekmez; uygulamanın tamamı giriş yapmadan denenebilir. Konum izni isteğe bağlıdır: izin verilmezse şehir merkezine göre sonuç gösterilir. Yerim asistanı (yapay zekâ) ilk kullanımda açık onay ister; günde 10 ücretsiz mesajla sınırlıdır. Canlı otopark verisi İzmir ve İstanbul'da vardır; denemek için şehir olarak İzmir seçilebilir. Uygulama herhangi bir kamu kurumunu temsil etmez; veriler açık veri lisanslarıyla kullanılır.
