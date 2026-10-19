@@ -4,6 +4,8 @@
  * is not known is never mentioned. Pure: no AI call, no data access.
  */
 
+import { FAR_WALK_MIN } from '@/lib/ai/protocol';
+
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
 export type Daypart = 'morning' | 'noon' | 'evening' | 'night';
@@ -122,11 +124,13 @@ export function parkReply(f: ParkFacts, t: T, seed: string, lang?: string): stri
   let highlight = '';
   if (f.nearestName && known(f.nearestWalkMin)) {
     const o = { name: f.nearestName, min: f.nearestWalkMin };
+    // Over FAR_WALK_MIN minutes the first car park is not "the closest": it is said to be far.
+    const far = f.nearestWalkMin > FAR_WALK_MIN ? 'Far' : '';
     // Live spots only from a fresh reading (the caller passes null otherwise).
     highlight =
       known(f.nearestFree) && f.liveCount > 0
-        ? t('chat.reply.hlParkLive', { ...o, free: f.nearestFree, count: f.nearestFree })
-        : t('chat.reply.hlPark', o);
+        ? t(`chat.reply.hlParkLive${far}`, { ...o, free: f.nearestFree, count: f.nearestFree })
+        : t(`chat.reply.hlPark${far}`, o);
   }
   return capitalize(lead, lang) + (highlight ? ' ' + highlight : '');
 }

@@ -231,6 +231,18 @@ describe('POST /reply', () => {
     expect(parsed?.facts).toEqual({ where: 'Alsancak', items: [{ name: 'A', walkMin: 2 }] });
   });
 
+  it('carries the far flag and the walk minutes of a far first result', () => {
+    const facts = {
+      where: 'Bayraklı',
+      far: true,
+      farWalkMin: 48,
+      items: [{ name: 'A', walkMin: 48 }],
+    };
+    expect(validReply(replyBody('m1', { facts }))?.facts).toEqual(facts);
+    expect(validReply(replyBody('m1', { facts: { far: 'yes' } }))).toBeNull();
+    expect(validReply(replyBody('m1', { facts: { far: true, farWalkMin: -3 } }))).toBeNull();
+  });
+
   it('rate-limits per IP on its own counter, not the one of the other endpoints', async () => {
     const kv = fakeKV();
     const env = envOf(kv, { AI_DAILY_PER_IP: '2' });

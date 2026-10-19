@@ -515,12 +515,17 @@ function readReplyFacts(raw: unknown): AiReplyFacts | null {
     'requireParking',
     'freeOnly',
     'widened',
+    'far',
     'dishByNameOnly',
     'parkSearch',
   ] as const) {
     if (raw[key] === undefined) continue;
     if (typeof raw[key] !== 'boolean') return null;
     facts[key] = raw[key];
+  }
+  if (raw.farWalkMin !== undefined) {
+    if (!isCount(raw.farWalkMin)) return null;
+    facts.farWalkMin = raw.farWalkMin;
   }
   if (raw.daypart !== undefined) {
     if (!(REPLY_DAYPARTS as readonly unknown[]).includes(raw.daypart)) return null;

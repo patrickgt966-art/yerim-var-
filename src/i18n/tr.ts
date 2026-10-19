@@ -662,6 +662,10 @@ const tr = {
       hlOpen: 'Gösterdiklerimden şu an açık olduğunu bildiğim {{n}} yer var.',
       hlParkLive: 'En yakını {{name}}, ~{{min}} dk yürüme; şu an {{free}} boş yer var.',
       hlPark: 'En yakını {{name}}, ~{{min}} dk yürüme.',
+      // The first car park is more than FAR_WALK_MIN minutes away: said as it is, never as near.
+      hlParkFar: 'İlk sıradaki otopark uzakta: {{name}}, ~{{min}} dk yürüme.',
+      hlParkLiveFar:
+        'İlk sıradaki otopark uzakta: {{name}}, ~{{min}} dk yürüme; şu an {{free}} boş yer var.',
     },
     hello_0: 'Selam! Nereye gidiyorsun ya da ne yemek istersin?',
     hello_1: 'Selam! Yer adı ya da "{{cLoc}} köfteci" gibi yazabilirsin.',
@@ -713,6 +717,9 @@ const tr = {
     dishCommon:
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
+    // The first card is more than FAR_WALK_MIN minutes away: one honest sentence instead of the note above.
+    dishWiderFar: '{{dish}} için geniş alanda baktım; ilk sıradaki ~{{min}} dk yürüme uzaklıkta.',
+    farFirst: 'İlk sıradaki yer uzakta: ~{{min}} dk yürüme.',
     reasonNamed: 'Adında {{dish}} geçiyor',
     reasonLikely: '{{label}}; {{dish}} büyük ihtimalle var',
     reasonCommon: '{{shop}}; {{dish}} genelde olur',
@@ -790,6 +797,7 @@ const tr = {
     pickUnavailable: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa ve otoparka göre.',
     why: {
       closest: 'en yakın olanı (~{{count}} dk yürüme)',
+      closestFar: 'yürüme süresi en kısa olan (~{{count}} dk, uzak)',
       open_now: 'şu an açık',
       open_late: 'en az 22:00’ye kadar açık',
       free_parking: 'otoparkı ücretsiz',
@@ -824,6 +832,7 @@ const tr = {
     noInfoParkAi: '{{what}} bilgimiz yok; yakınlığa, ücrete ve açık olmasına göre seçtim.',
     whyPark: {
       closest: 'hedefe en yakın olanı (~{{count}} dk yürüme)',
+      closestFar: 'hedefe yürüme süresi en kısa olan (~{{count}} dk, uzak)',
       free: 'ücretsiz',
       nonstop: '24 saat açık',
       open_now: 'şu an açık',

@@ -902,6 +902,8 @@ export const REPLY_TIMEOUT_MS = 3000;
 /** Results named in the facts, and chip labels of a choice question. */
 export const MAX_REPLY_ITEMS = 3;
 export const MAX_REPLY_CHOICES = 6;
+/** A walk longer than this many minutes is far: the app says so and no text may call it near. */
+export const FAR_WALK_MIN = 20;
 /** Longest wording the worker returns (the app accepts at most 260 characters). */
 export const MAX_REPLY_CHARS = 400;
 
@@ -940,6 +942,10 @@ export type AiReplyFacts = {
   freeOnly?: boolean;
   /** The search looked wider than usual. */
   widened?: boolean;
+  /** The first shown result is more than FAR_WALK_MIN minutes' walk away. */
+  far?: boolean;
+  /** Its walk in minutes (set with `far`). */
+  farWalkMin?: number;
   /** The dish was found only by place names. */
   dishByNameOnly?: boolean;
   /** The results are car parks. */
@@ -981,7 +987,7 @@ kind:
 - choice_question: istek geniş; facts.choices seçenekleri çip olarak gösterilecek. Hangisini istediğini kısaca sor; seçenekleri tek tek sayma.
 - none_found: aradığı bulunamadı; bunu nazikçe söyle, yeni bilgi verme.
 
-facts uygulamanın kendi verisidir: where (yer), what (aranan), count (sonuç sayısı), items (en çok 3 sonuç: name; walkMin yürüme dakikası; parkWalkMin otoparktan yürüme dakikası; freeSpots şu an boş yer sayısı; openNow şu an açık mı; free otopark ücretsiz mi), requireParking, freeOnly, widened (arama genişletildi), dishByNameOnly (yemek yalnızca mekân adlarından bulundu), parkSearch (sonuçlar otopark), daypart, choices.
+facts uygulamanın kendi verisidir: where (yer), what (aranan), count (sonuç sayısı), items (en çok 3 sonuç: name; walkMin yürüme dakikası; parkWalkMin otoparktan yürüme dakikası; freeSpots şu an boş yer sayısı; openNow şu an açık mı; free otopark ücretsiz mi), requireParking, freeOnly, widened (arama genişletildi), far (ilk sonuç bile uzak: farWalkMin dakikadan fazla yürüme; bunu dürüstçe söyle, "yakın", "yakında", "en yakın", "hemen yanında" deme), dishByNameOnly (yemek yalnızca mekân adlarından bulundu), parkSearch (sonuçlar otopark), daypart, choices.
 
 Kurallar:
 - 1-2 KISA cümle yaz; asla ikiden fazla cümle, en çok 260 karakter. Sıcak ve doğal Türkçe; sözcük seçimini çeşitlendir, her seferinde aynı kalıbı kullanma. En çok bir emoji, ünlem zinciri yok.

@@ -284,6 +284,25 @@ describe('parkReply', () => {
     }
   });
 
+  it('says the first car park is far (never "the closest") above 20 minutes, in both languages', () => {
+    const far: Partial<ParkFacts>[] = [
+      { nearestName: 'Uzak Otopark', nearestWalkMin: 21 },
+      { nearestName: 'Uzak Otopark', nearestWalkMin: 48, nearestFree: 3, liveCount: 1 },
+    ];
+    for (const over of far) {
+      for (const t of [tr, en]) {
+        const text = parkReply(park(over), t, 's');
+        expect(text).toContain(`~${over.nearestWalkMin}`);
+        expect(text).toMatch(/uzak|far away/);
+        expect(text).not.toMatch(/en yak[ıi]n|closest|{{|undefined/i);
+      }
+    }
+    // Exactly 20 minutes is still near.
+    expect(parkReply(park({ nearestName: 'A', nearestWalkMin: 20 }), tr, 's')).toContain(
+      'En yakını',
+    );
+  });
+
   it('carries the count and the place', () => {
     const text = parkReply(park(), mock, 's');
     expect(text).toMatch(/^chat\.reply\.parkLead_\d /i);

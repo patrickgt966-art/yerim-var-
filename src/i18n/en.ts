@@ -748,6 +748,11 @@ const en = {
       hlParkLive_other:
         'The closest is {{name}}, ~{{min}} min walk; {{free}} free spaces right now.',
       hlPark: 'The closest is {{name}}, ~{{min}} min walk.',
+      hlParkFar: 'The first car park is far away: {{name}}, ~{{min}} min walk.',
+      hlParkLiveFar_one:
+        'The first car park is far away: {{name}}, ~{{min}} min walk; {{free}} free space right now.',
+      hlParkLiveFar_other:
+        'The first car park is far away: {{name}}, ~{{min}} min walk; {{free}} free spaces right now.',
     },
     hello_0: 'Hi! Where are you headed, or what do you feel like eating?',
     hello_1: 'Hi! Type a place name, or something like "meatballs in {{c}}".',
@@ -808,6 +813,8 @@ const en = {
     dishCommon_other:
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
     dishWider: 'Not many places for {{dish}} nearby, so I looked a bit wider.',
+    dishWiderFar: 'I looked wider for {{dish}}; the first place is far away, ~{{min}} min walk.',
+    farFirst: 'The first place is far away: ~{{min}} min walk.',
     reasonNamed: 'Has {{dish}} in its name',
     // {{label}} is a Turkish type word ("pide salonu"), so the English text leaves it out.
     reasonLikely: 'Very likely has {{dish}}',
@@ -890,6 +897,7 @@ const en = {
       "I couldn't make a smart pick right now. The list is sorted by distance and parking.",
     why: {
       closest: 'it’s the closest (~{{count}} min walk)',
+      closestFar: 'the shortest walk of the options (~{{count}} min, far)',
       open_now: 'open now',
       open_late: 'open until at least 22:00',
       free_parking: 'free parking',
@@ -924,6 +932,7 @@ const en = {
     noInfoParkAi: "We don't have {{what}} info; I picked by distance, price and opening hours.",
     whyPark: {
       closest: 'it’s the closest to where you’re going (~{{count}} min walk)',
+      closestFar: 'the shortest walk to where you’re going (~{{count}} min, far)',
       free: 'free',
       nonstop: 'open 24 hours',
       open_now: 'open now',
