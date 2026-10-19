@@ -1,6 +1,6 @@
 {
- "fetchedAt": "2026-10-18T08:05:43.619Z",
- "parks": 244,
+ "fetchedAt": "2026-10-19T05:55:57.628Z",
+ "parks": 243,
  "tariffs": [
   {
    "parkingId": "ispark-1005",
@@ -17,7 +17,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1039",
@@ -34,7 +34,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-104",
@@ -67,7 +67,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1088",
@@ -84,7 +84,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1104",
@@ -121,7 +121,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1105",
@@ -158,7 +158,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1127",
@@ -191,7 +191,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1133",
@@ -208,7 +208,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1138",
@@ -245,7 +245,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1189",
@@ -278,7 +278,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1192",
@@ -295,7 +295,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1206",
@@ -328,7 +328,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1298",
@@ -365,7 +365,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1303",
@@ -406,7 +406,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1328",
@@ -443,7 +443,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1343",
@@ -460,7 +460,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1376",
@@ -497,7 +497,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1423",
@@ -534,7 +534,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1446",
@@ -571,7 +571,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1447",
@@ -608,7 +608,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1452",
@@ -645,7 +645,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1455",
@@ -682,7 +682,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1456",
@@ -719,7 +719,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1461",
@@ -756,7 +756,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1465",
@@ -793,7 +793,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1466",
@@ -830,7 +830,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1467",
@@ -867,7 +867,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1468",
@@ -904,7 +904,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1469",
@@ -941,7 +941,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1470",
@@ -978,7 +978,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1471",
@@ -1015,7 +1015,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1472",
@@ -1052,7 +1052,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1474",
@@ -1089,7 +1089,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1475",
@@ -1126,7 +1126,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1478",
@@ -1163,7 +1163,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1486",
@@ -1200,7 +1200,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1487",
@@ -1237,7 +1237,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1503",
@@ -1274,7 +1274,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1522",
@@ -1307,7 +1307,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1525",
@@ -1344,7 +1344,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1529",
@@ -1377,7 +1377,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-153",
@@ -1410,7 +1410,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1546",
@@ -1427,7 +1427,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1550",
@@ -1464,7 +1464,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1568",
@@ -1497,7 +1497,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-157",
@@ -1530,7 +1530,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1591",
@@ -1567,7 +1567,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1595",
@@ -1584,7 +1584,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1599",
@@ -1621,7 +1621,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1621",
@@ -1654,7 +1654,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1628",
@@ -1687,7 +1687,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1653",
@@ -1724,7 +1724,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1655",
@@ -1761,7 +1761,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1663",
@@ -1794,7 +1794,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1704",
@@ -1827,7 +1827,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1730",
@@ -1864,7 +1864,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1751",
@@ -1901,7 +1901,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1797",
@@ -1938,7 +1938,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1804",
@@ -1975,7 +1975,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1811",
@@ -2012,7 +2012,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1859",
@@ -2049,7 +2049,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1879",
@@ -2086,7 +2086,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1900",
@@ -2119,7 +2119,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1912",
@@ -2132,7 +2132,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1913",
@@ -2241,7 +2241,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1929",
@@ -2258,7 +2258,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1958",
@@ -2275,7 +2275,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1960",
@@ -2312,7 +2312,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1987",
@@ -2349,7 +2349,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1988",
@@ -2366,7 +2366,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-1993",
@@ -2403,7 +2403,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2030",
@@ -2440,7 +2440,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2036",
@@ -2477,7 +2477,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2037",
@@ -2514,7 +2514,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2053",
@@ -2551,7 +2551,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2085",
@@ -2584,7 +2584,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2088",
@@ -2617,7 +2617,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2089",
@@ -2650,7 +2650,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2100",
@@ -2687,7 +2687,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2146",
@@ -2724,7 +2724,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2147",
@@ -2757,7 +2757,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2150",
@@ -2794,7 +2794,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2164",
@@ -2831,7 +2831,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2175",
@@ -2868,7 +2868,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-220",
@@ -2885,7 +2885,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2207",
@@ -2922,7 +2922,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2215",
@@ -2939,7 +2939,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2216",
@@ -2952,7 +2952,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2228",
@@ -2989,7 +2989,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2237",
@@ -3026,7 +3026,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2238",
@@ -3063,7 +3063,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2242",
@@ -3080,24 +3080,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
-  },
-  {
-   "parkingId": "ispark-2243",
-   "hourly": null,
-   "currency": "TRY",
-   "bands": [
-    {
-     "label": "Tam Gün",
-     "price": 200
-    }
-   ],
-   "freeMinutes": 15,
-   "monthly": null,
-   "priceKind": "official",
-   "validFrom": null,
-   "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2273",
@@ -3134,7 +3117,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2307",
@@ -3171,7 +3154,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2332",
@@ -3208,7 +3191,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2335",
@@ -3225,7 +3208,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2338",
@@ -3262,7 +3245,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2345",
@@ -3279,7 +3262,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2350",
@@ -3316,7 +3299,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2366",
@@ -3353,7 +3336,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2372",
@@ -3390,7 +3373,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2375",
@@ -3427,7 +3410,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2391",
@@ -3444,7 +3427,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2406",
@@ -3481,7 +3464,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2410",
@@ -3518,7 +3501,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2424",
@@ -3535,7 +3518,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2428",
@@ -3572,7 +3555,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2430",
@@ -3605,7 +3588,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2434",
@@ -3622,7 +3605,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2439",
@@ -3659,7 +3642,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2441",
@@ -3676,7 +3659,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2449",
@@ -3709,7 +3692,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2452",
@@ -3726,7 +3709,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2455",
@@ -3763,7 +3746,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2468",
@@ -3800,7 +3783,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-248",
@@ -3817,7 +3800,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2554",
@@ -3854,7 +3837,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2556",
@@ -3871,7 +3854,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2562",
@@ -3908,7 +3891,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2576",
@@ -3945,7 +3928,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2683",
@@ -3962,7 +3945,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2685",
@@ -3979,7 +3962,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2709",
@@ -4016,7 +3999,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2787",
@@ -4053,7 +4036,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2793",
@@ -4090,7 +4073,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2799",
@@ -4127,7 +4110,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2802",
@@ -4164,7 +4147,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2805",
@@ -4201,7 +4184,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2808",
@@ -4238,7 +4221,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2811",
@@ -4275,7 +4258,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2816",
@@ -4308,7 +4291,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2820",
@@ -4345,7 +4328,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2822",
@@ -4382,7 +4365,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2824",
@@ -4419,7 +4402,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2838",
@@ -4456,7 +4439,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2848",
@@ -4493,7 +4476,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2850",
@@ -4530,7 +4513,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2854",
@@ -4547,7 +4530,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2855",
@@ -4584,7 +4567,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2865",
@@ -4601,7 +4584,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2866",
@@ -4618,7 +4601,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2870",
@@ -4655,7 +4638,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2873",
@@ -4692,7 +4675,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2882",
@@ -4709,7 +4692,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2885",
@@ -4746,7 +4729,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2892",
@@ -4783,7 +4766,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2898",
@@ -4820,7 +4803,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2905",
@@ -4857,7 +4840,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2907",
@@ -4894,7 +4877,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2909",
@@ -4931,7 +4914,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2916",
@@ -4968,7 +4951,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2918",
@@ -5005,7 +4988,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2920",
@@ -5042,7 +5025,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2933",
@@ -5079,7 +5062,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2948",
@@ -5116,7 +5099,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2960",
@@ -5153,7 +5136,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2965",
@@ -5190,7 +5173,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2969",
@@ -5227,7 +5210,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-297",
@@ -5260,7 +5243,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2971",
@@ -5297,7 +5280,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2993",
@@ -5334,7 +5317,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2994",
@@ -5371,7 +5354,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-2999",
@@ -5404,7 +5387,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3011",
@@ -5441,7 +5424,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3019",
@@ -5478,7 +5461,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3030",
@@ -5515,7 +5498,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3036",
@@ -5552,7 +5535,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3051",
@@ -5589,7 +5572,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3053",
@@ -5626,7 +5609,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3057",
@@ -5663,7 +5646,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3063",
@@ -5700,7 +5683,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3068",
@@ -5737,7 +5720,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3071",
@@ -5774,7 +5757,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3072",
@@ -5811,7 +5794,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3073",
@@ -5848,7 +5831,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3074",
@@ -5865,7 +5848,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3082",
@@ -5882,7 +5865,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3087",
@@ -5899,7 +5882,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3127",
@@ -5936,7 +5919,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-315",
@@ -5969,7 +5952,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3152",
@@ -6006,7 +5989,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3173",
@@ -6043,7 +6026,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3175",
@@ -6080,7 +6063,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3184",
@@ -6113,7 +6096,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3185",
@@ -6130,7 +6113,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3187",
@@ -6167,7 +6150,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3190",
@@ -6204,7 +6187,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3193",
@@ -6241,7 +6224,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3201",
@@ -6258,7 +6241,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3235",
@@ -6295,7 +6278,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3236",
@@ -6312,7 +6295,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3239",
@@ -6349,7 +6332,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3257",
@@ -6366,7 +6349,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3261",
@@ -6403,7 +6386,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3263",
@@ -6440,7 +6423,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3268",
@@ -6457,7 +6440,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3273",
@@ -6474,7 +6457,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3296",
@@ -6511,7 +6494,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3299",
@@ -6528,7 +6511,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3301",
@@ -6565,7 +6548,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3303",
@@ -6602,7 +6585,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3306",
@@ -6639,7 +6622,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3309",
@@ -6676,7 +6659,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3328",
@@ -6713,7 +6696,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3332",
@@ -6730,7 +6713,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3382",
@@ -6767,7 +6750,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3400",
@@ -6784,7 +6767,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3401",
@@ -6821,7 +6804,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3404",
@@ -6858,7 +6841,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3406",
@@ -6895,7 +6878,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3412",
@@ -6912,7 +6895,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3434",
@@ -6929,7 +6912,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3441",
@@ -6966,7 +6949,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3445",
@@ -6983,7 +6966,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3447",
@@ -7020,7 +7003,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-346",
@@ -7053,7 +7036,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-3479",
@@ -7090,7 +7073,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-359",
@@ -7123,7 +7106,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-36",
@@ -7156,7 +7139,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-377",
@@ -7189,7 +7172,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-381",
@@ -7222,7 +7205,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-415",
@@ -7255,7 +7238,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-459",
@@ -7288,7 +7271,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-502",
@@ -7325,7 +7308,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-507",
@@ -7362,7 +7345,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-537",
@@ -7395,7 +7378,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-539",
@@ -7428,7 +7411,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-569",
@@ -7461,7 +7444,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-572",
@@ -7494,7 +7477,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-589",
@@ -7527,7 +7510,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-595",
@@ -7560,7 +7543,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-597",
@@ -7593,7 +7576,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-609",
@@ -7626,7 +7609,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-758",
@@ -7663,7 +7646,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-777",
@@ -7696,7 +7679,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-778",
@@ -7729,7 +7712,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-782",
@@ -7762,7 +7745,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-828",
@@ -7795,7 +7778,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-905",
@@ -7812,7 +7795,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-919",
@@ -7845,7 +7828,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-974",
@@ -7862,7 +7845,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   },
   {
    "parkingId": "ispark-987",
@@ -7895,7 +7878,7 @@
    "priceKind": "official",
    "validFrom": null,
    "source": "İBB İSPARK",
-   "verifiedAt": "2026-10-18"
+   "verifiedAt": "2026-10-19"
   }
  ]
 }
