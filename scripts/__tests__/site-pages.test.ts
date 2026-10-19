@@ -6,6 +6,7 @@ import {
   NON_RESTAURANT_KINDS,
   headersFile,
   areaPages,
+  cityPage,
   parkingRows,
   priceCell,
   restaurantRows,
@@ -220,6 +221,28 @@ describe('areaPages: a page type needs at least 3 rows', () => {
     expect(restaurants!.html).toContain('href="/izmir/alsancak-otopark"');
     expect(restaurants!.html).toContain('href="/izmir"');
     expect(restaurants!.html).toContain("Yerim Var yakında App Store'da.");
+  });
+
+  it("draws the links to the area's other pages and the city page as pills", () => {
+    const out = areaPages(
+      CTX,
+      AREA,
+      input({ parkings: [park(1), park(2), park(3)], candidates: cands(3) }),
+    );
+    const [parking, restaurants] = out.pages;
+    expect(restaurants!.html).toContain('<ul class="pills">');
+    expect(restaurants!.html).toContain('<a class="pill" href="/izmir/alsancak-otopark">');
+    expect(restaurants!.html).toContain('<a class="pill" href="/izmir">İzmir semtleri</a>');
+    expect(parking!.html).toContain('<a class="pill" href="/izmir/alsancak-restoran">');
+    // The page itself is not one of its own pills, and the shared CSS defines the pill.
+    expect(restaurants!.html).not.toContain('<a class="pill" href="/izmir/alsancak-restoran">');
+    expect(restaurants!.html).toContain('.pill{');
+    expect(restaurants!.html).toContain('.pills{display:flex;flex-wrap:wrap;gap:');
+  });
+
+  it('draws the area links of the city page as pills', () => {
+    const page = cityPage(CTX, [{ area: AREA, pages: [{ type: 'otopark', label: 'Otopark' }] }]);
+    expect(page.html).toContain('<a class="pill" href="/izmir/alsancak-otopark">Otopark</a>');
   });
 
   it('keeps drink and dessert places off the restaurant page but on their category page', () => {

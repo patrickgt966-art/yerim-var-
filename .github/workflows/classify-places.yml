@@ -10,6 +10,10 @@ on:
         description: 'Classify at most this many places (empty: all new places)'
         required: false
         type: string
+      recheck:
+        description: 'Ask again about places currently guessed as these categories, e.g. "soup" (comma list; empty: no recheck)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -34,20 +38,23 @@ jobs:
       - run: npm ci --prefix server/yerim-ai
       - name: Classify places
         shell: bash
-        run: npx tsx scripts/classify-places.ts ${LIMIT:+--limit "$LIMIT"} | tee -a "$GITHUB_STEP_SUMMARY"
+        run: npx tsx scripts/classify-places.ts ${LIMIT:+--limit "$LIMIT"} ${RECHECK:+--recheck "$RECHECK"} | tee -a "$GITHUB_STEP_SUMMARY"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           LIMIT: ${{ inputs.limit }}
+          RECHECK: ${{ inputs.recheck }}
 
       # Propose the update as a pull request (a push to main is never made).
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
           branch: data/category-guess
-          title: 'chore(data): estimated categories for uncategorised places'
-          commit-message: 'chore(data): estimated categories for uncategorised places'
+          title: "${{ inputs.recheck && format('chore(data): recheck estimated categories ({0})', inputs.recheck) || 'chore(data): estimated categories for uncategorised places' }}"
+          commit-message: "${{ inputs.recheck && format('chore(data): recheck estimated categories ({0})', inputs.recheck) || 'chore(data): estimated categories for uncategorised places' }}"
           body: |
             Automated run of `scripts/classify-places.ts` (Anthropic Message Batches API). Adds only places not in `data/category-guess.json` or `data/category-guess-seen.json` yet; see the Classify places run summary for the counts and the cost.
+
+            ${{ inputs.recheck && format('Recheck run: places currently guessed as `{0}` were asked again with the current prompt; a new category replaces the guess, an unknown or low answer removes it (the place goes back to the app fallback).', inputs.recheck) || '' }}
 
             Check the diff before merging. CI does not start on its own for this pull request (it was opened with the workflow token); close and reopen it to run CI.
           add-paths: |

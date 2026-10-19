@@ -274,6 +274,8 @@ const tr = {
     a11y: '{{name}} paylaş',
     a11yPlan: 'Planı paylaş',
     footer: 'Yerim Var ile bulundu 📍',
+    planPark: 'Otopark',
+    planPlace: 'Yer',
   },
   park: {
     reminderAsk: 'Arabana dönmeni hatırlatayım mı?',
@@ -694,9 +696,12 @@ const tr = {
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
     dishUnknownLong: 'Ne aradığını tam çıkaramadım; yakındaki yerleri gösteriyorum.',
     dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
+    dishCommon:
+      '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
     reasonNamed: 'Adında {{dish}} geçiyor',
     reasonLikely: '{{label}}; {{dish}} büyük ihtimalle var',
+    reasonCommon: '{{shop}}; {{dish}} genelde olur',
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',

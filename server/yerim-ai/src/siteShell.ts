@@ -55,6 +55,9 @@ th{color:#4F6F78;font-weight:700}
 .sub{display:block;color:#4F6F78;font-size:15px}
 .links{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0}
 .links a{display:inline-block;padding:6px 12px;border:2px solid #0B3C49;border-radius:14px;font-weight:700;text-decoration:none;color:#0B3C49}
+.pills{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:8px 0 0;padding:0}
+.pills li{margin:0;padding:0;border:0}
+.pill{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;background:#fff;color:#0B3C49;border:1.5px dashed #7F98A1;border-radius:22px 22px 22px 6px;font-size:14px;font-weight:700;text-decoration:none}
 .note{color:#4F6F78;font-size:14px}
 footer{margin-top:20px;text-align:center;color:#4F6F78;font-size:14px}
 footer a{color:#0B3C49}

@@ -41,12 +41,13 @@ export function placeShareText(
   return [head, shareLink(kind, place), t('share.footer')].join('\n');
 }
 
-/** The plan's steps numbered, the reason, and the car park to drive to. */
+/** The plan's steps numbered, the reason, and our links to the car park and, when there is one, the place. */
 export function planShareText(
   plan: {
     steps: string[];
     why: string | null;
     dest: LatLng & { name: string; id?: string; kind?: ShareKind };
+    place?: { id: string; name: string; lat: number; lng: number };
   },
   t: TFunction,
 ): string {
@@ -56,8 +57,9 @@ export function planShareText(
     ...plan.steps.map((s, i) => `${i + 1}. ${s}`),
     ...(plan.why ? [plan.why] : []),
     dest.id && dest.kind
-      ? shareLink(dest.kind, { ...dest, id: dest.id })
+      ? `${t('share.planPark')}: ${shareLink(dest.kind, { ...dest, id: dest.id })}`
       : mapsLink(dest, dest.name),
+    ...(plan.place ? [`${t('share.planPlace')}: ${shareLink('r', plan.place)}`] : []),
     t('share.footer'),
   ].join('\n');
 }

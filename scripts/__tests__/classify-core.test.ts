@@ -16,10 +16,14 @@ import {
   estimateCost,
   keep,
   mergeGuess,
+  mergeRecheck,
   nearestDistrict,
   parseAnswer,
   parseCustomId,
+  parseRecheck,
   pickCandidates,
+  pickRecheck,
+  recheckOutcome,
   systemPrompt,
   textOf,
   userContent,
@@ -75,6 +79,21 @@ describe('prompt', () => {
     }
     expect(text).toMatch(/yemek sözcüğüyle kurulmuşsa.*o yemeğin türünü seç/);
     for (const ex of ['Melemenci → breakfast', 'Çiğbörekçi → fast', 'Mantıcı → lokanta', 'Kokoreççi → meat', 'Midyeci → fish']) {
+      expect(text).toContain(ex);
+    }
+  });
+
+  it('lets only a soup word in the name make a soup, and routes dish and shop names', () => {
+    const text = systemPrompt();
+    expect(text).toMatch(/soup yalnızca ADDA.*çorba.*işkembe.*kelle.*paça.*tarhana.*soup.*shorba.*şorba.*beyran/);
+    expect(text).toMatch(/asla soup seçme/);
+    expect(text).toMatch(/köfte.*tavacı.*ciğer → meat/);
+    expect(text).toMatch(/kuru fasulye.*pilav.*ev yemekleri → lokanta/);
+    expect(text).toMatch(/trileçe.*sütlaç.*muhallebi.*sütçü.*→ dessert/);
+    expect(text).toMatch(/nohut.*muhlama.*lokanta/);
+    expect(text).toMatch(/turşucu, peynirci, kuruyemiş, baharat, kasap.*ızgara.*→ not_food/);
+    expect(text).toMatch(/kişi adı \+ usta.*→ unknown/);
+    for (const ex of ['Köfteci Ramiz → meat', 'Fasulyeci Sabri → lokanta', 'Turşucu Rıza → not_food', 'Salih Usta → unknown']) {
       expect(text).toContain(ex);
     }
   });
@@ -254,6 +273,100 @@ describe('merge and incremental skip', () => {
     expect(a.guess.items).toEqual({ 'osm-n1': 'fish' });
     expect(a.seen.seen).toEqual([]);
     expect(JSON.stringify(mergeGuess(a.guess, a.seen.seen, fresh, meta))).toBe(JSON.stringify(a));
+  });
+});
+
+describe('recheck', () => {
+  const meta = { generatedAt: '2026-10-19T00:00:00.000Z', model: MODEL };
+  const items = {
+    'osm-n1': 'soup',
+    'osm-n2': 'soup',
+    'osm-n3': 'soup',
+    'osm-n4': 'soup',
+    'osm-n5': 'soup',
+    'osm-n6': 'soup',
+    'osm-n7': 'meat',
+    'osm-n8': 'cafe',
+  };
+  const ans = (cat: Answer, confidence: 'high' | 'medium' | 'low' = 'high') => ({
+    cat,
+    confidence,
+  });
+
+  it('reads --recheck values as repeatable or comma lists of food categories', () => {
+    expect(parseRecheck(['soup'])).toEqual(['soup']);
+    expect(parseRecheck(['soup,meat', 'soup', ' cafe '])).toEqual(['soup', 'meat', 'cafe']);
+    expect(() => parseRecheck(['soupy'])).toThrow(/--recheck/);
+    expect(() => parseRecheck(['not_food'])).toThrow(/--recheck/);
+  });
+
+  it('picks the places guessed as the given categories, ignoring seen, by id, with the limit', () => {
+    const places = [
+      { id: 'osm-n9' }, // no guess
+      { id: 'osm-n8' },
+      { id: 'osm-n3' },
+      { id: 'osm-n1' },
+      { id: 'osm-n7' },
+      { id: 'osm-n1' },
+    ];
+    expect(pickRecheck(places, items, ['soup']).map((p) => p.id)).toEqual(['osm-n1', 'osm-n3']);
+    expect(pickRecheck(places, items, ['soup', 'meat']).map((p) => p.id)).toEqual([
+      'osm-n1',
+      'osm-n3',
+      'osm-n7',
+    ]);
+    expect(pickRecheck(places, items, ['soup'], 1).map((p) => p.id)).toEqual(['osm-n1']);
+    expect(pickRecheck(places, items, ['soup'], 0)).toEqual([]);
+    expect(pickRecheck(places, items, ['fish'])).toEqual([]);
+    // an id that is also in seen is still picked: seen is not an input
+    expect(pickRecheck([{ id: 'osm-n1' }], items, ['soup'])).toHaveLength(1);
+  });
+
+  it('replaces with a food category (high / medium) or not_food (high); removes unknown, low and weak not_food', () => {
+    expect(recheckOutcome(ans('lokanta'))).toEqual({ store: 'lokanta' });
+    expect(recheckOutcome(ans('meat', 'medium'))).toEqual({ store: 'meat' });
+    expect(recheckOutcome(ans('not_food'))).toEqual({ store: 'not_food' });
+    expect(recheckOutcome(ans('not_food', 'medium'))).toEqual({ remove: true });
+    expect(recheckOutcome(ans('not_food', 'low'))).toEqual({ remove: true });
+    expect(recheckOutcome(ans('unknown'))).toEqual({ remove: true });
+    expect(recheckOutcome(ans('dessert', 'low'))).toEqual({ remove: true });
+  });
+
+  it('merges: kept, changed (from→to), removed to seen; others untouched; repeatable', () => {
+    const fresh = [
+      { id: 'osm-n1', answer: ans('soup') }, // kept
+      { id: 'osm-n2', answer: ans('meat') }, // changed
+      { id: 'osm-n3', answer: ans('meat', 'medium') }, // changed
+      { id: 'osm-n4', answer: ans('not_food') }, // changed
+      { id: 'osm-n5', answer: ans('unknown') }, // removed
+      { id: 'osm-n6', answer: ans('not_food', 'medium') }, // removed
+      { id: 'osm-n9', answer: ans('fish') }, // no guess: ignored
+    ];
+    const merged = mergeRecheck({ items }, ['ov-1'], fresh, meta);
+    expect(merged.guess.items).toEqual({
+      'osm-n1': 'soup',
+      'osm-n2': 'meat',
+      'osm-n3': 'meat',
+      'osm-n4': 'not_food',
+      'osm-n7': 'meat',
+      'osm-n8': 'cafe',
+    });
+    expect(merged.seen.seen).toEqual(['osm-n5', 'osm-n6', 'ov-1']);
+    expect(merged.summary).toEqual({
+      kept: 1,
+      changed: { 'soup→meat': 2, 'soup→not_food': 1 },
+      removed: 2,
+    });
+    expect(merged.guess).toMatchObject({ generatedAt: meta.generatedAt, model: MODEL });
+    const again = mergeRecheck(merged.guess, merged.seen.seen, fresh, meta);
+    expect(again.guess.items).toEqual(merged.guess.items);
+  });
+
+  it('removes a low-confidence answer even when it equals the old guess', () => {
+    const merged = mergeRecheck({ items }, [], [{ id: 'osm-n7', answer: ans('meat', 'low') }], meta);
+    expect(merged.guess.items).not.toHaveProperty('osm-n7');
+    expect(merged.seen.seen).toEqual(['osm-n7']);
+    expect(merged.summary.removed).toBe(1);
   });
 });
 

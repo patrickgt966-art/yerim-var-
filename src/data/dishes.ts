@@ -28,6 +28,8 @@ export type DishProfile = {
   label: string;
   /** Cuisine tags that spell the dish but mean something else ("pasta" the cake is not the noodle dish). */
   notCuisines?: string[];
+  /** Folded name words of shop types that usually also serve the dish but are not its specialist. */
+  common?: string[];
 };
 
 function d(
@@ -103,6 +105,22 @@ const EURO = ['schnitzel', 'snitzel', 'sinitzel', 'bistro', 'brasserie', 'steakh
 const GREENS = [...HOME, 'zeytinyagli', 'ege mutfagi', 'ege otlari', 'ot'];
 const BAKERY = ['corek', 'firin', 'pastane', 'unlu mamul', 'borek', 'pogaca'];
 const DELI = [...KAHVALTI, ...TOST, 'sarkuteri', 'deli'];
+
+/** Shop types that usually also serve a dish they are not known for: folded name words and a Turkish label. */
+export const SHOP_GROUPS = {
+  kebapci: { label: 'kebapçı', words: KEBAP },
+  kofteci: { label: 'köfteci', words: KOFTE },
+  donerci: { label: 'dönerci', words: DONER },
+  pideci: { label: 'pideci', words: PIDE },
+  esnaf: { label: 'esnaf lokantası', words: HOME },
+  balikci: { label: 'balıkçı', words: FISH },
+  meyhane: { label: 'meyhane', words: ['meyhane', 'meze'] },
+  burgerci: { label: 'burgerci', words: ['burger', 'hamburger'] },
+  tavukci: { label: 'tavukçu', words: ['tavuk', 'tavukcu'] },
+  kahvalti: { label: 'kahvaltı salonu', words: KAHVALTI },
+  kafe: { label: 'kafe', words: [...COFFEE, 'cafe', 'kafe'] },
+  pastane: { label: 'pastane', words: ['pastane', 'patisserie'] },
+} as const satisfies Record<string, { label: string; words: readonly string[] }>;
 
 export const DISHES: DishProfile[] = [
   // fast: pide, lahmacun, döner, burger and friends
@@ -841,6 +859,31 @@ function withinOne(a: string, b: string): boolean {
   return long.slice(i + 1) === short.slice(i);
 }
 
+/** Dish -> the shop types that usually also serve it (never one whose words are already in `serves`). */
+const MEZE_DISHES = DISHES.filter((p) => p.cat === 'meyhane' && p.serves.includes('meze')).map(
+  (p) => p.dish,
+);
+const COMMON_AT: [keyof typeof SHOP_GROUPS, string[]][] = [
+  ['kebapci', ['mercimek', 'mercimek corba', 'kunefe']],
+  ['kofteci', ['patates kizartmasi', 'mercimek', 'irmik helvasi']],
+  ['donerci', ['pilav ustu', 'patates kizartmasi']],
+  ['pideci', ['mercimek', 'sutlac']],
+  ['esnaf', ['mercimek', 'sutlac']],
+  ['balikci', [...MEZE_DISHES, 'helva']],
+  ['meyhane', ['kalamar', 'ahtapot', 'kofte']],
+  ['burgerci', ['milkshake']],
+  ['tavukci', ['pilav', 'kanat', 'patates kizartmasi']],
+  ['kahvalti', ['gozleme', 'tost']],
+  ['kafe', ['tost', 'waffle', 'sandvic', 'cheesecake', 'makarna']],
+  ['pastane', ['sutlac', 'dondurma']],
+];
+for (const [group, dishes] of COMMON_AT) {
+  for (const dish of dishes) {
+    const p = DISHES.find((x) => x.dish === dish);
+    if (p) p.common = [...(p.common ?? []), ...SHOP_GROUPS[group].words];
+  }
+}
+
 /** Endings that turn a dish into the seller or a plural ("lahmacuncu", "mantıcı", "köfteler"), longest first. */
 const SELLER_SUFFIXES = ['lari', 'leri', 'lar', 'ler', 'ci', 'cu', 'si', 'su'];
 
@@ -1170,17 +1213,53 @@ export function typicalFirst<T extends { r: Pick<Restaurant, 'name' | 'cuisines'
   return [...rows].sort((a, b) => tier.get(a)! - tier.get(b)!);
 }
 
-/**
- * The places that only "very likely serve" a dish (tier 2), best fit first: a name that says
- * the dish's kind of place ("Ristorante", "pilavcı") before one that only has the cuisine tag
- * (a pub with a "pasta" tag). Stable within a fit, so the given ranking holds among equals.
- */
-export function likelyFirst<T extends { r: Pick<Restaurant, 'name'> }>(
+/** The label of the shop type that usually also serves the dish ("kebapçı"), or null when the name has none. */
+export function commonShop(p: DishProfile, foldedName: string): string | null {
+  const kw = p.common?.find((w) => hasWordForm(foldedName, w));
+  if (!kw) return null;
+  return (
+    Object.values(SHOP_GROUPS).find((g) => (g.words as readonly string[]).includes(kw))?.label ??
+    null
+  );
+}
+
+/** True when the place only usually serves the dish (a common shop type), not as a specialist. */
+function commonOnly(
+  p: DishProfile,
+  r: Pick<Restaurant, 'name'> & { cuisines?: string[] },
+): boolean {
+  const n = fold(r.name);
+  return !likelyServes(p, n, r.cuisines ?? []) && commonShop(p, n) !== null;
+}
+
+/** Stable: every specialist before every place that only usually serves the dish; the order inside each group holds. */
+export function commonLast<T extends { r: Pick<Restaurant, 'name'> & { cuisines?: string[] } }>(
   rows: T[],
   profile: DishProfile,
 ): T[] {
-  const named = new Map(
-    rows.map((row) => [row, profile.serves.some((kw) => hasWordForm(fold(row.r.name), kw))]),
+  const common = new Map(rows.map((row) => [row, commonOnly(profile, row.r)]));
+  return [...rows].sort((a, b) => Number(common.get(a)) - Number(common.get(b)));
+}
+
+/**
+ * The places that only "very likely serve" a dish (tier 2), best fit first: a name that says
+ * the dish's kind of place ("Ristorante", "pilavcı") before one that only has the cuisine tag
+ * (a pub with a "pasta" tag), and both before a shop type that only usually has it (common).
+ * Stable within a fit, so the given ranking holds among equals.
+ */
+export function likelyFirst<T extends { r: Pick<Restaurant, 'name'> & { cuisines?: string[] } }>(
+  rows: T[],
+  profile: DishProfile,
+): T[] {
+  const fit = new Map(
+    rows.map((row) => [
+      row,
+      commonOnly(profile, row.r)
+        ? 2
+        : profile.serves.some((kw) => hasWordForm(fold(row.r.name), kw))
+          ? 0
+          : 1,
+    ]),
   );
-  return [...rows].sort((a, b) => Number(!named.get(a)) - Number(!named.get(b)));
+  return [...rows].sort((a, b) => fit.get(a)! - fit.get(b)!);
 }

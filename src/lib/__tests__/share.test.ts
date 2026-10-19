@@ -57,8 +57,31 @@ describe('share texts', () => {
     expect(lines[5]).toContain('maps.apple.com/?ll=38.41,27.12');
     const known = { ...plan, dest: { ...plan.dest, id: 'ispark-12', kind: 'p' as const } };
     expect(planShareText(known, t).split('\n')[5]).toBe(
-      'https://yerimvar.app/p/ispark-12?n=Konak%20Otopark%C4%B1&ll=38.41,27.12',
+      'Otopark: https://yerimvar.app/p/ispark-12?n=Konak%20Otopark%C4%B1&ll=38.41,27.12',
     );
     expect(planShareText({ ...plan, why: null }, t)).not.toContain('Neden');
+  });
+
+  it('a plan with ids links to our pages for the car park and the place; maps only without an id', () => {
+    const plan = {
+      steps: ['1'],
+      why: null,
+      dest: { name: 'Konak Otoparkı', lat: 38.41, lng: 27.12 },
+      place: { id: 'osm-n9', name: 'Köfteci Yusuf', lat: 38.42, lng: 27.13 },
+    };
+    const known = { ...plan, dest: { ...plan.dest, id: 'ispark-12', kind: 'p' as const } };
+    const lines = planShareText(known, t).split('\n');
+    expect(lines).toContain(`Otopark: ${shareLink('p', { ...known.dest, id: 'ispark-12' })}`);
+    expect(lines).toContain(`Yer: ${shareLink('r', plan.place)}`);
+    expect(planShareText(known, t)).toContain('https://yerimvar.app/p/ispark-12');
+    expect(planShareText(known, t)).toContain('https://yerimvar.app/r/osm-n9');
+    expect(planShareText(known, t)).not.toContain('maps.apple.com');
+    // No car park id: the Apple Maps link stays as the fallback; the place still has our link.
+    const noId = planShareText(plan, t);
+    expect(noId).toContain('maps.apple.com/?ll=38.41,27.12');
+    expect(noId).toContain('https://yerimvar.app/r/osm-n9');
+    expect(noId).not.toContain('https://yerimvar.app/p/');
+    // No place (a car-park-only plan): only the car park link.
+    expect(planShareText({ ...known, place: undefined }, t)).not.toContain('/r/');
   });
 });
