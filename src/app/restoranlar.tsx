@@ -180,7 +180,8 @@ function Restaurants() {
   const { data, isPlaceholderData } = useParkings();
   const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilterState] = useState<Filter>(initial);
-  const [sort, setSortState] = useState<RestaurantSort>('parkEase');
+  // Nearest first, unless parking was asked for (a filter) or the park sort was picked by hand.
+  const [sortChoice, setSortState] = useState<RestaurantSort | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const mapRef = useRef<MapView>(null);
   const screenReader = useScreenReader();
@@ -188,6 +189,7 @@ function Restaurants() {
     setFilterState(next);
     setSelectedId(null);
   };
+  const sort: RestaurantSort = sortChoice ?? (requireParking || freeOnly ? 'parkEase' : 'distance');
   const setSort = (next: RestaurantSort) => {
     setSortState(next);
     setSelectedId(null);

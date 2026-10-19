@@ -36,6 +36,9 @@ import {
 } from '../../../../src/lib/ai/protocol';
 import worker, { type Env } from '../index';
 
+// Thousands of generated model outputs per case: under a full parallel jest run these can pass 5 s.
+jest.setTimeout(30_000);
+
 const RUNS = 2000;
 const CATS = [
   'breakfast', 'soup', 'meat', 'lokanta', 'fish', 'cafe', 'meyhane', 'fast', 'world', 'dessert', 'none',

@@ -14,6 +14,8 @@ const PHRASE_KEYS: readonly string[] = [
   'chat.exAlsancak',
   'chat.exKonak',
   'chat.exNear',
+  'chat.greetPark',
+  'chat.greetFood',
   'chat.exStadium',
   'chat.exKofte',
   'chat.exBreakfast',

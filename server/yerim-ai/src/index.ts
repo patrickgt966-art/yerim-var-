@@ -13,9 +13,12 @@ import {
   pickSystem,
   planModelSchema,
   planSystem,
+  replyOutputSchema,
+  replySystem,
   toChat,
   toPick,
   toPlan,
+  toReply,
   toUnderstanding,
   todayIstanbul,
   understandSystem,
@@ -33,6 +36,7 @@ import {
   validPick,
   validPlan,
   validQuota,
+  validReply,
   validUnderstand,
 } from './quota';
 import {
@@ -173,6 +177,69 @@ async function quotaRoute(req: Request, env: Env): Promise<Response> {
   if (!(await quota.ipGuard(`quota:${ip}`, now, 500))) return json({ error: 'rate_limited' }, 429);
   return json({ remaining: await quota.peek(parsed.deviceId, now) });
 }
+
+/**
+ * The AI's wording of a reply the app already built. It costs no use: it rides on the message the
+ * router call charged (one wording per message, see takeReply), so it needs that charge and the
+ * same messageId. Own IP counter, so it cannot starve the other calls.
+ */
+async function replyRoute(req: Request, env: Env): Promise<Response> {
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const parsed = validReply(raw);
+  if (!parsed) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`reply:${ip}`, now, aiLimits(env).perIp))) {
+    return json({ error: 'rate_limited', reason: 'ip' }, 429);
+  }
+  const taken = await quota.reply(parsed.deviceId, parsed.messageId, now);
+  if (!taken.ok) {
+    return taken.reason === 'used'
+      ? json({ error: 'rate_limited', reason: 'used' }, 429)
+      : json({ error: 'no_message' }, 409);
+  }
+  const started = Date.now();
+  const log = (outcome: Outcome) =>
+    console.log(JSON.stringify({ endpoint: '/reply', ms: Date.now() - started, outcome }));
+  try {
+    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+    const response = await client.messages.parse({
+      model: MODEL,
+      max_tokens: 200,
+      system: cachedSystem(replySystem(parsed.city)),
+      output_config: { effort: 'low', format: zodOutputFormat(replyOutputSchema) },
+      messages: [
+        {
+          role: 'user',
+          content: JSON.stringify({
+            lang: parsed.lang ?? 'tr',
+            userText: parsed.userText,
+            kind: parsed.kind,
+            facts: parsed.facts,
+          }),
+        },
+      ],
+    });
+    const text = response.stop_reason === 'refusal' ? '' : toReply(response.parsed_output);
+    if (!text) {
+      log(response.stop_reason === 'refusal' ? 'refusal' : 'error');
+      return json({ error: 'upstream', detail: noReplyDetail(response.stop_reason) }, 502);
+    }
+    log('ok');
+    return json({ text });
+  } catch (err) {
+    log('error');
+    return json({ error: 'upstream', detail: errorDetail(err) }, 502);
+  }
+}
+
+const noReplyDetail = (stopReason: unknown) => `no_output_${safeCode(stopReason) || 'unknown'}`;
 
 /**
  * The client gave up waiting for a message (timeout): give its use back. Safe to repeat, and safe
@@ -345,6 +412,7 @@ export default {
     const path = new URL(req.url).pathname;
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
+    if (req.method === 'POST' && path === '/reply') return replyRoute(req, env);
     if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
     if (req.method === 'POST' && path === '/crash') return crashRoute(req, env);
     if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);

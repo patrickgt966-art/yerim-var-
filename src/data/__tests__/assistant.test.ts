@@ -979,9 +979,9 @@ describe('a district plus a word that is no dish, name or place', () => {
     }
   });
 
+  // "ucuz" asks which kind of place first (choices.test.ts), so it is not in this list.
   it.each([
     'romantik',
-    'ucuz',
     'ne yenir',
     'güzel bir yer',
     'en iyi',

@@ -20,7 +20,7 @@ import { Chip } from '@/components/Chip';
 import { Icon } from '@/components/Icon';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
-import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
+import { RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { cityById, isInCityArea } from '@/data/cities';
@@ -159,14 +159,14 @@ function Results() {
         target,
         new Date(),
       ),
-      isPlaceholderData ? 'distance' : 'parkEase',
+      'distance',
     ).slice(0, 60);
     if (selectedRestaurantId) {
       const i = list.findIndex((x) => x.r.id === selectedRestaurantId);
       if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
     }
     return list;
-  }, [filter, target, data, isPlaceholderData, selectedRestaurantId, hidden]);
+  }, [filter, target, data, selectedRestaurantId, hidden]);
   // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
   const nearestId = useMemo(() => {
     let best: RankedParking | null = null;
@@ -404,7 +404,7 @@ function Results() {
                 <RestaurantRowCard
                   row={item}
                   target={target}
-                  best={index === 0 && !selectedRestaurantId && isBest(item.parking)}
+                  best={false}
                   widened={false}
                   parkPending={isPlaceholderData}
                 />

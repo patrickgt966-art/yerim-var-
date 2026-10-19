@@ -83,6 +83,9 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
+- Yerim: genel istekler ("kaslıyım", "fit", "ucuz", "canım tatlı çekti") önce seçenek sorar + "Hepsi"; doğrudan tür ("tatlı") sonuçla birlikte daraltma seçenekleri (yazılıyor).
+- Yerim cevaplarını yapay zekâ yazsın: bilgiler bizim veriden, metin doğal; sayı ve adlar uygulamada denetlenir, 3 sn'de gelmezse şablon (seçenekler işi bitince).
+- Yeni sınav: ~550 karmaşık soru (selam, argo, yazım hatası, bölünmüş istek, hedefler, seçim akışı, otopark+yemek, veri olmayan istekler); anlama, seçenekler, uydurma ad/sayı ve doğallık denetimi.
 - Ana sayfa "Yemek bul" kartındaki "Parkı kolay" alt yazısı: yemek aramasını otoparka bağlamayan bir söz ("Canın ne çekiyor?" ya da "Yakınındaki yerler"). Uygulama iki işi ayrı ayrı da yapar; metinler ikisini birbirine bağlamasın.
 - Restoran sayfası: kategori yoksa yedek etiket, Türkçe çalışma saatleri.
 - Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).

@@ -48,7 +48,7 @@ const tr = {
     ageDays: '{{count}} gün',
   },
   onboarding: {
-    tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
+    tagline: 'Park yeri mi, yemek mi? İkisini de bul.',
     next: 'Devam',
     cityTitle: 'Hangi şehirdesin?',
     citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
@@ -152,7 +152,7 @@ const tr = {
     locationFailed: 'Konumun alınamadı; {{city}} merkezini gösteriyoruz.',
     locationPermission: 'Konum izni',
     summary: '{{count}} otopark · {{free}} boş yer',
-    foodSummary: '{{count}} restoran · parkı en kolay olan üstte',
+    foodSummary: '{{count}} restoran · en yakın üstte',
     foodFullList: 'Kategorilere göre ara',
     summaryUnknown: '{{count}} otopark',
     subtitle: '{{place}} yürüme mesafesine göre',
@@ -774,6 +774,8 @@ const tr = {
     exAlsancak: '{{a}} otopark',
     exKonak: '{{b}}',
     exNear: 'Yakınımda otopark',
+    greetPark: 'Otopark bul',
+    greetFood: 'Yemek bul',
     exStadium: 'Stadyum otopark',
     exKofte: 'Yakınımda köfteci',
     exBreakfast: '{{a}} kahvaltı',
@@ -849,6 +851,21 @@ const tr = {
     durNight: 'Gece boyu',
     timeLater: 'Daha sonra',
     planWalkTo: '~{{count}} dk yürü: {{place}}',
+    // Broad ask -> choices (src/data/choices.ts)
+    choice: {
+      all: 'Hepsi',
+      ask: {
+        protein: 'Yüksek proteinli neler istersin?',
+        healthy: 'Hafif ve sağlıklı neler istersin?',
+        quick: 'Hızlı ve pratik neler istersin?',
+        sweet: 'Hangi tatlı olsun?',
+      },
+      note: {
+        protein: 'Menü verimiz yok; yüksek proteinli seçenekleri yer türüne göre seçtim: {{list}}',
+        healthy: 'Menü verimiz yok; hafif ve sağlıklı seçenekleri yer türüne göre seçtim: {{list}}',
+        quick: 'Fiyat verimiz yok; genelde hızlı ve pratik olan yer türlerini seçtim: {{list}}',
+      },
+    },
     // Clarify (job 3)
     ask_district: 'Hangi semtte arayayım?',
     ask_place: 'Şunu mu kastettiniz: {{place}}?',

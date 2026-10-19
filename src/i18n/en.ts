@@ -50,7 +50,7 @@ const en = {
     ageDays_other: '{{count}} days',
   },
   onboarding: {
-    tagline: "Tell us what you want to eat; we'll find the restaurant and the parking.",
+    tagline: 'Parking or food? Find either, or both.',
     next: 'Next',
     cityTitle: 'Which city are you in?',
     citySourceIzmir: 'Live parking: İzmir Metropolitan Municipality',
@@ -156,8 +156,8 @@ const en = {
     locationPermission: 'Location permission',
     summary_one: '{{count}} car park · {{free}} free',
     summary_other: '{{count}} car parks · {{free}} free',
-    foodSummary_one: '{{count}} restaurant · easiest parking first',
-    foodSummary_other: '{{count}} restaurants · easiest parking first',
+    foodSummary_one: '{{count}} restaurant · closest first',
+    foodSummary_other: '{{count}} restaurants · closest first',
     foodFullList: 'Browse by category',
     summaryUnknown_one: '{{count}} car park',
     summaryUnknown_other: '{{count}} car parks',
@@ -873,6 +873,8 @@ const en = {
     exAlsancak: 'Car park in {{a}}',
     exKonak: '{{b}}',
     exNear: 'Car park near me',
+    greetPark: 'Find parking',
+    greetFood: 'Find food',
     exStadium: 'Stadium car park',
     exKofte: 'Meatballs near me',
     exBreakfast: 'Breakfast in {{a}}',
@@ -949,6 +951,22 @@ const en = {
     durNight: 'Overnight',
     timeLater: 'Later',
     planWalkTo: 'Walk ~{{count}} min: {{place}}',
+    // Broad ask -> choices (src/data/choices.ts)
+    choice: {
+      all: 'All',
+      ask: {
+        protein: 'What kind of high-protein food would you like?',
+        healthy: 'What kind of light, healthy food would you like?',
+        quick: 'What kind of quick and easy food would you like?',
+        sweet: 'Which kind of sweet?',
+      },
+      note: {
+        protein: 'We have no menu data; I picked high-protein options by type of place: {{list}}',
+        healthy: 'We have no menu data; I picked light, healthy options by type of place: {{list}}',
+        quick:
+          'We have no price data; I picked kinds of places that are usually quick and easy: {{list}}',
+      },
+    },
     // Clarify (job 3)
     ask_district: 'Which area should I search?',
     ask_place: 'Did you mean {{place}}?',
