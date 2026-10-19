@@ -849,6 +849,21 @@ const tr = {
     durNight: 'Gece boyu',
     timeLater: 'Daha sonra',
     planWalkTo: '~{{count}} dk yürü: {{place}}',
+    // Broad ask -> choices (src/data/choices.ts)
+    choice: {
+      all: 'Hepsi',
+      ask: {
+        protein: 'Yüksek proteinli neler istersin?',
+        healthy: 'Hafif ve sağlıklı neler istersin?',
+        quick: 'Hızlı ve pratik neler istersin?',
+        sweet: 'Hangi tatlı olsun?',
+      },
+      note: {
+        protein: 'Menü verimiz yok; yüksek proteinli seçenekleri yer türüne göre seçtim: {{list}}',
+        healthy: 'Menü verimiz yok; hafif ve sağlıklı seçenekleri yer türüne göre seçtim: {{list}}',
+        quick: 'Fiyat verimiz yok; genelde hızlı ve pratik olan yer türlerini seçtim: {{list}}',
+      },
+    },
     // Clarify (job 3)
     ask_district: 'Hangi semtte arayayım?',
     ask_place: 'Şunu mu kastettiniz: {{place}}?',

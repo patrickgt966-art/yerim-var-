@@ -33,10 +33,10 @@ describe('food lexicon', () => {
     expect([...FOOD_LEXICON.keys()].filter((w) => places.has(w))).toEqual([]);
   });
 
-  it('reads protein as grill and meat, never a bakery', () => {
-    expect(categoryForQuery('protein')).toBe('meat');
-    expect(categoryForQuery('proteinli')).toBe('meat');
-    expect(categoryForQuery('yüksek protein')).toBe('meat');
+  it('does not read protein as one category: it is a goal (wish), never a bakery either', () => {
+    expect(categoryForQuery('protein')).toBeNull();
+    expect(categoryForQuery('proteinli')).toBeNull();
+    expect(categoryForQuery('yüksek protein')).toBeNull();
   });
 
   it('reads a lone lexicon word as a category', () => {

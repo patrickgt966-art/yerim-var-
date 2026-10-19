@@ -777,10 +777,12 @@ export const WISH_WORDS: Record<Wish, string[]> = {
   family: ['aile'],
   kids: ['cocuk'],
   group: ['grup', 'arkadas'],
-  quick: ['cabuk', 'acele', 'hizlica'],
+  quick: ['cabuk', 'acele', 'hizlica', 'hizli'],
   view: ['manzara'],
   late: ['gece', 'gec'],
-  healthy: ['saglikli', 'diyet'],
+  healthy: ['saglikli', 'diyet', 'fit', 'hafif', 'light', 'kalori'],
+  // "kas" (muscle) is a whole word only: "kasap" is a butcher. Words under 4 letters never match a longer form.
+  protein: ['protein', 'kas', 'kasli', 'spor', 'sporcu', 'fitness', 'gym', 'bulk'],
   tasty: ['lezzetli', 'nefis', 'enfes', 'leziz'],
   outdoor: ['bahce', 'teras', 'balkon', 'disarida'],
   // Car parks. "ücretsiz", "metro" and "engelli" next to a place stay with the normal search, so
@@ -806,6 +808,9 @@ const WISH_PHRASES: [Wish, string][] = [
   ['overnight', ' sabaha kadar'],
   ['big_vehicle', ' buyuk arac'],
   ['big_vehicle', ' yuksek arac'],
+  ['healthy', ' temiz beslen'],
+  ['cheap', ' cebime uygun'],
+  ['cheap', ' uygun fiyat'],
 ];
 
 /** True for one folded word that names a wish ("çocuklarla", "romantik"). */
@@ -817,7 +822,8 @@ function isWishWord(t: string): boolean {
 
 /** The wishes named in the text, found by rules (the AI may find more). */
 export function wishesIn(text: string): Wish[] {
-  const folded = fold(text);
+  // "Kaş" (the Antalya district, typed with its ş) is not "kas" (muscle).
+  const folded = fold(text.toLocaleLowerCase('tr').replace(/kaş/g, 'kasx'));
   const tokens = folded.split(' ').filter(Boolean);
   const out: Wish[] = [];
   for (const wish of Object.keys(WISH_WORDS) as Wish[]) {

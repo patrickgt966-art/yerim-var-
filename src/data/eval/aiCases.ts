@@ -92,6 +92,52 @@ export const UNDERSTAND_CASES: UnderstandCase[] = [
     text: 'kas yapmam lazım protein lazım bana',
     expect: { kind: ['search'], food: true, catNot: ['dessert', 'cafe'] },
   },
+  // A nutrition goal is a wish (protein / healthy), never a category or a dish: the app asks which kind.
+  {
+    name: 'goal: muscle is the protein wish, no category',
+    text: 'çok kaslıyım bana göre yer bul',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['protein'] },
+  },
+  {
+    name: 'goal: a fit menu is the healthy wish, no category',
+    text: 'fit menü arıyorum',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['healthy'] },
+  },
+  {
+    name: 'goal: on a diet is the healthy wish, no category',
+    text: 'diyetteyim akşam ne yesem',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['healthy'] },
+  },
+  {
+    name: 'goal: protein alone is the wish, never the meat category',
+    text: 'proteinli bir şeyler',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['protein'] },
+  },
+  {
+    name: 'goal with a named category: the category stays, the goal is the wish',
+    text: 'fit balık',
+    expect: { kind: ['search'], food: true, catIn: ['fish'], wishesAny: ['healthy'] },
+  },
+  {
+    name: 'goal: after sport is the protein wish',
+    text: 'spor sonrası',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['protein'] },
+  },
+  {
+    name: 'broad ask: something quick is the quick wish, no category',
+    text: 'hızlı bir şey olsun',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['quick'] },
+  },
+  {
+    name: 'broad ask: something cheap is the cheap wish, no category',
+    text: 'cebime uygun bir şey arıyorum',
+    expect: { kind: ['search'], food: true, catIn: [null], wishesAny: ['cheap'] },
+  },
+  {
+    name: 'broad ask: a sweet craving is the dessert category',
+    text: 'canım tatlı çekti',
+    expect: { kind: ['search'], food: true, catIn: ['dessert'] },
+  },
   {
     name: 'a mood is food',
     text: 'üşüdüm ya sıcak bir şeyler içsem',

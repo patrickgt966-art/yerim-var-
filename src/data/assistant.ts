@@ -16,6 +16,20 @@ import {
   MODIFIERS,
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
+import {
+  askEntryFor,
+  CHOICES,
+  choiceById,
+  entryForCat,
+  entryReason,
+  inMember,
+  isVague,
+  memberForAnswer,
+  memberLabel,
+  memberOf,
+  type ChoiceEntry,
+  type Member,
+} from '@/data/choices';
 import { activeCity, CITIES, cityExamples } from '@/data/cities';
 import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
@@ -35,6 +49,7 @@ import {
 } from '@/data/intent';
 import {
   allRestaurants,
+  CATEGORY_RADII_M,
   categoryOf,
   cuisineLabels,
   dietLabels,
@@ -48,6 +63,7 @@ import {
   rankRestaurants,
   restaurantsInCategory,
   restaurantsNear,
+  type NearbyRestaurant,
   hasWordForm,
   hasWordStart,
   isFoodWord,
@@ -138,6 +154,10 @@ export type ChatContext = {
   query?: string;
   /** The cards of the last bot reply; "sence" / "sen seç" pick among them. */
   lastCards?: ChatCard[];
+  /** The question the last reply asked (choices.ts entry id): a typed "balık" / "hepsi" answers it. */
+  ask?: string;
+  /** The kind of place picked from a choices.ts entry: one member id, or 'all' for the mix. */
+  choice?: { id: string; member: string };
 };
 
 export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
@@ -214,6 +234,8 @@ export type BotMessage = {
    * the request. Dropped before the reply leaves the assistant.
    */
   pool?: ChatCard[];
+  /** Wishes this reply already answered in its own words (no "we have no menu data" note after it). */
+  explained?: Wish[];
 };
 
 /** A plan card: the steps are already-rendered templates filled with our data. */
@@ -1018,14 +1040,31 @@ export async function answer(
     planWhen: null,
     quotaOut: false,
   };
-  const res = await answerText(text, ctx, deps, meta);
+  // A typed answer to the question Yerim just asked ("balık", "hepsi") works like its chip: no
+  // router call, the same search.
+  const picked = ctx.ask ? choiceAnswer(text, ctx) : null;
+  if (picked) {
+    const res = await run({ ...ctx, ask: undefined, choice: picked }, deps, text);
+    return remember(
+      await finishAnswer(res, deps, { ...meta, wishes: ctx.wishes ?? [], quotaOut: true }),
+    );
+  }
+  const res = await answerText(text, { ...ctx, ask: undefined }, deps, meta);
   return remember(await finishAnswer(res, deps, meta));
+}
+
+/** The member (or 'all') a typed answer picks from the question in `ctx.ask`, or null. */
+function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | null {
+  const entry = ctx.ask ? choiceById(ctx.ask) : undefined;
+  const hit = entry ? memberForAnswer(entry, fold(text)) : null;
+  if (!entry || !hit) return null;
+  return { id: entry.id, member: hit === 'all' ? 'all' : hit.id };
 }
 
 /** The reply's cards are what "sence" / "sen seç" refer to next. */
 function remember(r: Result): Result {
   // The pick's wider pool never leaves the assistant (it is not shown and not stored).
-  const { pool: _pool, ...reply } = r.reply;
+  const { pool: _pool, explained: _explained, ...reply } = r.reply;
   return {
     reply,
     ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
@@ -1157,6 +1196,11 @@ async function answerText(
       meta.wishes.push('group');
     }
     meta.planWhen = found.plan?.when ?? meta.planWhen;
+  }
+
+  // A goal or mood alone ("kaslıyım", "fit menü", "hızlı bir şey") is a food ask; its words are no place.
+  if (it.kind === 'search' && followUp?.kind !== 'elsewhere') {
+    it = goalAsFood(it, meta.wishes, ctx.section === 'food');
   }
 
   const aiAdded =
@@ -1352,6 +1396,8 @@ async function answerText(
   }
 
   const next: ChatContext = { ...ctx };
+  // A new food search drops the kind picked before.
+  if (it.cat || it.food || it.dish) next.choice = undefined;
   if (it.cat) {
     next.cat = it.cat;
     next.dish = it.dish;
@@ -1641,7 +1687,9 @@ async function answerText(
     return withNotice(await clarify(ask, next, it.food, deps, meta));
   }
 
-  return withNotice(await run(next, deps, text, it.quality, meta));
+  const question = await choiceQuestion(next, it, foldedText, deps, meta);
+  if (question.kind === 'asked') return withNotice(question.result);
+  return withNotice(await run(question.ctx, deps, text, it.quality, meta));
 }
 
 export async function refine(
@@ -1872,6 +1920,177 @@ function preferRows(rows: RestaurantRow[], p: Prefs, hits: Map<string, DishHit>)
     .map((x) => x.row);
 }
 
+// --- Broad ask -> choices (choices.ts) -----------------------------------------------------------
+
+/** A wish no entry covers and the app has no data for ("romantik", "manzaralı"): the honest note stays. */
+function hasNoDataWish(wishes: Wish[]): boolean {
+  return wishes.some((w) => w in NO_DATA_TOPIC && !CHOICES.some((e) => e.wishes?.includes(w)));
+}
+
+/** A goal or mood said alone ("kaslıyım", "fit menü", "hızlı bir şey") is a food ask; its words are no place. */
+function goalAsFood(
+  it: Extract<QueryIntent, { kind: 'search' }>,
+  wishes: Wish[],
+  inFoodChat: boolean,
+): Extract<QueryIntent, { kind: 'search' }> {
+  const entry = askEntryFor(wishes);
+  if (!entry || (it.mentionsParking && !entry.goal) || hasNoDataWish(wishes)) return it;
+  const words = it.placeQuery.split(' ').filter((w) => w && !isQualifierWord(w));
+  const pq = words.join(' ');
+  if (it.cat || it.dish) {
+    // "fit balık", "proteinli kahvaltı": the goal's words are not part of the place either.
+    return entry.goal ? { ...it, placeQuery: pq, uncertain: pq !== '' && it.uncertain } : it;
+  }
+  // Quick / cheap are not food words by themselves: "ucuz otopark" stays a car park ask.
+  if (!entry.goal && !inFoodChat && !it.food) return it;
+  // Words left over that are no known place ("olduğum ona göre", "menü arıyorum") are not one.
+  const isPlace = pq !== '' && searchPlacesStrict(pq, 1).length > 0;
+  return { ...it, food: true, placeQuery: isPlace ? pq : '', uncertain: false };
+}
+
+/** The members of the picked choice: one, or all of the entry's. */
+function activeChoice(ctx: ChatContext): { entry: ChoiceEntry; members: Member[] } | null {
+  const entry = ctx.choice ? choiceById(ctx.choice.id) : undefined;
+  if (!entry || !ctx.choice) return null;
+  if (ctx.choice.member === 'all') return { entry, members: entry.members };
+  const one = entry.members.find((m) => m.id === ctx.choice!.member);
+  return one ? { entry, members: [one] } : null;
+}
+
+/** The entry whose members come first inside a named category / dish ("fit balık"). */
+function reorderEntry(ctx: ChatContext): ChoiceEntry | undefined {
+  const w = ctx.wishes ?? [];
+  return CHOICES.find((e) => e.reorder && e.wishes?.some((x) => w.includes(x)));
+}
+
+/** Places of the members around `target`, widening 1 -> 3 -> 6 km until a mix of kinds turns up. */
+function choicePool(
+  target: LatLng,
+  members: Member[],
+  wide: boolean,
+): { items: NearbyRestaurant[]; radiusM: number } {
+  const radii = wide ? WIDE_RADII_M : CATEGORY_RADII_M;
+  let items: NearbyRestaurant[] = [];
+  let radiusM = radii[0]!;
+  for (const r of radii) {
+    radiusM = r;
+    items = restaurantsNear(target, r, 5000).filter((x) => members.some((m) => inMember(x, m)));
+    const kinds = new Set(items.map((x) => memberOf(x, members)?.id));
+    if (items.length >= 5 && kinds.size >= Math.min(3, members.length)) break;
+  }
+  return { items, radiusM };
+}
+
+/** Round-robin by member, the members in the order of their nearest place: variety on the first screen. */
+function interleave(rows: RestaurantRow[], members: Member[]): RestaurantRow[] {
+  const groups = new Map<string, RestaurantRow[]>();
+  const rest: RestaurantRow[] = [];
+  for (const row of rows) {
+    const m = memberOf(row.r, members);
+    if (!m) rest.push(row);
+    else groups.set(m.id, [...(groups.get(m.id) ?? []), row]);
+  }
+  const queues = [...groups.values()];
+  const out: RestaurantRow[] = [];
+  for (let i = 0; out.length < rows.length - rest.length; i++) {
+    for (const q of queues) if (q[i]) out.push(q[i]!);
+  }
+  return [...out, ...rest];
+}
+
+/** Rows of a member first, the others after, each in their order. */
+function membersFirst(rows: RestaurantRow[], members: Member[]): RestaurantRow[] {
+  const mine = rows.filter((row) => memberOf(row.r, members));
+  return mine.length === 0 || mine.length === rows.length
+    ? rows
+    : [...mine, ...rows.filter((row) => !mine.includes(row))];
+}
+
+/** How many places of each member lie within reach of the target, members without any left out. */
+function presentMembers(entry: ChoiceEntry, target: LatLng): Member[] {
+  const around = restaurantsNear(target, CATEGORY_RADII_M[CATEGORY_RADII_M.length - 1]!, 5000);
+  return entry.members.filter((m) => around.some((r) => inMember(r, m)));
+}
+
+const allChip = (patch: Partial<ChatContext>, t: AssistantDeps['t']): ChatAction => ({
+  kind: 'refine',
+  label: t('chat.choice.all'),
+  patch,
+});
+
+/**
+ * A goal or mood without a category ("kaslıyım", "fit", "hızlı bir şey", "tatlı bir şey"): Yerim asks
+ * which kind first, with one chip per kind that has a place within reach and "Hepsi" last. With one
+ * kind only there is nothing to ask: that kind is shown. A category named directly never asks.
+ */
+async function choiceQuestion(
+  next: ChatContext,
+  it: QueryIntent,
+  foldedText: string,
+  deps: AssistantDeps,
+  meta: AnswerMeta,
+): Promise<{ kind: 'asked'; result: Result } | { kind: 'run'; ctx: ChatContext }> {
+  const go = (ctx: ChatContext) => ({ kind: 'run' as const, ctx });
+  if (it.kind !== 'search' || next.section !== 'food' || next.notCat) return go(next);
+  let entry: ChoiceEntry | undefined;
+  if (!next.cat && !next.dish)
+    entry = hasNoDataWish(meta.wishes) ? undefined : askEntryFor(meta.wishes);
+  else if (next.cat) {
+    const e = entryForCat(next.cat);
+    const dish = next.dish ? fold(next.dish) : '';
+    const namesMember = !!e && e.members.some((m) => m.words.includes(dish));
+    if (e?.askWhenVague && isVague(foldedText) && !namesMember) entry = e;
+  }
+  if (!entry) return go(next);
+  const here = (await deps.here()) ?? activeCity().center;
+  const target = next.place ?? here;
+  const present = presentMembers(entry, target);
+  const base: ChatContext = { ...next, cat: null, dish: null, dishServes: null };
+  if (present.length < 2) {
+    // One kind or none: nothing to choose from, show that kind (or the category) as usual.
+    return go(present.length === 1 ? { ...base, choice: { id: entry.id, member: 'all' } } : next);
+  }
+  const { t } = deps;
+  const lang = i18n.language;
+  const chips: ChatAction[] = present.map((m) => ({
+    kind: 'refine',
+    label: memberLabel(m, lang),
+    patch: { choice: { id: entry.id, member: m.id }, ask: undefined },
+  }));
+  chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined }, t));
+  const ctx: ChatContext = {
+    ...base,
+    wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
+    ...(deps.ai ? { query: requestText(meta) } : {}),
+    ...(meta.wishes.includes('quick') ? { sort: 'distance' as const } : {}),
+    ask: entry.id,
+  };
+  return {
+    kind: 'asked',
+    result: plain({ text: t(`chat.choice.ask.${entry.id}`), cards: [], actions: chips }, ctx),
+  };
+}
+
+/** The honest sentence for a goal: no menu / price data, the kinds shown (up to 3) chosen by type of place. */
+function choiceNote(
+  entry: ChoiceEntry,
+  rows: RestaurantRow[],
+  t: AssistantDeps['t'],
+): string | null {
+  const seen: Member[] = [];
+  for (const row of rows) {
+    const m = memberOf(row.r, entry.members);
+    if (m && !seen.some((x) => x.id === m.id)) seen.push(m);
+  }
+  if (seen.length === 0) return null;
+  const lang = i18n.language;
+  const labels = seen.map((m) =>
+    memberLabel(m, lang).toLocaleLowerCase(lang.startsWith('en') ? 'en' : 'tr'),
+  );
+  const list = labels.slice(0, 3).join(', ') + (labels.length > 3 ? '…' : '.');
+  return t(`chat.choice.note.${entry.id}`, { list });
+}
+
 function runFood(
   ctx: ChatContext,
   deps: AssistantDeps,
@@ -1885,8 +2104,19 @@ function runFood(
   const inCategory = ctx.cat
     ? restaurantsInCategory(target, ctx.cat, undefined, ctx.wide ? WIDE_RADII_M : undefined)
     : null;
-  const searchRadiusM = inCategory?.radiusM ?? (ctx.wide ? 15000 : 1000);
-  const found = inCategory ? inCategory.items : restaurantsNear(target, searchRadiusM, 600);
+  // A kind picked from a choices.ts entry: a mix of kinds (no category), or a narrowing of the category.
+  const active = activeChoice(ctx);
+  const mix = active && !ctx.cat ? choicePool(target, active.members, ctx.wide) : null;
+  const searchRadiusM = mix?.radiusM ?? inCategory?.radiusM ?? (ctx.wide ? 15000 : 1000);
+  const wholeCat = mix
+    ? mix.items
+    : inCategory
+      ? inCategory.items
+      : restaurantsNear(target, searchRadiusM, 600);
+  const found =
+    active && ctx.cat
+      ? wholeCat.filter((r) => active.members.some((m) => inMember(r, m)))
+      : wholeCat;
   const notCat = ctx.notCat;
   const items = notCat ? found.filter((r) => !matchesCategory(r, notCat)) : found;
   const rows = rankRestaurants(
@@ -2011,7 +2241,16 @@ function runFood(
   const parked = freeOnly
     ? withPark.filter((row) => nearestParking(row.r, deps.parkings)?.parking.isPaid === false)
     : withPark;
-  const shown = ctx.requireParking ? parked : ordered;
+  const shown0 = ctx.requireParking ? parked : ordered;
+  // The goal's kinds: all of them side by side, or first inside the category / dish that was named.
+  const goal = mix && active ? active.entry : active && ctx.cat ? null : reorderEntry(ctx);
+  const goalMembers = mix && active ? active.members : (goal?.members ?? []);
+  const shown =
+    mix && goal && goalMembers.length > 1
+      ? interleave(shown0, goalMembers)
+      : goal && !mix
+        ? membersFirst(shown0, goalMembers)
+        : shown0;
   const noun = ctx.cat ? t(`chat.noun.${ctx.cat}`) : t('chat.noun.all');
   const what = notCat ? `${noun} (${t('chat.except', { cat: t(`food.cats.${notCat}`) })})` : noun;
 
@@ -2049,6 +2288,15 @@ function runFood(
       seed,
       i18n.language,
     );
+    // No menu / price data: say which kinds were picked by type of place (not printed twice with the generic note).
+    const explained: Wish[] = [];
+    if (goal?.note) {
+      const note = choiceNote(goal, seen, t);
+      if (note) {
+        text += '\n' + note;
+        explained.push(...(goal.wishes ?? []));
+      }
+    }
     if (quality) text = t('chat.noRatings') + '\n' + text;
     if (prefs?.at) {
       const known = list.slice(0, MAX_CARDS).some((row) => openAt(row.r, prefs.at!) === 'open');
@@ -2056,7 +2304,14 @@ function runFood(
     }
     const reasonOf = (id: string): string | undefined => {
       const hit = hits.get(id);
-      if (!hit) return undefined;
+      if (!hit) {
+        // The kind of place this card stands for: "balık · yüksek protein".
+        const r = goal ? getRestaurant(id) : null;
+        const m = goal && r ? memberOf(r, goalMembers) : null;
+        return goal && m
+          ? `${memberLabel(m, i18n.language).toLocaleLowerCase(i18n.language.startsWith('en') ? 'en' : 'tr')} · ${entryReason(goal, i18n.language)}`
+          : undefined;
+      }
       if (hit.byName) return t('chat.reasonNamed', { dish: dishName });
       if (hit.common) return t('chat.reasonCommon', { dish: dishName, shop: hit.common });
       // A cuisine-tag match is not "in the name": word it as a likely fit.
@@ -2116,6 +2371,23 @@ function runFood(
         ...(ctx.requireParking && ctx.freeParking ? { free: '1' } : {}),
       },
     });
+    // A broad category named directly: the kinds inside it that have places here, one tap to narrow.
+    const narrowEntry = ctx.cat && generic ? entryForCat(ctx.cat) : undefined;
+    if (narrowEntry) {
+      const have = narrowEntry.members.filter((m) => wholeCat.some((r) => inMember(r, m)));
+      const picked = active?.members.length === 1 ? active.members[0]!.id : null;
+      const chips = have.filter((m) => m.id !== picked);
+      if (chips.length >= (picked ? 1 : 2)) {
+        actions.push(
+          ...chips.map((m): ChatAction => ({
+            kind: 'refine',
+            label: memberLabel(m, i18n.language),
+            patch: { choice: { id: narrowEntry.id, member: m.id } },
+          })),
+        );
+        if (picked) actions.push(allChip({ choice: undefined }, t));
+      }
+    }
     actions.push({
       kind: 'say',
       label: t('chat.actOther'),
@@ -2125,6 +2397,7 @@ function runFood(
       text,
       cards,
       actions,
+      ...(explained.length > 0 ? { explained } : {}),
       ...(deps.ai?.pick && pool.length > cards.length ? { pool } : {}),
     };
   }
@@ -2410,6 +2683,7 @@ const NO_DATA_TOPIC: Partial<Record<Wish, 'price' | 'ambiance' | 'reviews' | 'me
   view: 'ambiance',
   tasty: 'reviews',
   healthy: 'menu',
+  protein: 'menu',
   kids: 'kids',
   family: 'kids',
 };
@@ -3002,7 +3276,13 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
     lines.push(...wishLines(res.ctx.wishes ?? [], reply.cards, t));
   }
   lines.push(...after);
-  const noInfo = noInfoNote(meta.wishes, aiPicked, t, food ? 'food' : 'park');
+  const said = reply.explained ?? [];
+  const noInfo = noInfoNote(
+    meta.wishes.filter((w) => !said.includes(w)),
+    aiPicked,
+    t,
+    food ? 'food' : 'park',
+  );
   if (noInfo) lines.push(noInfo);
 
   reply.text = lines.join('\n');

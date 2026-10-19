@@ -949,6 +949,22 @@ const en = {
     durNight: 'Overnight',
     timeLater: 'Later',
     planWalkTo: 'Walk ~{{count}} min: {{place}}',
+    // Broad ask -> choices (src/data/choices.ts)
+    choice: {
+      all: 'All',
+      ask: {
+        protein: 'What kind of high-protein food would you like?',
+        healthy: 'What kind of light, healthy food would you like?',
+        quick: 'What kind of quick and easy food would you like?',
+        sweet: 'Which kind of sweet?',
+      },
+      note: {
+        protein: 'We have no menu data; I picked high-protein options by type of place: {{list}}',
+        healthy: 'We have no menu data; I picked light, healthy options by type of place: {{list}}',
+        quick:
+          'We have no price data; I picked kinds of places that are usually quick and easy: {{list}}',
+      },
+    },
     // Clarify (job 3)
     ask_district: 'Which area should I search?',
     ask_place: 'Did you mean {{place}}?',
