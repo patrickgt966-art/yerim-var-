@@ -83,6 +83,8 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
+- **Yerim seçeneklerini yapay zekâ kursun (sıradaki büyük iş):** hedef tablosu yerine yapay zekâya tüm yer türlerinin listesi (~40) verilir; karmaşık istekte ("kilo almam lazım ama yağlı olmasın", "ilk buluşma", "maçtan sonra 5 kişi") uyan 3–6 türü kendisi seçer ve kısa soru yazar; uygulama yalnızca yakında olanları + "Hepsi" gösterir. Tablo ✨ yokken yedek kalır; kural yolu kelimelerine kilo, zayıfla, kalori, doyurucu, bulk eklenir; sınava her istek için 10–15 söyleyiş.
+- Seçenek sorusu şablonla, samimi cevap sonuç turunda (bugün tek /reply hakkını soru kullanıyor).
 - Yerim: genel istekler ("kaslıyım", "fit", "ucuz", "canım tatlı çekti") önce seçenek sorar + "Hepsi"; doğrudan tür ("tatlı") sonuçla birlikte daraltma seçenekleri (yazılıyor).
 - Yerim cevaplarını yapay zekâ yazsın: bilgiler bizim veriden, metin doğal; sayı ve adlar uygulamada denetlenir, 3 sn'de gelmezse şablon (seçenekler işi bitince).
 - Yeni sınav: ~550 karmaşık soru (selam, argo, yazım hatası, bölünmüş istek, hedefler, seçim akışı, otopark+yemek, veri olmayan istekler); anlama, seçenekler, uydurma ad/sayı ve doğallık denetimi.
