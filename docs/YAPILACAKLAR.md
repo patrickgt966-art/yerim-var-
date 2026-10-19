@@ -1,6 +1,6 @@
 # Yapılacaklar
 
-Son güncelleme: 18 Ekim 2026 (akşam).
+Son güncelleme: 19 Ekim 2026 (akşam).
 
 ## Sıradaki büyük işler (bu sırayla)
 
@@ -63,33 +63,42 @@ Son güncelleme: 18 Ekim 2026 (akşam).
 - Canlı sınav çalıştırıldı ve bulgulara göre düzeltildi (ilk çalıştırma, büyük ve uç sınavlar).
 - Sonraki: abonelik (Yerim+, sınırsız ✨), sunucu kayıtlarına göre ince ayar.
 
-## Apple Developer hesabından sonra
+## App Store yolu
 
-Ödeme 18 Ekim'de yapıldı, onay bekleniyor. Onay gelince gerekenler: **Team ID** (developer.apple.com → Account → Membership details) ve bir **Expo hesabı** (expo.dev).
+Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `com.yerimvar.app`, App Store Connect no `6824596462`, Expo projesi `@patrickhub/yerim-var`).
 
-**Hesap onayını beklerken hazırlanabilecekler**
-- Universal Link (uygulama tarafı): `app.json` içine `ios.associatedDomains: ["applinks:yerimvar.app"]` ve `/r/[id]`, `/p/[id]` bağlantılarını restoran/otopark ekranına yönlendiren ekranlar. Team ID gelince worker'da `APPLE_TEAM_ID` doldurulup deploy edilecek (`/.well-known/apple-app-site-association` hazır).
-- `eas.json` kontrolü: development, preview (TestFlight) ve production profilleri.
+**Yapıldı**
+- İlk iOS derlemesi (0.1.0, build 1) EAS ile alındı ve TestFlight'a yüklendi; telefonda Canlı Etkinlik, bildirimler ve bildirimdeki harita düğmesi çalışıyor.
+- Universal Link: `yerimvar.app/r/…` ve `/p/…` uygulamada açılır (AASA Team ID ile yayında).
+- TestFlight test bilgileri dolduruldu, dış test grubu kuruldu; Apple beta incelemesi bekleniyor (onaylanınca herkese açık test bağlantısı).
 
-**Onaydan sonra**
-1. `npx eas-cli@latest build --platform ios --profile production` → TestFlight ile telefona kurulum.
-2. Cihazda denenecekler: Canlı Etkinlik (kilit ekranı, Dynamic Island), bildirim düğmeleri ("Yol tarifi", "15 dk uzat"), 10 dk uyarısı, puan isteği, harita seçimi (yüklü uygulamalar), Apple araması.
-3. App Store Connect kaydı: metinler `docs/app-store.md` içinde; gizlilik adresi `https://yerimvar.app/gizlilik`; App Privacy formu (Device ID, Other User Content, takip yok).
-4. Mağaza ekran görüntüleri (6.9" iPhone; ilk karede canlı boş yer sayısı).
-5. Yayınlanınca: `server/yerim-ai/wrangler.toml` içinde `APP_STORE_URL` ve `APP_STORE_ID` doldurulup deploy (sitede "Yerim Var'ı indir" düğmesi çıkar).
-6. Sonra: ana ekran widget'ı, uygulama içinde rota çizgisi (otoparktan restorana yürüme), Apple ile toplu yer doğrulaması.
+**Sırada**
+1. Telefonda paylaşım bağlantısı denemesi (WhatsApp'tan gelen yerimvar.app linki uygulamada açılmalı).
+2. Yeni derleme: `npx eas-cli@latest build --platform ios --profile production`, sonra `npx eas-cli@latest submit --platform ios --latest`.
+3. App Store Connect kaydı: metinler `docs/app-store.md` içinde (iki iş: otopark ve yemek; ayrı ya da birlikte), App Privacy formu, satış ülkesi önce Türkiye.
+4. Mağaza ekran görüntüleri (6.9" iPhone).
+5. Yayınlanınca: `server/yerim-ai/wrangler.toml` içinde `APP_STORE_URL` ve `APP_STORE_ID`, sonra deploy.
+6. Hesap/profil gelince: inceleme için demo hesap, uygulama içinden hesap silme, başka bir girişle birlikte "Sign in with Apple".
+7. Sonra: ana ekran widget'ı, uygulama içinde rota çizgisi, Apple ile toplu yer doğrulaması.
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
-- Semt sayfalarının görünümü (yerimvar.app): bağlantılar uygulamanın etiket stiline.
-- Ağır yazım hataları: "isgender", "aalnya", "muanya", "sicanda" gibi yazımlar için genel harf benzerliği kuralı.
-- Plan paylaşımı da yerimvar.app bağlantısıyla (şu an Apple Haritalar bağlantısı).
+- Ana sayfa "Yemek bul" kartındaki "Parkı kolay" alt yazısı: yemek aramasını otoparka bağlamayan bir söz ("Canın ne çekiyor?" ya da "Yakınındaki yerler"). Uygulama iki işi ayrı ayrı da yapar; metinler ikisini birbirine bağlamasın.
+- Restoran sayfası: kategori yoksa yedek etiket, Türkçe çalışma saatleri.
 - Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).
 
 ## Karar bekleyenler
 
 - Ana sayfa: A mı B mi?
 - Destek e-posta adresi, geri bildirim formu
+
+## Tamamlananlar (19 Ekim)
+
+- Yer türleri: yapay zekâ ile 3.694 yerin türü tahmin edildi, 717 yemek dışı yer listelerden çıktı; çorba tahminleri daha sıkı kuralla yeniden soruldu (`--recheck`).
+- Kategori kuralları: kanatçı, Baydöner, zincirler (Mado, BigChefs, McDonald's…), "restorant" yazımları.
+- Yaygın yemekler: bir yemeği genelde yapan dükkânlar uzmanların arkasında çıkar ("kebapçı; künefe genelde olur").
+- yerimvar.app: semt bağlantıları uygulamanın etiket stilinde; plan paylaşımı yerimvar.app bağlantılarıyla.
+- Ağır yazım hataları ve doğal arama cevapları (18–19 Ekim).
 
 ## Tamamlananlar (17–18 Ekim)
 
