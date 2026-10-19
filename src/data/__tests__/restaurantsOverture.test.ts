@@ -13,8 +13,8 @@ describe('restaurant ids across OSM and Overture data', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('allRestaurants() holds the OSM items followed by the Overture items', () => {
-    expect(allRestaurants()).toHaveLength(osm.items.length + overture.items.length);
+  it('allRestaurants(true) holds the OSM items followed by the Overture items', () => {
+    expect(allRestaurants(true)).toHaveLength(osm.items.length + overture.items.length);
   });
 });
 
@@ -23,7 +23,10 @@ describe('verified flag and ranking', () => {
 
   it('only OSM is verified', () => {
     expect(toRestaurant({ ...base, id: 'osm-1' })).toMatchObject({ source: 'osm', verified: true });
-    expect(toRestaurant({ ...base, id: 'ov-1' })).toMatchObject({ source: 'overture', verified: false });
+    expect(toRestaurant({ ...base, id: 'ov-1' })).toMatchObject({
+      source: 'overture',
+      verified: false,
+    });
     expect(toRestaurant({ ...base, id: 'ov-2', v: 1 })).toMatchObject({
       source: 'overture',
       verified: false,
