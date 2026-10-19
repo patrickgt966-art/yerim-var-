@@ -29,6 +29,7 @@ import { useRanked } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
+import { useSharedPlaceCity } from '@/lib/useSharedPlaceCity';
 import { openDirections } from '@/lib/directions';
 import { parkHere } from '@/lib/parkHere';
 import { useApp, useIsFavoriteRestaurant } from '@/store/app';
@@ -54,10 +55,16 @@ export default function RestaurantDetail() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id: string | string[];
+    n?: string | string[];
+    ll?: string | string[];
+  }>();
   // `?id=a&id=b` arrives as an array.
   const id = firstParam(params.id);
   const r = getRestaurant(id ?? '');
+  // A shared link of another city: switch to the city its `ll` lies in.
+  useSharedPlaceCity(!r, firstParam(params.ll));
   const target = useMemo(() => (r ? { lat: r.lat, lng: r.lng } : null), [r]);
   const tel = r?.phone ? telUrl(r.phone) : null;
   const { ranked, isLoading, isPlaceholderData, isFetching } = useRanked(target, NEAR_RADIUS_M);
@@ -87,7 +94,7 @@ export default function RestaurantDetail() {
           backgroundColor: c.bg,
         }}
       >
-        <ScreenHeader title="" back />
+        <ScreenHeader title={firstParam(params.n) ?? ''} back />
         <Txt secondary>{t('food.notFound')}</Txt>
       </View>
     );

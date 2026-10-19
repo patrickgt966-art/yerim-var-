@@ -10,6 +10,8 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "com.yerimvar.app",
+      "appleTeamId": "YBC82Z2MP5",
+      "associatedDomains": ["applinks:yerimvar.app"],
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDisplayName": "Yerim Var",

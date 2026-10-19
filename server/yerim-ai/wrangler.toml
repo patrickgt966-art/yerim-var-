@@ -66,7 +66,7 @@ APP_STORE_URL = ""
 # Mağazadaki sayısal uygulama numarası (Smart App Banner) / The numeric App Store id, e.g. "123456789"
 APP_STORE_ID = ""
 # Apple Developer ekip kimliği (apple-app-site-association) / The Apple Developer team id
-APPLE_TEAM_ID = ""
+APPLE_TEAM_ID = "YBC82Z2MP5"
 
 # Resim dosyaları pakete ham bayt olarak girer (.html zaten wrangler'ın varsayılan metin kuralındadır).
 # Image files are bundled as bytes (.html is already a default Text rule in wrangler).

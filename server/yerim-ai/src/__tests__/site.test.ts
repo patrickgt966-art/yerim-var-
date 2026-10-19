@@ -204,14 +204,15 @@ describe('other pages', () => {
   it('apple-app-site-association: 404 without a team id, the json with one', async () => {
     const path = '/.well-known/apple-app-site-association';
     expect((await get(path)).res.status).toBe(404);
-    const { res, text } = await get(path, { APPLE_TEAM_ID: 'ABCDE12345' });
+    const { res, text } = await get(path, { APPLE_TEAM_ID: 'YBC82Z2MP5' });
     expect(res.status).toBe(200);
+    expect(res.headers.get('location')).toBeNull();
     expect(res.headers.get('content-type')).toBe('application/json');
     expect(JSON.parse(text)).toEqual({
       applinks: {
         details: [
           {
-            appIDs: ['ABCDE12345.com.yerimvar.app'],
+            appIDs: ['YBC82Z2MP5.com.yerimvar.app'],
             components: [{ '/': '/r/*' }, { '/': '/p/*' }],
           },
         ],

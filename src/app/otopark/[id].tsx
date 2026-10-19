@@ -23,6 +23,7 @@ import { disabledInfo } from '@/lib/disabledSpots';
 import { metaLine } from '@/lib/format';
 import { openState } from '@/lib/openNow';
 import { firstParam } from '@/lib/params';
+import { useSharedPlaceCity } from '@/lib/useSharedPlaceCity';
 import { directionsOnly, parkHere } from '@/lib/parkHere';
 import { ReportPlace } from '@/components/ReportPlace';
 import { reportWrongData } from '@/lib/report';
@@ -45,12 +46,18 @@ export default function ParkingDetail() {
   const c = useColors();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id: string | string[];
+    n?: string | string[];
+    ll?: string | string[];
+  }>();
   // `?id=a&id=b` arrives as an array.
   const id = firstParam(params.id);
   const { data, isLoading, isPlaceholderData } = useParkings({ withHidden: true });
   const queryClient = useQueryClient();
   const p = data?.parkings.find((x) => x.id === id) ?? findAppleParking(queryClient, id ?? '');
+  // A shared link of another city: switch to the city its `ll` lies in.
+  useSharedPlaceCity(!p, firstParam(params.ll));
   const isFav = useIsFavorite(id ?? '');
   const toggleFavorite = useApp((s) => s.toggleFavorite);
   const mode = useApp((s) => s.mode);
@@ -71,7 +78,7 @@ export default function ParkingDetail() {
           backgroundColor: c.bg,
         }}
       >
-        <ScreenHeader title="" back />
+        <ScreenHeader title={firstParam(params.n) ?? ''} back />
         {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
         ) : (
