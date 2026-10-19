@@ -774,6 +774,8 @@ const tr = {
     exAlsancak: '{{a}} otopark',
     exKonak: '{{b}}',
     exNear: 'Yakınımda otopark',
+    greetPark: 'Otopark bul',
+    greetFood: 'Yemek bul',
     exStadium: 'Stadyum otopark',
     exKofte: 'Yakınımda köfteci',
     exBreakfast: '{{a}} kahvaltı',

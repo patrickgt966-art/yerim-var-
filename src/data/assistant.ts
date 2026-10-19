@@ -86,9 +86,13 @@ import {
   MAX_REASONS,
   PARK_REASONS,
   PICK_REASONS,
+  REPLY_TIMEOUT_MS,
   ROUTER_TIMEOUT_MS,
   clipText,
   MAX_MESSAGE_CHARS,
+  type AiReplyFacts,
+  type AiReplyItem,
+  type AiReplyKind,
   type ChatReplyAction,
   type ClarifyAsk,
   type DishMatch,
@@ -116,6 +120,7 @@ import {
   verifyPlan,
   walkMinFromMeters,
 } from '@/lib/ai/verify';
+import { validateReply } from '@/lib/ai/replyCheck';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
@@ -236,6 +241,11 @@ export type BotMessage = {
   pool?: ChatCard[];
   /** Wishes this reply already answered in its own words (no "we have no menu data" note after it). */
   explained?: Wish[];
+  /**
+   * What the AI may reword: the turn's kind, its facts (the items are added from the final cards)
+   * and the template sentence(s) of `text` it replaces. Dropped before the reply leaves the assistant.
+   */
+  aiReply?: { kind: AiReplyKind; facts: AiReplyFacts; template: string };
 };
 
 /** A plan card: the steps are already-rendered templates filled with our data. */
@@ -275,6 +285,15 @@ export type AssistantDeps = {
     pickPark?(
       req: Omit<ParkPickRequest, 'deviceId' | 'messageId'>,
     ): Promise<AiResult<ParkPickResponse>>;
+    /**
+     * The AI's wording of a reply built from our facts (REPLY_TIMEOUT_MS at most; it costs no use
+     * of its own). Null when it fails; the template stays. Left out, the templates are always used.
+     */
+    reply?(req: {
+      userText: string;
+      kind: AiReplyKind;
+      facts: AiReplyFacts;
+    }): Promise<string | null>;
     /** True the first time per day, so the "out of quota" notice shows once. */
     quotaNotice(): boolean;
     /**
@@ -640,6 +659,8 @@ type AnswerMeta = {
   quotaOut: boolean;
   /** The reply is complete as it is (small talk, a pick of the last cards): finishAnswer adds nothing. */
   settled?: boolean;
+  /** The router answered this message (it charged the use the AI wording rides on). */
+  routed?: boolean;
 };
 
 type GreetKind =
@@ -720,6 +741,77 @@ function greetReply(kind: GreetKind, text: string, t: AssistantDeps['t']): strin
   return kind === 'hello'
     ? variant(t, 'chat.hello', 4, text, cityExamples())
     : variant(t, `chat.greet.${kind}`, 2, text);
+}
+
+/** A greeting that opens a conversation (not thanks or goodbye). */
+const isHello = (k: GreetKind | null): boolean => k !== null && k !== 'thanks' && k !== 'bye';
+
+const greetingFacts = (deps: AssistantDeps): AiReplyFacts => ({
+  daypart: daypartOf(istanbulClock(deps.now ?? new Date()).minutes),
+});
+
+/** The two jobs; each is sent as a message, so the existing flow (and its "where?" ask) takes over. */
+function greetChips(t: AssistantDeps['t']): ChatAction[] {
+  return ['chat.greetPark', 'chat.greetFood'].map((key) => {
+    const text = t(key);
+    return { kind: 'say', label: text, text };
+  });
+}
+
+/**
+ * The AI's own wording for a turn, or null (no AI layer, the router did not answer this message,
+ * a timeout, an error, or a text validateReply does not accept): the caller keeps its template.
+ */
+async function wording(
+  kind: AiReplyKind,
+  facts: AiReplyFacts,
+  deps: AssistantDeps,
+  meta: AnswerMeta,
+): Promise<string | null> {
+  const ai = deps.ai;
+  if (!ai?.reply || !meta.routed) return null;
+  const reply = ai.reply;
+  const said = await within(
+    Promise.resolve().then(() => reply({ userText: meta.text, kind, facts })),
+    REPLY_TIMEOUT_MS,
+  );
+  const city = activeCity();
+  return validateReply(said, facts, { kind, allow: [city.name, ...city.districts] });
+}
+
+/** The shown results as the facts of a reply: the first three, only what the app knows to be true. */
+function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps): AiReplyItem[] {
+  return cards.slice(0, 3).map((card): AiReplyItem => {
+    const item: AiReplyItem = { name: card.name, walkMin: walkMinFromMeters(card.distanceM) };
+    if (card.kind === 'parking') {
+      if (card.free !== null) item.freeSpots = card.free;
+      if (card.open !== 'unknown') item.openNow = card.open === 'open';
+      if (deps.parkings.find((p) => p.id === card.id)?.isPaid === false) item.free = true;
+      return item;
+    }
+    if (card.narr && card.narr.open !== 'unknown') item.openNow = card.narr.open === 'open';
+    // Food and parking are separate jobs: the car park is part of the facts only when it was asked for.
+    if (withParking) {
+      if (card.parkingM != null) item.parkWalkMin = walkMinFromMeters(card.parkingM);
+      if (card.narr?.parkingFree != null) item.freeSpots = card.narr.parkingFree;
+      if (card.narr?.parkingPaid === false) item.free = true;
+    }
+    return item;
+  });
+}
+
+/** Lets the AI reword the template sentence(s) of a reply; the cards, notes and chips stay as built. */
+async function wordReply(reply: BotMessage, deps: AssistantDeps, meta: AnswerMeta): Promise<void> {
+  const spec = reply.aiReply;
+  if (!spec) return;
+  const withParking = spec.facts.requireParking === true || spec.facts.freeOnly === true;
+  const items = spec.kind === 'none_found' ? [] : replyItems(reply.cards, withParking, deps);
+  const facts: AiReplyFacts = { ...spec.facts, ...(items.length > 0 ? { items } : {}) };
+  const said = await wording(spec.kind, facts, deps, meta);
+  const at = said ? reply.text.indexOf(spec.template) : -1;
+  if (!said || at < 0) return;
+  reply.text = reply.text.slice(0, at) + said + reply.text.slice(at + spec.template.length);
+  reply.sparkle = true;
 }
 
 /** "Sence", "sen seç", "fark etmez": the user hands the choice to the bot (folded phrases). */
@@ -1064,7 +1156,7 @@ function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | n
 /** The reply's cards are what "sence" / "sen seç" refer to next. */
 function remember(r: Result): Result {
   // The pick's wider pool never leaves the assistant (it is not shown and not stored).
-  const { pool: _pool, explained: _explained, ...reply } = r.reply;
+  const { pool: _pool, explained: _explained, aiReply: _aiReply, ...reply } = r.reply;
   return {
     reply,
     ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
@@ -1093,8 +1185,19 @@ async function answerText(
   // The router ran or was not available: no second AI call for this message, except the pick /
   // plan of a search, which share the router call's message id.
   if (routed.out.kind !== 'search') meta.quotaOut = true;
+  meta.routed = routed.out.kind !== 'none';
   let chatInvalid = false;
   if (routed.out.kind === 'chat') {
+    // A hello: the AI words the greeting itself and offers the two jobs as chips.
+    if (isHello(greetKind(foldedText))) {
+      const hello = await wording('greeting', greetingFacts(deps), deps, meta);
+      if (hello) {
+        meta.settled = true;
+        return withNotice(
+          plain({ text: hello, cards: [], actions: greetChips(t), sparkle: true }, ctx),
+        );
+      }
+    }
     const said = await chatFromRouter(routed.out.value, ctx, deps);
     if (said) {
       meta.settled = true;
@@ -1312,10 +1415,20 @@ async function answerText(
             },
           ]
         : [];
+      const nameText = foundNameReply(first.name, matches.length, t, text, i18n.language);
       const found: BotMessage = {
-        text: foundNameReply(first.name, matches.length, t, text, i18n.language),
+        text: nameText,
         cards,
         actions,
+        aiReply: {
+          kind: 'name',
+          facts: {
+            what: first.name,
+            count: matches.length,
+            ...(ctx.place ? { where: ctx.place.label } : {}),
+          },
+          template: nameText,
+        },
       };
       return withNotice(plain(found, ctx));
     }
@@ -2058,6 +2171,13 @@ async function choiceQuestion(
     patch: { choice: { id: entry.id, member: m.id }, ask: undefined },
   }));
   chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined }, t));
+  // The AI may word the question; the chips stay as built.
+  const worded = await wording(
+    'choice_question',
+    { where: next.place?.label, choices: chips.map((c) => c.label) },
+    deps,
+    meta,
+  );
   const ctx: ChatContext = {
     ...base,
     wishes: meta.wishes.length > 0 ? meta.wishes : undefined,
@@ -2067,7 +2187,15 @@ async function choiceQuestion(
   };
   return {
     kind: 'asked',
-    result: plain({ text: t(`chat.choice.ask.${entry.id}`), cards: [], actions: chips }, ctx),
+    result: plain(
+      {
+        text: worded ?? t(`chat.choice.ask.${entry.id}`),
+        cards: [],
+        actions: chips,
+        ...(worded ? { sparkle: true } : {}),
+      },
+      ctx,
+    ),
   };
 }
 
@@ -2128,6 +2256,8 @@ function runFood(
   // The places typical for the category come first, unless the user asked for the nearest.
   let ordered = ctx.sort === 'distance' ? rows : typicalFirst(rows, ctx.cat, ctx.dish ?? '');
   let dishPrefix = '';
+  /** The dish search looked wider than the first ring. */
+  let dishWider = false;
   const hits = new Map<string, DishHit>();
   let profile: DishProfile | null = null;
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
@@ -2179,6 +2309,7 @@ function runFood(
           t1 = wide.t1;
           t2 = wide.t2;
           widened = true;
+          dishWider = true;
         }
         if (total >= MIN_DISH_PLACES) break;
       }
@@ -2231,8 +2362,10 @@ function runFood(
           ctx.cat,
           stem,
         );
-        if (ordered.length > 0)
+        if (ordered.length > 0) {
           dishPrefix = t('chat.dishWider', { dish: dishName }) + ' ' + dishPrefix;
+          dishWider = true;
+        }
       }
     }
   }
@@ -2288,6 +2421,8 @@ function runFood(
       seed,
       i18n.language,
     );
+    // The part of the text the AI may reword; the dish sentence in front is an honest note.
+    const template = text.slice(dishPrefix.length);
     // No menu / price data: say which kinds were picked by type of place (not printed twice with the generic note).
     const explained: Wish[] = [];
     if (goal?.note) {
@@ -2399,6 +2534,20 @@ function runFood(
       actions,
       ...(explained.length > 0 ? { explained } : {}),
       ...(deps.ai?.pick && pool.length > cards.length ? { pool } : {}),
+      aiReply: {
+        kind: 'food',
+        facts: {
+          where,
+          what: hits.size > 0 && dishName ? dishName : what,
+          count: ctx.requireParking ? shown.length : ordered.length,
+          requireParking: ctx.requireParking,
+          freeOnly,
+          widened: ctx.wide || dishWider,
+          dishByNameOnly: hits.size > 0 && [...hits.values()].every((h) => h.byName),
+          daypart: daypartOf(istanbulClock(now).minutes),
+        },
+        template,
+      },
     };
   }
 
@@ -2409,7 +2558,24 @@ function runFood(
     if (!ctx.wide) {
       actions.push({ kind: 'refine', label: t('chat.actWider'), patch: { wide: true } });
     }
-    return { text: t('chat.foodNoFreePark', { where, what }), cards: [], actions };
+    const none = t('chat.foodNoFreePark', { where, what });
+    return {
+      text: none,
+      cards: [],
+      actions,
+      aiReply: {
+        kind: 'none_found',
+        facts: {
+          where,
+          what,
+          count: 0,
+          requireParking: ctx.requireParking,
+          freeOnly,
+          widened: ctx.wide,
+        },
+        template: none,
+      },
+    };
   }
 
   if (ctx.requireParking && ordered.length > 0) {
@@ -2425,7 +2591,24 @@ function runFood(
       label: t('chat.actDropParking'),
       patch: { requireParking: false },
     });
-    return { text: t('chat.foodNoParking', { where, what }), cards: [], actions };
+    const none = t('chat.foodNoParking', { where, what });
+    return {
+      text: none,
+      cards: [],
+      actions,
+      aiReply: {
+        kind: 'none_found',
+        facts: {
+          where,
+          what,
+          count: 0,
+          requireParking: ctx.requireParking,
+          freeOnly,
+          widened: ctx.wide,
+        },
+        template: none,
+      },
+    };
   }
 
   const actions: ChatAction[] = [];
@@ -2433,7 +2616,24 @@ function runFood(
     actions.push({ kind: 'refine', label: t('chat.actWider'), patch: { wide: true } });
   }
   actions.push(...examples('food', t));
-  return { text: t('chat.foodNone', { where, what }), cards: [], actions };
+  const none = t('chat.foodNone', { where, what });
+  return {
+    text: none,
+    cards: [],
+    actions,
+    aiReply: {
+      kind: 'none_found',
+      facts: {
+        where,
+        what,
+        count: 0,
+        requireParking: ctx.requireParking,
+        freeOnly,
+        widened: ctx.wide,
+      },
+      template: none,
+    },
+  };
 }
 
 /** Car park wishes and the time we can act on with data we really have. */
@@ -2540,6 +2740,7 @@ function runPark(
       seed,
       i18n.language,
     );
+    const template = text;
     const fresh = list.filter((x) => visibleFree(x.p, now) !== null).length;
     // The live-spots highlight (fresh free count of the nearest) already says it: no second sentence.
     if (fresh > 0 && visibleFree(nearest.p, now) === null)
@@ -2571,7 +2772,21 @@ function runPark(
         patch: { section: 'food', cat: null, dish: null },
       },
     );
-    return { text, cards, actions };
+    return {
+      text,
+      cards,
+      actions,
+      aiReply: {
+        kind: 'park',
+        facts: {
+          where,
+          count: list.length,
+          parkSearch: true,
+          daypart: daypartOf(istanbulClock(now).minutes),
+        },
+        template,
+      },
+    };
   }
 
   const actions: ChatAction[] = [];
@@ -2581,10 +2796,16 @@ function runPark(
   if (!ctx.wide) {
     actions.push({ kind: 'refine', label: t('chat.actWider'), patch: { wide: true } });
   }
+  const none = t(ctx.freeParking ? 'chat.parkNoFree' : 'chat.parkNone', { where });
   return {
-    text: t(ctx.freeParking ? 'chat.parkNoFree' : 'chat.parkNone', { where }),
+    text: none,
     cards: [],
     actions,
+    aiReply: {
+      kind: 'none_found',
+      facts: { where, count: 0, parkSearch: true, freeOnly: ctx.freeParking, widened: ctx.wide },
+      template: none,
+    },
   };
 }
 
@@ -3201,7 +3422,11 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
   if (meta.ai) reply.sparkle = true;
   const restaurants = reply.cards.filter((c) => c.kind === 'restaurant');
   const parkings = reply.cards.filter((c) => c.kind === 'parking');
-  if (restaurants.length === 0 && parkings.length === 0) return res;
+  if (restaurants.length === 0 && parkings.length === 0) {
+    // Nothing found: the AI may still word the "nothing here" sentence.
+    await wordReply(reply, deps, meta);
+    return res;
+  }
   const food = restaurants.length > 0;
 
   const lines: string[] = [];
@@ -3265,6 +3490,9 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
     }
   }
 
+  // The cards are final (a pick may have reordered them): the AI words the lead around them.
+  await wordReply(reply, deps, meta);
+  if (reply.sparkle && reply.aiReply) sparkle = true;
   if (tone) {
     lines.push(tone);
     sparkle = true;

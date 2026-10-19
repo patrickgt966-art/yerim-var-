@@ -873,6 +873,8 @@ const en = {
     exAlsancak: 'Car park in {{a}}',
     exKonak: '{{b}}',
     exNear: 'Car park near me',
+    greetPark: 'Find parking',
+    greetFood: 'Find food',
     exStadium: 'Stadium car park',
     exKofte: 'Meatballs near me',
     exBreakfast: 'Breakfast in {{a}}',

@@ -12,6 +12,7 @@ import {
   peek,
   releaseUse,
   takeCancelMark,
+  takeReply,
   takeUse,
   type AiLimits,
   type KV,
@@ -50,6 +51,7 @@ export type QuotaOp =
   | { op: 'resetCall'; callKey: string }
   | { op: 'releaseIfCancelled'; deviceId: string; messageId: string; now: number }
   | { op: 'cancel'; deviceId: string; messageId: string; now: number }
+  | { op: 'reply'; deviceId: string; messageId: string; now: number }
   | ({ op: 'report'; now: number; flagAt: number } & ReportFields)
   | { op: 'hidden'; city: string; now: number }
   | { op: 'flagged'; city: string; now: number }
@@ -93,6 +95,8 @@ export async function runOp(kv: KV, o: QuotaOp): Promise<unknown> {
       return takeCancelMark(kv, o.deviceId, o.messageId, new Date(o.now));
     case 'cancel':
       return cancelUse(kv, o.deviceId, o.messageId, new Date(o.now));
+    case 'reply':
+      return takeReply(kv, o.deviceId, o.messageId, new Date(o.now));
     case 'report': {
       const { city, placeId, place, kind, device, net, dayDevice } = o;
       return addReport(
@@ -135,6 +139,12 @@ export interface Quota {
   /** Gives the use back when the client cancelled this message; the new remaining, or null. */
   releaseIfCancelled(deviceId: string, messageId: string, now: Date): Promise<number | null>;
   cancel(deviceId: string, messageId: string, now: Date): Promise<{ remaining: number }>;
+  /** The one AI wording a charged message may have; it takes no use. */
+  reply(
+    deviceId: string,
+    messageId: string,
+    now: Date,
+  ): Promise<{ ok: true } | { ok: false; reason: 'no_message' | 'used' }>;
   report(r: ReportFields, now: Date, flagAt: number): Promise<ReportOutcome>;
   hidden(city: string, now: Date): Promise<{ ids: string[]; flagged: string[] }>;
   flagged(city: string, now: Date): Promise<FlaggedPlace[]>;
@@ -163,6 +173,9 @@ function quotaClient(send: (o: QuotaOp) => Promise<unknown>): Quota {
       (await send({ op: 'cancel', deviceId, messageId, now: now.getTime() })) as {
         remaining: number;
       },
+    reply: async (deviceId, messageId, now) =>
+      (await send({ op: 'reply', deviceId, messageId, now: now.getTime() })) as
+        { ok: true } | { ok: false; reason: 'no_message' | 'used' },
     report: async (r, now, flagAt) =>
       (await send({ op: 'report', ...r, now: now.getTime(), flagAt })) as ReportOutcome,
     hidden: async (city, now) =>

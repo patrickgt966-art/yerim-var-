@@ -8,12 +8,14 @@ import {
   HISTORY_LIMIT,
   MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
+  REPLY_TIMEOUT_MS,
   ROUTER_TIMEOUT_MS,
   UnderstandingClientSchema,
   clipText,
   toChat,
   toPick,
   toPlan,
+  toReply,
   toUnderstanding,
   type ChatRequest,
   type ChatResponse,
@@ -25,6 +27,7 @@ import {
   type PickResponse,
   type PlanRequest,
   type PlanResponse,
+  type ReplyRequest,
   type Understanding,
   type UnderstandRequest,
 } from './protocol';
@@ -320,6 +323,22 @@ export function createAiClient(baseUrl: string, fetchImpl: typeof fetch = fetch)
       if ('failed' in res) return null;
       const said = toChat(res.data);
       return said.reply === '' ? null : said;
+    },
+
+    /**
+     * The AI's wording of a reply the app already built (/reply): costs no use, rides on the
+     * message the router charged. Null on any failure, a refusal or a late answer (REPLY_TIMEOUT_MS),
+     * so the caller keeps its template. Never cancels the message: only the wording is given up.
+     */
+    async reply(req: ReplyRequest): Promise<string | null> {
+      const res = await post(
+        '/reply',
+        { ...forCity(req), userText: clipText(req.userText, MAX_CHAT_CHARS) },
+        REPLY_TIMEOUT_MS,
+      );
+      if ('failed' in res) return null;
+      const text = toReply(res.data);
+      return text === '' ? null : text;
     },
 
     /** Server-side uses left today; null on any error (an older server has no /quota). */

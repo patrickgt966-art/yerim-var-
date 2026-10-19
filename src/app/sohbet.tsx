@@ -180,6 +180,14 @@ function Chat({ first }: { first: boolean }) {
                 };
                 return trackAi(await aiClient.plan(req));
               },
+              // The AI's wording of a built reply: rides on the router's use, so no trackAi (it
+              // must not touch the quota state) and no cancel; a failure keeps the template.
+              reply: (rest) =>
+                aiClient.reply({
+                  ...rest,
+                  deviceId: useAi.getState().deviceId,
+                  messageId: aiMsgRef.current.messageId,
+                }),
               quotaNotice: () => useAi.getState().noticeOnce(),
               failNotice: () => aiFailRun++ % 3 === 0,
             }

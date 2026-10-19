@@ -10,15 +10,22 @@ import {
   MAX_CHAT_CHARS,
   MAX_MESSAGE_CHARS,
   MAX_PLAN_PARKINGS,
+  MAX_REPLY_CHOICES,
+  MAX_REPLY_ITEMS,
   MAX_RESULTS,
   OPEN_STATES,
   PLAN_WHENS,
+  REPLY_DAYPARTS,
+  REPLY_KINDS,
   CitySchema,
   clipText,
   todayIstanbul,
   type CancelRequest,
   type ChatRequest,
   type ChatTurn,
+  type AiReplyFacts,
+  type AiReplyItem,
+  type AiReplyKind,
   type DishMatch,
   type NarrateRequest,
   type OpenStateCode,
@@ -31,6 +38,7 @@ import {
   type PlanRequest,
   type PlanWhen,
   type QuotaRequest,
+  type ReplyRequest,
   type UnderstandRequest,
 } from '../../../src/lib/ai/protocol';
 
@@ -346,6 +354,26 @@ export async function takeCancelMark(
   return (await releaseUse(kv, deviceId, messageId, now, limit)).remaining;
 }
 
+/**
+ * /reply (the AI's wording of a reply) costs no use of its own: it rides on the message the router
+ * call already charged. It needs that charge (today or yesterday, see chargedDay) and is allowed
+ * once per message; a second one for the same message is refused.
+ */
+export async function takeReply(
+  kv: KV,
+  deviceId: string,
+  messageId: string,
+  now: Date,
+): Promise<{ ok: true } | { ok: false; reason: 'no_message' | 'used' }> {
+  if ((await chargedDay(kv, deviceId, messageId, now)) === null) {
+    return { ok: false, reason: 'no_message' };
+  }
+  const key = `ai:reply:${deviceId}:${messageId}`;
+  if ((await kv.get(key)) !== null) return { ok: false, reason: 'used' };
+  await kv.put(key, '1', { expirationTtl: TTL_SECONDS });
+  return { ok: true };
+}
+
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -461,6 +489,95 @@ export function validChat(body: unknown): ChatRequest | null {
     req.lastCards = { count: lastCards.count as number, kind: lastCards.kind };
   }
   return req;
+}
+
+const optLabel = (v: unknown): { ok: true; value?: string } | null =>
+  v === undefined
+    ? { ok: true }
+    : typeof v === 'string' && v.trim() !== '' && v.length <= MAX_LABEL_CHARS
+      ? { ok: true, value: v }
+      : null;
+
+/** The compact facts of /reply, rebuilt field by field (unknown keys dropped); null when malformed. */
+function readReplyFacts(raw: unknown): AiReplyFacts | null {
+  if (!isRecord(raw)) return null;
+  const facts: AiReplyFacts = {};
+  for (const key of ['where', 'what'] as const) {
+    const label = optLabel(raw[key]);
+    if (!label) return null;
+    if (label.value !== undefined) facts[key] = label.value;
+  }
+  if (raw.count !== undefined) {
+    if (!isCount(raw.count)) return null;
+    facts.count = raw.count;
+  }
+  for (const key of [
+    'requireParking',
+    'freeOnly',
+    'widened',
+    'dishByNameOnly',
+    'parkSearch',
+  ] as const) {
+    if (raw[key] === undefined) continue;
+    if (typeof raw[key] !== 'boolean') return null;
+    facts[key] = raw[key];
+  }
+  if (raw.daypart !== undefined) {
+    if (!(REPLY_DAYPARTS as readonly unknown[]).includes(raw.daypart)) return null;
+    facts.daypart = raw.daypart as (typeof REPLY_DAYPARTS)[number];
+  }
+  if (raw.items !== undefined) {
+    if (!Array.isArray(raw.items) || raw.items.length > MAX_REPLY_ITEMS) return null;
+    const items: AiReplyItem[] = [];
+    for (const it of raw.items as unknown[]) {
+      if (!isRecord(it) || !isText(it.name, MAX_LABEL_CHARS)) return null;
+      const item: AiReplyItem = { name: it.name };
+      for (const key of ['walkMin', 'parkWalkMin', 'freeSpots'] as const) {
+        if (it[key] === undefined) continue;
+        if (!isCount(it[key])) return null;
+        item[key] = it[key];
+      }
+      for (const key of ['openNow', 'free'] as const) {
+        if (it[key] === undefined) continue;
+        if (typeof it[key] !== 'boolean') return null;
+        item[key] = it[key];
+      }
+      items.push(item);
+    }
+    facts.items = items;
+  }
+  if (raw.choices !== undefined) {
+    if (!Array.isArray(raw.choices) || raw.choices.length > MAX_REPLY_CHOICES) return null;
+    const choices: string[] = [];
+    for (const c of raw.choices as unknown[]) {
+      if (!isText(c, MAX_LABEL_CHARS)) return null;
+      choices.push(c);
+    }
+    facts.choices = choices;
+  }
+  return facts;
+}
+
+/** /reply: the user's text (300 characters at most), what kind of turn it was, and its facts. */
+export function validReply(body: unknown): ReplyRequest | null {
+  if (!isRecord(body)) return null;
+  const { deviceId, messageId, userText, kind } = body;
+  if (!isId(deviceId) || !isId(messageId)) return null;
+  if (!isText(userText, MAX_CHAT_CHARS)) return null;
+  if (!(REPLY_KINDS as readonly unknown[]).includes(kind)) return null;
+  const city = readCity(body);
+  if (city === null) return null;
+  const facts = readReplyFacts(body.facts);
+  if (!facts) return null;
+  return {
+    deviceId,
+    messageId,
+    ...(city ? { city } : {}),
+    ...readLang(body),
+    userText,
+    kind: kind as AiReplyKind,
+    facts,
+  };
 }
 
 export function validNarrate(body: unknown): NarrateRequest | null {

@@ -26,15 +26,20 @@ import { quartersOf } from '@/data/quarters';
 import { PICK_CASES, UNDERSTAND_CASES } from '@/data/eval/aiCases';
 import { scorePick, scoreUnderstanding } from '@/data/eval/aiScore';
 import { CHAT_CASES, type ChatCase } from '@/data/eval/chatCases';
+import { REPLY_CASES } from '@/data/eval/replyCases';
 import { scoreCase } from '@/data/eval/score';
 import { IZMIR_DISTRICTS, type QueryIntent } from '@/data/intent';
+import { validateReply } from '@/lib/ai/replyCheck';
 import { fold } from '@/data/search';
 import {
   UNDERSTAND_SYSTEM,
   UnderstandingModelSchema,
   pickModelSchema,
   pickSystem,
+  replyOutputSchema,
+  replySystem,
   toPick,
+  toReply,
   toUnderstanding,
   understandSystem,
   type ChatTurn,
@@ -260,12 +265,59 @@ async function main(): Promise<void> {
       return scorePick(c, toPick(response.parsed_output, n) as PickResponse | null);
     });
   }
+  // The reply section: the model words each turn from its facts (the Worker's /reply call) and the
+  // app's validator decides whether the text would be shown. Reported, not gated: the pass-rate says
+  // how often the AI's words would be used instead of the template.
+  const izmir = cityById('izmir');
+  const allow = [izmir.name, ...izmir.districts];
+  const replyRows: { name: string; pass: boolean; text: string }[] = [];
+  for (const c of REPLY_CASES) {
+    await sleep(DELAY_MS);
+    try {
+      const response = await client.messages.parse({
+        model: MODEL,
+        max_tokens: 200,
+        system: cachedSystem(replySystem('izmir')),
+        output_config: { effort: 'low', format: zodOutputFormat(replyOutputSchema) },
+        messages: [
+          {
+            role: 'user',
+            content: JSON.stringify({
+              lang: 'tr',
+              userText: c.userText,
+              kind: c.kind,
+              facts: c.facts,
+            }),
+          },
+        ],
+      });
+      inputTokens += response.usage.input_tokens;
+      cacheReadTokens += response.usage.cache_read_input_tokens ?? 0;
+      cacheWriteTokens += response.usage.cache_creation_input_tokens ?? 0;
+      outputTokens += response.usage.output_tokens;
+      const text = response.stop_reason === 'refusal' ? '' : toReply(response.parsed_output);
+      replyRows.push({
+        name: c.name,
+        pass: validateReply(text, c.facts, { kind: c.kind, allow }) !== null,
+        text,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'unknown error';
+      replyRows.push({ name: c.name, pass: false, text: `error: ${msg}` });
+    }
+    console.error(
+      `[reply ${replyRows.length}] ${replyRows[replyRows.length - 1]?.pass ? 'ok' : 'FAIL'} ${c.name}`,
+    );
+  }
+  const replyOk = replyRows.filter((r) => r.pass).length;
   const hardOk = hard.filter((h) => h.pass).length;
   lines.splice(
     lines.length - 1,
     0,
     `Hard cases (understand + pick): ${hardOk}/${hard.length} (must be ${Math.ceil(HARD_PASS * hard.length)}+)`,
     ...hard.filter((h) => !h.pass).map((h) => `  FAIL ${h.name} -> ${h.misses.join('; ')}`),
+    `Reply wording (validator pass-rate): ${replyOk}/${replyRows.length}`,
+    ...replyRows.filter((r) => !r.pass).map((r) => `  REJECTED ${r.name} -> ${r.text}`),
   );
   lines[lines.length - 1] =
     `Tokens: input ${fmt(inputTokens)} · cache read ${fmt(cacheReadTokens)} · cache write ${fmt(cacheWriteTokens)} · output ${fmt(outputTokens)}`;
