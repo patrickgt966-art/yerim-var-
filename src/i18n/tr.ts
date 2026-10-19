@@ -48,7 +48,7 @@ const tr = {
     ageDays: '{{count}} gün',
   },
   onboarding: {
-    tagline: 'Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.',
+    tagline: 'Park yeri mi, yemek mi? İkisini de bul.',
     next: 'Devam',
     cityTitle: 'Hangi şehirdesin?',
     citySourceIzmir: 'Canlı otopark: İzmir Büyükşehir',
@@ -152,7 +152,7 @@ const tr = {
     locationFailed: 'Konumun alınamadı; {{city}} merkezini gösteriyoruz.',
     locationPermission: 'Konum izni',
     summary: '{{count}} otopark · {{free}} boş yer',
-    foodSummary: '{{count}} restoran · parkı en kolay olan üstte',
+    foodSummary: '{{count}} restoran · en yakın üstte',
     foodFullList: 'Kategorilere göre ara',
     summaryUnknown: '{{count}} otopark',
     subtitle: '{{place}} yürüme mesafesine göre',

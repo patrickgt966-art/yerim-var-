@@ -90,18 +90,17 @@ export function useNearbyHome(): NearbyHome {
   );
   const parks = useMemo(() => ranked.slice(0, PER_KIND), [ranked]);
 
-  const placeholder = q.isPlaceholderData;
   const hidden = useHiddenPlaceIds();
   const { foods, foodCount } = useMemo(() => {
     if (!here || !hidden) return { foods: [], foodCount: null };
     const near = restaurantsNear(here, FOOD_RADIUS_M, FOOD_LIMIT);
     const rows = buildRestaurantRows(near, result?.parkings ?? [], here, new Date());
-    // Without live data the park-ease order would jump once it arrives.
+    // Food is listed nearest first; parking only ranks it when the user asks for it.
     return {
-      foods: rankRestaurants(rows, placeholder ? 'distance' : 'parkEase').slice(0, PER_KIND),
+      foods: rankRestaurants(rows, 'distance').slice(0, PER_KIND),
       foodCount: near.length > 0 && near.length < FOOD_LIMIT ? near.length : null,
     };
-  }, [here, result, placeholder, hidden]);
+  }, [here, result, hidden]);
 
   const nearestFree = useMemo(
     () =>

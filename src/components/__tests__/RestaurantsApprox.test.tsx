@@ -52,6 +52,33 @@ beforeEach(() => {
   mockParams = { ...KORDON };
 });
 
+describe('restoranlar default sort', () => {
+  it('lists nearest first, with no parking wording, unless parking is asked for', async () => {
+    await render(<Restaurants />);
+    expect(screen.getByText(/en yakın üstte/)).toBeTruthy();
+    expect(screen.queryByText(/parkı en kolay olan üstte/)).toBeNull();
+    expect(screen.queryByText('Parkı en kolay')).toBeNull();
+  });
+
+  it('uses the park sort when the parking filter is on', async () => {
+    mockParams = { ...KORDON, park: '1' };
+    await render(<Restaurants />);
+    expect(screen.getByText(/parkı en kolay olan üstte/)).toBeTruthy();
+  });
+
+  it('uses the park sort when the free-parking filter is on', async () => {
+    mockParams = { ...KORDON, free: '1' };
+    await render(<Restaurants />);
+    expect(screen.getByText(/parkı en kolay olan üstte/)).toBeTruthy();
+  });
+
+  it('switches to the park sort when "Parkı kolay" is chosen by hand', async () => {
+    await render(<Restaurants />);
+    await fireEvent.press(screen.getByText('Parkı kolay'));
+    expect(screen.getByText(/parkı en kolay olan üstte/)).toBeTruthy();
+  });
+});
+
 describe('restoranlar approx notice', () => {
   it('shows nothing extra without approx', async () => {
     await render(<Restaurants />);

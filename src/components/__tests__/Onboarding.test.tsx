@@ -62,9 +62,7 @@ beforeEach(() => {
 describe('onboarding', () => {
   it('starts with the hero, tagline and the city list, with two step dots', async () => {
     await mount();
-    expect(
-      screen.getByText('Ne yemek istediğini söyle; restoranı da park yerini de biz bulalım.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Park yeri mi, yemek mi? İkisini de bul.')).toBeTruthy();
     expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
     expect(screen.getByLabelText('Adım 1, toplam 2 adım')).toBeTruthy();
   });
