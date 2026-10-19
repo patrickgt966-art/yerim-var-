@@ -22,6 +22,7 @@ import {
   type Understanding,
 } from '../../../src/lib/ai/protocol';
 import { ADMIN_PAGE_HTML } from './adminPage';
+import { CRASH_BODY_MAX, listCrashes, recordCrash, validCrash, type CrashKV } from './crashes';
 import {
   aiLimits,
   ipKey,
@@ -231,6 +232,43 @@ async function reportRoute(req: Request, env: Env): Promise<Response> {
   return json({ ok: true, flagged: out.flagged });
 }
 
+/** Crash reports per IP per day (the app sends one per distinct error per session). */
+const CRASH_PER_IP_DAILY = 30;
+
+/**
+ * A JS error report from the app. Never calls Anthropic and never touches the AI counter. The
+ * body is at most 8 KB; nothing in it identifies the person (see crashes.ts).
+ */
+async function crashRoute(req: Request, env: Env): Promise<Response> {
+  const length = Number(req.headers.get('content-length') ?? '0');
+  if (length > CRASH_BODY_MAX) return json({ error: 'too_large' }, 413);
+  let text: string;
+  try {
+    text = await req.text();
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  if (new TextEncoder().encode(text).length > CRASH_BODY_MAX) {
+    return json({ error: 'too_large' }, 413);
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return json({ error: 'bad_request' }, 400);
+  }
+  const sample = validCrash(raw);
+  if (!sample) return json({ error: 'bad_request' }, 400);
+  const now = new Date();
+  const ip = ipKey(req.headers.get('CF-Connecting-IP') ?? 'unknown');
+  const quota = quotaOf(env);
+  if (!(await quota.ipGuard(`crash:${ip}`, now, CRASH_PER_IP_DAILY))) {
+    return json({ error: 'rate_limited' }, 429);
+  }
+  await recordCrash(env.QUOTA, sample, now);
+  return json({ ok: true });
+}
+
 /**
  * The city's places the maintainer hid (`ids`) and the ones flagged by reports (`flagged`).
  * Public and cacheable for an hour.
@@ -250,7 +288,8 @@ async function hiddenRoute(req: Request, env: Env): Promise<Response> {
 /**
  * The maintainer's endpoints, behind `Authorization: Bearer <ADMIN_TOKEN>` (a wrangler secret).
  * Without the secret they do not exist. GET /admin/flagged?city= lists the flagged and hidden
- * places; POST /admin/review {city, placeId, action: 'hide' | 'keep'} decides one.
+ * places; POST /admin/review {city, placeId, action: 'hide' | 'keep'} decides one;
+ * GET /admin/crashes lists the JS errors the app reported (most frequent first).
  */
 async function adminRoute(req: Request, env: Env, path: string): Promise<Response> {
   if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404);
@@ -265,6 +304,9 @@ async function adminRoute(req: Request, env: Env, path: string): Promise<Respons
     const city = validCity(new URL(req.url).searchParams.get('city'));
     if (!city) return json({ error: 'bad_request' }, 400);
     return json({ city, places: await quota.flagged(city, now) });
+  }
+  if (req.method === 'GET' && path === '/admin/crashes') {
+    return json({ crashes: await listCrashes(env.QUOTA as unknown as CrashKV, now) });
   }
   if (req.method === 'POST' && path === '/admin/review') {
     let raw: unknown;
@@ -304,6 +346,7 @@ export default {
     if (req.method === 'POST' && path === '/quota') return quotaRoute(req, env);
     if (req.method === 'POST' && path === '/cancel') return cancelRoute(req, env);
     if (req.method === 'POST' && path === '/report') return reportRoute(req, env);
+    if (req.method === 'POST' && path === '/crash') return crashRoute(req, env);
     if (req.method === 'GET' && path === '/hidden') return hiddenRoute(req, env);
     if (req.method === 'GET' && path === '/admin') return adminPageRoute(env);
     if (path.startsWith('/admin/')) return adminRoute(req, env, path);

@@ -62,6 +62,8 @@ beyanı gerekir; Türkiye'de gerekmez).
 - **Identifiers → Device ID:** Uygulama işlevi (günlük ✨ hakkı sayacı). Kimliğe bağlı değil, takip yok.
 - **User Content → Other User Content:** Uygulama işlevi (Yerim'e yazılan mesajlar, yer bildirimleri).
   Kimliğe bağlı değil, takip yok.
+- **Diagnostics → Crash Data:** Uygulama işlevi (uygulama hata verirse hata mesajı ve sürüm).
+  Kimliğe bağlı değil, takip yok.
 - Konum: **toplanmıyor** (konum cihazda kalır, sunucuya gitmez).
 - Takip (tracking): **Hayır**.
 

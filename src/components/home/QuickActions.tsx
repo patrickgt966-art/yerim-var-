@@ -18,7 +18,7 @@ import type { NearbyHome } from './useNearbyHome';
 export function QuickActions({
   nearby,
 }: {
-  nearby: Pick<NearbyHome, 'nearestFree' | 'nearestWalk'>;
+  nearby: Pick<NearbyHome, 'nearestFree' | 'nearestWalk' | 'foodCount'>;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
@@ -30,6 +30,12 @@ export function QuickActions({
     : nearby.nearestWalk != null
       ? t('home.nearestWalk', { walk: nearby.nearestWalk })
       : null;
+
+  // Never about parking: the food job stands on its own.
+  const foodSub =
+    nearby.foodCount != null
+      ? t('home.foodPlacesCount', { count: nearby.foodCount })
+      : t('home.foodPlaces');
 
   const openFood = async () => {
     if (busy) return;
@@ -78,8 +84,8 @@ export function QuickActions({
           )
         }
         title={t('home.foodNearMe')}
-        sub={t('home.foodEasy')}
-        label={`${t('home.a11yFoodNearMe')}, ${t('home.foodEasy')}`}
+        sub={foodSub}
+        label={`${t('home.a11yFoodNearMe')}, ${foodSub}`}
         busy={busy}
         stacked={stacked}
         onPress={() => void openFood()}

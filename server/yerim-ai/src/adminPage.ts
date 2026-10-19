@@ -20,6 +20,7 @@ export const ADMIN_PAGE_HTML = `<!doctype html>
 body{margin:0;padding:16px;background:#FBF7F1;color:#0B3C49;font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-wrap:anywhere}
 main{max-width:640px;margin:0 auto}
 h1{font-size:22px;margin:0 0 16px}
+h2{font-size:18px;margin:24px 0 12px}
 label{display:block;font-weight:600;margin-bottom:6px}
 input,select,button{font:inherit;min-height:44px;border-radius:12px}
 input,select{width:100%;padding:8px 12px;border:1px solid #0B3C49;background:#fff;color:#0B3C49}
@@ -58,6 +59,10 @@ a{color:#0B3C49;font-weight:600}
 </section>
 <div id="msg" class="msg" role="status"></div>
 <div id="list"></div>
+<section id="crashes" hidden>
+<h2>Hatalar</h2>
+<div id="crashList"></div>
+</section>
 </main>
 <script>
 (function () {
@@ -80,6 +85,8 @@ a{color:#0B3C49;font-weight:600}
     $('login').hidden = false;
     $('panel').hidden = true;
     $('list').textContent = '';
+    $('crashes').hidden = true;
+    $('crashList').textContent = '';
   }
   function showPanel() {
     $('login').hidden = true;
@@ -178,10 +185,32 @@ a{color:#0B3C49;font-weight:600}
     });
   }
 
+  // The app's JS error reports, most frequent first (GET /admin/crashes); text only, via textContent.
+  function loadCrashes() {
+    return api('/admin/crashes').then(function (data) {
+      if (!data) return;
+      var box = $('crashList');
+      box.textContent = '';
+      var crashes = data.crashes || [];
+      $('crashes').hidden = false;
+      if (!crashes.length) { box.appendChild(el('p', 'Hata raporu yok.')); return; }
+      crashes.forEach(function (x) {
+        var s = x.sample || {};
+        var c = el('div', null, 'card');
+        c.appendChild(el('p', s.message, 'id'));
+        c.appendChild(el('p', 'Sayı: ' + x.count + ' · Son: ' + x.last + (s.fatal ? ' · ölümcül' : '')));
+        c.appendChild(el('p', 'Sürüm: ' + s.appVersion + ' (' + s.buildNumber + ') · ' + s.os + ' ' + s.osVersion));
+        c.appendChild(el('p', 'Ekran: ' + s.route));
+        box.appendChild(c);
+      });
+    });
+  }
+
   function start(fromLogin) {
     showPanel();
     say('');
     load().then(function () { if (fromLogin) $('token').value = ''; });
+    loadCrashes();
   }
 
   CITIES.forEach(function (c) {

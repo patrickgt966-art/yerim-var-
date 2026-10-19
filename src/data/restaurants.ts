@@ -266,6 +266,14 @@ export function kindLabel(kind: string, t: TFunction): string | null {
   return key ? t(`food.kinds.${key}`) : null;
 }
 
+/**
+ * The type label for a place's detail page: its OSM / Overture kind ("Restoran", "Kafe"), or
+ * "Yemek yeri" when the kind is not one we name and no category (rules or estimate) says more.
+ */
+export function placeTypeLabel(r: Restaurant, t: TFunction): string | null {
+  return kindLabel(r.kind, t) ?? (categoryOf(r) === null ? t('food.kinds.unknown') : null);
+}
+
 const DIET_KEYS = new Set([
   'vegetarian',
   'vegan',

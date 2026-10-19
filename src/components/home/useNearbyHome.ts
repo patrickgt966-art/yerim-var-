@@ -14,6 +14,7 @@ import { useHiddenPlaceIds } from '@/store/reports';
 
 const PARK_RADIUS_M = 2000;
 const FOOD_RADIUS_M = 1500;
+const FOOD_LIMIT = 60;
 /** Rows kept per kind; the card shows at most 4 in total. */
 export const PER_KIND = 4;
 
@@ -27,6 +28,8 @@ export type NearbyHome = {
   allow: () => Promise<void>;
   parks: RankedParking[];
   foods: RestaurantRow[];
+  /** Places within the food radius, when the exact number is known (not cut off at the limit). */
+  foodCount: number | null;
   /** Nearest car park with a fresh, real free count above zero. */
   nearestFree: RankedParking | null;
   /** Walking minutes to the nearest car park of any kind, if known. */
@@ -89,12 +92,15 @@ export function useNearbyHome(): NearbyHome {
 
   const placeholder = q.isPlaceholderData;
   const hidden = useHiddenPlaceIds();
-  const foods = useMemo(() => {
-    if (!here || !hidden) return [];
-    const near = restaurantsNear(here, FOOD_RADIUS_M, 60);
+  const { foods, foodCount } = useMemo(() => {
+    if (!here || !hidden) return { foods: [], foodCount: null };
+    const near = restaurantsNear(here, FOOD_RADIUS_M, FOOD_LIMIT);
     const rows = buildRestaurantRows(near, result?.parkings ?? [], here, new Date());
     // Without live data the park-ease order would jump once it arrives.
-    return rankRestaurants(rows, placeholder ? 'distance' : 'parkEase').slice(0, PER_KIND);
+    return {
+      foods: rankRestaurants(rows, placeholder ? 'distance' : 'parkEase').slice(0, PER_KIND),
+      foodCount: near.length > 0 && near.length < FOOD_LIMIT ? near.length : null,
+    };
   }, [here, result, placeholder, hidden]);
 
   const nearestFree = useMemo(
@@ -130,6 +136,7 @@ export function useNearbyHome(): NearbyHome {
     allow,
     parks,
     foods,
+    foodCount,
     nearestFree,
     nearestWalk,
   };
