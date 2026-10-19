@@ -464,6 +464,11 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'pilic',
       'tavukcu',
       'tavuk',
+      // Chicken-wing grills ("Kanatçı Ali", "Kanat Evi", "Mr Wings").
+      'kanat',
+      'wings',
+      // Compound chain spelling: "Kasapdöner" (the plain "Kasap Döner" is already read through 'kasap').
+      'kasapdoner',
       // City names count only inside a phrase ("Adana Cafe" is not a kebab place).
       'adana kebap',
       'urfa kebap',
@@ -546,6 +551,14 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'kiraathanesi',
       'kahvehane',
       'boza',
+      // Chains whose name carries no coffee word.
+      'starbucks',
+      'caribou',
+      'mado',
+      'ozsut',
+      'bigchefs',
+      'big chefs',
+      'simit sarayi',
     ],
     // "Vitamin Pide ve Kebap" is not a juice bar; "Cafe & Patisserie" is a dessert place (SWEET_NAMES).
     notNames: [
@@ -610,6 +623,17 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'bufe',
       'hot dog',
       'komagene',
+      // Compound chain spellings ("Baydöner", "Kasapdöner"): the plain 'doner' only starts a word.
+      'baydoner',
+      'kasapdoner',
+      // Chains.
+      'mcdonald',
+      'popeyes',
+      'kfc',
+      'sbarro',
+      'arby',
+      'carl s jr',
+      'durumle',
     ],
   },
   world: {
@@ -739,6 +763,10 @@ const CATEGORY_RULES: Record<FoodCategory, CategoryRule> = {
       'donut',
       'cikolata',
       'chocolate',
+      // Dessert chains.
+      'mado',
+      'ozsut',
+      'gulluoglu',
       // Bare "pasta" is ambiguous (cake or noodle): only the shop words count.
       'pastanesi',
       'pasta evi',
@@ -1230,6 +1258,9 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'sis',
     'sis kebap',
     'kanat',
+    'kanatci',
+    'wings',
+    'chicken wings',
     'ciger',
     'kasap',
     'et lokantasi',
@@ -1305,6 +1336,12 @@ const CATEGORY_WORDS: Record<FoodCategory, string[]> = {
     'ev yemekleri',
     'esnaf lokantasi',
     'restoran',
+    // Typos and endings of "restoran" ("restoranı", "restorantı").
+    'restorani',
+    'restorant',
+    'restoranti',
+    'restaurent',
+    'resturant',
     'lokantasi',
     'ogle yemegi',
     'manti',
@@ -1787,6 +1824,11 @@ const PLACE_KIND_WORDS = new Set([
   'kahvalti',
   'lokanta',
   'restoran',
+  'restorani',
+  'restorant',
+  'restoranti',
+  'restaurent',
+  'resturant',
   'kafe',
   'cafe',
   'kahve',

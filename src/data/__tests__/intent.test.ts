@@ -305,6 +305,18 @@ describe('more filler and near-me words', () => {
     expect(search('bucada bir şeyler yiyelim').placeQuery).toBe('');
   });
 
+  it.each(['restorant', 'restaurent', 'resturant', 'restoranı', 'restorantı'])(
+    'reads "alsancakta %s" like "alsancakta restoran"',
+    (typo) => {
+      const pick = (q: string) => {
+        const { cat, placeQuery, uncertain, food, district, nearMe } = search(q);
+        return { cat, placeQuery, uncertain, food, district, nearMe };
+      };
+      expect(pick(`alsancakta ${typo}`)).toEqual(pick('alsancakta restoran'));
+      expect(pick(`alsancakta ${typo}`)).toMatchObject({ cat: 'lokanta', placeQuery: 'alsancak' });
+    },
+  );
+
   it('keeps restoran-like words when nothing says it is about food', () => {
     expect(search('lokal').placeQuery).toBe('lokal');
   });
