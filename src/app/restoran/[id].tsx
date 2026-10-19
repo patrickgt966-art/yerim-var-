@@ -19,7 +19,7 @@ import {
   dietLabels,
   getRestaurant,
   isEstimatedKind,
-  kindLabel,
+  placeTypeLabel,
   telUrl,
 } from '@/data/restaurants';
 import { ReportPlace } from '@/components/ReportPlace';
@@ -28,6 +28,7 @@ import { placeShareText, shareText } from '@/lib/share';
 import { useRanked } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { openState } from '@/lib/openNow';
+import { formatOpeningHours } from '@/lib/openingHours';
 import { firstParam } from '@/lib/params';
 import { useSharedPlaceCity } from '@/lib/useSharedPlaceCity';
 import { openDirections } from '@/lib/directions';
@@ -101,7 +102,7 @@ export default function RestaurantDetail() {
   }
 
   const meta = [
-    kindLabel(r.kind, t),
+    placeTypeLabel(r, t),
     isEstimatedKind(r) ? t('food.estimatedKind') : null,
     ...dietLabels(r.diets, t),
     ...cuisineLabels(r.cuisines, t),
@@ -254,7 +255,9 @@ export default function RestaurantDetail() {
               <Txt variant="label" secondary>
                 {t('food.hours')}
               </Txt>
-              <Txt>{r.openingHours}</Txt>
+              {formatOpeningHours(r.openingHours, (k) => t(k)).map((line, i) => (
+                <Txt key={i}>{line}</Txt>
+              ))}
             </View>
           )}
           {facts.map((f) => (

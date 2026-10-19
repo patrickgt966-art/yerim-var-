@@ -11,14 +11,16 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { RootErrorBoundary } from '@/components/RootErrorBoundary';
 import { warmUpParkings } from '@/data/useParkings';
+import { installErrorReporting, setCrashRoute } from '@/lib/crashReport';
 import { watchParkActivity } from '@/lib/parkActivity';
 import { refreshHiddenPlaces } from '@/lib/placeReports';
 import { listenParkNotifications } from '@/lib/parkNotifications';
@@ -29,6 +31,12 @@ import { useHydrated } from '@/store/useHydrated';
 import { useColors } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+// JS errors go to our own worker (production builds only; see lib/crashReport).
+installErrorReporting();
+
+// expo-router shows this when the layout or a screen without its own boundary throws.
+export { RootErrorBoundary as ErrorBoundary };
 
 const queryClient = new QueryClient();
 
@@ -72,6 +80,7 @@ function onAppStateChange(status: AppStateStatus) {
 export default function RootLayout() {
   const c = useColors();
   const hydrated = useHydrated();
+  const pathname = usePathname();
   const [fontsLoaded, fontError] = useFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,
@@ -85,6 +94,8 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', onAppStateChange);
     return () => sub.remove();
   }, []);
+
+  useEffect(() => setCrashRoute(pathname), [pathname]);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
