@@ -23,6 +23,7 @@ import { ruleQuery } from '@/components/chat/ruleQuery';
 import { Txt } from '@/components/Txt';
 import {
   answer,
+  askParking,
   emptyContext,
   pickFromCards,
   refine,
@@ -279,11 +280,13 @@ function Chat({ first }: { first: boolean }) {
     typingRef.current = true;
     setTyping(true);
     setThinking(usesAi && aiOn && useAi.getState().remaining() > 0);
+    let go: BotMessage['directions'];
     try {
       const [res] = await Promise.all([produce(), wait(reduce ? 0 : 450)]);
       ctxRef.current = res.ctx;
       setCtx(res.ctx);
       addBot(res.reply, res.ctx);
+      go = res.reply.directions;
     } catch {
       addBot({ text: t('chat.error'), cards: [], actions: [] });
     } finally {
@@ -291,6 +294,8 @@ function Chat({ first }: { first: boolean }) {
       setTyping(false);
       setThinking(false);
     }
+    // "Hayır, yol tarifini aç": the reply says its send-off, then the map app opens.
+    if (go) await onPlanDirections(go);
   };
 
   const send = async (raw: string) => {
@@ -327,6 +332,13 @@ function Chat({ first }: { first: boolean }) {
   };
 
   const onDirections = async (card: ChatCard) => {
+    // A food card of an ask without parking: Yerim asks first whether to show the car parks.
+    if (card.kind === 'restaurant' && !card.parkAsked) {
+      if (typingRef.current) return;
+      addUser(t('chat.directionsLabel', { name: card.name }));
+      void reply(async () => askParking(card, ctxRef.current, deps), false);
+      return;
+    }
     const dest =
       card.kind === 'restaurant' ? getRestaurant(card.id) : parkings.find((p) => p.id === card.id);
     if (!dest) return;

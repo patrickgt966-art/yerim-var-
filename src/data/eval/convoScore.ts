@@ -12,7 +12,7 @@
 import { CHOICES, memberLabel } from '../choices';
 import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
-import type { ConvoCase, ConvoCategory, ConvoTurn } from './convoCases';
+import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
 import { fold, type AiReplyKind, type Understanding } from '@/lib/ai/protocol';
 import { walkMinFromMeters } from '@/lib/ai/verify';
 
@@ -23,6 +23,8 @@ export type ObservedCard = {
   parkingM: number | null;
   /** Metres from the search point to the place. */
   distanceM: number;
+  /** A restaurant card that shows its car park (the ask included parking). */
+  parkAsked?: boolean;
 };
 export type ObservedAction = { kind: 'say' | 'refine' | 'open' | 'pick'; label: string };
 
@@ -64,6 +66,10 @@ export type ObservedTurn = {
     choice: { id: string; member: string } | null;
   };
   wordings: ObservedWording[];
+  /** The map app was handed this destination in the turn (a "no" to the parking offer, a direct tap). */
+  directions?: { name: string } | null;
+  /** The restaurant the parking offer named, before the turn (what it answers) and after it (what it asks). */
+  parkAsk?: { before: string | null; after: string | null };
   /** An AI call failed for a reason that is not the model's (rate limit, outage): the run is void. */
   infra: boolean;
   error?: string;
@@ -204,6 +210,44 @@ export function repeatedWordings(perCase: readonly (readonly string[])[]): Set<s
 
 const memberLabels = new Set(CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))));
 
+/** The folded text without the names of the shown places and the searched place (a car park may be in a name). */
+function withoutNames(text: string, cards: readonly ObservedCard[], place: string | null): string {
+  let f = ` ${fold(text)} `;
+  for (const n of [...cards.map((c) => c.name), place ?? '']) {
+    const own = fold(n);
+    if (own !== '') f = f.split(` ${own} `).join('  ');
+  }
+  return f.replace(/\s+/g, ' ').trim();
+}
+
+/** The parking offer after "Yol tarifi": the question, the car parks near the restaurant, the map app. */
+function parkOffer(want: NonNullable<TurnExpect['parkAsk']>, obs: ObservedTurn): string[] {
+  const m: string[] = [];
+  const asked = obs.parkAsk ?? { before: null, after: null };
+  if (want === 'question') {
+    if (!asked.after) m.push('parking offer: Yerim did not ask the question');
+    if (obs.directions) m.push('parking offer: the map opened before the user answered');
+    if (obs.cards.length > 0) m.push('parking offer: the question comes with no cards');
+  } else if (want === 'cars') {
+    if (!asked.before) m.push('parking offer: no question was waiting for this answer');
+    else if (!fold(obs.text).includes(fold(asked.before))) {
+      m.push(`parking offer: the reply does not name the restaurant (${asked.before})`);
+    }
+    if (obs.directions) m.push('parking offer: the map opened for a yes');
+    if (obs.cards.some((c) => c.kind !== 'parking')) m.push('parking offer: want car park cards');
+    if (obs.ctx.place !== null && asked.before && fold(obs.ctx.place) !== fold(asked.before)) {
+      m.push(`parking offer: car parks searched near ${obs.ctx.place}, not ${asked.before}`);
+    }
+  } else {
+    if (!obs.directions) m.push('parking offer: the map did not open');
+    else if (asked.before && fold(obs.directions.name) !== fold(asked.before)) {
+      m.push(`parking offer: directions to ${obs.directions.name}, not ${asked.before}`);
+    }
+    if (asked.after) m.push('parking offer: asked the question again');
+  }
+  return m;
+}
+
 function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   const e = turn.expect;
   const m: string[] = [];
@@ -276,6 +320,24 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   ) {
     m.push('cards: a place without a car park is listed for a parking ask');
   }
+  if (e.parkAsk) m.push(...parkOffer(e.parkAsk, obs));
+  if (e.parkShown !== undefined) {
+    const food = cards.filter((c) => c.kind === 'restaurant');
+    if (food.length === 0) m.push('parkShown: no restaurant cards');
+    for (const c of food) {
+      if ((c.parkAsked === true) !== e.parkShown) {
+        m.push(
+          `parkShown: want ${e.parkShown}, got a card with${c.parkAsked ? '' : 'out'} its car park`,
+        );
+        break;
+      }
+    }
+    if (!e.parkShown && /(^| )otopark/.test(withoutNames(obs.text, cards, obs.ctx.place))) {
+      m.push(
+        `parkShown: a food answer without a parking ask names parking: ${obs.text.slice(0, 80)}`,
+      );
+    }
+  }
   if (e.nameCard) {
     const named = cards.some((c) => e.nameCard!.some((n) => fold(c.name).includes(fold(n))));
     if (!named) m.push(`name: no card is named ${e.nameCard.join('|')}`);
@@ -317,7 +379,8 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
 
 function replyText(obs: ObservedTurn, repeats: ReadonlySet<string>): Check {
   const m: string[] = [];
-  if (obs.text.trim() === '') m.push('empty reply');
+  // A tap that only opens the map (the ask included parking) says nothing in the chat.
+  if (obs.text.trim() === '' && !obs.directions) m.push('empty reply');
   if (BROKEN.test(obs.text)) m.push(`broken text: ${obs.text.slice(0, 80)}`);
   for (const w of obs.wordings) {
     if (w.accepted === null) continue;

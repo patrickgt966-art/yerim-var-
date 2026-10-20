@@ -63,7 +63,7 @@ describe('the conversation eval cases', () => {
       expect(CONVO_CASES.filter((c) => c.city === city).length).toBeGreaterThanOrEqual(80);
     }
     const inputs = CONVO_CASES.flatMap((c) => c.turns.map((t) => t.input.type));
-    for (const type of ['say', 'tap', 'answer']) expect(inputs).toContain(type);
+    for (const type of ['say', 'tap', 'answer', 'directions']) expect(inputs).toContain(type);
     const kinds = new Set(CONVO_CASES.flatMap((c) => c.turns.map((t) => t.expect.kind)));
     for (const kind of CONVO_KINDS) expect(kinds.has(kind)).toBe(true);
     expect(CONVO_CASES.some((c) => citiesOf(c).length > 1)).toBe(true);
@@ -113,7 +113,7 @@ function checkExpectations(c: ConvoCase): void {
       expect(TAPPABLE_LABELS.includes(input.text) || KIND_TAP.test(input.text)).toBe(true);
     }
     if (input.type === 'answer') expect(asked).toBe(true);
-    asked = e.kind === 'choice';
+    asked = e.kind === 'choice' || e.parkAsk === 'question';
 
     expect(CONVO_KINDS).toContain(e.kind);
     for (const cat of e.cat ?? []) {
@@ -232,6 +232,29 @@ describe('the expectations of every conversation', () => {
         expect(core.includes(fold(place)) || quarters.includes(fold(place))).toBe(true);
       }
     }
+  });
+
+  it('has ten conversations of the parking offer after "Yol tarifi"', () => {
+    const flow = CONVO_CASES.filter((c) => c.turns.some((t) => t.input.type === 'directions'));
+    expect(flow).toHaveLength(10);
+    const asks = flow.filter((c) => c.turns[1]?.expect.parkAsk === 'question');
+    // Seven food asks without parking: the question, then a chip or a typed yes / no.
+    expect(asks).toHaveLength(7);
+    for (const c of asks) {
+      expect(c.turns[0]!.expect).toMatchObject({ requireParking: false, parkShown: false });
+      expect(c.turns[1]!.expect.cards).toBe('none');
+      expect(['cars', 'directions']).toContain(c.turns[2]!.expect.parkAsk);
+    }
+    expect(asks.map((c) => c.turns[2]!.input.type)).toEqual(
+      expect.arrayContaining(['tap', 'answer']),
+    );
+    expect(asks.map((c) => c.turns[2]!.expect.parkAsk)).toEqual(
+      expect.arrayContaining(['cars', 'directions']),
+    );
+    // Three asks with parking: the card keeps its car park and the map opens, no question.
+    const parked = flow.filter((c) => !c.turns.some((t) => t.expect.parkAsk === 'question'));
+    expect(parked).toHaveLength(3);
+    for (const c of parked) expect(c.turns.some((t) => t.expect.parkShown === true)).toBe(true);
   });
 
   it('names real places from the data and the member chips of choices.ts', () => {

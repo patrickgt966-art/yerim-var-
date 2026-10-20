@@ -81,10 +81,13 @@ export function cardModel(
   const lead = card.reason ?? card.narr?.cat ?? null;
   const subline = [lead, openText].filter(Boolean).join(' · ') || null;
 
-  const free = countsStale ? null : (card.narr?.parkingFree ?? null);
+  // Food and parking are separate jobs: the car park line shows only when the ask included parking
+  // (otherwise "Yol tarifi" offers the car parks after the user picks a restaurant).
+  const park = card.parkAsked === true;
+  const free = park && !countsStale ? (card.narr?.parkingFree ?? null) : null;
   const paid = card.narr?.parkingPaid ?? null;
   const pill =
-    card.parkingM != null
+    park && card.parkingM != null
       ? [
           t('chat.distanceM', { m: Math.round(card.parkingM) }),
           paid === false ? t('chat.parkFree') : paid === true ? t('chat.parkPaid') : null,
@@ -105,7 +108,7 @@ export function cardModel(
     distance,
     name: card.name,
     subline,
-    pill: pill ?? t('chat.noParkNear'),
+    pill: park ? (pill ?? t('chat.noParkNear')) : null,
     pillMark: pill != null,
     unverified,
     label: [
@@ -121,7 +124,7 @@ export function cardModel(
       card.name,
       distance,
       subline,
-      pill ?? t('chat.noParkNear'),
+      park ? (pill ?? t('chat.noParkNear')) : null,
       unverified ? t('food.unverified') : null,
     ]
       .filter(Boolean)

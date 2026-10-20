@@ -790,6 +790,8 @@ const en = {
     pickRule: 'Picked without AI, based on the ranking (rule-based pick): {{name}}, {{reasons}}.',
     pickRuleNone:
       'Without AI, rule-based pick: {{name}}, top of the list. Nothing else makes it stand out; the list is sorted by distance and parking.',
+    pickRuleNonePlain:
+      'Without AI, rule-based pick: {{name}}, top of the list. Nothing else makes it stand out; the list is sorted by distance.',
     unknown_0: "I didn't quite get that. Could you type a place name or a dish?",
     unknown_1: 'I didn\'t get that. Try something like "car park in {{b}}" or "fish near me".',
     placeNotFound: 'I couldn\'t find a place called "{{q}}". Want to pick it on the map?',
@@ -823,6 +825,8 @@ const en = {
       'I couldn\'t find a place that makes "{{dish}}". Shall we look at home-cooking places nearby?',
     actLokanta: 'Home cooking nearby',
     noRatings: "I don't have ratings; the list is sorted by how close parking is.",
+    // The same notes for a food ask without parking: the order never followed a car park.
+    noRatingsPlain: "I don't have ratings; the list is sorted by distance.",
     sparkleOut:
       "You're out of ✨ for today. They reset tomorrow. I'm still here, we can keep searching!",
     sparkleLast: "That was your last ✨ for today. They reset tomorrow; I'm still here.",
@@ -869,6 +873,13 @@ const en = {
       dessert: 'dessert places',
     },
     actOnlyParking: 'Only with parking',
+    // "Directions" on a food card: parking is offered here, after the restaurant is picked.
+    parkAsk: 'Are you driving? Shall I show the car parks near {{name}}?',
+    parkAskYes: 'Yes, show car parks',
+    parkAskNo: 'No, open directions',
+    parkAskGo_0: 'Okay, opening directions to {{name}}. Have a good trip!',
+    parkAskGo_1: 'Directions to {{name}} are opening. Have a good trip!',
+    parkAskGo_2: 'Sure, directions to {{name}} coming up. Enjoy your meal and have a good trip!',
     actWiden500: 'Widen to 500 m',
     actWider: 'Look wider',
     actDropParking: 'Show without parking too',
@@ -895,6 +906,7 @@ const en = {
       "I couldn't see a place nearby that I can say fits what you asked (we don't have menus; I went by name and type). Showing the closest ones.",
     pickUnavailable:
       "I couldn't make a smart pick right now. The list is sorted by distance and parking.",
+    pickUnavailablePlain: "I couldn't make a smart pick right now. The list is sorted by distance.",
     why: {
       closest: 'it’s the closest (~{{count}} min walk)',
       closestFar: 'the shortest walk of the options (~{{count}} min, far)',
@@ -917,6 +929,8 @@ const en = {
     noInfo_kids: 'kids’ facilities',
     noInfoRule: "We don't have {{what}} info; I sorted by distance and parking.",
     noInfoAi: "We don't have {{what}} info; I picked by distance, opening hours and parking.",
+    noInfoPlainRule: "We don't have {{what}} info; I sorted by distance.",
+    noInfoPlainAi: "We don't have {{what}} info; I picked by distance and opening hours.",
     wishLate: 'I put places I know are open until 22:00 or later first.',
     wishLateNone: "I didn't find any places I know are open late.",
     wishOutdoor: 'I put places known to have outdoor seating first.',

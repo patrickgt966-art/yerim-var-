@@ -47,7 +47,8 @@ export type ConvoCategory = (typeof CONVO_CATEGORIES)[number];
  * What a turn is. greeting: hello, thanks or goodbye (small talk with no results); food / park:
  * a search for restaurants / car parks; choice: a broad ask that Yerim answers with a question and
  * chips; name: a place searched by its name; none: nothing to search (gibberish); offtopic: talk
- * that is none of the app's business, or a prompt injection (the reply stays on task).
+ * that is none of the app's business, or a prompt injection (the reply stays on task). parkAsk:
+ * the parking offer after "Yol tarifi" on a food card (the question, its answers); see TurnExpect.parkAsk.
  */
 export const CONVO_KINDS = [
   'greeting',
@@ -57,6 +58,7 @@ export const CONVO_KINDS = [
   'name',
   'none',
   'offtopic',
+  'parkAsk',
 ] as const;
 export type ConvoKind = (typeof CONVO_KINDS)[number];
 
@@ -69,7 +71,9 @@ export type ConvoKind = (typeof CONVO_KINDS)[number];
 export type ConvoInput =
   | { type: 'say'; text: string; city?: AiCityId }
   | { type: 'tap'; text: string }
-  | { type: 'answer'; text: string };
+  | { type: 'answer'; text: string }
+  /** A tap on "Yol tarifi" of the first restaurant card of the last reply (`text`: its label). */
+  | { type: 'directions'; text: string };
 
 /** What the user must see after a turn. Every field is optional: only what a right answer must have. */
 export type TurnExpect = {
@@ -107,6 +111,18 @@ export type TurnExpect = {
   member?: string;
   /** The honest "we have no data" note is in the reply. */
   note?: boolean;
+  /**
+   * The parking offer after "Yol tarifi" on a food card: 'question' = Yerim asks "Arabayla mı
+   * gidiyorsun?" with the two chips and opens nothing; 'cars' = the answer shows car parks near the
+   * restaurant it named; 'directions' = the map app opens (for the restaurant after a no, for
+   * the card at once when the ask included parking) and no question is asked.
+   */
+  parkAsk?: 'question' | 'cars' | 'directions';
+  /**
+   * Restaurant cards show their car park (true) or are about food only (false: no parking line,
+   * and no parking word in the reply).
+   */
+  parkShown?: boolean;
 };
 
 export type ConvoTurn = { input: ConvoInput; expect: TurnExpect };
@@ -380,6 +396,9 @@ export const KIND_TAP = /^@([1-9])$/;
 export const TAPPABLE_LABELS: string[] = [
   ...GREET_CHIPS,
   HEPSI,
+  tr.chat.actOnlyParking,
+  tr.chat.parkAskYes,
+  tr.chat.parkAskNo,
   ...CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))),
 ];
 
@@ -1342,6 +1361,101 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
       ];
     });
   });
+
+  // --- both, new flow: parking is offered after the user picks a restaurant ---------------------------
+  // A food ask without parking is about food; "Yol tarifi" on its card asks "Arabayla mı gidiyorsun?"
+  // (a chip or a typed yes / no answers it); an ask with parking keeps its parking and opens directions.
+  const YOL = tr.chat.directions;
+  const plainFood = (d: string, dish: Dish): TurnExpect =>
+    food([d], dish, { cards: 'some', requireParking: false, parkShown: false });
+  const parkedFood = (d: string, dish: Dish): TurnExpect =>
+    food([d], dish, { cards: 'some', requireParking: true, parkShown: true });
+  const question: TurnExpect = {
+    kind: 'parkAsk',
+    parkAsk: 'question',
+    cards: 'none',
+    chips: [tr.chat.parkAskYes, tr.chat.parkAskNo],
+  };
+  const cars: TurnExpect = {
+    kind: 'parkAsk',
+    parkAsk: 'cars',
+    cards: 'some',
+    cardKind: 'parking',
+  };
+  const goes: TurnExpect = { kind: 'parkAsk', parkAsk: 'directions', cards: 'none' };
+  const askFlow: { city: AiCityId; x: string; ask: string; answer: ConvoTurn }[] = [
+    { city: 'izmir', x: 'köfte', ask: '{L} {X}', answer: tap(tr.chat.parkAskYes, cars) },
+    { city: 'istanbul', x: 'balık', ask: '{L} {X}', answer: tap(tr.chat.parkAskNo, goes) },
+    { city: 'ankara', x: 'lahmacun', ask: '{L} {X} yiyelim', answer: answerTurn('evet', cars) },
+    { city: 'bursa', x: 'pide', ask: '{D} {X}', answer: answerTurn('hayır', goes) },
+    { city: 'antalya', x: 'kebap', ask: '{L} {X} istiyorum', answer: answerTurn('olur', cars) },
+    {
+      city: 'izmir',
+      x: 'döner',
+      ask: '{D} {X}',
+      answer: answerTurn('yürüyerek gidiyorum', goes),
+    },
+    { city: 'istanbul', x: 'serpme kahvaltı', ask: '{L} {X}', answer: answerTurn('göster', cars) },
+  ];
+  for (const f of askFlow) {
+    add(
+      'both',
+      f.city,
+      'food',
+      () => {
+        const d = CORE_DISTRICTS[f.city]?.[0] ?? '';
+        return [
+          say(fill(f.ask, d, f.x), plainFood(d, dishByX(f.x))),
+          { input: { type: 'directions', text: YOL }, expect: question },
+          f.answer,
+        ];
+      },
+      19,
+    );
+  }
+  // The ask included parking: the card keeps its car park and "Yol tarifi" opens the map at once.
+  add(
+    'both',
+    'ankara',
+    'food',
+    () => {
+      const d = CORE_DISTRICTS.ankara?.[0] ?? '';
+      return [
+        say(fill('{D} otoparklı {X}', d, 'köfte'), parkedFood(d, dishByX('köfte'))),
+        { input: { type: 'directions', text: YOL }, expect: goes },
+      ];
+    },
+    19,
+  );
+  add(
+    'both',
+    'bursa',
+    'food',
+    () => {
+      const d = CORE_DISTRICTS.bursa?.[0] ?? '';
+      return [
+        say(fill('{L} otoparkı olan {X} yeri', d, 'balık'), parkedFood(d, dishByX('balık'))),
+        { input: { type: 'directions', text: YOL }, expect: goes },
+      ];
+    },
+    19,
+  );
+  // The "Sadece otoparklı" chip is the way to ask for parking afterwards: then no question either.
+  add(
+    'both',
+    'antalya',
+    'food',
+    () => {
+      const d = CORE_DISTRICTS.antalya?.[0] ?? '';
+      const dish = dishByX('pide');
+      return [
+        say(fill('{L} {X}', d, 'pide'), plainFood(d, dish)),
+        tap(tr.chat.actOnlyParking, parkedFood(d, dish)),
+        { input: { type: 'directions', text: YOL }, expect: goes },
+      ];
+    },
+    19,
+  );
 
   return cases;
 }

@@ -702,6 +702,8 @@ const tr = {
     pickRule: 'Yapay zekâ olmadan, sıralamaya göre seçtim (kural seçimi): {{name}}, {{reasons}}.',
     pickRuleNone:
       'Yapay zekâ olmadan, kural seçimi: listenin en üstündeki {{name}}. Öne çıkaran ayrı bir bilgim yok; sıralama yakınlığa ve otoparka göre.',
+    pickRuleNonePlain:
+      'Yapay zekâ olmadan, kural seçimi: listenin en üstündeki {{name}}. Öne çıkaran ayrı bir bilgim yok; sıralama yakınlığa göre.',
     unknown_0: 'Bunu tam anlayamadım. Bir yer adı ya da yemek yazar mısın?',
     unknown_1: 'Anlayamadım. "{{b}} otopark" ya da "yakınımda balıkçı" gibi yazabilirsin.',
     placeNotFound: '"{{q}}" diye bir yer bulamadım. Haritada işaretlemek ister misin?',
@@ -726,6 +728,8 @@ const tr = {
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
+    // The same notes for a food ask without parking: the order never followed a car park.
+    noRatingsPlain: 'Puan bilgim yok; sıralama yakınlığa göre.',
     sparkleOut:
       'Bugünkü ✨ hakların bitti. Yarın yenilenir. Ben buradayım, aramaya devam edebiliriz!',
     sparkleLast: 'Bu, bugünkü son ✨ hakkındı. Yarın yenilenir; ben yine buradayım.',
@@ -770,6 +774,13 @@ const tr = {
       dessert: 'tatlıcı',
     },
     actOnlyParking: 'Sadece otoparklı',
+    // "Yol tarifi" on a food card: parking is offered here, after the restaurant is picked.
+    parkAsk: 'Arabayla mı gidiyorsun? {{name}} yakınındaki otoparkları göstereyim mi?',
+    parkAskYes: 'Evet, otopark göster',
+    parkAskNo: 'Hayır, yol tarifini aç',
+    parkAskGo_0: 'Tamam, {{name}} için yol tarifini açıyorum. İyi yolculuklar!',
+    parkAskGo_1: 'Yol tarifi açılıyor: {{name}}. İyi yolculuklar!',
+    parkAskGo_2: 'Olur, {{name}} için yol tarifi geliyor. Afiyet olsun, iyi yolculuklar!',
     actWiden500: "500 m'ye çıkar",
     actWider: 'Daha geniş bak',
     actDropParking: 'Otoparksız da göster',
@@ -795,6 +806,7 @@ const tr = {
     pickNoneFit:
       'Yakında isteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En yakınları gösteriyorum.',
     pickUnavailable: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa ve otoparka göre.',
+    pickUnavailablePlain: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa göre.',
     why: {
       closest: 'en yakın olanı (~{{count}} dk yürüme)',
       closestFar: 'yürüme süresi en kısa olan (~{{count}} dk, uzak)',
@@ -817,6 +829,8 @@ const tr = {
     noInfo_kids: 'çocuk olanakları',
     noInfoRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa ve otoparka göre yaptım.',
     noInfoAi: '{{what}} bilgimiz yok; yakınlığa, açık olmasına ve otoparka göre seçtim.',
+    noInfoPlainRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa göre yaptım.',
+    noInfoPlainAi: '{{what}} bilgimiz yok; yakınlığa ve açık olmasına göre seçtim.',
     wishLate: 'Gece 22:00’ye kadar ya da daha geç açık olduğunu bildiğim yerleri öne aldım.',
     wishLateNone: 'Gece geç saate kadar açık olduğunu bildiğim yer çıkmadı.',
     wishOutdoor: 'Açık havada oturma yeri olduğu bilinenleri öne aldım.',

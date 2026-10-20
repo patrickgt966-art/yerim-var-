@@ -603,3 +603,105 @@ describe('cases and the report', () => {
     expect(estimateCost([], sizes).usd).toBe(0);
   });
 });
+
+describe('the parking offer after "Yol tarifi"', () => {
+  const turn = (expect: TurnExpect): ConvoTurn => ({
+    input: { type: 'directions', text: 'Yol tarifi' },
+    expect,
+  });
+  const misses = (t: ConvoTurn, o: ObservedTurn) => scoreTurn(t, o).understanding.misses;
+
+  it('wants the question with no cards and no map opened', () => {
+    const t = turn({ kind: 'parkAsk', parkAsk: 'question', cards: 'none' });
+    const asked = obs({
+      routerCalls: 0,
+      text: 'Arabayla mı gidiyorsun? Köfteci Ali yakınındaki otoparkları göstereyim mi?',
+      parkAsk: { before: null, after: 'Köfteci Ali' },
+      directions: null,
+    });
+    expect(misses(t, asked)).toEqual([]);
+    expect(misses(t, { ...asked, parkAsk: { before: null, after: null } })).toEqual([
+      'parking offer: Yerim did not ask the question',
+    ]);
+    expect(misses(t, { ...asked, directions: { name: 'Köfteci Ali' } })).toEqual([
+      'parking offer: the map opened before the user answered',
+    ]);
+  });
+
+  it('wants car parks near the restaurant it names after a yes', () => {
+    const t = turn({ kind: 'parkAsk', parkAsk: 'cars', cards: 'some', cardKind: 'parking' });
+    const yes = obs({
+      routerCalls: 0,
+      text: 'Köfteci Ali civarında 3 otopark buldum.',
+      cards: [parkCard('Otopark A')],
+      parkAsk: { before: 'Köfteci Ali', after: null },
+      ctx: { ...obs().ctx, place: 'Köfteci Ali' },
+    });
+    expect(misses(t, yes)).toEqual([]);
+    expect(misses(t, { ...yes, text: 'Bornova civarında 3 otopark buldum.' })).toEqual([
+      'parking offer: the reply does not name the restaurant (Köfteci Ali)',
+    ]);
+    expect(misses(t, { ...yes, cards: [card('Köfteci Ali')] })).toContain(
+      'parking offer: want car park cards',
+    );
+  });
+
+  it('wants the map for the restaurant after a no, or at once when parking was asked', () => {
+    const t = turn({ kind: 'parkAsk', parkAsk: 'directions', cards: 'none' });
+    const no = obs({
+      routerCalls: 0,
+      text: 'Tamam, yol tarifi açılıyor. İyi yolculuklar!',
+      parkAsk: { before: 'Köfteci Ali', after: null },
+      directions: { name: 'Köfteci Ali' },
+    });
+    expect(misses(t, no)).toEqual([]);
+    expect(misses(t, { ...no, directions: null })).toEqual(['parking offer: the map did not open']);
+    expect(misses(t, { ...no, directions: { name: 'Başka Yer' } })).toEqual([
+      'parking offer: directions to Başka Yer, not Köfteci Ali',
+    ]);
+    // A card of a parking ask opens the map with nothing to say in the chat.
+    const direct = obs({
+      routerCalls: 0,
+      text: '',
+      directions: { name: 'Köfteci Ali' },
+      parkAsk: { before: null, after: null },
+    });
+    expect(misses(t, direct)).toEqual([]);
+    expect(scoreTurn(t, direct).reply.ok).toBe(true);
+    expect(scoreTurn(t, obs({ routerCalls: 0, text: '' })).reply.ok).toBe(false);
+  });
+
+  it('checks that food cards show their car park only when parking was asked', () => {
+    const food = (parkShown: boolean): ConvoTurn => ({
+      input: { type: 'say', text: 'bornova köfte' },
+      expect: { kind: 'food', parkShown },
+    });
+    const plain = obs({
+      understood: search(),
+      cards: [{ ...card('Köfteci Ali'), parkAsked: false }],
+    });
+    expect(misses(food(false), plain)).toEqual([]);
+    expect(misses(food(true), plain)).toEqual([
+      'parkShown: want true, got a card without its car park',
+    ]);
+    const parked = obs({
+      understood: search(),
+      cards: [{ ...card('Köfteci Ali'), parkAsked: true }],
+    });
+    expect(misses(food(true), parked)).toEqual([]);
+    expect(misses(food(false), parked)).toHaveLength(1);
+    // A parking word in the text of a plain food answer is a miss, a restaurant's name is not.
+    expect(
+      misses(food(false), { ...plain, text: 'Bornova civarında 3 yer, yakınında otopark var.' }),
+    ).toHaveLength(1);
+    expect(
+      misses(food(false), {
+        ...obs({
+          understood: search(),
+          cards: [{ ...card('Otopark Lokantası'), parkAsked: false }],
+        }),
+        text: 'Otopark Lokantası en yakını.',
+      }),
+    ).toEqual([]);
+  });
+});

@@ -24,7 +24,10 @@ const restaurant = {
   distanceM: 300,
   parkingM: 120,
   narr: { parkingFree: 24, parkingPaid: true },
+  parkAsked: true,
 } as unknown as ChatCard;
+// The same card of a food ask that did not include parking.
+const foodOnly = { ...restaurant, parkAsked: undefined } as unknown as ChatCard;
 
 afterEach(async () => {
   await i18n.changeLanguage('tr');
@@ -36,6 +39,16 @@ describe('chat card distances', () => {
     expect(formatDistance(1234, t)).toBe('1,2 km');
     await i18n.changeLanguage('en');
     expect(formatDistance(1234, t)).toBe('1.2 km');
+  });
+});
+
+describe('chat food card without a parking ask', () => {
+  it('is about food: no car park line, no easy-parking badge, none in the spoken label', () => {
+    const m = cardModel(foodOnly, 0, undefined, t);
+    expect(m.pill).toBeNull();
+    expect(m.pillMark).toBe(false);
+    expect(m.badge).toBeNull();
+    expect(m.label).not.toMatch(/otopark|24|120/i);
   });
 });
 

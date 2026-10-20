@@ -5,7 +5,7 @@ import '@/i18n';
 import type { Understanding } from '@/lib/ai/protocol';
 
 import { activeCity } from '../cities';
-import { GREET_CHIPS, type ConvoCase, type ConvoTurn } from '../eval/convoCases';
+import { CONVO_CASES, GREET_CHIPS, type ConvoCase, type ConvoTurn } from '../eval/convoCases';
 import { eveningOf, playConversation, type ConvoAi } from '../eval/convoRun';
 import { scoreCase } from '../eval/convoScore';
 
@@ -192,6 +192,37 @@ describe('playConversation', () => {
     expect(t.turns[0]!.text).not.toContain('hepsi ucuz');
     // The template is shown: the turn is not failed for it.
     expect(scoreCase(c, t.turns).ok).toBe(true);
+  });
+
+  it('plays the ten parking-offer conversations: the question, car parks near the restaurant, the map', async () => {
+    const flow = CONVO_CASES.filter((c) => c.turns.some((t) => t.input.type === 'directions'));
+    expect(flow).toHaveLength(10);
+    for (const c of flow) {
+      // The router reads the first message as the case expects it (district, category, dish).
+      const first = c.turns[0]!;
+      const e = first.expect;
+      const { ai, calls } = fakeAi(() =>
+        search({
+          district: e.place?.[0] ?? null,
+          cat: (e.cat?.[0] ?? null) as never,
+          dish: e.dishHas?.[0] ?? null,
+          nearMe: false,
+          requireParking: e.requireParking === true,
+        }),
+      );
+      const t = await playConversation(c, ai);
+      const scored = scoreCase(c, t.turns);
+      expect({
+        name: c.name,
+        misses: scored.scores.flatMap((s) =>
+          Object.values(s).flatMap((v) => (typeof v === 'object' ? v.misses : [])),
+        ),
+      }).toEqual({ name: c.name, misses: [] });
+      expect(scored.ok).toBe(true);
+      // Only the first message is read by the router: the offer and its answers need no AI call.
+      expect(calls.understand).toHaveLength(1);
+      for (const obs of t.turns.slice(1)) expect(obs.routerCalls).toBe(0);
+    }
   });
 
   it('plays the same hour of the same Saturday every time', () => {

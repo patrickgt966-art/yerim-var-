@@ -7,6 +7,7 @@
 import { aiHistory } from '@/components/chat/model';
 import {
   answer,
+  askParking,
   emptyContext,
   pickFromCards,
   refine,
@@ -18,6 +19,7 @@ import {
 } from '@/data/assistant';
 import { CHOICES, memberLabel } from '@/data/choices';
 import { activeCity, setActiveCity } from '@/data/cities';
+import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import i18n from '@/i18n';
 import { validateReply } from '@/lib/ai/replyCheck';
@@ -113,7 +115,25 @@ const observedCard = (c: ChatCard): ObservedCard => ({
   name: c.name,
   parkingM: c.kind === 'restaurant' ? c.parkingM : null,
   distanceM: c.distanceM,
+  parkAsked: c.kind === 'restaurant' && c.parkAsked === true,
 });
+
+/**
+ * A tap on "Yol tarifi" of a food card, the way the chat screen takes it: a card of an ask with
+ * parking opens the map at once, any other one asks the parking question first.
+ */
+function directionsTap(
+  card: Extract<ChatCard, { kind: 'restaurant' }>,
+  ctx: ChatContext,
+  deps: AssistantDeps,
+): { reply: BotMessage; ctx: ChatContext } {
+  const r = getRestaurant(card.id);
+  if (card.parkAsked && r) {
+    const directions = { lat: r.lat, lng: r.lng, name: r.name };
+    return { reply: { text: '', cards: [], actions: [], directions }, ctx };
+  }
+  return askParking(card, ctx, deps);
+}
 
 /** Plays the conversation; never throws. */
 export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Transcript> {
@@ -186,6 +206,8 @@ async function playTurn(
       choice: null,
     },
     wordings: [],
+    directions: null,
+    parkAsk: { before: ctx.parkAsk?.name ?? null, after: null },
     infra: false,
   };
   const pending: Promise<unknown>[] = [];
@@ -316,11 +338,20 @@ async function playTurn(
       if (chip.kind === 'say') observedText = chip.text;
     } else observed.tapMissing = true;
   }
+  // "Yol tarifi" on a food card, as the chat screen does it: the parking offer, or the map at once.
+  const card =
+    turn.input.type === 'directions'
+      ? s.last?.cards.find(
+          (c): c is Extract<ChatCard, { kind: 'restaurant' }> => c.kind === 'restaurant',
+        )
+      : undefined;
+  if (turn.input.type === 'directions' && !card) observed.tapMissing = true;
   let reply: BotMessage;
   let nextCtx: ChatContext;
   try {
-    const res =
-      chip?.kind === 'refine'
+    const res = card
+      ? directionsTap(card, ctx, deps)
+      : chip?.kind === 'refine'
         ? await refine(ctx, chip.patch, deps)
         : chip?.kind === 'pick'
           ? await pickFromCards(chip.cards, chip.query, ctx, deps)
@@ -345,6 +376,8 @@ async function playTurn(
   observed.text = reply.text;
   observed.cards = reply.cards.map(observedCard);
   observed.actions = reply.actions.map((a): ObservedAction => ({ kind: a.kind, label: a.label }));
+  observed.directions = reply.directions ? { name: reply.directions.name } : null;
+  observed.parkAsk = { before: ctx.parkAsk?.name ?? null, after: nextCtx.parkAsk?.name ?? null };
   observed.ctx = {
     place: nextCtx.place?.label ?? null,
     cat: nextCtx.cat,
