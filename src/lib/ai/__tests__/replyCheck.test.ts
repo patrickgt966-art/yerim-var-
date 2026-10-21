@@ -1,4 +1,4 @@
-import type { AiReplyFacts } from '../protocol';
+import type { AiReplyFacts, AiReplyKind } from '../protocol';
 import { MAX_REPLY_TEXT_CHARS, validateReply } from '../replyCheck';
 
 const food: AiReplyFacts = {
@@ -23,9 +23,15 @@ const park: AiReplyFacts = {
   parkSearch: true,
   items: [{ name: 'Kemeraltı Otoparkı', walkMin: 4, freeSpots: 22 }],
 };
+const noCounts: AiReplyFacts = {
+  where: 'Konak',
+  count: 4,
+  parkSearch: true,
+  items: [{ name: 'Kemeraltı Otoparkı', walkMin: 4 }],
+};
 const allow = ['İzmir', 'Alsancak', 'Konak'];
 
-type Case = [string, string, AiReplyFacts, string | null, { kind?: 'greeting' }?];
+type Case = [string, string, AiReplyFacts, string | null, { kind?: AiReplyKind }?];
 const cases: Case[] = [
   // OK
   ['plain', "Alsancak'ta balık için 12 yer buldum.", food, "Alsancak'ta balık için 12 yer buldum."],
@@ -143,6 +149,55 @@ const cases: Case[] = [
     'Otopark ücretsiz.',
     { ...foodWithPark, items: [{ name: 'A', walkMin: 3, parkWalkMin: 2 }] },
     null,
+  ],
+  // Room claims need a live free count; the menu is not on the cards.
+  [
+    'room claim, no live count (22 otopark)',
+    "Konak'ta şu an boş yeri olan 4 otopark buldum.",
+    noCounts,
+    null,
+  ],
+  [
+    'room claim, no live count (bir otopark)',
+    "Konak'ta boş yeri olan bir otopark buldum.",
+    noCounts,
+    null,
+  ],
+  [
+    'room claim, no live count (kartlar)',
+    'Kartlarda şu an boş yer sayılarına bakabilirsin.',
+    noCounts,
+    null,
+  ],
+  ['müsait without a live count', 'Konak’ta müsait otoparklar var.', noCounts, null],
+  ['boş yer var without a live count', 'Kemeraltı Otoparkı’nda boş yer var.', noCounts, null],
+  [
+    'room claim with a live count',
+    "Konak'ta boş yeri olan 4 otopark buldum.",
+    park,
+    "Konak'ta boş yeri olan 4 otopark buldum.",
+  ],
+  [
+    'a negated room statement',
+    "Konak'ta 4 otopark buldum, boş yer bilgisi elimde yok.",
+    noCounts,
+    "Konak'ta 4 otopark buldum, boş yer bilgisi elimde yok.",
+  ],
+  ['menus from the cards', 'Kartlardan menülere bakıp seçebilirsin.', food, null],
+  ['menu from the cards, reversed', 'Menüye kartlardan bak.', food, null],
+  [
+    'not found next to shown results',
+    'Kumpir için şu an uygun bir aday bulamadık, başka bir istekle tekrar deneyebilirsin.',
+    food,
+    null,
+  ],
+  ['could not find next to shown results', "I couldn't find anything for that.", food, null],
+  [
+    'not found with nothing shown',
+    'Bu aramada bir şey bulamadım.',
+    { where: 'Alsancak', what: 'balık', count: 0 },
+    'Bu aramada bir şey bulamadım.',
+    { kind: 'none_found' },
   ],
   ['a link', 'Detaylar için www.ornek.com adresine bak.', food, null],
   ['a handle', 'Bize @yerimvar yaz.', food, null],

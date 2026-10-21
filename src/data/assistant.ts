@@ -261,6 +261,8 @@ export type BotMessage = {
   pool?: ChatCard[];
   /** Wishes this reply already answered in its own words (no "we have no menu data" note after it). */
   explained?: Wish[];
+  /** The text already says it is not sure any place makes the ask: a pick adds no second "not found" line. */
+  notFound?: boolean;
   /**
    * What the AI may reword: the turn's kind, its facts (the items are added from the final cards)
    * and the template sentence(s) of `text` it replaces. Dropped before the reply leaves the assistant.
@@ -408,6 +410,11 @@ function restaurantsNamed(folded: string): Restaurant[] {
     if (whole.length > 0) return whole;
   }
   return all.filter((r) => fuzzyNameStart(fold(r.name), bare));
+}
+
+/** True when a message of two or more words is the name (or its start) of a restaurant of the city. */
+function namesCityRestaurant(folded: string): boolean {
+  return folded.split(' ').length >= 2 && restaurantsNamed(folded).length > 0;
 }
 
 /** Folded word starts that make an unknown text clearly a place (street, quarter ...). */
@@ -648,15 +655,22 @@ function aiLedIntent(
  * A goal or mood said in the user's own words ("acelem var bi şey yiyeyim", "fit bir şey") names no
  * food: the kinds that answer it are asked about (choices.ts). A category or dish the router
  * guessed for it ("fast", "hızlı yemek") would skip that question, so it goes; one the user wrote
- * (the rules found it, or its word is in the message) stays.
+ * (the rules found it, or its word is in the message) stays. So does the one the conversation
+ * already had (`ctx`): a follow-up wish ("ucuz olsun") refines the current search, it never
+ * drops its dish or category.
  */
 function withoutGuessedKind(
   u: Extract<Understanding, { kind: 'search' }>,
   rules: QueryIntent,
   text: string,
+  ctx: Pick<ChatContext, 'cat' | 'dish'>,
 ): Extract<Understanding, { kind: 'search' }> {
   if (rules.kind !== 'search' || rules.cat || rules.dish) return u;
   if (!u.food || (!u.cat && !u.dish)) return u;
+  // Carried over from the conversation: not the router's guess.
+  const carried =
+    (!!u.cat && u.cat === ctx.cat) || (!!u.dish && !!ctx.dish && fold(u.dish) === fold(ctx.dish));
+  if (carried) return u;
   const own = wishesIn(text);
   if (!askEntryFor(own) || hasNoDataWish(own)) return u;
   // A dish made of wish and meal words ("hızlı yemek") is the mood again, not a dish.
@@ -1435,7 +1449,13 @@ function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | n
 /** The reply's cards are what "sence" / "sen seç" refer to next. */
 function remember(r: Result): Result {
   // The pick's wider pool never leaves the assistant (it is not shown and not stored).
-  const { pool: _pool, explained: _explained, aiReply: _aiReply, ...reply } = r.reply;
+  const {
+    pool: _pool,
+    explained: _explained,
+    notFound: _notFound,
+    aiReply: _aiReply,
+    ...reply
+  } = r.reply;
   return {
     reply,
     ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
@@ -1547,8 +1567,15 @@ async function answerText(
 
   // The AI read the message and could not tell what is wanted: say so instead of guessing with
   // the rules (a guess shows unrelated places). Abuse keeps its own calm answer below.
-  // The app's own chip phrases ("Yemek bul") are never unknown: the rules answer them.
-  if (routed.out.kind === 'unknown' && !followUp && it.kind !== 'abuse' && !isOwnPhrase(text)) {
+  // The app's own chip phrases ("Yemek bul") are never unknown: the rules answer them. So is a
+  // message that names a place of the city ("New Season"): the name lookup below finds it.
+  if (
+    routed.out.kind === 'unknown' &&
+    !followUp &&
+    it.kind !== 'abuse' &&
+    !isOwnPhrase(text) &&
+    !namesCityRestaurant(foldedText)
+  ) {
     meta.settled = true;
     return withNotice(
       plain(
@@ -1588,6 +1615,7 @@ async function answerText(
       ),
       it,
       text,
+      ctx,
     );
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
@@ -2623,6 +2651,8 @@ function runFood(
   let matchCovered = false;
   /** The match note only hedges ("büyük ihtimalle"): it stays unless the wording hedges too. */
   let matchHedge = false;
+  /** The same "not sure any place makes it" note worded for a list that starts far away (no "nearby"). */
+  let matchNoteFar = '';
   /** A note that opens with the typed dish ("hamburger için ...") starts its sentence in capitals. */
   const sentence = (text: string) =>
     ctx.dish && dishName && text.startsWith(dishName) ? capitalize(text, i18n.language) : text;
@@ -2698,10 +2728,11 @@ function runFood(
       matchHedge = t1.length === 0;
     } else {
       // A whole sentence the rules took for a dish is not quoted back as one.
-      matchNote =
-        dishName.trim().split(/\s+/).length > 3
-          ? t('chat.dishUnknownLong')
-          : t('chat.dishUnknown', { dish: dishName });
+      const longName = dishName.trim().split(/\s+/).length > 3;
+      matchNote = longName ? t('chat.dishUnknownLong') : t('chat.dishUnknown', { dish: dishName });
+      matchNoteFar = longName
+        ? t('chat.dishUnknownLongFar')
+        : t('chat.dishUnknownFar', { dish: dishName });
       // Only the category is known: a place that is typical for it (by name, cuisine, kind) comes first,
       // not just the best-ranked one ("Kasap Fuat" for a kızartma, a juice bar for meyve suyu).
       ordered = typicalFirst(ordered, ctx.cat, stem);
@@ -2761,6 +2792,8 @@ function runFood(
     // of the "looked wider" note when there is one (never a text that calls it near).
     const topWalk = seen[0] ? walkMinFromMeters(seen[0].r.distanceM) : 0;
     const farWalk = topWalk > FAR_WALK_MIN ? topWalk : null;
+    // Over FAR_WALK_MIN minutes away nothing is "nearby": the not-sure note says "similar places".
+    if (farWalk !== null && matchNoteFar) matchNote = matchNoteFar;
     // The far note says it all and stays whoever words the lead; the "looked wider" note is
     // spoken by the wording's own facts (widened), so it is dropped when the wording is shown.
     const lead =
@@ -2921,6 +2954,7 @@ function runFood(
       cards,
       actions,
       ...(explained.length > 0 ? { explained } : {}),
+      ...(matchNoteFar ? { notFound: true } : {}),
       ...(deps.ai?.pick && pool.length > cards.length ? { pool } : {}),
       aiReply: {
         kind: 'food',
@@ -3467,6 +3501,8 @@ type AiFail = { ok: false; reason: 'quota' | 'error' | 'invalid'; remaining?: nu
 
 type PickDone = {
   ok: true;
+  /** The AI found nothing among the cards that fits the ask: `line` says so, no card is picked. */
+  noneFit?: true;
   /** The picked card first (flagged), the others the AI judged to fit next, then the rest. */
   cards: ChatCard[];
   line: string;
@@ -3533,10 +3569,14 @@ async function askPick(
   const t = deps.t;
   // Asked for something none of the nearby places seems to offer: say so, pick nothing.
   if (v.noneFit) {
+    // A list that starts over FAR_WALK_MIN minutes away is not "the nearest" or "nearby".
+    const first = cards[0];
+    const far = first?.kind === 'restaurant' && walkMinFromMeters(first.distanceM) > FAR_WALK_MIN;
     return {
       ok: true,
+      noneFit: true,
       cards: cards.slice(0, MAX_CARDS),
-      line: t('chat.pickNoneFit'),
+      line: t(far ? 'chat.pickNoneFitFar' : 'chat.pickNoneFit'),
       tone: v.tone,
       remaining: res.remaining,
     };
@@ -3879,7 +3919,8 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
       noteQuota(reply, pick, deps);
       if (pick.ok) {
         reply.cards = pick.cards;
-        after.push(pick.line);
+        // One "not found" sentence at most: the text already said nothing is known for the ask.
+        if (!(pick.noneFit && reply.notFound)) after.push(pick.line);
         tone = pick.tone ?? tone;
         aiPicked = true;
         sparkle = true;

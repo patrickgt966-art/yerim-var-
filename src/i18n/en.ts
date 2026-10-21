@@ -802,6 +802,10 @@ const en = {
     dishUnknown:
       'I don\'t know any place for sure that makes "{{dish}}". Showing similar places nearby.',
     dishUnknownLong: "I couldn't quite work out what you're after; showing places nearby.",
+    // The same two notes when the first place is over FAR_WALK_MIN minutes away: nothing is "nearby".
+    dishUnknownFar:
+      'I don\'t know any place for sure that makes "{{dish}}". Showing similar places.',
+    dishUnknownLongFar: "I couldn't quite work out what you're after; showing similar places.",
     dishLikely_one:
       'No place is named "{{dish}}", but I found {{count}} place of the kind that serves it; it very likely has it.',
     dishLikely_other:
@@ -908,6 +912,8 @@ const en = {
     pickRunner: 'Alternative: {{name}}, {{why}}.',
     pickNoneFit:
       "I couldn't see a place nearby that I can say fits what you asked (we don't have menus; I went by name and type). Showing the closest ones.",
+    pickNoneFitFar:
+      "I couldn't see a place that I can say fits what you asked (we don't have menus; I went by name and type). Showing the ones that are least far.",
     pickUnavailable:
       "I couldn't make a smart pick right now. The list is sorted by distance and parking.",
     pickUnavailablePlain: "I couldn't make a smart pick right now. The list is sorted by distance.",

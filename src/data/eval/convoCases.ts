@@ -82,6 +82,8 @@ export type TurnExpect = {
   cat?: (FoodCategory | null)[];
   /** The dish (the router's, else the one searched) holds one of these (folded). */
   dishHas?: string[];
+  /** A generic emoji (🥩) names only the kind: no dish at all is right too, when the category fits. */
+  dishOptional?: boolean;
   /** The router's wishes (goal included) hold at least one of these. */
   wishes?: Wish[];
   /** The searched place's label holds one of these (folded): the district or its quarter. */
@@ -236,6 +238,9 @@ const DISH_EMOJI: Record<string, string> = {
   'mercimek çorbası': '🍲',
   köfte: '🥩',
 };
+
+/** Emoji that stand for a kind of food more than for one dish: reading them as the category alone is right. */
+const GENERIC_DISH_EMOJI = new Set(['köfte']);
 
 const at = <T>(a: readonly T[], k: number): T => a[k % a.length] as T;
 const low = (s: string) => s.toLocaleLowerCase('tr');
@@ -736,10 +741,12 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
         dish: Dish,
         place: string[] | null = [d],
         also: string[] = [],
+        dishOptional = false,
       ): ConvoTurn[] => [
         say(text, {
           ...food(place, dish, certain(dish) && place?.[0] === d ? sure(city, d) : {}),
           ...(also.length > 0 && hasOf(dish) ? { dishHas: [...hasOf(dish)!, ...also] } : {}),
+          ...(dishOptional ? { dishOptional: true } : {}),
         }),
       ];
       switch (flavor) {
@@ -759,7 +766,13 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
         case 'emoji': {
           const ed = r.pick(Object.keys(DISH_EMOJI).map(dishByX));
           const e = DISH_EMOJI[ed.x] as string;
-          return q(fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e), ed, [d], DISH_EMOJI_ALSO[ed.x]);
+          return q(
+            fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e),
+            ed,
+            [d],
+            DISH_EMOJI_ALSO[ed.x],
+            GENERIC_DISH_EMOJI.has(ed.x),
+          );
         }
         case 'english': {
           const en = r.pick(EN_DISHES);

@@ -712,6 +712,9 @@ const tr = {
     dishUnknown:
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
     dishUnknownLong: 'Ne aradığını tam çıkaramadım; yakındaki yerleri gösteriyorum.',
+    // The same two notes when the first place is over FAR_WALK_MIN minutes away: nothing is "yakın".
+    dishUnknownFar: '"{{dish}}" yaptığından emin olduğum yer yok. Benzer yerleri gösteriyorum.',
+    dishUnknownLongFar: 'Ne aradığını tam çıkaramadım; benzer yerleri gösteriyorum.',
     dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
     dishCommon:
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
@@ -807,6 +810,8 @@ const tr = {
     pickRunner: 'Alternatif: {{name}}, {{why}}.',
     pickNoneFit:
       'Yakında isteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En yakınları gösteriyorum.',
+    pickNoneFitFar:
+      'İsteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En az uzak olanları gösteriyorum.',
     pickUnavailable: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa ve otoparka göre.',
     pickUnavailablePlain: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa göre.',
     why: {

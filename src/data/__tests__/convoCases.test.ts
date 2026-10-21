@@ -298,6 +298,22 @@ describe('--limit sampling', () => {
 });
 
 describe('emoji asks', () => {
+  it('accept the category alone for the generic meat emoji 🥩, and still want a dish elsewhere', () => {
+    const turns = [CONVO_SEED, CONVO_SEED + 1, CONVO_SEED + 2, CONVO_SEED + 3]
+      .flatMap((seed) => buildConvoCases(seed))
+      .flatMap((c) => c.turns)
+      .filter((turn) => turn.input.type === 'say');
+    const meat = turns.filter(
+      (turn) => turn.input.type === 'say' && turn.input.text.includes('🥩'),
+    );
+    expect(meat.length).toBeGreaterThan(0);
+    for (const turn of meat) expect(turn.expect.dishOptional).toBe(true);
+    const pizza = turns.filter(
+      (turn) => turn.input.type === 'say' && turn.input.text.includes('🍕'),
+    );
+    for (const turn of pizza) expect(turn.expect.dishOptional).toBeUndefined();
+  });
+
   it('accept dürüm as well as döner for 🥙', () => {
     const turns = [CONVO_SEED, CONVO_SEED + 1, CONVO_SEED + 2, CONVO_SEED + 3]
       .flatMap((seed) => buildConvoCases(seed))

@@ -17,6 +17,7 @@ import {
   pickSystem,
   planSystem,
   todayIstanbul,
+  replySystem,
   understandSystem,
   UNDERSTAND_SYSTEM,
 } from '../protocol';
@@ -146,6 +147,19 @@ describe('city in the system prompts', () => {
 
   it('reads a generic ask without a dish or place as a near-me search', () => {
     expect(understandSystem('izmir')).toMatch(/"yemek bul".*"otopark bul".*nearMe true/);
+  });
+
+  it('reads a business name as a search with that name as the place', () => {
+    expect(understandSystem('istanbul')).toMatch(
+      /işletme adına benzeyen mesaj.*kind "search", place/,
+    );
+  });
+
+  it('the reply prompt: no menu talk, no car park room without a live count', () => {
+    const reply = replySystem('izmir');
+    expect(reply).toContain('Menüden hiç söz etme');
+    expect(reply).toContain('kartlarda menü yoktur');
+    expect(reply).toMatch(/\(freeSpots\) verilmemişse.*asla söyleme/);
   });
 
   it('does not call the district an İzmir district', () => {

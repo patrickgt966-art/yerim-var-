@@ -118,6 +118,30 @@ describe('understanding', () => {
     ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: 'köfte' },
   });
 
+  it('a generic emoji (🥩) may be read as the category alone, other dishes may not', () => {
+    const emoji = say('bornovada 🥩', {
+      kind: 'food',
+      place: ['Bornova'],
+      cat: ['meat', 'fast', null],
+      dishHas: ['kofte'],
+      dishOptional: true,
+      cards: 'some',
+    });
+    const meat = obs({
+      understood: search({ district: 'Bornova', cat: 'meat', dish: null }),
+      cards: [card('Köfteci Talih Usta')],
+      ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: null },
+    });
+    expect(scoreTurn(emoji, meat).understanding.misses).toEqual([]);
+    expect(scoreTurn(kofte, meat).understanding.misses.join('|')).toMatch(/dish: want kofte/);
+    const fish = obs({
+      understood: search({ district: 'Bornova', cat: 'meat', dish: 'balık' }),
+      cards: [card('Köfteci Talih Usta')],
+      ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: 'balık' },
+    });
+    expect(scoreTurn(emoji, fish).understanding.misses.join('|')).toMatch(/dish: want kofte/);
+  });
+
   it('passes a right reading with results', () => {
     const s = scoreTurn(kofte, good);
     expect(misses(s)).toEqual({ understanding: [], choices: [], reply: [], honesty: [] });
@@ -766,6 +790,27 @@ describe('scorer false positives of the 120-case run', () => {
       const s = scoreTurn(t, obs({ wordings: [wording(text, { kind: 'park' })] }));
       expect(s.honesty.misses[0]).toMatch(/claims room/);
     }
+  });
+
+  it('a hedged menu sentence is no menu claim, a positive one is', () => {
+    for (const hedged of [
+      'Bazı yerlerde köfte adda geçmiyor, ama büyük ihtimalle menüde var.',
+      'Menüleri kontrol etmekte fayda var.',
+      'Menüde olabilir, emin değilim.',
+      'Menü bilgisi yok, adlarından seçtim.',
+    ]) {
+      expect(claimsIn(hedged)).toEqual([]);
+    }
+    expect(claimsIn('Menüsünde köfte var.')[0]).toMatch(/^menu/);
+    expect(claimsIn('Köfte menüde var.')[0]).toMatch(/^menu/);
+  });
+
+  it('a negated room sentence is no room claim', () => {
+    const say1 = (text: string) =>
+      scoreTurn(t, obs({ wordings: [wording(text, { kind: 'park' })] })).honesty;
+    expect(say1('Konak’ta 4 otopark buldum, boş yer bilgisi elimde yok.').ok).toBe(true);
+    expect(say1('Boş yer sayısını bilmiyorum.').ok).toBe(true);
+    expect(say1('Konak’ta boş yeri olan 4 otopark buldum.').misses[0]).toMatch(/claims room/);
   });
 
   it('a question that repeats the user\'s word "menü" claims nothing about a menu', () => {

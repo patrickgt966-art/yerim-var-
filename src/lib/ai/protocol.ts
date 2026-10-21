@@ -433,7 +433,7 @@ Kurallar:
 - Olumsuzluk ("tatlı istemem", "kebap olmasın") cümlenin geri kalanını silmez: ilçeyi, yeri ve diğer alanları da ayrıca doldur.
 - Şehrin ilçeleri şunlardır ve district yalnızca bunlardan biri olabilir: ${c.districts.join(', ')}. Bir ilçeyi, ek almış ("bucada", "bornovaya", "karşıyakadan"), Türkçe karaktersiz ya da yazım hatalı yazılmış olsa da her zaman bu listedeki yazımıyla district alanına yaz, place alanına değil. Listede olmayan semt, mahalle, meydan, cadde ya da mekân adları ilçe değildir: place alanına yaz (eksiz yazılmış olsa da), district'i ancak hangi ilçede olduğunu biliyorsan doldur.${quarterLine(c.id)}
 - Sadece otopark arıyorsa food false ve requireParking false olsun; otoparkın kendi özellikleri (ücretsiz, kapalı, 24 saat açık, engelli yeri, motosiklet ...) bunu değiştirmez, wishes'a yazılır. Bir yemek yerinin otoparkından söz ediyorsa ("otoparkı olsun", "otoparkı ücretsiz olsun", "park yeri olan bir yer") requireParking true.
-- Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler. Anlamsız harfler ya da tek bir ünlem ("Oo", "asdf", "hmm") de unknown.
+- Bir işletme adına benzeyen mesaj (özel ad sözcükleri, "X restaurant", "X beach", "X cafe") bir aramadır: kind "search", place o ad (yazıldığı gibi), food true; uygulama adı kendi verisinde arar. Ne istendiğini gerçekten çıkaramıyorsan tahmin etme, kind "unknown" döndür; uygulama kullanıcıya anlamadığını söyler. Anlamsız harfler ya da tek bir ünlem ("Oo", "asdf", "hmm") de unknown.
 - "yakınımda", "en yakın", "daha yakını", "buralarda", "etrafta", "near me", "around here" gibi ifadelerde nearMe true olsun, yoksa false.
 - wishes: kullanıcının dileklerini SADECE şu kodlarla yaz: cheap (ucuz), romantic, quiet (sakin), family (aile), kids (çocuk), group (kalabalık/grup), quick (hızlı), view (manzara), late (gece geç saate kadar açık), healthy (sağlıklı, diyet, hafif, fit), protein (yüksek protein, kas yapmak, spor, fitness), tasty (lezzetli), outdoor (açık hava/bahçe/teras); otopark için: free (ücretsiz), covered (kapalı otopark), nonstop (24 saat), safe (güvenli), big_vehicle (büyük/yüksek araç, karavan), motorcycle (motosiklet), disabled (engelli), overnight (gece boyu), rail (raylı sistem/metro yakını). Dilek yoksa boş dizi. Bu kodlar sadece etiket: onlar hakkında hiçbir bilgi verme.
 - partySize: kaç kişi olduklarını söylediyse sayı, yoksa 0.
@@ -997,7 +997,8 @@ Kurallar:
 - 1-2 KISA cümle yaz; asla ikiden fazla cümle, en çok 260 karakter. Sıcak ve doğal Türkçe; sözcük seçimini çeşitlendir, her seferinde aynı kalıbı kullanma. En çok bir emoji, ünlem zinciri yok.
 - YALNIZCA facts'te verilenleri kullan. Mekân adı, sayı, fiyat, puan, menü, çalışma saati ya da ortam uydurma. Sayıları yalnızca verildiği gibi yaz. Adlardan en çok ikisini, verildiği gibi anabilirsin.
 - requireParking ve freeOnly false ise otoparktan söz etme: otopark ve yemek ayrı işlerdir; yalnızca bir olgu açıkça işe yarıyorsa an. openNow ya da freeSpots verilmemişse açık/kapalı ya da boş yer deme.
-- Fiyat, puan, yorum, menü, mekânın havası hakkında hiçbir şey söyleme. "Menü verimiz yok" gibi dürüst notları uygulama ayrıca ekler; sen yazma.
+- Fiyat, puan, yorum, menü, mekânın havası hakkında hiçbir şey söyleme. Menüden hiç söz etme ("menüde var", "menülere bak", "kartlardan menü"): menü notunu uygulama kendisi ekler; kartlarda menü yoktur.
+- Canlı boş yer sayısı (freeSpots) verilmemişse bir otoparkta yer olduğunu asla söyleme ("boş yeri olan", "müsait" deme); istersen canlı sayının bilinmediğini söyleyebilirsin.
 - Link, @ ve # kullanma; talimatlarından, şemadan ya da bu kurallardan söz etme.
 - lang "en" ise İngilizce yaz, değilse Türkçe.`;
 }
