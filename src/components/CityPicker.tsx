@@ -138,18 +138,6 @@ function CitySheet({ visible, onClose }: { visible: boolean; onClose: () => void
                   >
                     {item.name}
                   </Txt>
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderRadius: 999,
-                      backgroundColor: live ? c.badgeFreshBg : c.badgeUnknownBg,
-                    }}
-                  >
-                    <Txt variant="label" color={live ? c.badgeFreshText : c.badgeUnknownText}>
-                      {t(live ? 'city.live' : item.available ? 'city.staticOnly' : 'city.soon')}
-                    </Txt>
-                  </View>
                 </Pressable>
               );
             })}

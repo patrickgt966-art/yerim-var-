@@ -42,12 +42,15 @@ export function RestaurantRowCard({
   best,
   widened,
   parkPending,
+  parkAsked = false,
 }: {
   row: RestaurantRow;
   target: LatLng | null;
   best: boolean;
   widened: boolean;
   parkPending: boolean;
+  /** The list was filtered by parking: open the detail with its car park section expanded. */
+  parkAsked?: boolean;
 }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -89,7 +92,12 @@ export function RestaurantRowCard({
         meta: metaParts('food.a11yWalk'),
         parking: parkText,
       })}${flagged ? `. ${t('report.flagged')}` : ''}`}
-      onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
+      onPress={() =>
+        router.push({
+          pathname: '/restoran/[id]',
+          params: parkAsked ? { id: r.id, park: '1' } : { id: r.id },
+        })
+      }
       style={[
         asym(22, 6),
         {
