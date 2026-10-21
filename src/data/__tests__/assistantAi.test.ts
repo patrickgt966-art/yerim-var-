@@ -258,7 +258,8 @@ describe('a wish the rules cannot use: understand, then pick', () => {
     expect(r.reply.text).toContain(cards[0]!.name);
     expect(r.reply.text).toContain('chat.why.closest');
     // The honest note: no data on ambiance, said by the app.
-    expect(r.reply.text).toContain('chat.noInfoAi');
+    // No parking was asked for: the note leaves the car park out.
+    expect(r.reply.text).toContain('chat.noInfoPlainAi');
     expect(r.reply.text).toMatch(/chat\.noInfo_ambiance/i);
     expect(r.ctx.wishes).toEqual(['romantic']);
   });
@@ -286,8 +287,8 @@ describe('a wish the rules cannot use: understand, then pick', () => {
     expect(restaurantCards(r.reply.cards).some((c) => 'picked' in c && c.picked)).toBe(false);
     expect(r.reply.text).not.toContain('chat.pickLine');
     // No AI claim, so the note says how the app ordered, not how the AI chose.
-    expect(r.reply.text).toContain('chat.noInfoRule');
-    expect(r.reply.text).not.toContain('chat.noInfoAi');
+    expect(r.reply.text).toContain('chat.noInfoPlainRule');
+    expect(r.reply.text).not.toContain('chat.noInfoPlainAi');
     // The AI understood the search (the marker), even though its pick was not used.
     expect(r.reply.sparkle).toBe(true);
   });
@@ -369,7 +370,7 @@ describe('a wish the rules cannot use: understand, then pick', () => {
   it('works with the AI off: wishes get the honest note and the rule results', async () => {
     const r = await answer(text, emptyContext('food'), baseDeps);
     expect(r.reply.cards.length).toBeGreaterThan(0);
-    expect(r.reply.text).toContain('chat.noInfoRule');
+    expect(r.reply.text).toContain('chat.noInfoPlainRule');
     expect(r.reply.text).toMatch(/chat\.noInfo_ambiance/i);
     expect(r.reply.sparkle).toBeFalsy();
   });
@@ -378,7 +379,7 @@ describe('a wish the rules cannot use: understand, then pick', () => {
     const { ai, deps } = mockAi({ understand: async () => ({ ok: false, reason: 'quota' }) });
     const r = await answer(text, emptyContext('food'), deps);
     expect(r.reply.notice).toBe('chat.sparkleOut');
-    expect(r.reply.text).toContain('chat.noInfoRule');
+    expect(r.reply.text).toContain('chat.noInfoPlainRule');
     expect(r.reply.cards.length).toBeGreaterThan(0);
     expect(ai.pick).not.toHaveBeenCalled();
   });
@@ -691,8 +692,17 @@ describe('the "✨ Yerim seçsin" chip', () => {
     if (chip?.kind !== 'pick') throw new Error('no chip');
     const r = await pickFromCards(chip.cards, chip.query, first.ctx, deps);
     expect(r.reply.notice).toBe('chat.sparkleOut');
-    expect(r.reply.text).toBe('chat.pickUnavailable');
+    expect(r.reply.text).toBe('chat.pickUnavailablePlain');
     expect(r.reply.cards).toEqual([]);
+  });
+
+  it('names the car park in that sentence when the list was asked with parking', async () => {
+    const { deps } = mockAi({ pick: async () => ({ ok: false, reason: 'quota' }) });
+    const first = await answer('Bornova otoparklı köfteci', emptyContext('food'), deps);
+    const chip = first.reply.actions.find((a) => a.kind === 'pick');
+    if (chip?.kind !== 'pick') throw new Error('no chip');
+    const r = await pickFromCards(chip.cards, chip.query, first.ctx, deps);
+    expect(r.reply.text).toBe('chat.pickUnavailable');
   });
 });
 

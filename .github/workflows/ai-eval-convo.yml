@@ -1,0 +1,59 @@
+name: AI eval (convo)
+
+# The conversation eval (~550 whole conversations of src/data/eval/convoCases.ts through the app's
+# real assistant and the real AI layer, run by scripts/ai-eval-convo.ts). Calls the Anthropic API,
+# so it runs by hand only (a workflow must be on main before it can be started by hand); the script
+# prints a cost estimate first. Without the ANTHROPIC_API_KEY secret it skips. The job fails when
+# fewer than the script's CONVO_PASS (85%) of the conversations pass. The report goes to the job
+# summary. The optional `limit` input plays only the first N conversations.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Play only the first N conversations (empty = all)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+# The live evals share the org's per-minute token limit: one at a time, the next one waits.
+concurrency:
+  group: ai-eval-live
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LIMIT: ${{ inputs.limit }}
+    steps:
+      - name: Skip without the API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret is not set; convo AI eval skipped." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
+      # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-convo.ts imports them from here.
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
+      - name: Run convo AI eval
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts ${LIMIT:+--limit "$LIMIT"}
+      - name: Publish summary
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        run: '[ -f docs/ai-eval-convo.md ] && cat docs/ai-eval-convo.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-convo
+          path: docs/ai-eval-convo.md
+          if-no-files-found: ignore

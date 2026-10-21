@@ -8,5 +8,11 @@
     "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["server", "scripts/ai-eval.ts", "scripts/ai-eval-big.ts", "scripts/classify-places.ts"]
+  "exclude": [
+    "server",
+    "scripts/ai-eval.ts",
+    "scripts/ai-eval-big.ts",
+    "scripts/ai-eval-convo.ts",
+    "scripts/classify-places.ts"
+  ]
 }

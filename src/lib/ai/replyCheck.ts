@@ -2,7 +2,7 @@
 // words around them, so this keeps out everything the facts do not say: a name, a number, a price,
 // a rating, parking talk when there is no parking data. A text that fails is dropped and the app's
 // own template is shown instead. Pure: no app state.
-import { fold, type AiReplyFacts, type AiReplyKind } from './protocol';
+import { FAR_WALK_MIN, fold, type AiReplyFacts, type AiReplyKind } from './protocol';
 
 export const MAX_REPLY_SENTENCES = 2;
 export const MAX_REPLY_TEXT_CHARS = 260;
@@ -38,6 +38,8 @@ const PRICE_WORDS =
 const RATING_WORDS =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(star|stars|rating|ratings|rated|review|reviews)( |$)/;
 const FREE_WORDS = /(^| )(ucretsiz|free|bedava)( |$)/;
+/** Words that call a place near ("en yakın", "yakında", "hemen yanında", "nearby", "closest"). */
+const NEAR_WORDS = /(^| )(yakin|hemen yan|nearby|nearest|closest|close by|close to|next to)/;
 const URL_PATTERN = /https?:|www\.|:\/\/|@|#|\.(com|net|org|app|io|tr)\b/i;
 
 type Options = {
@@ -73,6 +75,7 @@ function factStrings(facts: AiReplyFacts): string[] {
 function factNumbers(facts: AiReplyFacts): Set<number> {
   const out = new Set<number>();
   if (typeof facts.count === 'number') out.add(facts.count);
+  if (typeof facts.farWalkMin === 'number') out.add(facts.farWalkMin);
   for (const i of facts.items ?? []) {
     for (const n of [i.walkMin, i.parkWalkMin, i.freeSpots]) if (typeof n === 'number') out.add(n);
   }
@@ -156,7 +159,8 @@ function insideName(words: string[], name: string): boolean {
  * characters, a link, a number the facts do not carry (Turkish and English number words count), a
  * capitalised name that is not one of the fact names (or an allowed city / district name, or
  * "Yerim"; the word that opens a sentence is free), a price or rating word, "free" without a free
- * fact, or parking talk when the facts hold no parking data. Returned trimmed, on one line.
+ * fact, parking talk when the facts hold no parking data, or a near-word ("yakında", "nearby")
+ * when a result is more than FAR_WALK_MIN minutes away. Returned trimmed, on one line.
  */
 export function validateReply(
   text: string | null | undefined,
@@ -190,6 +194,10 @@ export function validateReply(
   if (PRICE_WORDS.test(padded) || RATING_WORDS.test(padded)) return null;
   const freeKnown = facts.freeOnly === true || (facts.items ?? []).some((i) => i.free === true);
   if (!freeKnown && FREE_WORDS.test(padded)) return null;
+  // A far result is never called near: the walk of a shown item (or the far flag) says it is not.
+  const far =
+    facts.far === true || (facts.items ?? []).some((i) => (i.walkMin ?? 0) > FAR_WALK_MIN);
+  if (far && NEAR_WORDS.test(padded)) return null;
   if (options.kind !== 'greeting' && !hasParkingFacts(facts) && PARKING_WORDS.test(padded)) {
     return null;
   }

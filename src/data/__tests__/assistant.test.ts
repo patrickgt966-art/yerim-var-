@@ -48,8 +48,12 @@ describe('assistant', () => {
   });
 
   it('puts the no-ratings note before the found text', async () => {
+    // No parking was asked for: the note does not say the order followed the car park.
     const r = await answer('bornovadaki en iyi etçi', emptyContext('food'), deps);
-    expect(r.reply.text.startsWith('chat.noRatings\n')).toBe(true);
+    expect(r.reply.text.startsWith('chat.noRatingsPlain\n')).toBe(true);
+    // Asked with parking, the order did follow it.
+    const p = await answer('bornovadaki en iyi otoparklı etçi', emptyContext('food'), deps);
+    expect(p.reply.text.startsWith('chat.noRatings\n')).toBe(true);
   });
 
   it('treats an unknown dish as a dish, not a place', async () => {

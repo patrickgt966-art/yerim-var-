@@ -23,6 +23,8 @@ const PHRASE_KEYS: readonly string[] = [
   'chat.sugNearer',
   'chat.sugFreePark',
   'chat.sugOther',
+  'chat.parkAskYes',
+  'chat.parkAskNo',
   'chat.sugElsewhere_0',
   'chat.sugElsewhere_1',
   'chat.clarifyNear',
