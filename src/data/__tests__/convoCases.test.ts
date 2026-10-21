@@ -13,6 +13,7 @@ import {
   buildConvoCases,
   casesOf,
   citiesOf,
+  sampleCases,
   type ConvoCase,
 } from '../eval/convoCases';
 import { CITY_IDS } from '../eval/aiBigCases';
@@ -265,5 +266,33 @@ describe('the expectations of every conversation', () => {
     const labels = CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr')));
     expect(labels).toContain('Balık');
     expect(TAPPABLE_LABELS).toContain(HEPSI);
+  });
+});
+
+describe('--limit sampling', () => {
+  const names = (cs: ConvoCase[]) => cs.map((c) => c.name);
+
+  it('covers every category in a small run, and takes all when the limit is not below the count', () => {
+    const picked = sampleCases(CONVO_CASES, 30, CONVO_SEED);
+    expect(picked).toHaveLength(30);
+    expect(new Set(names(picked)).size).toBe(30);
+    for (const category of CONVO_CATEGORIES) {
+      expect(picked.some((c) => c.category === category)).toBe(true);
+    }
+    expect(sampleCases(CONVO_CASES, CONVO_CASES.length, CONVO_SEED)).toBe(CONVO_CASES);
+  });
+
+  it('is the same for the same seed and differs for another', () => {
+    expect(names(sampleCases(CONVO_CASES, 30, 7))).toEqual(names(sampleCases(CONVO_CASES, 30, 7)));
+    expect(names(sampleCases(CONVO_CASES, 30, 7))).not.toEqual(
+      names(sampleCases(CONVO_CASES, 30, 8)),
+    );
+  });
+
+  it('samples inside the --only filter', () => {
+    const only = casesOf('food');
+    const picked = sampleCases(only, 5, CONVO_SEED);
+    expect(picked).toHaveLength(5);
+    expect(picked.every((c) => c.category === 'food')).toBe(true);
   });
 });

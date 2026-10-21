@@ -190,19 +190,24 @@ export const messageSentences = (text: string): number =>
 /** The text a wording is compared by: folded, so case, accents and punctuation do not hide a repeat. */
 export const wordingKey = (text: string): string => fold(text);
 
+/** A wording the AI gave, with the message of the user that produced it. */
+export type WordingOf = { user: string; text: string };
+
 /**
- * For each case, the wordings (folded) the AI gave an earlier case already: the same text for two
- * different cases is a template, not an answer. The first case to use a text keeps it.
+ * For each case, the wordings (folded) the AI gave an earlier case already for a different user
+ * message: the same text for two different inputs is a template, not an answer. The same input
+ * giving the same wording is no defect. The first case to use a text keeps it.
  */
-export function repeatedWordings(perCase: readonly (readonly string[])[]): Set<string>[] {
-  const firstSeen = new Map<string, number>();
-  return perCase.map((texts, i) => {
+export function repeatedWordings(perCase: readonly (readonly WordingOf[])[]): Set<string>[] {
+  const seen = new Map<string, { index: number; user: string }[]>();
+  return perCase.map((wordings, i) => {
     const repeats = new Set<string>();
-    for (const t of texts) {
-      const key = wordingKey(t);
-      const first = firstSeen.get(key);
-      if (first === undefined) firstSeen.set(key, i);
-      else if (first !== i) repeats.add(key);
+    for (const w of wordings) {
+      const key = wordingKey(w.text);
+      const user = fold(w.user);
+      const earlier = seen.get(key) ?? [];
+      if (earlier.some((e) => e.index !== i && e.user !== user)) repeats.add(key);
+      seen.set(key, [...earlier, { index: i, user }]);
     }
     return repeats;
   });
@@ -456,7 +461,9 @@ export function scoreAll(
 ): CaseResult[] {
   const repeats = repeatedWordings(
     played.map((p) =>
-      p.turns.flatMap((t) => t.wordings.flatMap((w) => (w.accepted ? [w.accepted] : []))),
+      p.turns.flatMap((t) =>
+        t.wordings.flatMap((w) => (w.accepted ? [{ user: t.input, text: w.accepted }] : [])),
+      ),
     ),
   );
   return played.map((p, i) => scoreCase(p.c, p.turns, repeats[i], p.error));

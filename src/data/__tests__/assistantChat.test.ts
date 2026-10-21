@@ -421,15 +421,30 @@ describe('small talk through the router', () => {
 
   it('ask_food_or_park and suggest_examples bring chips from our own data', async () => {
     const ask = mockAi({ understand: said('Selam! Ne arıyoruz?', 'ask_food_or_park') });
-    const a = await answer('selam', emptyContext('park'), ask.deps);
+    const a = await answer('galatasaray nasıl kazandı', emptyContext('park'), ask.deps);
     const labels = a.reply.actions.map((x) => x.label);
     expect(labels.slice(0, 2)).toEqual(['chat.exNear', 'chat.exKofte']);
     // The place chip comes with the active city's examples.
     expect(labels[2]?.startsWith('chat.exAlsancak')).toBe(true);
     expect(labels).toHaveLength(3);
     const ex = mockAi({ understand: said('Selam! Şunları yazabilirsin.', 'suggest_examples') });
-    const e = await answer('selam', emptyContext('food'), ex.deps);
+    const e = await answer('galatasaray nasıl kazandı', emptyContext('food'), ex.deps);
     expect(e.reply.actions.length).toBeGreaterThan(0);
+  });
+
+  it('a hello offers the two jobs whatever the router asked for', async () => {
+    for (const action of ['none', 'ask_food_or_park', 'suggest_examples'] as const) {
+      const { deps } = mockAi({ understand: said('Selam! Ne arıyoruz?', action) });
+      const r = await answer('Selamlar 🙂', emptyContext('park'), deps);
+      expect(r.reply.actions.map((x) => x.label)).toEqual(['chat.greetPark', 'chat.greetFood']);
+    }
+  });
+
+  it('thanks keeps its own chips', async () => {
+    const { deps } = mockAi({ understand: said('Rica ederim!') });
+    const r = await answer('teşekkürler', emptyContext('park'), deps);
+    expect(r.reply.actions.map((x) => x.label)).not.toContain('chat.greetPark');
+    expect(r.reply.actions.length).toBeGreaterThan(0);
   });
 
   it('pick_from_last runs the pick path on the last cards', async () => {
@@ -455,7 +470,7 @@ describe('small talk through the router', () => {
 
   it('pick_from_last without cards falls back to the food-or-park chips', async () => {
     const { ai, deps } = mockAi({ understand: said('Hangisini istersin?', 'pick_from_last') });
-    const r = await answer('selam', emptyContext('park'), deps);
+    const r = await answer('galatasaray nasıl kazandı', emptyContext('park'), deps);
     expect(ai.pick).not.toHaveBeenCalled();
     expect(r.reply.actions.length).toBe(3);
   });

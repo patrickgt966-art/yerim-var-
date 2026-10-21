@@ -6,7 +6,7 @@ import { cityExamples, setActiveCity } from '@/data/cities';
 import { staticParkings } from '@/data/staticParkings';
 
 import { suggestions } from '../model';
-import { ruleQuery } from '../ruleQuery';
+import { isOwnPhrase, ruleQuery } from '../ruleQuery';
 
 /* eslint-disable import/no-named-as-default-member */
 const t = (k: string, o?: Record<string, unknown>) => i18n.t(k, o) as string;
@@ -81,5 +81,15 @@ describe('the English phrases the app offers work on the rule path', () => {
     } finally {
       await i18n.changeLanguage('en');
     }
+  });
+});
+
+describe('isOwnPhrase', () => {
+  it("knows the Turkish text of the app's own chips, folded", () => {
+    expect(isOwnPhrase('Yemek bul')).toBe(true);
+    expect(isOwnPhrase('otopark bul!')).toBe(true);
+    expect(isOwnPhrase('Yakınımda otopark')).toBe(true);
+    expect(isOwnPhrase('asdf')).toBe(false);
+    expect(isOwnPhrase('')).toBe(false);
   });
 });

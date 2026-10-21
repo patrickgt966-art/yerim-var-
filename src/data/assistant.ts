@@ -77,6 +77,7 @@ import { fold, searchPlacesStrict } from '@/data/search';
 import type { Parking } from '@/data/types';
 import { closesLate, istanbulClock, openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
+import { isOwnPhrase } from '@/components/chat/ruleQuery';
 import { validateFreeText, type FreeTextContext } from '@/lib/ai/freeText';
 import {
   FAR_WALK_MIN,
@@ -1389,6 +1390,8 @@ async function answerText(
     const said = await chatFromRouter(routed.out.value, ctx, deps);
     if (said) {
       meta.settled = true;
+      // A hello offers the two jobs, whoever worded it.
+      if (isHello(greetKind(foldedText))) said.reply.actions = greetChips(t);
       return withNotice(said);
     }
     // An unusable reply: the templates below answer.
@@ -1400,7 +1403,11 @@ async function answerText(
     meta.settled = true;
     return withNotice(
       plain(
-        { text: greetReply(greet, text, t), cards: [], actions: examples(ctx.section, t) },
+        {
+          text: greetReply(greet, text, t),
+          cards: [],
+          actions: isHello(greet) ? greetChips(t) : examples(ctx.section, t),
+        },
         ctx,
       ),
     );
@@ -1450,7 +1457,8 @@ async function answerText(
 
   // The AI read the message and could not tell what is wanted: say so instead of guessing with
   // the rules (a guess shows unrelated places). Abuse keeps its own calm answer below.
-  if (routed.out.kind === 'unknown' && !followUp && it.kind !== 'abuse') {
+  // The app's own chip phrases ("Yemek bul") are never unknown: the rules answer them.
+  if (routed.out.kind === 'unknown' && !followUp && it.kind !== 'abuse' && !isOwnPhrase(text)) {
     meta.settled = true;
     return withNotice(
       plain(

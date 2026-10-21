@@ -144,6 +144,10 @@ describe('city in the system prompts', () => {
     expect(chatSystem('antalya')).toContain("Antalya'da yemek");
   });
 
+  it('reads a generic ask without a dish or place as a near-me search', () => {
+    expect(understandSystem('izmir')).toMatch(/"yemek bul".*"otopark bul".*nearMe true/);
+  });
+
   it('does not call the district an İzmir district', () => {
     expect(understandSystem('istanbul')).toContain('şehrin ilçesi');
   });

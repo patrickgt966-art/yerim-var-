@@ -340,17 +340,26 @@ describe('reply text', () => {
     expect(sentenceCount('...')).toBe(0);
   });
 
-  it('flags the same wording in two different cases, once, on the later case', () => {
+  it('flags the same wording for different inputs in two cases, once, on the later case', () => {
+    const w = (user: string, ...texts: string[]) => texts.map((text) => ({ user, text }));
     const repeats = repeatedWordings([
-      ['Selam! Ne arıyorsun?'],
-      ['Başka bir şey.', 'selam ne ariyorsun'],
-      ['SELAM! Ne arıyorsun?', 'Selam! Ne arıyorsun?'],
+      w('selam', 'Selam! Ne arıyorsun?'),
+      [...w('naber', 'Başka bir şey.'), ...w('merhaba', 'selam ne ariyorsun')],
+      w('hey', 'SELAM! Ne arıyorsun?', 'Selam! Ne arıyorsun?'),
     ]);
     expect(repeats[0]!.size).toBe(0);
     expect([...repeats[1]!]).toEqual(['selam ne ariyorsun']);
     expect([...repeats[2]!]).toEqual(['selam ne ariyorsun']);
     // The same text twice in ONE case is not a repeat of another case.
-    expect(repeatedWordings([['A b.', 'A b.']])[0]!.size).toBe(0);
+    expect(repeatedWordings([w('selam', 'A b.', 'A b.')])[0]!.size).toBe(0);
+  });
+
+  it('does not flag the same wording for the same folded user text', () => {
+    const repeats = repeatedWordings([
+      [{ user: 'Selamlar 🙂', text: 'Selam! Ne arıyorsun?' }],
+      [{ user: 'selamlar', text: 'Selam! Ne arıyorsun?' }],
+    ]);
+    expect(repeats[1]!.size).toBe(0);
   });
 });
 
@@ -522,11 +531,21 @@ describe('cases and the report', () => {
     const b = c('greeting: b', 'greeting', [hello]);
     const results = scoreAll([
       { c: a, turns: [helloOk] },
-      { c: b, turns: [helloOk] },
+      { c: b, turns: [{ ...helloOk, input: 'merhaba' }] },
     ]);
     expect(results[0]!.ok).toBe(true);
     expect(results[1]!.ok).toBe(false);
     expect(results[1]!.scores[0]!.reply.misses[0]).toMatch(/repeats another case/);
+  });
+
+  it('does not score the same input with the same wording as a repeat', () => {
+    const a = c('greeting: a', 'greeting', [hello]);
+    const b = c('greeting: b', 'greeting', [hello]);
+    const results = scoreAll([
+      { c: a, turns: [helloOk] },
+      { c: b, turns: [{ ...helloOk, input: 'Selam' }] },
+    ]);
+    expect(results[1]!.ok).toBe(true);
   });
 
   it('prints the pass rates, the worst failures with their conversation, tokens and cost', () => {

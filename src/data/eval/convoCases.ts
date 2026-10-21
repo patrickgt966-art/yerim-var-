@@ -1475,6 +1475,27 @@ export const CONVO_CASES: ConvoCase[] = buildConvoCases();
 export const casesOf = (category: string | undefined): ConvoCase[] =>
   category ? CONVO_CASES.filter((c) => c.category === category) : CONVO_CASES;
 
+/**
+ * `limit` cases taken round-robin across the categories (in the order they were built), each
+ * category shuffled by the seed, so a small run covers every category. All of them when `limit`
+ * is not below the number of cases. Same seed, same selection.
+ */
+export function sampleCases(cases: ConvoCase[], limit: number, seed: number): ConvoCase[] {
+  if (limit >= cases.length) return cases;
+  const r = makeRng(seed);
+  const byCategory = new Map<string, ConvoCase[]>();
+  for (const c of cases) byCategory.set(c.category, [...(byCategory.get(c.category) ?? []), c]);
+  const queues = [...byCategory.values()].map((list) => r.shuffle(list));
+  const out: ConvoCase[] = [];
+  for (let round = 0; out.length < limit; round++) {
+    for (const q of queues) {
+      const c = q[round];
+      if (c && out.length < limit) out.push(c);
+    }
+  }
+  return out;
+}
+
 /** The cities a conversation passes through (its own, and every switch). */
 export function citiesOf(c: ConvoCase): AiCityId[] {
   const out: AiCityId[] = [c.city];
