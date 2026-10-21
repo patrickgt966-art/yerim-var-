@@ -517,6 +517,7 @@ function readReplyFacts(raw: unknown): AiReplyFacts | null {
     'widened',
     'far',
     'dishByNameOnly',
+    'dishLikely',
     'parkSearch',
   ] as const) {
     if (raw[key] === undefined) continue;

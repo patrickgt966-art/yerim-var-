@@ -296,3 +296,14 @@ describe('--limit sampling', () => {
     expect(picked.every((c) => c.category === 'food')).toBe(true);
   });
 });
+
+describe('emoji asks', () => {
+  it('accept dürüm as well as döner for 🥙', () => {
+    const turns = [CONVO_SEED, CONVO_SEED + 1, CONVO_SEED + 2, CONVO_SEED + 3]
+      .flatMap((seed) => buildConvoCases(seed))
+      .flatMap((c) => c.turns)
+      .filter((turn) => turn.input.type === 'say' && turn.input.text.includes('🥙'));
+    expect(turns.length).toBeGreaterThan(0);
+    for (const turn of turns) expect(turn.expect.dishHas).toEqual(['doner', 'durum']);
+  });
+});

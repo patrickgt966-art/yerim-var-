@@ -224,6 +224,9 @@ const EN_DISHES: readonly { en: string; d: Dish }[] = [
   { en: 'breakfast', d: dishByX('serpme kahvaltı') },
 ];
 
+/** Dishes another dish word is also right for: 🥙 is a döner, and a dürüm is its wrap. */
+const DISH_EMOJI_ALSO: Record<string, string[]> = { döner: ['durum'] };
+
 const DISH_EMOJI: Record<string, string> = {
   pizza: '🍕',
   hamburger: '🍔',
@@ -728,8 +731,16 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
       const d = flavor === 'plain' ? anyDistrict(city) : coreDistrict(city);
       // İzmir has a district called Menemen: "menemen" is never asked there (it is not a common dish).
       const dish = r.chance(0.8) ? r.pick(COMMON_DISHES) : r.pick(ALL_DISHES);
-      const q = (text: string, dish: Dish, place: string[] | null = [d]): ConvoTurn[] => [
-        say(text, food(place, dish, certain(dish) && place?.[0] === d ? sure(city, d) : {})),
+      const q = (
+        text: string,
+        dish: Dish,
+        place: string[] | null = [d],
+        also: string[] = [],
+      ): ConvoTurn[] => [
+        say(text, {
+          ...food(place, dish, certain(dish) && place?.[0] === d ? sure(city, d) : {}),
+          ...(also.length > 0 && hasOf(dish) ? { dishHas: [...hasOf(dish)!, ...also] } : {}),
+        }),
       ];
       switch (flavor) {
         case 'plain':
@@ -748,7 +759,7 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
         case 'emoji': {
           const ed = r.pick(Object.keys(DISH_EMOJI).map(dishByX));
           const e = DISH_EMOJI[ed.x] as string;
-          return q(fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e), ed);
+          return q(fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e), ed, [d], DISH_EMOJI_ALSO[ed.x]);
         }
         case 'english': {
           const en = r.pick(EN_DISHES);

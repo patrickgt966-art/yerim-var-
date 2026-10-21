@@ -777,7 +777,7 @@ export const WISH_WORDS: Record<Wish, string[]> = {
   family: ['aile'],
   kids: ['cocuk'],
   group: ['grup', 'arkadas'],
-  quick: ['cabuk', 'acele', 'hizlica', 'hizli'],
+  quick: ['cabuk', 'cabucak', 'acele', 'hizlica', 'hizli'],
   view: ['manzara'],
   late: ['gece', 'gec'],
   healthy: ['saglikli', 'diyet', 'fit', 'hafif', 'light', 'kalori'],
@@ -811,6 +811,10 @@ const WISH_PHRASES: [Wish, string][] = [
   ['healthy', ' temiz beslen'],
   ['cheap', ' cebime uygun'],
   ['cheap', ' uygun fiyat'],
+  ['quick', ' vaktim yok'],
+  ['quick', ' vaktim az'],
+  ['quick', ' zamanim yok'],
+  ['quick', ' zamanim az'],
 ];
 
 /** True for one folded word that names a wish ("çocuklarla", "romantik"). */

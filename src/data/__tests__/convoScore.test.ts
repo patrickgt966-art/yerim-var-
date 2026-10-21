@@ -724,3 +724,60 @@ describe('the parking offer after "Yol tarifi"', () => {
     ).toEqual([]);
   });
 });
+
+describe('scorer false positives of the 120-case run', () => {
+  const t = say('x', { kind: 'food' });
+
+  it('a far place whose name is only the start of a nearer card is not named by the pick line', () => {
+    // 10 minutes (615 m) and 30 minutes (1846 m): the pick line names the nearer branch.
+    const cards = [card('Burger King - Demetevler', 100, 615), card('Burger King', 100, 1846)];
+    const pick = 'Benim seçimim Burger King - Demetevler: en yakın olanı (~10 dk yürüme)';
+    expect(cardWalkMin(cards[0]!)).toBe(10);
+    expect(cardWalkMin(cards[1]!)).toBe(30);
+    expect(distanceClaims(pick, cards)).toEqual([]);
+    expect(
+      distanceClaims('Benim seçimim Derya Çorba Meydanı Şube, en yakın olanı (~17 dk yürüme)', [
+        card('Derya Çorba Meydanı Şube', 100, 1046),
+        card('Derya Çorba', 100, 1846),
+      ]),
+    ).toEqual([]);
+    const s = scoreTurn(t, obs({ text: pick, cards }));
+    expect(s.honesty.ok).toBe(true);
+    // Naming the far place itself and calling it the nearest is still caught.
+    expect(distanceClaims('Benim seçimim Burger King: en yakın olanı', cards)[0]).toMatch(
+      /over 20 min away/,
+    );
+    // Two cards with one name: the walk the sentence states says which one it means.
+    const twins = [card('Pide Salonu', 100, 615), card('Pide Salonu', 100, 1846)];
+    expect(distanceClaims('Pide Salonu en yakın olanı (~10 dk yürüme)', twins)).toEqual([]);
+  });
+
+  it('"yer var" is a room claim only next to car park words, not a count of places', () => {
+    const food = scoreTurn(
+      t,
+      obs({ wordings: [wording("Osmangazi'de baklava için 18 yer var.")] }),
+    );
+    expect(food.honesty.ok).toBe(true);
+    for (const text of [
+      'Otoparkta 5 yer var.',
+      'Konak otoparkında hâlâ yer var.',
+      'Konak’ta boş yer var.',
+    ]) {
+      const s = scoreTurn(t, obs({ wordings: [wording(text, { kind: 'park' })] }));
+      expect(s.honesty.misses[0]).toMatch(/claims room/);
+    }
+  });
+
+  it('a question that repeats the user\'s word "menü" claims nothing about a menu', () => {
+    const question = 'Fit menüde hangi tarzı arıyorsun, bowl mu salata mı?';
+    expect(claimsIn(question, [], 'fit menü arıyorum')).toEqual([]);
+    // Not when the user never said it, and not for a statement.
+    expect(claimsIn(question, [], 'fit bir şey')[0]).toMatch(/^menu/);
+    expect(claimsIn('Fit menüde bowl var.', [], 'fit menü arıyorum')[0]).toMatch(/^menu/);
+    const s = scoreTurn(
+      say('fit menü arıyorum', { kind: 'choice' }),
+      obs({ input: 'fit menü arıyorum', text: question }),
+    );
+    expect(s.honesty.ok).toBe(true);
+  });
+});

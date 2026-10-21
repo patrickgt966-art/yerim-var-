@@ -39,7 +39,10 @@ type RawPlace = Omit<PlaceRow, 'k'> & {
 
 const rawPlaces = () => (placesFile().items ?? []) as RawPlace[];
 
-/** Lower-case, Turkish letters folded to ASCII, punctuation dropped. */
+/**
+ * Lower-case, Turkish letters folded to ASCII, punctuation dropped. Latin look-alikes that NFD
+ * does not take apart (ø, æ, ß, ł ...) fold too: "øzlem" is "ozlem".
+ */
 export function fold(s: string): string {
   return s
     .toLocaleLowerCase('tr')
@@ -49,6 +52,12 @@ export function fold(s: string): string {
     .replace(/ü/g, 'u')
     .replace(/ö/g, 'o')
     .replace(/ç/g, 'c')
+    .replace(/[øœ]/g, 'o')
+    .replace(/æ/g, 'ae')
+    .replace(/ß/g, 'ss')
+    .replace(/[đð]/g, 'd')
+    .replace(/ł/g, 'l')
+    .replace(/þ/g, 'th')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9 ]+/g, ' ')

@@ -10,6 +10,11 @@ describe('fold', () => {
     expect(fold('Çiğli Şirinyer Göztepe Üçkuyular')).toBe('cigli sirinyer goztepe uckuyular');
     expect(fold('  Kemeraltı / Konak ')).toBe('kemeralti konak');
   });
+
+  it('folds Latin look-alikes NFD leaves alone', () => {
+    expect(fold('Øzlem Restoran')).toBe('ozlem restoran');
+    expect(fold('Æther Straße Łódź Đorđe')).toBe('aether strasse lodz dorde');
+  });
 });
 
 describe('searchPlaces', () => {

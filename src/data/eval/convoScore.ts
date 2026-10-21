@@ -108,24 +108,33 @@ const PRICE =
 const RATING =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(rating|ratings|review|reviews|star|stars)( |$)/;
 const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
-/** The AI says there is room in a car park: only a live free-spot count may say so. */
-const ROOM = /(^| )(bos (yer|alan|kontenjan)|yer var|musait)/;
+/**
+ * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
+ * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
+ * places, not spots.
+ */
+const ROOM =
+  /(^| )(bos (yer|alan|kontenjan)|musait|park yeri var|(otopark\w*|garaj|park)( \w+){0,2} (yer|alan) var)/;
 
 /**
  * The claims of a text: price, rating and menu, outside sentences that say the data is missing. A
  * place called "Yıldız Pide" or "Ucuz Lokanta" is a name, not a claim: `names` are taken out first.
  */
-export function claimsIn(text: string, names: readonly string[] = []): string[] {
+export function claimsIn(text: string, names: readonly string[] = [], userText = ''): string[] {
   const out: string[] = [];
   const own = names.map((n) => fold(n)).filter((n) => n !== '');
-  for (const sentence of text.split(/[.!?\n;]+/)) {
+  // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
+  // for a kind; it claims nothing about a menu.
+  const userMenu = MENU.test(` ${fold(userText)}`);
+  for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
+    const sentence = part.replace(/[.!?\n;]+$/, '');
     let f = ` ${fold(sentence)} `;
     for (const n of own) f = f.split(` ${n} `).join('  ');
     f = f.replace(/\s+/g, ' ').trim();
     if (f === '' || LACKS.test(f)) continue;
     if (PRICE.test(f)) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
-    if (MENU.test(f)) out.push(`menu: "${sentence.trim()}"`);
+    if (MENU.test(f) && !(userMenu && part.includes('?'))) out.push(`menu: "${sentence.trim()}"`);
   }
   return out;
 }
@@ -145,6 +154,27 @@ const minutesIn = (folded: string): number[] =>
 export const cardWalkMin = (c: ObservedCard): number => walkMinFromMeters(c.distanceM);
 
 /**
+ * True when the folded sentence names a card that is over FAR_WALK_MIN minutes away. A card whose
+ * name is only part of another named card's name ("Burger King" inside "Burger King - Demetevler")
+ * is not named by the sentence; and among cards with one name, the walk the sentence states says
+ * which of them it means.
+ */
+function namesFarCard(folded: string, cards: readonly ObservedCard[], mins: readonly number[]) {
+  const padded = ` ${folded} `;
+  const named = cards
+    .map((c) => ({ c, n: fold(c.name) }))
+    .filter(({ n }) => n !== '' && padded.includes(` ${n} `));
+  const whole = named.filter(
+    ({ n }) => !named.some((o) => o.n !== n && ` ${o.n} `.includes(` ${n} `)),
+  );
+  return whole.some(({ c, n }) => {
+    const same = whole.filter((o) => o.n === n).map((o) => o.c);
+    const stated = same.filter((o) => mins.includes(cardWalkMin(o)));
+    return (stated.length > 0 ? stated : same).some((o) => cardWalkMin(o) > FAR_WALK_MIN);
+  });
+}
+
+/**
  * Honesty about distance: no sentence may call a place near ("en yakın", "yakında", "nearby") when
  * the walk it names (or the place it names, or the top card of the list) is over FAR_WALK_MIN
  * minutes, and when the top card is that far the message must say so (a widened search, "uzak",
@@ -161,7 +191,6 @@ export function distanceClaims(
   const topMin = top ? cardWalkMin(top) : 0;
   // A place searched by its name is wanted wherever it is: its distance needs no warning.
   const topFar = !byName && topMin > FAR_WALK_MIN;
-  const farNames = cards.filter((c) => cardWalkMin(c) > FAR_WALK_MIN).map((c) => fold(c.name));
   let signal = false;
   for (const sentence of text.split(/[.!?\n;]+/)) {
     const f = ` ${fold(sentence)} `.replace(/\s+/g, ' ').trim();
@@ -173,7 +202,7 @@ export function distanceClaims(
     if (!NEAR.test(f) || FAR.test(f)) continue;
     const q = sentence.trim();
     if (far) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
-    else if (farNames.some((n) => n !== '' && ` ${f} `.includes(` ${n} `))) {
+    else if (namesFarCard(f, cards, mins)) {
       out.push(`calls a place over ${FAR_WALK_MIN} min away near: "${q}"`);
     } else if (topFar && mins.length === 0) {
       out.push(`calls the list near, but its top place is ${topMin} min away: "${q}"`);
@@ -401,6 +430,7 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
     ...claimsIn(
       obs.text,
       obs.cards.map((c) => c.name),
+      obs.input,
     ),
     ...distanceClaims(obs.text, obs.cards, turn.expect.kind === 'name'),
   ];

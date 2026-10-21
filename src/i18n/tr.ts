@@ -715,6 +715,10 @@ const tr = {
     dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
     dishCommon:
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
+    // The same notes without a count, for the reply whose lead already says how many places there are.
+    dishNamedShort: 'Adında "{{dish}}" geçen yerleri üste koydum.',
+    dishLikelyShort: '"{{dish}}" adında yer yok ama {{label}} gibi yerlerde büyük ihtimalle var.',
+    dishCommonShort: '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
     // The first card is more than FAR_WALK_MIN minutes away: one honest sentence instead of the note above.
     dishWiderFar: '{{dish}} için geniş alanda baktım; ilk sıradaki ~{{min}} dk yürüme uzaklıkta.',
@@ -723,6 +727,7 @@ const tr = {
     reasonLikely: '{{label}}; {{dish}} büyük ihtimalle var',
     reasonCommon: '{{shop}}; {{dish}} genelde olur',
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
+    nameNotFound: '"{{name}}" adında bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
     // The same notes for a food ask without parking: the order never followed a car park.

@@ -811,6 +811,11 @@ const en = {
       'No place is named "{{dish}}", but it usually turns up at a {{shop}}-type place; I found {{count}}.',
     dishCommon_other:
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
+    dishNamedShort: 'Put the places with "{{dish}}" in their name at the top.',
+    // {{label}} and {{shop}} are Turkish shop types, so the English texts leave them out or quote them.
+    dishLikelyShort: 'No place is named "{{dish}}", but places of this kind very likely have it.',
+    dishCommonShort:
+      'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places.',
     dishWider: 'Not many places for {{dish}} nearby, so I looked a bit wider.',
     dishWiderFar: 'I looked wider for {{dish}}; the first place is far away, ~{{min}} min walk.',
     farFirst: 'The first place is far away: ~{{min}} min walk.',
@@ -820,6 +825,8 @@ const en = {
     reasonCommon: '{{shop}}; usually has {{dish}}',
     dishNotFound:
       'I couldn\'t find a place that makes "{{dish}}". Shall we look at home-cooking places nearby?',
+    nameNotFound:
+      'I couldn\'t find a place called "{{name}}". Shall we look at home-cooking places nearby?',
     actLokanta: 'Home cooking nearby',
     noRatings: "I don't have ratings; the list is sorted by how close parking is.",
     // The same notes for a food ask without parking: the order never followed a car park.
