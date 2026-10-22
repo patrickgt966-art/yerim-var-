@@ -78,14 +78,12 @@ const tr = {
   city: {
     a11yButton: 'Şehir: {{name}}, değiştir',
     title: 'Şehir seç',
-    live: 'Doluluk verisi var',
     soon: 'Yakında',
     note: 'Diğer şehirler için açık veri kaynaklarını hazırlıyoruz.',
     close: 'Kapat',
     a11ySelected: '{{name}}, seçili, doluluk verisi var',
     a11yRow: '{{name}}, doluluk verisi var',
     // Cities with bundled car parks only (no live free counts).
-    staticOnly: 'Otopark konumları',
     a11ySelectedStatic: '{{name}}, seçili, canlı doluluk verisi yok',
     a11yRowStatic: '{{name}}, canlı doluluk verisi yok',
     a11ySoon: '{{name}}, yakında',
@@ -427,6 +425,7 @@ const tr = {
     directions: 'Yol tarifi',
     openFailed: 'Bağlantı açılamadı.',
     parkTitle: 'Nereye park edersin?',
+    parkShow: 'Arabayla mı geleceksin? Yakındaki otoparklar',
     favoriteAdd: 'Favori restoranlara ekle',
     favoriteRemove: 'Favori restoranlardan çıkar',
     routeLine: 'Otopark → ~{{distance}} m · ~{{count}} dk yürüme → Restoran',
@@ -522,8 +521,6 @@ const tr = {
     modeFood: 'Restoranlar',
     closeA11y: 'Restoran kartını kapat',
     detail: 'Detay',
-    goParking: 'Otoparka git',
-    nearestParking: 'En yakın otopark {{distance}} m',
     directions: 'Yol tarifi',
     a11yDirections: '{{name}} için yol tarifi',
     parkedHere: 'Buraya park ettim',
@@ -715,9 +712,16 @@ const tr = {
     dishUnknown:
       '"{{dish}}" yaptığından emin olduğum yer yok. Yakındaki benzer yerleri gösteriyorum.',
     dishUnknownLong: 'Ne aradığını tam çıkaramadım; yakındaki yerleri gösteriyorum.',
+    // The same two notes when the first place is over FAR_WALK_MIN minutes away: nothing is "yakın".
+    dishUnknownFar: '"{{dish}}" yaptığından emin olduğum yer yok. Benzer yerleri gösteriyorum.',
+    dishUnknownLongFar: 'Ne aradığını tam çıkaramadım; benzer yerleri gösteriyorum.',
     dishLikely: '"{{dish}}" adında yer yok ama {{count}} {{label}} buldum; büyük ihtimalle var.',
     dishCommon:
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
+    // The same notes without a count, for the reply whose lead already says how many places there are.
+    dishNamedShort: 'Adında "{{dish}}" geçen yerleri üste koydum.',
+    dishLikelyShort: '"{{dish}}" adında yer yok ama {{label}} gibi yerlerde büyük ihtimalle var.',
+    dishCommonShort: '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
     // The first card is more than FAR_WALK_MIN minutes away: one honest sentence instead of the note above.
     dishWiderFar: '{{dish}} için geniş alanda baktım; ilk sıradaki ~{{min}} dk yürüme uzaklıkta.',
@@ -726,6 +730,7 @@ const tr = {
     reasonLikely: '{{label}}; {{dish}} büyük ihtimalle var',
     reasonCommon: '{{shop}}; {{dish}} genelde olur',
     dishNotFound: '"{{dish}}" yapan bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
+    nameNotFound: '"{{name}}" adında bir yer bulamadım. Yakındaki lokantalara bakalım mı?',
     actLokanta: 'Yakındaki lokantalar',
     noRatings: 'Puan bilgim yok; sıralama otoparka yakınlığa göre.',
     // The same notes for a food ask without parking: the order never followed a car park.
@@ -805,6 +810,8 @@ const tr = {
     pickRunner: 'Alternatif: {{name}}, {{why}}.',
     pickNoneFit:
       'Yakında isteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En yakınları gösteriyorum.',
+    pickNoneFitFar:
+      'İsteğine uyduğunu söyleyebileceğim bir yer göremedim (menü bilgimiz yok, ad ve türe baktım). En az uzak olanları gösteriyorum.',
     pickUnavailable: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa ve otoparka göre.',
     pickUnavailablePlain: 'Şu an akıllı seçim yapamadım. Listedeki sıra yakınlığa göre.',
     why: {

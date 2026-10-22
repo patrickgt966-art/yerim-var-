@@ -46,6 +46,22 @@ const norm = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/** The Turkish text of a phrase key, its {{placeholders}} filled with the active city's examples. */
+function turkishPhrase(key: string, opts: Record<string, string>): string {
+  const raw = key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], tr);
+  return typeof raw === 'string'
+    ? raw.replace(/\{\{(\w+)\}\}/g, (m, k: string) => opts[k] ?? m)
+    : '';
+}
+
+/** Whether the message is, word for word, one of the app's own Turkish phrases (a tapped chip). */
+export function isOwnPhrase(text: string): boolean {
+  const wanted = norm(text);
+  if (!wanted) return false;
+  const opts = { ...cityExamples(), city: activeCity().name };
+  return PHRASE_KEYS.some((key) => norm(turkishPhrase(key, opts)) === wanted);
+}
+
 /**
  * The text to hand the assistant for a message: unchanged in Turkish or when it is not one of
  * the app's own phrases, else the Turkish phrase with the same meaning and the same places.

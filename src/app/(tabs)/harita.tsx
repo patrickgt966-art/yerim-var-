@@ -5,21 +5,13 @@ import { ActivityIndicator, Alert, Pressable, useWindowDimensions, View } from '
 
 import { Button } from '@/components/Button';
 import { FreshnessBadge, freshnessText, Tag } from '@/components/FreshnessBadge';
-import { PBadge } from '@/components/PBadge';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
 import { cityAt, cityById, hasLiveParking, isInCityArea, type City } from '@/data/cities';
-import { formatClock, getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
+import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { distanceMeters, type LatLng } from '@/data/geo';
-import {
-  cuisineLabels,
-  kindLabel,
-  nearestParking,
-  parkingSummary,
-  restaurantsForMap,
-  type Restaurant,
-} from '@/data/restaurants';
+import { cuisineLabels, kindLabel, restaurantsForMap, type Restaurant } from '@/data/restaurants';
 import { rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { levelWord, useAnnounce, useScreenReader } from '@/lib/a11y';
 import { openDirections } from '@/lib/directions';
@@ -303,44 +295,29 @@ export default function MapTab() {
         />
       )}
       {mode === 'food' && selected && (
-        <RestaurantCard
-          restaurant={selected}
-          parkings={data?.parkings}
-          onClose={() => setSelected(null)}
-        />
+        <RestaurantCard restaurant={selected} onClose={() => setSelected(null)} />
       )}
     </View>
   );
 }
 
-function RestaurantCard({
+export function RestaurantCard({
   restaurant: r,
-  parkings,
   onClose,
 }: {
   restaurant: Restaurant;
-  /** Undefined while car parks are still loading. */
-  parkings: NonNullable<ReturnType<typeof useParkings>['data']>['parkings'] | undefined;
   onClose: () => void;
 }) {
   const c = useColors();
   const { t } = useTranslation();
   // The floating tab bar overlaps the map, so lift the card above it.
   const tabSpace = useTabBarSpace(12);
-  const near = useMemo(() => (parkings ? nearestParking(r, parkings) : null), [r, parkings]);
-  const summary = useMemo(() => (near ? parkingSummary(r, [near.parking]) : null), [r, near]);
   const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t).slice(0, 2)]
     .filter(Boolean)
     .join(' · ');
-  const free =
-    summary && summary.free != null && summary.at
-      ? t('food.freeSpotsAt', { count: summary.free, time: formatClock(summary.at) })
-      : null;
-  const parkText = summary
-    ? [t('map.nearestParking', { distance: summary.distanceM }), free].filter(Boolean).join(' · ')
-    : parkings
-      ? t('food.noParking')
-      : null;
+  const directions = async () => {
+    if ((await openDirections(r, r.name)) === 'failed') Alert.alert(t('food.openFailed'));
+  };
 
   return (
     <View
@@ -393,14 +370,6 @@ function RestaurantCard({
           </Txt>
         </Pressable>
       </View>
-      {!!parkText && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-          <PBadge size={18} />
-          <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
-            {parkText}
-          </Txt>
-        </View>
-      )}
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button
           kind="secondary"
@@ -408,15 +377,7 @@ function RestaurantCard({
           style={{ flex: 1 }}
           onPress={() => router.push({ pathname: '/restoran/[id]', params: { id: r.id } })}
         />
-        {near && (
-          <Button
-            label={t('map.goParking')}
-            style={{ flex: 1 }}
-            onPress={() =>
-              router.push({ pathname: '/otopark/[id]', params: { id: near.parking.id } })
-            }
-          />
-        )}
+        <Button label={t('map.directions')} style={{ flex: 1 }} onPress={directions} />
       </View>
     </View>
   );

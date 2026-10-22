@@ -82,6 +82,8 @@ export type TurnExpect = {
   cat?: (FoodCategory | null)[];
   /** The dish (the router's, else the one searched) holds one of these (folded). */
   dishHas?: string[];
+  /** A generic emoji (🥩) names only the kind: no dish at all is right too, when the category fits. */
+  dishOptional?: boolean;
   /** The router's wishes (goal included) hold at least one of these. */
   wishes?: Wish[];
   /** The searched place's label holds one of these (folded): the district or its quarter. */
@@ -224,6 +226,9 @@ const EN_DISHES: readonly { en: string; d: Dish }[] = [
   { en: 'breakfast', d: dishByX('serpme kahvaltı') },
 ];
 
+/** Dishes another dish word is also right for: 🥙 is a döner, and a dürüm is its wrap. */
+const DISH_EMOJI_ALSO: Record<string, string[]> = { döner: ['durum'] };
+
 const DISH_EMOJI: Record<string, string> = {
   pizza: '🍕',
   hamburger: '🍔',
@@ -233,6 +238,9 @@ const DISH_EMOJI: Record<string, string> = {
   'mercimek çorbası': '🍲',
   köfte: '🥩',
 };
+
+/** Emoji that stand for a kind of food more than for one dish: reading them as the category alone is right. */
+const GENERIC_DISH_EMOJI = new Set(['köfte']);
 
 const at = <T>(a: readonly T[], k: number): T => a[k % a.length] as T;
 const low = (s: string) => s.toLocaleLowerCase('tr');
@@ -728,8 +736,18 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
       const d = flavor === 'plain' ? anyDistrict(city) : coreDistrict(city);
       // İzmir has a district called Menemen: "menemen" is never asked there (it is not a common dish).
       const dish = r.chance(0.8) ? r.pick(COMMON_DISHES) : r.pick(ALL_DISHES);
-      const q = (text: string, dish: Dish, place: string[] | null = [d]): ConvoTurn[] => [
-        say(text, food(place, dish, certain(dish) && place?.[0] === d ? sure(city, d) : {})),
+      const q = (
+        text: string,
+        dish: Dish,
+        place: string[] | null = [d],
+        also: string[] = [],
+        dishOptional = false,
+      ): ConvoTurn[] => [
+        say(text, {
+          ...food(place, dish, certain(dish) && place?.[0] === d ? sure(city, d) : {}),
+          ...(also.length > 0 && hasOf(dish) ? { dishHas: [...hasOf(dish)!, ...also] } : {}),
+          ...(dishOptional ? { dishOptional: true } : {}),
+        }),
       ];
       switch (flavor) {
         case 'plain':
@@ -748,7 +766,13 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
         case 'emoji': {
           const ed = r.pick(Object.keys(DISH_EMOJI).map(dishByX));
           const e = DISH_EMOJI[ed.x] as string;
-          return q(fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e), ed);
+          return q(
+            fill(at(EMOJI_TEMPLATES, k + r.int(5)), d, e),
+            ed,
+            [d],
+            DISH_EMOJI_ALSO[ed.x],
+            GENERIC_DISH_EMOJI.has(ed.x),
+          );
         }
         case 'english': {
           const en = r.pick(EN_DISHES);
@@ -1474,6 +1498,27 @@ export const CONVO_CASES: ConvoCase[] = buildConvoCases();
 /** The cases of a category (or all), for `--only`. */
 export const casesOf = (category: string | undefined): ConvoCase[] =>
   category ? CONVO_CASES.filter((c) => c.category === category) : CONVO_CASES;
+
+/**
+ * `limit` cases taken round-robin across the categories (in the order they were built), each
+ * category shuffled by the seed, so a small run covers every category. All of them when `limit`
+ * is not below the number of cases. Same seed, same selection.
+ */
+export function sampleCases(cases: ConvoCase[], limit: number, seed: number): ConvoCase[] {
+  if (limit >= cases.length) return cases;
+  const r = makeRng(seed);
+  const byCategory = new Map<string, ConvoCase[]>();
+  for (const c of cases) byCategory.set(c.category, [...(byCategory.get(c.category) ?? []), c]);
+  const queues = [...byCategory.values()].map((list) => r.shuffle(list));
+  const out: ConvoCase[] = [];
+  for (let round = 0; out.length < limit; round++) {
+    for (const q of queues) {
+      const c = q[round];
+      if (c && out.length < limit) out.push(c);
+    }
+  }
+  return out;
+}
 
 /** The cities a conversation passes through (its own, and every switch). */
 export function citiesOf(c: ConvoCase): AiCityId[] {

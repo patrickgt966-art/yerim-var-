@@ -35,6 +35,7 @@ import { settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
+import { bareNameWordsOf, displayName, fuzzyNameStart, nameWordsOf } from '@/data/nameMatch';
 import { quartersOf } from '@/data/quarters';
 import {
   isQualifierWord,
@@ -77,6 +78,7 @@ import { fold, searchPlacesStrict } from '@/data/search';
 import type { Parking } from '@/data/types';
 import { closesLate, istanbulClock, openState, type OpenState } from '@/lib/openNow';
 import type { AiResult } from '@/lib/ai/client';
+import { isOwnPhrase } from '@/components/chat/ruleQuery';
 import { validateFreeText, type FreeTextContext } from '@/lib/ai/freeText';
 import {
   FAR_WALK_MIN,
@@ -127,7 +129,7 @@ import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { tariffFor } from '@/data/tariffs';
 import i18n from '@/i18n';
-import { daypartOf, foodReply, foundNameReply, parkReply } from '@/data/replyText';
+import { capitalize, daypartOf, foodReply, foundNameReply, parkReply } from '@/data/replyText';
 
 export type ChatPlace = { label: string; lat: number; lng: number };
 
@@ -259,11 +261,19 @@ export type BotMessage = {
   pool?: ChatCard[];
   /** Wishes this reply already answered in its own words (no "we have no menu data" note after it). */
   explained?: Wish[];
+  /** The text already says it is not sure any place makes the ask: a pick adds no second "not found" line. */
+  notFound?: boolean;
   /**
    * What the AI may reword: the turn's kind, its facts (the items are added from the final cards)
    * and the template sentence(s) of `text` it replaces. Dropped before the reply leaves the assistant.
    */
-  aiReply?: { kind: AiReplyKind; facts: AiReplyFacts; template: string };
+  aiReply?: {
+    kind: AiReplyKind;
+    facts: AiReplyFacts;
+    template: string;
+    /** Notes in front of the template that the wording's facts already tell; see CoveredNote. */
+    covered?: CoveredNote[];
+  };
   /** The screen hands this destination to the user's map app when it shows the reply. */
   directions?: { lat: number; lng: number; name: string };
 };
@@ -359,6 +369,54 @@ const NAME_SUFFIXES = [
 function hasExactNameWord(foldedName: string, word: string): boolean {
   return foldedName.split(' ').some((nw) => NAME_SUFFIXES.some((suf) => nw === word + suf));
 }
+/** True for a folded word that names a dish or a food category ("kahvaltı", "kebap"). */
+const isFoodOrDish = (w: string): boolean => isFoodWord(w) || dishProfile(w, false) !== null;
+
+/** True when the typed words are a known place (a square, a street, a mall) rather than a restaurant name. */
+function isKnownPlace(words: string[]): boolean {
+  const hit = searchPlacesStrict(words.join(' '), 1)[0];
+  return !!hit && words.every((w) => hasWordStart(fold(hit.name), w));
+}
+
+/**
+ * The restaurants whose name starts with what the user typed, wherever they are. Question words
+ * ("nerede") and generic nouns ("restoran") around the name are not part of it, and with no exact
+ * start a slip or two in the later words ("parga balıık") is forgiven when the name's first word
+ * starts like the first typed word. Words that are a dish or a category never name a restaurant
+ * here, and neither do words that are a known place ("konak meydanı"): those stay as they were read.
+ */
+function restaurantsNamed(folded: string): Restaurant[] {
+  const all = allRestaurants(true);
+  const asked = nameWordsOf(folded);
+  const q = asked.join(' ');
+  const trimmed = asked.length < folded.split(' ').length;
+  if (!trimmed) {
+    const exact = all.filter((r) => fold(r.name).startsWith(q));
+    if (exact.length > 0) return exact;
+  }
+  const bare = bareNameWordsOf(folded);
+  if (bare.length === 0 || bare.some(isFoodOrDish) || isKnownPlace(bare)) return [];
+  if (trimmed && !asked.some(isFoodOrDish)) {
+    const exact = all.filter((r) => fold(r.name).startsWith(q));
+    if (exact.length > 0) return exact;
+  }
+  const qb = bare.join(' ');
+  if (qb !== q) {
+    // A lone word must be a whole name word ("Özlem", "Özlem Büfe"), not the start of another word.
+    const whole = all.filter((r) => {
+      const n = fold(r.name);
+      return bare.length > 1 ? n.startsWith(qb) : n === qb || n.startsWith(`${qb} `);
+    });
+    if (whole.length > 0) return whole;
+  }
+  return all.filter((r) => fuzzyNameStart(fold(r.name), bare));
+}
+
+/** True when a message of two or more words is the name (or its start) of a restaurant of the city. */
+function namesCityRestaurant(folded: string): boolean {
+  return folded.split(' ').length >= 2 && restaurantsNamed(folded).length > 0;
+}
+
 /** Folded word starts that make an unknown text clearly a place (street, quarter ...). */
 const PLACE_WORDS = ['mahalle', 'mah', 'sokak', 'sk', 'cadde', 'cd', 'bulvar', 'meydan', 'semt'];
 /** A dish search with fewer places than this looks in the wider rings. */
@@ -591,6 +649,38 @@ function aiLedIntent(
     ...(sameDish ? { dish: r.dish, dishServes: r.dishServes ?? null } : {}),
     quality: r?.quality ?? false,
   };
+}
+
+/**
+ * A goal or mood said in the user's own words ("acelem var bi şey yiyeyim", "fit bir şey") names no
+ * food: the kinds that answer it are asked about (choices.ts). A category or dish the router
+ * guessed for it ("fast", "hızlı yemek") would skip that question, so it goes; one the user wrote
+ * (the rules found it, or its word is in the message) stays. So does the one the conversation
+ * already had (`ctx`): a follow-up wish ("ucuz olsun") refines the current search, it never
+ * drops its dish or category.
+ */
+function withoutGuessedKind(
+  u: Extract<Understanding, { kind: 'search' }>,
+  rules: QueryIntent,
+  text: string,
+  ctx: Pick<ChatContext, 'cat' | 'dish'>,
+): Extract<Understanding, { kind: 'search' }> {
+  if (rules.kind !== 'search' || rules.cat || rules.dish) return u;
+  if (!u.food || (!u.cat && !u.dish)) return u;
+  // Carried over from the conversation: not the router's guess.
+  const carried =
+    (!!u.cat && u.cat === ctx.cat) || (!!u.dish && !!ctx.dish && fold(u.dish) === fold(ctx.dish));
+  if (carried) return u;
+  const own = wishesIn(text);
+  if (!askEntryFor(own) || hasNoDataWish(own)) return u;
+  // A dish made of wish and meal words ("hızlı yemek") is the mood again, not a dish.
+  const said = ` ${fold(text)} `;
+  const dishWords = u.dish ? fold(u.dish).split(' ').filter(Boolean) : [];
+  const typedDish =
+    dishWords.some((w) => !GENERIC_NAME_WORDS.has(w) && wishesIn(w).length === 0) &&
+    dishWords.every((w) => said.includes(` ${w}`));
+  if (typedDish) return u;
+  return { ...u, cat: null, dish: null, dishServes: null };
 }
 
 type FollowUp =
@@ -842,6 +932,16 @@ function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps
   });
 }
 
+/**
+ * A template note in front of a reply whose facts the wording was given too (how many places, found
+ * by name, looked wider): it is dropped when the wording is shown, so the facts are told once. A
+ * `hedged` note ("büyük ihtimalle var") is an honesty signal and stays unless the wording hedges too.
+ */
+type CoveredNote = { text: string; hedged?: boolean };
+
+/** The wording hedges about the dish: "büyük ihtimalle", "genelde", "likely" (folded). */
+const HEDGES = /(buyuk ihtimal|muhtemel|genelde|olasi|olabilir|likely|probably|usually)/;
+
 /** Lets the AI reword the template sentence(s) of a reply; the cards, notes and chips stay as built. */
 async function wordReply(reply: BotMessage, deps: AssistantDeps, meta: AnswerMeta): Promise<void> {
   const spec = reply.aiReply;
@@ -853,6 +953,11 @@ async function wordReply(reply: BotMessage, deps: AssistantDeps, meta: AnswerMet
   const at = said ? reply.text.indexOf(spec.template) : -1;
   if (!said || at < 0) return;
   reply.text = reply.text.slice(0, at) + said + reply.text.slice(at + spec.template.length);
+  const hedging = HEDGES.test(fold(said));
+  for (const note of spec.covered ?? []) {
+    if (note.hedged && !hedging) continue;
+    reply.text = reply.text.replace(`${note.text} `, '').replace(note.text, '');
+  }
   reply.sparkle = true;
 }
 
@@ -1344,7 +1449,13 @@ function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | n
 /** The reply's cards are what "sence" / "sen seç" refer to next. */
 function remember(r: Result): Result {
   // The pick's wider pool never leaves the assistant (it is not shown and not stored).
-  const { pool: _pool, explained: _explained, aiReply: _aiReply, ...reply } = r.reply;
+  const {
+    pool: _pool,
+    explained: _explained,
+    notFound: _notFound,
+    aiReply: _aiReply,
+    ...reply
+  } = r.reply;
   return {
     reply,
     ctx: { ...r.ctx, lastCards: r.reply.cards.length > 0 ? r.reply.cards : undefined },
@@ -1389,6 +1500,8 @@ async function answerText(
     const said = await chatFromRouter(routed.out.value, ctx, deps);
     if (said) {
       meta.settled = true;
+      // A hello offers the two jobs, whoever worded it.
+      if (isHello(greetKind(foldedText))) said.reply.actions = greetChips(t);
       return withNotice(said);
     }
     // An unusable reply: the templates below answer.
@@ -1400,7 +1513,11 @@ async function answerText(
     meta.settled = true;
     return withNotice(
       plain(
-        { text: greetReply(greet, text, t), cards: [], actions: examples(ctx.section, t) },
+        {
+          text: greetReply(greet, text, t),
+          cards: [],
+          actions: isHello(greet) ? greetChips(t) : examples(ctx.section, t),
+        },
         ctx,
       ),
     );
@@ -1450,7 +1567,15 @@ async function answerText(
 
   // The AI read the message and could not tell what is wanted: say so instead of guessing with
   // the rules (a guess shows unrelated places). Abuse keeps its own calm answer below.
-  if (routed.out.kind === 'unknown' && !followUp && it.kind !== 'abuse') {
+  // The app's own chip phrases ("Yemek bul") are never unknown: the rules answer them. So is a
+  // message that names a place of the city ("New Season"): the name lookup below finds it.
+  if (
+    routed.out.kind === 'unknown' &&
+    !followUp &&
+    it.kind !== 'abuse' &&
+    !isOwnPhrase(text) &&
+    !namesCityRestaurant(foldedText)
+  ) {
     meta.settled = true;
     return withNotice(
       plain(
@@ -1480,12 +1605,17 @@ async function answerText(
   // everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse') {
     // The district against the city's own list: a typo fixed, a quarter moved to place.
-    const found = settleDistrict(
-      routed.out.value,
+    const found = withoutGuessedKind(
+      settleDistrict(
+        routed.out.value,
+        text,
+        activeCity().districts,
+        quartersOf(activeCity().id),
+        deps.ai?.earlier?.() ?? [],
+      ),
+      it,
       text,
-      activeCity().districts,
-      quartersOf(activeCity().id),
-      deps.ai?.earlier?.() ?? [],
+      ctx,
     );
     it = aiLedIntent(it, intentFromUnderstanding(found, text), found);
     meta.ai = found;
@@ -1616,7 +1746,7 @@ async function answerText(
     !!it.dish &&
     dishProfile(fold(it.dish), false) !== null;
   if (!knownDish && folded.split(' ').length >= 2) {
-    const matches = allRestaurants(true).filter((r) => fold(r.name).startsWith(folded));
+    const matches = restaurantsNamed(folded);
     const first = matches[0];
     if (first) {
       const target: LatLng = ctx.place ?? (await deps.here()) ?? activeCity().center;
@@ -1958,10 +2088,20 @@ async function answerText(
 
         // 2. Looks like food: say no place makes it, offer nearby restaurants.
         if (it.food || it.nearMe || ctx.section === 'food') {
+          // A name ask ("Özlem Restoran nerede", or a place the router read): the sentence is about
+          // a name, not about a dish nobody makes.
+          const typedWords = fold(typedRaw).split(' ');
+          const nameAsk =
+            (!!meta.ai?.place && !it.dish) ||
+            bareNameWordsOf(fold(typedRaw)).length < typedWords.length;
           return withNotice(
             plain(
               {
-                text: t('chat.dishNotFound', { dish: typed }),
+                text: nameAsk
+                  ? t('chat.nameNotFound', {
+                      name: displayName(meta.ai?.place?.trim() || typedRaw),
+                    })
+                  : t('chat.dishNotFound', { dish: typed }),
                 cards: [],
                 actions: [
                   {
@@ -2503,9 +2643,19 @@ function runFood(
   // Dish-first: rows named after the dish, then places that very likely serve it; no padding.
   // The places typical for the category come first, unless the user asked for the nearest.
   let ordered = ctx.sort === 'distance' ? rows : typicalFirst(rows, ctx.cat, ctx.dish ?? '');
-  let dishPrefix = '';
   /** The dish search looked wider than the first ring. */
   let dishWider = false;
+  /** The notes in front of the lead: how the places were found, whether the search looked wider. */
+  let matchNote = '';
+  /** The wording's facts (count, dishByNameOnly, dishLikely) say what the match note says. */
+  let matchCovered = false;
+  /** The match note only hedges ("büyük ihtimalle"): it stays unless the wording hedges too. */
+  let matchHedge = false;
+  /** The same "not sure any place makes it" note worded for a list that starts far away (no "nearby"). */
+  let matchNoteFar = '';
+  /** A note that opens with the typed dish ("hamburger için ...") starts its sentence in capitals. */
+  const sentence = (text: string) =>
+    ctx.dish && dishName && text.startsWith(dishName) ? capitalize(text, i18n.language) : text;
   const hits = new Map<string, DishHit>();
   let profile: DishProfile | null = null;
   const stem = ctx.dish ? dishStem(ctx.dish) : '';
@@ -2547,7 +2697,6 @@ function runFood(
       return { t1, t2 };
     };
     let { t1, t2 } = tiered(searchRadiusM);
-    let widened = false;
     // Too few matches nearby: look in the wider rings before giving up.
     if (!ctx.wide && t1.length + t2.length < MIN_DISH_PLACES) {
       for (const radius of WIDE_RADII_M) {
@@ -2556,7 +2705,6 @@ function runFood(
         if (total > t1.length + t2.length) {
           t1 = wide.t1;
           t2 = wide.t2;
-          widened = true;
           dishWider = true;
         }
         if (total >= MIN_DISH_PLACES) break;
@@ -2566,28 +2714,25 @@ function runFood(
       ordered = [...t1, ...t2];
       const common = t2.filter((row) => hits.get(row.r.id)?.common);
       const specialists = t2.length - common.length;
-      dishPrefix =
-        (widened ? t('chat.dishWider', { dish: dishName }) + ' ' : '') +
-        (t1.length > 0
-          ? t('chat.dishNamed', { dish: dishName, count: t1.length })
+      // The lead names how many places there are: this note does not count them again.
+      matchNote =
+        t1.length > 0
+          ? t('chat.dishNamedShort', { dish: dishName })
           : specialists === 0
-            ? t('chat.dishCommon', {
+            ? t('chat.dishCommonShort', {
                 dish: dishName,
-                count: common.length,
                 shop: hits.get(common[0]!.r.id)!.common,
               })
-            : t('chat.dishLikely', {
-                dish: dishName,
-                count: specialists,
-                label: profile?.label ?? '',
-              })) +
-        ' ';
+            : t('chat.dishLikelyShort', { dish: dishName, label: profile?.label ?? '' });
+      matchCovered = true;
+      matchHedge = t1.length === 0;
     } else {
       // A whole sentence the rules took for a dish is not quoted back as one.
-      dishPrefix =
-        (dishName.trim().split(/\s+/).length > 3
-          ? t('chat.dishUnknownLong')
-          : t('chat.dishUnknown', { dish: dishName })) + ' ';
+      const longName = dishName.trim().split(/\s+/).length > 3;
+      matchNote = longName ? t('chat.dishUnknownLong') : t('chat.dishUnknown', { dish: dishName });
+      matchNoteFar = longName
+        ? t('chat.dishUnknownLongFar')
+        : t('chat.dishUnknownFar', { dish: dishName });
       // Only the category is known: a place that is typical for it (by name, cuisine, kind) comes first,
       // not just the best-ranked one ("Kasap Fuat" for a kızartma, a juice bar for meyve suyu).
       ordered = typicalFirst(ordered, ctx.cat, stem);
@@ -2610,10 +2755,7 @@ function runFood(
           ctx.cat,
           stem,
         );
-        if (ordered.length > 0) {
-          dishPrefix = t('chat.dishWider', { dish: dishName }) + ' ' + dishPrefix;
-          dishWider = true;
-        }
+        if (ordered.length > 0) dishWider = true;
       }
     }
   }
@@ -2650,15 +2792,29 @@ function runFood(
     // of the "looked wider" note when there is one (never a text that calls it near).
     const topWalk = seen[0] ? walkMinFromMeters(seen[0].r.distanceM) : 0;
     const farWalk = topWalk > FAR_WALK_MIN ? topWalk : null;
-    if (farWalk !== null) {
-      const wider = dishWider ? t('chat.dishWider', { dish: dishName }) + ' ' : '';
-      const rest =
-        wider && dishPrefix.startsWith(wider) ? dishPrefix.slice(wider.length) : dishPrefix;
-      const note = dishWider
-        ? t('chat.dishWiderFar', { dish: dishName, min: farWalk })
-        : t('chat.farFirst', { min: farWalk });
-      dishPrefix = note + ' ' + rest;
+    // Over FAR_WALK_MIN minutes away nothing is "nearby": the not-sure note says "similar places".
+    if (farWalk !== null && matchNoteFar) matchNote = matchNoteFar;
+    // The far note says it all and stays whoever words the lead; the "looked wider" note is
+    // spoken by the wording's own facts (widened), so it is dropped when the wording is shown.
+    const lead =
+      farWalk !== null
+        ? sentence(
+            dishWider
+              ? t('chat.dishWiderFar', { dish: dishName, min: farWalk })
+              : t('chat.farFirst', { min: farWalk }),
+          )
+        : dishWider
+          ? sentence(t('chat.dishWider', { dish: dishName }))
+          : '';
+    const covered: CoveredNote[] = [];
+    if (lead && farWalk === null) covered.push({ text: lead });
+    if (matchNote && matchCovered) {
+      covered.push({ text: sentence(matchNote), ...(matchHedge ? { hedged: true } : {}) });
     }
+    const dishPrefix = [lead, matchNote ? sentence(matchNote) : '']
+      .filter(Boolean)
+      .map((n) => n + ' ')
+      .join('');
     let text = foodReply(
       {
         where,
@@ -2798,6 +2954,7 @@ function runFood(
       cards,
       actions,
       ...(explained.length > 0 ? { explained } : {}),
+      ...(matchNoteFar ? { notFound: true } : {}),
       ...(deps.ai?.pick && pool.length > cards.length ? { pool } : {}),
       aiReply: {
         kind: 'food',
@@ -2810,9 +2967,13 @@ function runFood(
           widened: ctx.wide || dishWider,
           ...(farWalk !== null ? { far: true, farWalkMin: farWalk } : {}),
           dishByNameOnly: hits.size > 0 && [...hits.values()].every((h) => h.byName),
+          ...(hits.size > 0 && [...hits.values()].some((h) => !h.byName)
+            ? { dishLikely: true }
+            : {}),
           daypart: daypartOf(istanbulClock(now).minutes),
         },
         template,
+        ...(covered.length > 0 ? { covered } : {}),
       },
     };
   }
@@ -3340,6 +3501,8 @@ type AiFail = { ok: false; reason: 'quota' | 'error' | 'invalid'; remaining?: nu
 
 type PickDone = {
   ok: true;
+  /** The AI found nothing among the cards that fits the ask: `line` says so, no card is picked. */
+  noneFit?: true;
   /** The picked card first (flagged), the others the AI judged to fit next, then the rest. */
   cards: ChatCard[];
   line: string;
@@ -3406,10 +3569,14 @@ async function askPick(
   const t = deps.t;
   // Asked for something none of the nearby places seems to offer: say so, pick nothing.
   if (v.noneFit) {
+    // A list that starts over FAR_WALK_MIN minutes away is not "the nearest" or "nearby".
+    const first = cards[0];
+    const far = first?.kind === 'restaurant' && walkMinFromMeters(first.distanceM) > FAR_WALK_MIN;
     return {
       ok: true,
+      noneFit: true,
       cards: cards.slice(0, MAX_CARDS),
-      line: t('chat.pickNoneFit'),
+      line: t(far ? 'chat.pickNoneFitFar' : 'chat.pickNoneFit'),
       tone: v.tone,
       remaining: res.remaining,
     };
@@ -3752,7 +3919,8 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
       noteQuota(reply, pick, deps);
       if (pick.ok) {
         reply.cards = pick.cards;
-        after.push(pick.line);
+        // One "not found" sentence at most: the text already said nothing is known for the ask.
+        if (!(pick.noneFit && reply.notFound)) after.push(pick.line);
         tone = pick.tone ?? tone;
         aiPicked = true;
         sparkle = true;

@@ -118,6 +118,30 @@ describe('understanding', () => {
     ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: 'köfte' },
   });
 
+  it('a generic emoji (🥩) may be read as the category alone, other dishes may not', () => {
+    const emoji = say('bornovada 🥩', {
+      kind: 'food',
+      place: ['Bornova'],
+      cat: ['meat', 'fast', null],
+      dishHas: ['kofte'],
+      dishOptional: true,
+      cards: 'some',
+    });
+    const meat = obs({
+      understood: search({ district: 'Bornova', cat: 'meat', dish: null }),
+      cards: [card('Köfteci Talih Usta')],
+      ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: null },
+    });
+    expect(scoreTurn(emoji, meat).understanding.misses).toEqual([]);
+    expect(scoreTurn(kofte, meat).understanding.misses.join('|')).toMatch(/dish: want kofte/);
+    const fish = obs({
+      understood: search({ district: 'Bornova', cat: 'meat', dish: 'balık' }),
+      cards: [card('Köfteci Talih Usta')],
+      ctx: { ...obs().ctx, place: 'Bornova', cat: 'meat', dish: 'balık' },
+    });
+    expect(scoreTurn(emoji, fish).understanding.misses.join('|')).toMatch(/dish: want kofte/);
+  });
+
   it('passes a right reading with results', () => {
     const s = scoreTurn(kofte, good);
     expect(misses(s)).toEqual({ understanding: [], choices: [], reply: [], honesty: [] });
@@ -340,17 +364,26 @@ describe('reply text', () => {
     expect(sentenceCount('...')).toBe(0);
   });
 
-  it('flags the same wording in two different cases, once, on the later case', () => {
+  it('flags the same wording for different inputs in two cases, once, on the later case', () => {
+    const w = (user: string, ...texts: string[]) => texts.map((text) => ({ user, text }));
     const repeats = repeatedWordings([
-      ['Selam! Ne arıyorsun?'],
-      ['Başka bir şey.', 'selam ne ariyorsun'],
-      ['SELAM! Ne arıyorsun?', 'Selam! Ne arıyorsun?'],
+      w('selam', 'Selam! Ne arıyorsun?'),
+      [...w('naber', 'Başka bir şey.'), ...w('merhaba', 'selam ne ariyorsun')],
+      w('hey', 'SELAM! Ne arıyorsun?', 'Selam! Ne arıyorsun?'),
     ]);
     expect(repeats[0]!.size).toBe(0);
     expect([...repeats[1]!]).toEqual(['selam ne ariyorsun']);
     expect([...repeats[2]!]).toEqual(['selam ne ariyorsun']);
     // The same text twice in ONE case is not a repeat of another case.
-    expect(repeatedWordings([['A b.', 'A b.']])[0]!.size).toBe(0);
+    expect(repeatedWordings([w('selam', 'A b.', 'A b.')])[0]!.size).toBe(0);
+  });
+
+  it('does not flag the same wording for the same folded user text', () => {
+    const repeats = repeatedWordings([
+      [{ user: 'Selamlar 🙂', text: 'Selam! Ne arıyorsun?' }],
+      [{ user: 'selamlar', text: 'Selam! Ne arıyorsun?' }],
+    ]);
+    expect(repeats[1]!.size).toBe(0);
   });
 });
 
@@ -522,11 +555,21 @@ describe('cases and the report', () => {
     const b = c('greeting: b', 'greeting', [hello]);
     const results = scoreAll([
       { c: a, turns: [helloOk] },
-      { c: b, turns: [helloOk] },
+      { c: b, turns: [{ ...helloOk, input: 'merhaba' }] },
     ]);
     expect(results[0]!.ok).toBe(true);
     expect(results[1]!.ok).toBe(false);
     expect(results[1]!.scores[0]!.reply.misses[0]).toMatch(/repeats another case/);
+  });
+
+  it('does not score the same input with the same wording as a repeat', () => {
+    const a = c('greeting: a', 'greeting', [hello]);
+    const b = c('greeting: b', 'greeting', [hello]);
+    const results = scoreAll([
+      { c: a, turns: [helloOk] },
+      { c: b, turns: [{ ...helloOk, input: 'Selam' }] },
+    ]);
+    expect(results[1]!.ok).toBe(true);
   });
 
   it('prints the pass rates, the worst failures with their conversation, tokens and cost', () => {
@@ -703,5 +746,83 @@ describe('the parking offer after "Yol tarifi"', () => {
         text: 'Otopark Lokantası en yakını.',
       }),
     ).toEqual([]);
+  });
+});
+
+describe('scorer false positives of the 120-case run', () => {
+  const t = say('x', { kind: 'food' });
+
+  it('a far place whose name is only the start of a nearer card is not named by the pick line', () => {
+    // 10 minutes (615 m) and 30 minutes (1846 m): the pick line names the nearer branch.
+    const cards = [card('Burger King - Demetevler', 100, 615), card('Burger King', 100, 1846)];
+    const pick = 'Benim seçimim Burger King - Demetevler: en yakın olanı (~10 dk yürüme)';
+    expect(cardWalkMin(cards[0]!)).toBe(10);
+    expect(cardWalkMin(cards[1]!)).toBe(30);
+    expect(distanceClaims(pick, cards)).toEqual([]);
+    expect(
+      distanceClaims('Benim seçimim Derya Çorba Meydanı Şube, en yakın olanı (~17 dk yürüme)', [
+        card('Derya Çorba Meydanı Şube', 100, 1046),
+        card('Derya Çorba', 100, 1846),
+      ]),
+    ).toEqual([]);
+    const s = scoreTurn(t, obs({ text: pick, cards }));
+    expect(s.honesty.ok).toBe(true);
+    // Naming the far place itself and calling it the nearest is still caught.
+    expect(distanceClaims('Benim seçimim Burger King: en yakın olanı', cards)[0]).toMatch(
+      /over 20 min away/,
+    );
+    // Two cards with one name: the walk the sentence states says which one it means.
+    const twins = [card('Pide Salonu', 100, 615), card('Pide Salonu', 100, 1846)];
+    expect(distanceClaims('Pide Salonu en yakın olanı (~10 dk yürüme)', twins)).toEqual([]);
+  });
+
+  it('"yer var" is a room claim only next to car park words, not a count of places', () => {
+    const food = scoreTurn(
+      t,
+      obs({ wordings: [wording("Osmangazi'de baklava için 18 yer var.")] }),
+    );
+    expect(food.honesty.ok).toBe(true);
+    for (const text of [
+      'Otoparkta 5 yer var.',
+      'Konak otoparkında hâlâ yer var.',
+      'Konak’ta boş yer var.',
+    ]) {
+      const s = scoreTurn(t, obs({ wordings: [wording(text, { kind: 'park' })] }));
+      expect(s.honesty.misses[0]).toMatch(/claims room/);
+    }
+  });
+
+  it('a hedged menu sentence is no menu claim, a positive one is', () => {
+    for (const hedged of [
+      'Bazı yerlerde köfte adda geçmiyor, ama büyük ihtimalle menüde var.',
+      'Menüleri kontrol etmekte fayda var.',
+      'Menüde olabilir, emin değilim.',
+      'Menü bilgisi yok, adlarından seçtim.',
+    ]) {
+      expect(claimsIn(hedged)).toEqual([]);
+    }
+    expect(claimsIn('Menüsünde köfte var.')[0]).toMatch(/^menu/);
+    expect(claimsIn('Köfte menüde var.')[0]).toMatch(/^menu/);
+  });
+
+  it('a negated room sentence is no room claim', () => {
+    const say1 = (text: string) =>
+      scoreTurn(t, obs({ wordings: [wording(text, { kind: 'park' })] })).honesty;
+    expect(say1('Konak’ta 4 otopark buldum, boş yer bilgisi elimde yok.').ok).toBe(true);
+    expect(say1('Boş yer sayısını bilmiyorum.').ok).toBe(true);
+    expect(say1('Konak’ta boş yeri olan 4 otopark buldum.').misses[0]).toMatch(/claims room/);
+  });
+
+  it('a question that repeats the user\'s word "menü" claims nothing about a menu', () => {
+    const question = 'Fit menüde hangi tarzı arıyorsun, bowl mu salata mı?';
+    expect(claimsIn(question, [], 'fit menü arıyorum')).toEqual([]);
+    // Not when the user never said it, and not for a statement.
+    expect(claimsIn(question, [], 'fit bir şey')[0]).toMatch(/^menu/);
+    expect(claimsIn('Fit menüde bowl var.', [], 'fit menü arıyorum')[0]).toMatch(/^menu/);
+    const s = scoreTurn(
+      say('fit menü arıyorum', { kind: 'choice' }),
+      obs({ input: 'fit menü arıyorum', text: question }),
+    );
+    expect(s.honesty.ok).toBe(true);
   });
 });

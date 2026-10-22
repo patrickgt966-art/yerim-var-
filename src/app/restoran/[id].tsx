@@ -60,6 +60,7 @@ export default function RestaurantDetail() {
     id: string | string[];
     n?: string | string[];
     ll?: string | string[];
+    park?: string | string[];
   }>();
   // `?id=a&id=b` arrives as an array.
   const id = firstParam(params.id);
@@ -76,6 +77,8 @@ export default function RestaurantDetail() {
   const mapRef = useRef<MapView>(null);
   const screenReader = useScreenReader();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Parking stays folded away unless the user asked for it (`park=1`) or taps the button.
+  const [parkOpen, setParkOpen] = useState(firstParam(params.park) === '1');
   const snapPoints = useMemo(() => ['32%', '60%', '100%'], []);
 
   const open = (url: string) => {
@@ -133,7 +136,7 @@ export default function RestaurantDetail() {
       >
         <ParkingMap
           ref={mapRef}
-          parkings={ranked}
+          parkings={parkOpen ? ranked : []}
           center={{ lat: r.lat, lng: r.lng }}
           restaurants={[r]}
           selectedRestaurantId={r.id}
@@ -209,47 +212,6 @@ export default function RestaurantDetail() {
             )}
           </View>
 
-          <Txt variant="title" accessibilityRole="header">
-            {t('food.parkTitle')}
-          </Txt>
-          {list.length === 0 ? (
-            <Txt secondary>{parkingsLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
-          ) : (
-            list.map((p, i) => (
-              <View key={p.id} style={{ gap: 6 }}>
-                <ParkingCard
-                  parking={p}
-                  featured={i === 0}
-                  nearest={p.id === ranked[0]?.id && openState(p) !== 'closed'}
-                  onParkHere={() =>
-                    parkHere(p, {
-                      kind: 'restaurant',
-                      id: r.id,
-                      name: r.name,
-                      lat: r.lat,
-                      lng: r.lng,
-                    })
-                  }
-                  onDetail={() => router.push({ pathname: '/otopark/[id]', params: { id: p.id } })}
-                />
-                <Txt
-                  variant="caption"
-                  secondary
-                  style={{ paddingHorizontal: 4 }}
-                  accessibilityLabel={t('food.a11yRouteLine', {
-                    distance: Math.round(distanceMeters(p, r)),
-                    count: walkMinutes(p, r),
-                  })}
-                >
-                  {t('food.routeLine', {
-                    distance: Math.round(distanceMeters(p, r)),
-                    count: walkMinutes(p, r),
-                  })}
-                </Txt>
-              </View>
-            ))
-          )}
-
           {!!r.openingHours && (
             <View style={{ gap: 2 }}>
               <Txt variant="label" secondary>
@@ -265,6 +227,55 @@ export default function RestaurantDetail() {
               {f}
             </Txt>
           ))}
+
+          {parkOpen ? (
+            <>
+              <Txt variant="title" accessibilityRole="header">
+                {t('food.parkTitle')}
+              </Txt>
+              {list.length === 0 ? (
+                <Txt secondary>{parkingsLoading ? t('food.parkLoading') : t('food.parkNone')}</Txt>
+              ) : (
+                list.map((p, i) => (
+                  <View key={p.id} style={{ gap: 6 }}>
+                    <ParkingCard
+                      parking={p}
+                      featured={i === 0}
+                      nearest={p.id === ranked[0]?.id && openState(p) !== 'closed'}
+                      onParkHere={() =>
+                        parkHere(p, {
+                          kind: 'restaurant',
+                          id: r.id,
+                          name: r.name,
+                          lat: r.lat,
+                          lng: r.lng,
+                        })
+                      }
+                      onDetail={() =>
+                        router.push({ pathname: '/otopark/[id]', params: { id: p.id } })
+                      }
+                    />
+                    <Txt
+                      variant="caption"
+                      secondary
+                      style={{ paddingHorizontal: 4 }}
+                      accessibilityLabel={t('food.a11yRouteLine', {
+                        distance: Math.round(distanceMeters(p, r)),
+                        count: walkMinutes(p, r),
+                      })}
+                    >
+                      {t('food.routeLine', {
+                        distance: Math.round(distanceMeters(p, r)),
+                        count: walkMinutes(p, r),
+                      })}
+                    </Txt>
+                  </View>
+                ))
+              )}
+            </>
+          ) : (
+            <Button kind="secondary" label={t('food.parkShow')} onPress={() => setParkOpen(true)} />
+          )}
 
           <Txt variant="caption" secondary style={{ marginTop: 10 }}>
             {t(r.source === 'overture' ? 'food.footerOverture' : 'food.footer')}

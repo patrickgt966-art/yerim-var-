@@ -193,12 +193,32 @@ describe('the router: every message goes to Haiku first', () => {
         remaining: 8,
         value: { kind: 'unknown' },
       }));
-      const r = await answer('lahmacun', emptyContext('food'), deps);
+      const r = await answer('asdf', emptyContext('food'), deps);
       expect(r.reply.cards).toHaveLength(0);
       expect(r.reply.text).toMatch(/^chat.unknown_/);
       expect(ai.understand).toHaveBeenCalledTimes(1);
       expect(ai.pick).not.toHaveBeenCalled();
     });
+
+    it.each([
+      ['Yemek bul', 'restaurant'],
+      ['Otopark bul', 'parking'],
+    ] as const)(
+      'the unknown router never blocks the chip "%s": the rules search near me',
+      async (q, kind) => {
+        const { ai, deps } = mockAi(async () => ({
+          ok: true,
+          remaining: 8,
+          value: { kind: 'unknown' },
+        }));
+        const r = await answer(q, emptyContext('park'), deps);
+        expect(ai.understand).toHaveBeenCalledTimes(1);
+        expect(r.reply.text).not.toMatch(/^chat.unknown_/);
+        expect(r.reply.cards.length).toBeGreaterThan(0);
+        expect(r.reply.cards.every((c) => c.kind === kind)).toBe(true);
+        expect(r.ctx.place).toBeNull();
+      },
+    );
 
     it('an error and a thrown error leave the rule path (one router call)', async () => {
       for (const understand of [

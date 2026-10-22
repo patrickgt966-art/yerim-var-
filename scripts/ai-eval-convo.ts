@@ -9,7 +9,7 @@
  * conversations pass.
  *
  * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval-convo.ts [--limit N] [--only <category>] [--seed S]
- *   --limit N        plays only the first N conversations (a smoke test)
+ *   --limit N        plays only N conversations, taken round-robin across the categories (a smoke test)
  *   --only <category> plays one category: greeting, thanks_bye, food, park, both, choice, narrow,
  *                    split, city_switch, no_data, offtopic, name
  *   --seed S         another set of conversations from another seed
@@ -36,6 +36,7 @@ import {
   CONVO_SEED,
   buildConvoCases,
   citiesOf,
+  sampleCases,
   type ConvoCase,
 } from '@/data/eval/convoCases';
 import { playConversation, type ConvoAi, type Transcript } from '@/data/eval/convoRun';
@@ -169,7 +170,7 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   let cases = buildConvoCases(args.seed).filter((c) => !args.only || c.category === args.only);
-  if (args.limit) cases = cases.slice(0, args.limit);
+  if (args.limit) cases = sampleCases(cases, args.limit, args.seed);
   const turns = cases.reduce((n, c) => n + c.turns.length, 0);
 
   // The estimate comes first and needs no key.

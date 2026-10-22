@@ -108,24 +108,43 @@ const PRICE =
 const RATING =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(rating|ratings|review|reviews|star|stars)( |$)/;
 const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
-/** The AI says there is room in a car park: only a live free-spot count may say so. */
-const ROOM = /(^| )(bos (yer|alan|kontenjan)|yer var|musait)/;
+/**
+ * A hedged sentence about menus ("büyük ihtimalle menüde var", "menüleri kontrol etmekte fayda
+ * var", "adlarından anlaşılıyor") says the menu is not known: it claims no menu data. A positive
+ * one ("menüsünde köfte var") still does.
+ */
+const MENU_HEDGE = /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan)/;
+/** A sentence that says the room is not known ("boş yer bilgisi elimde yok") claims no room. */
+const NOT_KNOWN = /(bilgi\w* yok|elimde yok|bilmiyorum|bilmiyoruz|bilgim yok|bilinmiyor)/;
+/**
+ * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
+ * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
+ * places, not spots.
+ */
+const ROOM =
+  /(^| )(bos (yer|alan|kontenjan)|musait|park yeri var|(otopark\w*|garaj|park)( \w+){0,2} (yer|alan) var)/;
 
 /**
  * The claims of a text: price, rating and menu, outside sentences that say the data is missing. A
  * place called "Yıldız Pide" or "Ucuz Lokanta" is a name, not a claim: `names` are taken out first.
  */
-export function claimsIn(text: string, names: readonly string[] = []): string[] {
+export function claimsIn(text: string, names: readonly string[] = [], userText = ''): string[] {
   const out: string[] = [];
   const own = names.map((n) => fold(n)).filter((n) => n !== '');
-  for (const sentence of text.split(/[.!?\n;]+/)) {
+  // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
+  // for a kind; it claims nothing about a menu.
+  const userMenu = MENU.test(` ${fold(userText)}`);
+  for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
+    const sentence = part.replace(/[.!?\n;]+$/, '');
     let f = ` ${fold(sentence)} `;
     for (const n of own) f = f.split(` ${n} `).join('  ');
     f = f.replace(/\s+/g, ' ').trim();
     if (f === '' || LACKS.test(f)) continue;
     if (PRICE.test(f)) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
-    if (MENU.test(f)) out.push(`menu: "${sentence.trim()}"`);
+    if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
+      out.push(`menu: "${sentence.trim()}"`);
+    }
   }
   return out;
 }
@@ -145,6 +164,27 @@ const minutesIn = (folded: string): number[] =>
 export const cardWalkMin = (c: ObservedCard): number => walkMinFromMeters(c.distanceM);
 
 /**
+ * True when the folded sentence names a card that is over FAR_WALK_MIN minutes away. A card whose
+ * name is only part of another named card's name ("Burger King" inside "Burger King - Demetevler")
+ * is not named by the sentence; and among cards with one name, the walk the sentence states says
+ * which of them it means.
+ */
+function namesFarCard(folded: string, cards: readonly ObservedCard[], mins: readonly number[]) {
+  const padded = ` ${folded} `;
+  const named = cards
+    .map((c) => ({ c, n: fold(c.name) }))
+    .filter(({ n }) => n !== '' && padded.includes(` ${n} `));
+  const whole = named.filter(
+    ({ n }) => !named.some((o) => o.n !== n && ` ${o.n} `.includes(` ${n} `)),
+  );
+  return whole.some(({ c, n }) => {
+    const same = whole.filter((o) => o.n === n).map((o) => o.c);
+    const stated = same.filter((o) => mins.includes(cardWalkMin(o)));
+    return (stated.length > 0 ? stated : same).some((o) => cardWalkMin(o) > FAR_WALK_MIN);
+  });
+}
+
+/**
  * Honesty about distance: no sentence may call a place near ("en yakın", "yakında", "nearby") when
  * the walk it names (or the place it names, or the top card of the list) is over FAR_WALK_MIN
  * minutes, and when the top card is that far the message must say so (a widened search, "uzak",
@@ -161,7 +201,6 @@ export function distanceClaims(
   const topMin = top ? cardWalkMin(top) : 0;
   // A place searched by its name is wanted wherever it is: its distance needs no warning.
   const topFar = !byName && topMin > FAR_WALK_MIN;
-  const farNames = cards.filter((c) => cardWalkMin(c) > FAR_WALK_MIN).map((c) => fold(c.name));
   let signal = false;
   for (const sentence of text.split(/[.!?\n;]+/)) {
     const f = ` ${fold(sentence)} `.replace(/\s+/g, ' ').trim();
@@ -173,7 +212,7 @@ export function distanceClaims(
     if (!NEAR.test(f) || FAR.test(f)) continue;
     const q = sentence.trim();
     if (far) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
-    else if (farNames.some((n) => n !== '' && ` ${f} `.includes(` ${n} `))) {
+    else if (namesFarCard(f, cards, mins)) {
       out.push(`calls a place over ${FAR_WALK_MIN} min away near: "${q}"`);
     } else if (topFar && mins.length === 0) {
       out.push(`calls the list near, but its top place is ${topMin} min away: "${q}"`);
@@ -190,19 +229,24 @@ export const messageSentences = (text: string): number =>
 /** The text a wording is compared by: folded, so case, accents and punctuation do not hide a repeat. */
 export const wordingKey = (text: string): string => fold(text);
 
+/** A wording the AI gave, with the message of the user that produced it. */
+export type WordingOf = { user: string; text: string };
+
 /**
- * For each case, the wordings (folded) the AI gave an earlier case already: the same text for two
- * different cases is a template, not an answer. The first case to use a text keeps it.
+ * For each case, the wordings (folded) the AI gave an earlier case already for a different user
+ * message: the same text for two different inputs is a template, not an answer. The same input
+ * giving the same wording is no defect. The first case to use a text keeps it.
  */
-export function repeatedWordings(perCase: readonly (readonly string[])[]): Set<string>[] {
-  const firstSeen = new Map<string, number>();
-  return perCase.map((texts, i) => {
+export function repeatedWordings(perCase: readonly (readonly WordingOf[])[]): Set<string>[] {
+  const seen = new Map<string, { index: number; user: string }[]>();
+  return perCase.map((wordings, i) => {
     const repeats = new Set<string>();
-    for (const t of texts) {
-      const key = wordingKey(t);
-      const first = firstSeen.get(key);
-      if (first === undefined) firstSeen.set(key, i);
-      else if (first !== i) repeats.add(key);
+    for (const w of wordings) {
+      const key = wordingKey(w.text);
+      const user = fold(w.user);
+      const earlier = seen.get(key) ?? [];
+      if (earlier.some((e) => e.index !== i && e.user !== user)) repeats.add(key);
+      seen.set(key, [...earlier, { index: i, user }]);
     }
     return repeats;
   });
@@ -288,7 +332,7 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   }
   if (e.dishHas && (u === null || u.kind === 'search')) {
     const dish = fold((u ? u.dish : obs.ctx.dish) ?? '');
-    if (!e.dishHas.some((w) => dish.includes(fold(w)))) {
+    if (!(e.dishOptional && dish === '') && !e.dishHas.some((w) => dish.includes(fold(w)))) {
       m.push(`dish: want ${e.dishHas.join('|')}, got ${u ? u.dish : obs.ctx.dish}`);
     }
   }
@@ -396,6 +440,7 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
     ...claimsIn(
       obs.text,
       obs.cards.map((c) => c.name),
+      obs.input,
     ),
     ...distanceClaims(obs.text, obs.cards, turn.expect.kind === 'name'),
   ];
@@ -403,7 +448,14 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
     m.push('the honest "no data" note is missing');
   }
   for (const w of obs.wordings) {
-    if (w.accepted !== null && !w.hasFreeSpots && ROOM.test(fold(w.accepted))) {
+    const claimsRoom =
+      w.accepted !== null &&
+      !w.hasFreeSpots &&
+      (w.accepted.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []).some((part) => {
+        const f = fold(part);
+        return ROOM.test(f) && !NOT_KNOWN.test(f);
+      });
+    if (claimsRoom) {
       m.push(`wording claims room without a live count: ${w.accepted}`);
     }
   }
@@ -456,7 +508,9 @@ export function scoreAll(
 ): CaseResult[] {
   const repeats = repeatedWordings(
     played.map((p) =>
-      p.turns.flatMap((t) => t.wordings.flatMap((w) => (w.accepted ? [w.accepted] : []))),
+      p.turns.flatMap((t) =>
+        t.wordings.flatMap((w) => (w.accepted ? [{ user: t.input, text: w.accepted }] : [])),
+      ),
     ),
   );
   return played.map((p, i) => scoreCase(p.c, p.turns, repeats[i], p.error));

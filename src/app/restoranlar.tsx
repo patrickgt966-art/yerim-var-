@@ -499,6 +499,7 @@ function Restaurants() {
               best={index === 0 && topEasy && !selectedId}
               widened={!!widenedKm}
               parkPending={isPlaceholderData}
+              parkAsked={requireParking || freeOnly}
             />
           )}
         />

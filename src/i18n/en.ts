@@ -80,14 +80,12 @@ const en = {
   city: {
     a11yButton: 'City: {{name}}, change',
     title: 'Choose a city',
-    live: 'Occupancy data available',
     soon: 'Coming soon',
     note: "We're getting open data sources ready for other cities.",
     close: 'Close',
     a11ySelected: '{{name}}, selected, occupancy data available',
     a11yRow: '{{name}}, occupancy data available',
     // Cities with bundled car parks only (no live free counts).
-    staticOnly: 'Car park locations',
     a11ySelectedStatic: '{{name}}, selected, no live occupancy data',
     a11yRowStatic: '{{name}}, no live occupancy data',
     a11ySoon: '{{name}}, coming soon',
@@ -441,6 +439,7 @@ const en = {
     directions: 'Directions',
     openFailed: "Couldn't open the link.",
     parkTitle: 'Where will you park?',
+    parkShow: 'Coming by car? Nearby car parks',
     favoriteAdd: 'Add to favourite restaurants',
     favoriteRemove: 'Remove from favourite restaurants',
     routeLine: 'Car park → ~{{distance}} m · ~{{count}} min walk → Restaurant',
@@ -537,8 +536,6 @@ const en = {
     modeFood: 'Restaurants',
     closeA11y: 'Close the restaurant card',
     detail: 'Details',
-    goParking: 'Go to car park',
-    nearestParking: 'Closest car park {{distance}} m',
     directions: 'Directions',
     a11yDirections: 'Directions to {{name}}',
     parkedHere: 'I parked here',
@@ -805,6 +802,10 @@ const en = {
     dishUnknown:
       'I don\'t know any place for sure that makes "{{dish}}". Showing similar places nearby.',
     dishUnknownLong: "I couldn't quite work out what you're after; showing places nearby.",
+    // The same two notes when the first place is over FAR_WALK_MIN minutes away: nothing is "nearby".
+    dishUnknownFar:
+      'I don\'t know any place for sure that makes "{{dish}}". Showing similar places.',
+    dishUnknownLongFar: "I couldn't quite work out what you're after; showing similar places.",
     dishLikely_one:
       'No place is named "{{dish}}", but I found {{count}} place of the kind that serves it; it very likely has it.',
     dishLikely_other:
@@ -814,6 +815,11 @@ const en = {
       'No place is named "{{dish}}", but it usually turns up at a {{shop}}-type place; I found {{count}}.',
     dishCommon_other:
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
+    dishNamedShort: 'Put the places with "{{dish}}" in their name at the top.',
+    // {{label}} and {{shop}} are Turkish shop types, so the English texts leave them out or quote them.
+    dishLikelyShort: 'No place is named "{{dish}}", but places of this kind very likely have it.',
+    dishCommonShort:
+      'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places.',
     dishWider: 'Not many places for {{dish}} nearby, so I looked a bit wider.',
     dishWiderFar: 'I looked wider for {{dish}}; the first place is far away, ~{{min}} min walk.',
     farFirst: 'The first place is far away: ~{{min}} min walk.',
@@ -823,6 +829,8 @@ const en = {
     reasonCommon: '{{shop}}; usually has {{dish}}',
     dishNotFound:
       'I couldn\'t find a place that makes "{{dish}}". Shall we look at home-cooking places nearby?',
+    nameNotFound:
+      'I couldn\'t find a place called "{{name}}". Shall we look at home-cooking places nearby?',
     actLokanta: 'Home cooking nearby',
     noRatings: "I don't have ratings; the list is sorted by how close parking is.",
     // The same notes for a food ask without parking: the order never followed a car park.
@@ -904,6 +912,8 @@ const en = {
     pickRunner: 'Alternative: {{name}}, {{why}}.',
     pickNoneFit:
       "I couldn't see a place nearby that I can say fits what you asked (we don't have menus; I went by name and type). Showing the closest ones.",
+    pickNoneFitFar:
+      "I couldn't see a place that I can say fits what you asked (we don't have menus; I went by name and type). Showing the ones that are least far.",
     pickUnavailable:
       "I couldn't make a smart pick right now. The list is sorted by distance and parking.",
     pickUnavailablePlain: "I couldn't make a smart pick right now. The list is sorted by distance.",

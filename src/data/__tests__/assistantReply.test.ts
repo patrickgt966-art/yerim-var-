@@ -107,12 +107,27 @@ describe('greeting', () => {
       mockAi(chatU('Selam! Ne arıyoruz?')).deps,
     );
     expect(plain.reply.text).toBe('Selam! Ne arıyoruz?');
-    expect(labels(plain.reply)).not.toContain('Otopark bul');
+    expect(labels(plain.reply)).toEqual(['Otopark bul', 'Yemek bul']);
     for (const said of [null, 'Selam! Yakında 3 yer var.', 'Selam. Ben Yerim. Hoş geldin.']) {
       const { deps } = mockAi(chatU('Selam! Ne arıyoruz?'), async () => said);
       const r = await answer('Selam', emptyContext('park'), deps);
       expect(r.reply).toEqual(plain.reply);
     }
+  });
+
+  it('a rejected wording still offers the two jobs on a chat-routed hello', async () => {
+    for (const q of ['Selamlar 🙂', 'nasılsın abi...', 'nasılsınız reis ✌️']) {
+      const { deps } = mockAi(chatU('Selam! Ne arıyoruz?'), async () => null);
+      const r = await answer(q, emptyContext('food'), deps);
+      expect(labels(r.reply)).toEqual(['Otopark bul', 'Yemek bul']);
+    }
+  });
+
+  it('thanks keeps its chips: not the two jobs', async () => {
+    const { deps } = mockAi(chatU('Rica ederim!'), async () => null);
+    const r = await answer('teşekkürler', emptyContext('park'), deps);
+    expect(labels(r.reply)).not.toContain('Otopark bul');
+    expect(r.reply.actions.length).toBeGreaterThan(0);
   });
 
   it('thanks and goodbye are not worded by /reply', async () => {
@@ -126,7 +141,7 @@ describe('no AI, no wording', () => {
   it('without the AI layer (no consent, AI off) the template greeting is shown, nothing is called', async () => {
     const r = await answer('Selam', emptyContext('park'), baseDeps);
     expect(r.reply.text).toMatch(/Selam/);
-    expect(labels(r.reply)).not.toContain('Otopark bul');
+    expect(labels(r.reply)).toEqual(['Otopark bul', 'Yemek bul']);
   });
 
   it('when the router did not answer (no uses left) the wording is not asked for', async () => {
@@ -136,7 +151,7 @@ describe('no AI, no wording', () => {
     const r = await answer('Selam', emptyContext('park'), deps);
     expect(understand).not.toHaveBeenCalled();
     expect(reply).not.toHaveBeenCalled();
-    expect(labels(r.reply)).not.toContain('Otopark bul');
+    expect(labels(r.reply)).toEqual(['Otopark bul', 'Yemek bul']);
   });
 
   it('when the router failed, nor is it', async () => {

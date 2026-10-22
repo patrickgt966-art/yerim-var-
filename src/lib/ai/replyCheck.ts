@@ -40,6 +40,18 @@ const RATING_WORDS =
 const FREE_WORDS = /(^| )(ucretsiz|free|bedava)( |$)/;
 /** Words that call a place near ("en yakın", "yakında", "hemen yanında", "nearby", "closest"). */
 const NEAR_WORDS = /(^| )(yakin|hemen yan|nearby|nearest|closest|close by|close to|next to)/;
+/** Folded wordings that say a car park has room: "boş yeri olan", "boş yer var", "müsait", "boş yer sayıları". */
+const ROOM_WORDS =
+  /(^| )(bos yer|bos alan|bos kontenjan|musait|(park|otopark|arac) yer\w* var)|(^| )(free|empty|vacant|available|open) (spot|space|parking spot|parking space)s?( |$)|(^| )(spots|spaces|room) (left|available|free)( |$)/;
+/** A sentence that says the room is not known ("boş yer bilgisi elimde yok"): not a room claim. */
+const NOT_KNOWN =
+  /(^| )(bilgi\w* (yok|mevcut degil)|elimde yok|bilmiyorum|bilinmiyor|bilgim yok|(not|n t|no) (know|known|live|data|info)|do not have|dont have|don t have|unknown)/;
+/** A sentence that says nothing was found: it contradicts the cards shown with it ("uygun bir aday bulamadık"). */
+const NOT_FOUND =
+  /(^| )(bulamad|bulunamad|aday (yok|bulun)|uygun (bir )?(yer|aday|sonuc) (yok|bulun)|(could not|couldn t|did not|didn t) find|no (match|matches|results?|candidates?)( |$)|nothing (found|matches))/;
+/** A sentence that sends the user to the cards or the app for menus: the cards carry no menus. */
+const MENU_ON_CARDS = /(^| )menu/;
+const CARD_WORDS = /(^| )(kart|card|uygulama|app)/;
 const URL_PATTERN = /https?:|www\.|:\/\/|@|#|\.(com|net|org|app|io|tr)\b/i;
 
 type Options = {
@@ -60,6 +72,35 @@ function sentenceCount(text: string): number {
 /** Every digit run of the text, as numbers. */
 function digitsIn(s: string): number[] {
   return [...s.matchAll(/\d+/g)].map((m) => Number(m[0]));
+}
+
+/** True when the facts carry a live free-space count for a listed car park. */
+function hasLiveCounts(facts: AiReplyFacts): boolean {
+  return (facts.items ?? []).some((i) => typeof i.freeSpots === 'number');
+}
+
+/**
+ * True when a sentence of the wording claims room in car parks the facts have no live count for
+ * ("boş yeri olan 22 otopark buldum"), says nothing was found while results are shown, or says the
+ * cards show menus (they do not). A sentence that says the count is not known is fine.
+ */
+function overclaims(
+  clean: string,
+  facts: AiReplyFacts,
+  allow: string[],
+  kind: AiReplyKind | undefined,
+): boolean {
+  const live = hasLiveCounts(facts);
+  // Results are shown with the wording: it never says nothing was found.
+  const shown = kind !== 'none_found' && (facts.count ?? 0) > 0;
+  for (const sentence of clean.split(/(?<=[.!?…])\s+/)) {
+    const f = withoutFactStrings(fold(sentence), facts, allow);
+    const padded = ` ${f} `;
+    if (MENU_ON_CARDS.test(padded) && CARD_WORDS.test(padded)) return true;
+    if (!live && ROOM_WORDS.test(padded) && !NOT_KNOWN.test(padded)) return true;
+    if (shown && NOT_FOUND.test(padded)) return true;
+  }
+  return false;
 }
 
 /** The names and labels the facts carry. */
@@ -159,7 +200,9 @@ function insideName(words: string[], name: string): boolean {
  * characters, a link, a number the facts do not carry (Turkish and English number words count), a
  * capitalised name that is not one of the fact names (or an allowed city / district name, or
  * "Yerim"; the word that opens a sentence is free), a price or rating word, "free" without a free
- * fact, parking talk when the facts hold no parking data, or a near-word ("yakında", "nearby")
+ * fact, parking talk when the facts hold no parking data, room in car parks without a live free
+ * count (unless the sentence says it is not known), cards that show menus, "not found" next to
+ * shown results, or a near-word ("yakında", "nearby")
  * when a result is more than FAR_WALK_MIN minutes away. Returned trimmed, on one line.
  */
 export function validateReply(
@@ -176,6 +219,8 @@ export function validateReply(
   const allow = options.allow ?? [];
   // What is left after the fact names are taken out is checked for numbers and forbidden words.
   const rest = withoutFactStrings(fold(clean), facts, allow);
+
+  if (overclaims(clean, facts, allow, options.kind)) return null;
 
   const known = factNumbers(facts);
   for (const n of digitsIn(rest)) if (!known.has(n)) return null;
