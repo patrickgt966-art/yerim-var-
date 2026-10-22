@@ -22,7 +22,7 @@ import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import i18n from '@/i18n';
-import { validateReply } from '@/lib/ai/replyCheck';
+import { validateReplyReason } from '@/lib/ai/replyCheck';
 import {
   REPLY_TIMEOUT_MS,
   ROUTER_TIMEOUT_MS,
@@ -301,6 +301,7 @@ async function playTurn(
             kind: req.kind,
             raw: null,
             accepted: null,
+            rejectReason: null,
             shown: false,
             late: false,
             hasFreeSpots: (req.facts.items ?? []).some((i) => i.freeSpots !== undefined),
@@ -312,10 +313,13 @@ async function playTurn(
             outage(e);
           }
           w.late = Date.now() - started > REPLY_TIMEOUT_MS;
-          w.accepted = validateReply(w.raw, req.facts, {
+          const verdict = validateReplyReason(w.raw, req.facts, {
             kind: req.kind,
             allow: [city.name, ...city.districts],
           });
+          w.accepted = verdict.text;
+          // A call that failed has no text to judge: that is "failed", not a rejection.
+          w.rejectReason = verdict.text === null && w.raw !== null ? verdict.reason : null;
           return w.raw;
         })();
         pending.push(p);

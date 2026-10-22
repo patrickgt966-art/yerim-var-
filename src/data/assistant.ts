@@ -67,6 +67,7 @@ import {
   type NearbyRestaurant,
   hasWordForm,
   hasWordStart,
+  categoryForQuery,
   isFoodWord,
   WIDE_RADII_M,
   withParkingWithin,
@@ -371,6 +372,30 @@ function hasExactNameWord(foldedName: string, word: string): boolean {
 }
 /** True for a folded word that names a dish or a food category ("kahvaltı", "kebap"). */
 const isFoodOrDish = (w: string): boolean => isFoodWord(w) || dishProfile(w, false) !== null;
+/**
+ * True when the message is just the dish the search read (plus a district, a city or a generic
+ * word): "adana kebap", "izmir köfte". A message with other words ("bursa kebap evi") may be a name.
+ */
+function messageIsDish(folded: string, dish: string): boolean {
+  if (dishProfile(folded, false) !== null) return true;
+  // Starting with a dish or category word ("kebap evi") is a dish ask, as it always was.
+  const first = bareNameWordsOf(folded)[0];
+  if (first && isDishOrCategoryWord(first)) return true;
+  const dishWords = fold(dish).split(' ');
+  return bareNameWordsOf(folded).every(
+    (w) => isCityOrDistrictWord(w) || dishWords.some((d) => w.startsWith(d) || d.startsWith(w)),
+  );
+}
+
+/**
+ * Like isFoodOrDish, but spelled right: no loose food lexicon and no typo tolerance, so a word of
+ * a name that only looks like a dish ("kardeş" is not "karides") is not a dish.
+ */
+function isDishOrCategoryWord(w: string): boolean {
+  if (categoryForQuery(w, false, false) !== null) return true;
+  const dish = dishProfile(w, false)?.dish;
+  return !!dish && w.startsWith(fold(dish));
+}
 
 /** True when the typed words are a known place (a square, a street, a mall) rather than a restaurant name. */
 function isKnownPlace(words: string[]): boolean {
@@ -395,7 +420,17 @@ function restaurantsNamed(folded: string): Restaurant[] {
     if (exact.length > 0) return exact;
   }
   const bare = bareNameWordsOf(folded);
-  if (bare.length === 0 || bare.some(isFoodOrDish) || isKnownPlace(bare)) return [];
+  // A dish or category phrase is not a name. A food word inside a longer name is ("Kardeş
+  // Balıkçılık", "Bursa Kebap Evi"): only all-food words, a dish phrase, a first word that is
+  // itself a dish or category, or a known place keep the text as it was read.
+  if (
+    bare.length === 0 ||
+    isKnownPlace(bare) ||
+    bare.every(isFoodOrDish) ||
+    isDishOrCategoryWord(bare[0]!) ||
+    dishProfile(bare.join(' '), false) !== null
+  )
+    return [];
   if (trimmed && !asked.some(isFoodOrDish)) {
     const exact = all.filter((r) => fold(r.name).startsWith(q));
     if (exact.length > 0) return exact;
@@ -409,7 +444,17 @@ function restaurantsNamed(folded: string): Restaurant[] {
     });
     if (whole.length > 0) return whole;
   }
+  // A district or the city as the first word is a where, not the start of a name to repair.
+  if (isCityOrDistrictWord(bare[0]!)) return [];
   return all.filter((r) => fuzzyNameStart(fold(r.name), bare));
+}
+
+/** True for a folded word that is the active city's name or the (first word of a) district name. */
+function isCityOrDistrictWord(w: string): boolean {
+  const city = activeCity();
+  return (
+    fold(city.name) === w || city.districtCenters.some((d) => fold(d.name).split(' ')[0] === w)
+  );
 }
 
 /** True when a message of two or more words is the name (or its start) of a restaurant of the city. */
@@ -918,7 +963,9 @@ function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps
     if (card.kind === 'parking') {
       if (card.free !== null) item.freeSpots = card.free;
       if (card.open !== 'unknown') item.openNow = card.open === 'open';
-      if (deps.parkings.find((p) => p.id === card.id)?.isPaid === false) item.free = true;
+      const paid = deps.parkings.find((p) => p.id === card.id)?.isPaid;
+      if (paid === false) item.free = true;
+      else if (paid === true) item.free = false;
       return item;
     }
     if (card.narr && card.narr.open !== 'unknown') item.openNow = card.narr.open === 'open';
@@ -927,6 +974,7 @@ function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps
       if (card.parkingM != null) item.parkWalkMin = walkMinFromMeters(card.parkingM);
       if (card.narr?.parkingFree != null) item.freeSpots = card.narr.parkingFree;
       if (card.narr?.parkingPaid === false) item.free = true;
+      else if (card.narr?.parkingPaid === true) item.free = false;
     }
     return item;
   });
@@ -1740,11 +1788,14 @@ async function answerText(
   // The start of a restaurant's name ("Köfteci Yusuf", "Tire Köftecisi"): those places, wherever
   // they are. Not when the words are only a dish our data knows ("adana kebap", "çiğ köfte"): the
   // dish search finds the places nearby that serve it, whatever a far business is called.
+  // Not either when the dish is only part of a longer text that starts like a name ("bursa kebap
+  // evi", "aklan unlu mamüller" read as börek): the name lookup runs first, with its own guards.
   const knownDish =
     it.kind === 'search' &&
     !it.placeQuery &&
     !!it.dish &&
-    dishProfile(fold(it.dish), false) !== null;
+    dishProfile(fold(it.dish), false) !== null &&
+    messageIsDish(folded, it.dish);
   if (!knownDish && folded.split(' ').length >= 2) {
     const matches = restaurantsNamed(folded);
     const first = matches[0];
@@ -3209,6 +3260,8 @@ function runPark(
           where,
           count: list.length,
           parkSearch: true,
+          // The list was cut to the car parks without a fee.
+          ...(ctx.freeParking ? { freeOnly: true } : {}),
           ...(walkMinFromMeters(nearest.d) > FAR_WALK_MIN
             ? { far: true, farWalkMin: walkMinFromMeters(nearest.d) }
             : {}),

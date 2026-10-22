@@ -35,6 +35,8 @@ export type ObservedWording = {
   raw: string | null;
   /** validateReply's verdict on it: the text the app would show, or null (the template is shown). */
   accepted: string | null;
+  /** Why validateReply dropped a text the model wrote; null when accepted or the call failed. */
+  rejectReason: string | null;
   /** The accepted text is in the reply the user saw (it came within the app's wait). */
   shown: boolean;
   /** The model answered after the app's REPLY_TIMEOUT_MS. */
@@ -722,6 +724,7 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
     const ok = ws.filter((w) => w.accepted !== null).length;
     lines.push(`- ${kind}: ${ok}/${ws.length} (${pct(ok, ws.length)})`);
   }
+  lines.push(...rejectionLines(wordings));
   const lengths = results.flatMap((r) => r.turns.map((t) => messageSentences(t.text)));
   const buckets = [1, 2, 3, 4].map((n) => lengths.filter((l) => l === n).length);
   const long = lengths.filter((l) => l > 4).length;
@@ -753,3 +756,30 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
 
 /** 1234567 -> "1 234 567". */
 export const fmt = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+/** Per kind, the reasons validateReply dropped the model's wordings, most common first, with one text each. */
+export function rejectionLines(wordings: readonly ObservedWording[]): string[] {
+  const rejected = wordings.filter((w) => w.rejectReason !== null);
+  if (rejected.length === 0) return [];
+  const lines = ['', '### Rejected wordings by kind and reason', ''];
+  lines.push('| Kind | Reason | Count | Example |');
+  lines.push('| --- | --- | --- | --- |');
+  for (const kind of [...new Set(rejected.map((w) => w.kind))]) {
+    const ofKind = rejected.filter((w) => w.kind === kind);
+    const reasons = new Map<string, ObservedWording[]>();
+    for (const w of ofKind)
+      reasons.set(w.rejectReason!, [...(reasons.get(w.rejectReason!) ?? []), w]);
+    const top = [...reasons.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, TOP_REASONS);
+    for (const [reason, ws] of top) {
+      const example = (ws[0]!.raw ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/');
+      lines.push(`| ${kind} | ${reason} | ${ws.length}/${ofKind.length} | ${example} |`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+/** How many reasons per kind the rejection table lists. */
+const TOP_REASONS = 3;

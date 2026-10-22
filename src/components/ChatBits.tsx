@@ -232,7 +232,10 @@ export function BotBubble({
   const countsStale = message.at != null && now - message.at > UPDATED_MAX_AGE_MS;
   const openCard = (card: ChatCard) =>
     card.kind === 'restaurant'
-      ? router.push({ pathname: '/restoran/[id]', params: { id: card.id } })
+      ? router.push({
+          pathname: '/restoran/[id]',
+          params: card.parkAsked ? { id: card.id, park: '1' } : { id: card.id },
+        })
       : router.push({ pathname: '/otopark/[id]', params: { id: card.id } });
   return (
     <View style={{ gap: 12 }}>

@@ -15,6 +15,7 @@ import {
   costOf,
   estimateCost,
   messageSentences,
+  rejectionLines,
   repeatedWordings,
   scoreAll,
   scoreCase,
@@ -83,6 +84,7 @@ const wording = (
   kind: 'food',
   raw: accepted,
   accepted,
+  rejectReason: null,
   shown: accepted !== null,
   late: false,
   hasFreeSpots: false,
@@ -824,5 +826,32 @@ describe('scorer false positives of the 120-case run', () => {
       obs({ input: 'fit menü arıyorum', text: question }),
     );
     expect(s.honesty.ok).toBe(true);
+  });
+});
+
+describe('rejection reasons in the report', () => {
+  const rejected = (kind: ObservedWording['kind'], raw: string, reason: string) =>
+    wording(null, { kind, raw, rejectReason: reason });
+
+  it('lists per kind the most common reasons with one example text each', () => {
+    const lines = rejectionLines([
+      rejected('park', 'Konak’ta 99 otopark var.', 'number-not-in-facts'),
+      rejected('park', 'Alsancak’ta 77 yer var.', 'number-not-in-facts'),
+      rejected('park', 'Boş yeri olan otoparklar var.', 'room-without-live-count'),
+      rejected('food', 'Ucuz yerler.', 'price-word'),
+      wording('Temiz bir cevap.', { kind: 'park' }),
+      wording(null, { kind: 'park', raw: null }),
+    ]).join('\n');
+    expect(lines).toContain('| park | number-not-in-facts | 2/3 | Konak’ta 99 otopark var. |');
+    expect(lines).toContain(
+      '| park | room-without-live-count | 1/3 | Boş yeri olan otoparklar var. |',
+    );
+    expect(lines).toContain('| food | price-word | 1/1 | Ucuz yerler. |');
+    // A failed call and an accepted text are not rejections.
+    expect(lines).not.toContain('Temiz bir cevap.');
+  });
+
+  it('prints nothing when nothing was rejected', () => {
+    expect(rejectionLines([wording('Tamam.')])).toEqual([]);
   });
 });

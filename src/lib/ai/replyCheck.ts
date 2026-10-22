@@ -35,6 +35,8 @@ const UNIT_START = /^(dakika|dk|min|bos)/;
 const PARKING_WORDS = /(^| )(otopark|park|parking|garaj|garage|vale|valet)/;
 const PRICE_WORDS =
   /(^| )tl( |$)|(^| )(fiyat|lira|ucuz|pahali|indirim|kampanya|price|priced|pricey|cheap|expensive|euro|dolar|dollar|discount|budget|cost|ucret(?!siz))/;
+/** "ücretli" / "paid": only a yes/no on the fee, no amount; fine when a fact says the car park is paid. */
+const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
 const RATING_WORDS =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(star|stars|rating|ratings|rated|review|reviews)( |$)/;
 const FREE_WORDS = /(^| )(ucretsiz|free|bedava)( |$)/;
@@ -52,6 +54,11 @@ const NOT_FOUND =
 /** A sentence that sends the user to the cards or the app for menus: the cards carry no menus. */
 const MENU_ON_CARDS = /(^| )menu/;
 const CARD_WORDS = /(^| )(kart|card|uygulama|app)/;
+/**
+ * Names of car park operators and owners (folded words): the model knows them, they are no
+ * invented place. Allowed with parking facts only; a number or a place still must be a fact.
+ */
+const OPERATOR_WORDS = ['ispark', 'izelman', 'burpark', 'belediye', 'belediyesi', 'buyuksehir'];
 const URL_PATTERN = /https?:|www\.|:\/\/|@|#|\.(com|net|org|app|io|tr)\b/i;
 
 type Options = {
@@ -80,27 +87,29 @@ function hasLiveCounts(facts: AiReplyFacts): boolean {
 }
 
 /**
- * True when a sentence of the wording claims room in car parks the facts have no live count for
- * ("boş yeri olan 22 otopark buldum"), says nothing was found while results are shown, or says the
- * cards show menus (they do not). A sentence that says the count is not known is fine.
+ * The reason when a sentence of the wording claims room in car parks the facts have no live count
+ * for ("boş yeri olan 22 otopark buldum"), says nothing was found while results are shown, or says
+ * the cards show menus (they do not); null otherwise. A sentence that says the count is not known
+ * is fine.
  */
 function overclaims(
   clean: string,
   facts: AiReplyFacts,
   allow: string[],
   kind: AiReplyKind | undefined,
-): boolean {
+): string | null {
   const live = hasLiveCounts(facts);
   // Results are shown with the wording: it never says nothing was found.
   const shown = kind !== 'none_found' && (facts.count ?? 0) > 0;
   for (const sentence of clean.split(/(?<=[.!?…])\s+/)) {
     const f = withoutFactStrings(fold(sentence), facts, allow);
     const padded = ` ${f} `;
-    if (MENU_ON_CARDS.test(padded) && CARD_WORDS.test(padded)) return true;
-    if (!live && ROOM_WORDS.test(padded) && !NOT_KNOWN.test(padded)) return true;
-    if (shown && NOT_FOUND.test(padded)) return true;
+    if (MENU_ON_CARDS.test(padded) && CARD_WORDS.test(padded)) return 'menu-on-cards';
+    if (!live && ROOM_WORDS.test(padded) && !NOT_KNOWN.test(padded))
+      return 'room-without-live-count';
+    if (shown && NOT_FOUND.test(padded)) return 'not-found-with-results';
   }
-  return false;
+  return null;
 }
 
 /** The names and labels the facts carry. */
@@ -117,6 +126,8 @@ function factNumbers(facts: AiReplyFacts): Set<number> {
   const out = new Set<number>();
   if (typeof facts.count === 'number') out.add(facts.count);
   if (typeof facts.farWalkMin === 'number') out.add(facts.farWalkMin);
+  // "ilk üç otopark": how many results are listed is a fact too.
+  if ((facts.items ?? []).length > 0) out.add(facts.items!.length);
   for (const i of facts.items ?? []) {
     for (const n of [i.walkMin, i.parkWalkMin, i.freeSpots]) if (typeof n === 'number') out.add(n);
   }
@@ -210,46 +221,70 @@ export function validateReply(
   facts: AiReplyFacts,
   options: Options = {},
 ): string | null {
-  if (typeof text !== 'string') return null;
+  return validateReplyReason(text, facts, options).text;
+}
+
+/** validateReply's verdict with the reason a text was dropped (the eval reports these). */
+export type ReplyVerdict = { text: string; reason: null } | { text: null; reason: string };
+
+/** Same check as validateReply, but says why a text was dropped. */
+export function validateReplyReason(
+  text: string | null | undefined,
+  facts: AiReplyFacts,
+  options: Options = {},
+): ReplyVerdict {
+  const no = (reason: string): ReplyVerdict => ({ text: null, reason });
+  if (typeof text !== 'string') return no('no-text');
   const clean = text.replace(/\s+/g, ' ').trim();
-  if (clean === '' || clean.length > MAX_REPLY_TEXT_CHARS) return null;
-  if (sentenceCount(clean) > MAX_REPLY_SENTENCES) return null;
-  if (URL_PATTERN.test(clean) || /[₺$€]/.test(clean)) return null;
+  if (clean === '') return no('empty');
+  if (clean.length > MAX_REPLY_TEXT_CHARS) return no('too-long');
+  if (sentenceCount(clean) > MAX_REPLY_SENTENCES) return no('too-many-sentences');
+  if (URL_PATTERN.test(clean) || /[₺$€]/.test(clean)) return no('link-or-currency');
 
   const allow = options.allow ?? [];
   // What is left after the fact names are taken out is checked for numbers and forbidden words.
   const rest = withoutFactStrings(fold(clean), facts, allow);
 
-  if (overclaims(clean, facts, allow, options.kind)) return null;
+  const over = overclaims(clean, facts, allow, options.kind);
+  if (over) return no(over);
 
   const known = factNumbers(facts);
-  for (const n of digitsIn(rest)) if (!known.has(n)) return null;
+  for (const n of digitsIn(rest)) if (!known.has(n)) return no('number-not-in-facts');
   const words = rest.split(' ');
   for (let i = 0; i < words.length; i++) {
     const w = words[i]!;
     const sure = NUMBER_WORDS[w];
-    if (sure !== undefined && !known.has(sure)) return null;
+    if (sure !== undefined && !known.has(sure)) return no('number-word-not-in-facts');
     const maybe = AMBIGUOUS_NUMBERS[w];
     if (maybe !== undefined && UNIT_START.test(words[i + 1] ?? '') && !known.has(maybe)) {
-      return null;
+      return no('number-word-not-in-facts');
     }
   }
 
   const padded = ` ${rest} `.replace(/ feel free /g, ' ');
-  if (PRICE_WORDS.test(padded) || RATING_WORDS.test(padded)) return null;
+  // A car park the facts call paid (`free: false`) may be called "ücretli": a yes/no, not an amount.
+  const paidKnown = (facts.items ?? []).some((i) => i.free === false);
+  if (PRICE_WORDS.test(paidKnown ? padded.replace(PAID_WORDS, ' ') : padded)) {
+    return no('price-word');
+  }
+  if (RATING_WORDS.test(padded)) return no('rating-word');
   const freeKnown = facts.freeOnly === true || (facts.items ?? []).some((i) => i.free === true);
-  if (!freeKnown && FREE_WORDS.test(padded)) return null;
+  if (!freeKnown && FREE_WORDS.test(padded)) return no('free-without-fact');
   // A far result is never called near: the walk of a shown item (or the far flag) says it is not.
   const far =
     facts.far === true || (facts.items ?? []).some((i) => (i.walkMin ?? 0) > FAR_WALK_MIN);
-  if (far && NEAR_WORDS.test(padded)) return null;
+  if (far && NEAR_WORDS.test(padded)) return no('near-word-for-far');
   if (options.kind !== 'greeting' && !hasParkingFacts(facts) && PARKING_WORDS.test(padded)) {
-    return null;
+    return no('parking-without-data');
   }
 
   // A capitalised run must be (part of) a fact name, an allowed name or "Yerim".
   const names = factStrings(facts);
-  const allowed = new Set([...allow, 'Yerim', 'Yerim Var'].map((n) => fold(n)));
+  const allowed = new Set(
+    [...allow, 'Yerim', 'Yerim Var', ...(hasParkingFacts(facts) ? OPERATOR_WORDS : [])].map((n) =>
+      fold(n),
+    ),
+  );
   const passes = (run: string[]) => {
     const f = run.map((w) => fold(w)).filter(Boolean);
     if (f.length === 0) return true;
@@ -261,7 +296,7 @@ export function validateReply(
     // The word that opens a sentence is capitalised anyway; the rest of the run must still pass.
     if (run.opensSentence && run.words.length === 1) continue;
     if (run.opensSentence && passes(run.words.slice(1))) continue;
-    return null;
+    return no('unknown-name');
   }
-  return clean;
+  return { text: clean, reason: null };
 }

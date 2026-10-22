@@ -108,4 +108,30 @@ describe('"Yol tarifi" in the chat', () => {
     await waitFor(() => expect(mockOpen).toHaveBeenCalledTimes(1), WAIT);
     expect(screen.queryByText(/Arabayla mı gidiyorsun\?/)).toBeNull();
   });
+
+  /** The first food card's own button (not its "Yol tarifi"): the label carries the distance. */
+  const openFirstCard = async () => {
+    const card = screen
+      .getAllByRole('button')
+      .find((b) => /\d+(,\d)? (m|km)\b/.test(String(b.props.accessibilityLabel)));
+    await fireEvent.press(card!);
+  };
+
+  it('a food card of a parking ask opens the detail with the parking section (park=1)', async () => {
+    await ask('Bornova otoparklı köfteci');
+    await openFirstCard();
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/restoran/[id]',
+      params: { id: expect.any(String), park: '1' },
+    });
+  });
+
+  it('a food card without a parking ask opens the detail with no park param', async () => {
+    await ask('Bornova köfteci');
+    await openFirstCard();
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/restoran/[id]',
+      params: { id: expect.any(String) },
+    });
+  });
 });

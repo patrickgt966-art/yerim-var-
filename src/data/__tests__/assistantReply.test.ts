@@ -264,6 +264,25 @@ describe('a car park turn', () => {
     expect(r.reply.cards.length).toBeGreaterThan(0);
   });
 
+  it('the facts carry the fee of each car park and "freeOnly" for a free-parking ask', async () => {
+    const understood = searchU({ food: false, cat: null, nearMe: true });
+    const asked = mockAi(understood);
+    await answer('yakınımda otopark', emptyContext('park'), asked.deps);
+    const sent = sentOf(asked.reply);
+    const paid = new Map(baseDeps.parkings.map((p) => [p.name, p.isPaid]));
+    for (const item of sent.facts.items!) {
+      const isPaid = paid.get(item.name);
+      expect(item.free).toBe(isPaid === false ? true : isPaid === true ? false : undefined);
+    }
+    expect(sent.facts.freeOnly).toBeUndefined();
+
+    const free = mockAi(understood);
+    await answer('yakınımda otopark', { ...emptyContext('park'), freeParking: true }, free.deps);
+    const freeSent = sentOf(free.reply);
+    expect(freeSent.facts.freeOnly).toBe(true);
+    expect(freeSent.facts.items!.every((i) => i.free === true)).toBe(true);
+  });
+
   it('nothing found: the AI may word the "nothing here" sentence', async () => {
     const far = { lat: 40.5, lng: 29.5 };
     const understood = searchU({ food: false, nearMe: false, place: 'Uzak Yer' });
