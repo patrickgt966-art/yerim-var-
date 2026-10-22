@@ -780,9 +780,12 @@ export const WISH_WORDS: Record<Wish, string[]> = {
   quick: ['cabuk', 'cabucak', 'acele', 'hizlica', 'hizli'],
   view: ['manzara'],
   late: ['gece', 'gec'],
-  healthy: ['saglikli', 'diyet', 'fit', 'hafif', 'light', 'kalori'],
+  // "zayıflamak", "kalori saymak"; "kalorili" (high calorie) is hearty, see wishesIn.
+  healthy: ['saglikli', 'diyet', 'fit', 'hafif', 'light', 'kalori', 'zayifla'],
   // "kas" (muscle) is a whole word only: "kasap" is a butcher. Words under 4 letters never match a longer form.
-  protein: ['protein', 'kas', 'kasli', 'spor', 'sporcu', 'fitness', 'gym', 'bulk'],
+  protein: ['protein', 'kas', 'kasli', 'spor', 'sporcu', 'fitness', 'gym'],
+  // Filling food: "doyurucu", "bulk yapıyorum"; "kalorili", "kilo almak", "tok tutsun" are said in wishesIn.
+  hearty: ['doyur', 'bulk'],
   tasty: ['lezzetli', 'nefis', 'enfes', 'leziz'],
   outdoor: ['bahce', 'teras', 'balkon', 'disarida'],
   // Car parks. "ücretsiz", "metro" and "engelli" next to a place stay with the normal search, so
@@ -809,6 +812,15 @@ const WISH_PHRASES: [Wish, string][] = [
   ['big_vehicle', ' buyuk arac'],
   ['big_vehicle', ' yuksek arac'],
   ['healthy', ' temiz beslen'],
+  ['healthy', ' kilo ver'],
+  ['healthy', ' kilo kayb'],
+  ['hearty', ' kilo al '],
+  ['hearty', ' kilo alm'],
+  ['hearty', ' kilo alay'],
+  ['hearty', ' kilo alic'],
+  ['hearty', ' tok tut'],
+  ['hearty', ' karnim cok ac'],
+  ['hearty', ' karnim doy'],
   ['cheap', ' cebime uygun'],
   ['cheap', ' uygun fiyat'],
   ['quick', ' vaktim yok'],
@@ -830,10 +842,26 @@ export function wishesIn(text: string): Wish[] {
   const folded = fold(text.toLocaleLowerCase('tr').replace(/kaş/g, 'kasx'));
   const tokens = folded.split(' ').filter(Boolean);
   const out: Wish[] = [];
+  // "kalori" is light food ("düşük kalorili", "kalori saymak"), "kalorili" and "yüksek kalori" are
+  // filling food. The word "kalori" counts for one of the two wishes only.
+  const kcal = (t: string, i: number): 'healthy' | 'hearty' | null => {
+    if (!t.startsWith('kalori')) return null;
+    const before = tokens[i - 1] ?? '';
+    const after = tokens[i + 1] ?? '';
+    if (['dusuk', 'az', 'hafif'].includes(before) || after === 'dusuk') return 'healthy';
+    if (['yuksek', 'bol'].includes(before) || after === 'yuksek') return 'hearty';
+    return t.startsWith('kalorili') ? 'hearty' : 'healthy';
+  };
   for (const wish of Object.keys(WISH_WORDS) as Wish[]) {
-    const hit = WISH_WORDS[wish].some((stem) =>
-      tokens.some((t) => t === stem || (stem.length >= 4 && t.startsWith(stem))),
-    );
+    const hit =
+      WISH_WORDS[wish].some((stem) =>
+        tokens.some(
+          (t, i) =>
+            (t === stem || (stem.length >= 4 && t.startsWith(stem))) &&
+            (stem !== 'kalori' || kcal(t, i) === 'healthy'),
+        ),
+      ) ||
+      (wish === 'hearty' && tokens.some((t, i) => kcal(t, i) === 'hearty'));
     if (hit) out.push(wish);
   }
   const padded = ` ${folded} `;

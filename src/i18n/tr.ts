@@ -884,16 +884,20 @@ const tr = {
     // Broad ask -> choices (src/data/choices.ts)
     choice: {
       all: 'Hepsi',
+      aiAsk: 'Bunlardan hangisi olsun?',
       ask: {
         protein: 'Yüksek proteinli neler istersin?',
         healthy: 'Hafif ve sağlıklı neler istersin?',
         quick: 'Hızlı ve pratik neler istersin?',
         sweet: 'Hangi tatlı olsun?',
+        hearty: 'Doyurucu neler istersin?',
       },
       note: {
         protein: 'Menü verimiz yok; yüksek proteinli seçenekleri yer türüne göre seçtim: {{list}}',
         healthy: 'Menü verimiz yok; hafif ve sağlıklı seçenekleri yer türüne göre seçtim: {{list}}',
         quick: 'Fiyat verimiz yok; genelde hızlı ve pratik olan yer türlerini seçtim: {{list}}',
+        hearty: 'Menü verimiz yok; doyurucu olabilecek yer türlerini seçtim: {{list}}',
+        ai: 'Menü verimiz yok; isteğine uyabilecek yer türlerini seçtim: {{kinds}}',
       },
     },
     // Clarify (job 3)

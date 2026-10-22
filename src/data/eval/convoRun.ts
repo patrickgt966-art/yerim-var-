@@ -17,7 +17,7 @@ import {
   type ChatCard,
   type ChatContext,
 } from '@/data/assistant';
-import { CHOICES, memberLabel } from '@/data/choices';
+import { KINDS, memberLabel } from '@/data/choices';
 import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
@@ -94,7 +94,7 @@ const message = (e: unknown): string =>
 
 type Resolved = { kind: 'chip'; action: ChatAction } | { kind: 'missing' };
 
-const KIND_LABELS = new Set(CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))));
+const KIND_LABELS = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
 
 /** The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too). */
 function chipOf(last: BotMessage | null, label: string): Resolved {

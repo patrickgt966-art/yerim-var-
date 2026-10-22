@@ -9,7 +9,7 @@
 //   4. honesty: no price, rating or menu claim, and the honest "no data" note when required.
 // A case passes when every check of every turn passes. How often validateReply accepts the AI's
 // wording is a rate that is reported, not a check: a rejected text falls back to the template.
-import { CHOICES, memberLabel } from '../choices';
+import { KINDS, memberLabel } from '../choices';
 import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
@@ -254,7 +254,7 @@ export function repeatedWordings(perCase: readonly (readonly WordingOf[])[]): Se
   });
 }
 
-const memberLabels = new Set(CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))));
+const memberLabels = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
 
 /** The folded text without the names of the shown places and the searched place (a car park may be in a name). */
 function withoutNames(text: string, cards: readonly ObservedCard[], place: string | null): string {

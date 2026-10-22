@@ -17,13 +17,16 @@ import {
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
 import {
+  aiEntry,
+  AI_CHOICE_ID,
   askEntryFor,
   CHOICES,
-  choiceById,
+  entryById,
   entryForCat,
   entryReason,
   inMember,
   isVague,
+  kindsOf,
   memberForAnswer,
   memberLabel,
   memberOf,
@@ -163,10 +166,12 @@ export type ChatContext = {
   query?: string;
   /** The cards of the last bot reply; "sence" / "sen seç" pick among them. */
   lastCards?: ChatCard[];
-  /** The question the last reply asked (choices.ts entry id): a typed "balık" / "hepsi" answers it. */
+  /** The question the last reply asked (choices.ts entry id, or 'ai'): a typed "balık" / "hepsi" answers it. */
   ask?: string;
   /** The kind of place picked from a choices.ts entry: one member id, or 'all' for the mix. */
   choice?: { id: string; member: string };
+  /** The kinds (choices.ts KINDS ids) of an 'ai' question / choice: the ones the router picked that have a place nearby. */
+  choiceKinds?: string[];
   /** The goal / mood wishes of a message Yerim asked a clarify question about: the answer keeps them. */
   clarifyWishes?: Wish[];
   /**
@@ -1488,7 +1493,7 @@ async function answerParkAsk(
 
 /** The member (or 'all') a typed answer picks from the question in `ctx.ask`, or null. */
 function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | null {
-  const entry = ctx.ask ? choiceById(ctx.ask) : undefined;
+  const entry = ctx.ask ? entryById(ctx.ask, ctx.choiceKinds) : undefined;
   const hit = entry ? memberForAnswer(entry, fold(text)) : null;
   if (!entry || !hit) return null;
   return { id: entry.id, member: hit === 'all' ? 'all' : hit.id };
@@ -1921,7 +1926,10 @@ async function answerText(
 
   const next: ChatContext = { ...ctx };
   // A new food search drops the kind picked before.
-  if (it.cat || it.food || it.dish) next.choice = undefined;
+  if (it.cat || it.food || it.dish) {
+    next.choice = undefined;
+    next.choiceKinds = undefined;
+  }
   if (it.cat) {
     next.cat = it.cat;
     next.dish = it.dish;
@@ -2500,7 +2508,7 @@ function goalAsFood(
 
 /** The members of the picked choice: one, or all of the entry's. */
 function activeChoice(ctx: ChatContext): { entry: ChoiceEntry; members: Member[] } | null {
-  const entry = ctx.choice ? choiceById(ctx.choice.id) : undefined;
+  const entry = ctx.choice ? entryById(ctx.choice.id, ctx.choiceKinds) : undefined;
   if (!entry || !ctx.choice) return null;
   if (ctx.choice.member === 'all') return { entry, members: entry.members };
   const one = entry.members.find((m) => m.id === ctx.choice!.member);
@@ -2572,6 +2580,8 @@ const allChip = (patch: Partial<ChatContext>, t: AssistantDeps['t']): ChatAction
  * A goal or mood without a category ("kaslıyım", "fit", "hızlı bir şey", "tatlı bir şey"): Yerim asks
  * which kind first, with one chip per kind that has a place within reach and "Hepsi" last. With one
  * kind only there is nothing to ask: that kind is shown. A category named directly never asks.
+ * When the router picked kinds of place for a goal or situation with no dish ("ilk buluşma"), those
+ * kinds are asked about instead (the 'ai' entry); the table is the fallback.
  */
 async function choiceQuestion(
   next: ChatContext,
@@ -2582,9 +2592,12 @@ async function choiceQuestion(
 ): Promise<{ kind: 'asked'; result: Result } | { kind: 'run'; ctx: ChatContext }> {
   const go = (ctx: ChatContext) => ({ kind: 'run' as const, ctx });
   if (it.kind !== 'search' || next.section !== 'food' || next.notCat) return go(next);
+  const tableEntry = (): ChoiceEntry | undefined =>
+    hasNoDataWish(meta.wishes) ? undefined : askEntryFor(meta.wishes);
+  const picked = !next.cat && !next.dish ? kindsOf(meta.ai?.kinds) : [];
   let entry: ChoiceEntry | undefined;
-  if (!next.cat && !next.dish)
-    entry = hasNoDataWish(meta.wishes) ? undefined : askEntryFor(meta.wishes);
+  if (picked.length > 0) entry = aiEntry(picked);
+  else if (!next.cat && !next.dish) entry = tableEntry();
   else if (next.cat) {
     const e = entryForCat(next.cat);
     const dish = next.dish ? fold(next.dish) : '';
@@ -2594,20 +2607,32 @@ async function choiceQuestion(
   if (!entry) return go(next);
   const here = (await deps.here()) ?? activeCity().center;
   const target = next.place ?? here;
-  const present = presentMembers(entry, target);
+  let present = presentMembers(entry, target);
   const base: ChatContext = { ...next, cat: null, dish: null, dishServes: null };
+  if (entry.id === AI_CHOICE_ID && present.length === 1) {
+    // One of the router's kinds is around: nothing to choose from, show it (with the honest note).
+    return go({ ...base, choice: { id: entry.id, member: 'all' }, choiceKinds: [present[0]!.id] });
+  }
+  if (entry.id === AI_CHOICE_ID && present.length === 0) {
+    // None of them is around: the table's entry for the wishes, else the search as before.
+    entry = tableEntry();
+    if (!entry) return go(next);
+    present = presentMembers(entry, target);
+  }
   if (present.length < 2) {
     // One kind or none: nothing to choose from, show that kind (or the category) as usual.
     return go(present.length === 1 ? { ...base, choice: { id: entry.id, member: 'all' } } : next);
   }
   const { t } = deps;
   const lang = i18n.language;
+  const ai = entry.id === AI_CHOICE_ID;
+  const aiKinds = ai ? { choiceKinds: present.map((m) => m.id) } : {};
   const chips: ChatAction[] = present.map((m) => ({
     kind: 'refine',
     label: memberLabel(m, lang),
-    patch: { choice: { id: entry.id, member: m.id }, ask: undefined },
+    patch: { choice: { id: entry.id, member: m.id }, ask: undefined, ...aiKinds },
   }));
-  chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined }, t));
+  chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined, ...aiKinds }, t));
   // The AI may word the question; the chips stay as built.
   const worded = await wording(
     'choice_question',
@@ -2622,12 +2647,13 @@ async function choiceQuestion(
     ...(meta.wishes.includes('quick') ? { sort: 'distance' as const } : {}),
     ...pendingAsk(meta),
     ask: entry.id,
+    choiceKinds: ai ? present.map((m) => m.id) : undefined,
   };
   return {
     kind: 'asked',
     result: plain(
       {
-        text: worded ?? t(`chat.choice.ask.${entry.id}`),
+        text: worded ?? t(ai ? 'chat.choice.aiAsk' : `chat.choice.ask.${entry.id}`),
         cards: [],
         actions: chips,
         ...(worded ? { sparkle: true } : {}),
@@ -2654,7 +2680,7 @@ function choiceNote(
     memberLabel(m, lang).toLocaleLowerCase(lang.startsWith('en') ? 'en' : 'tr'),
   );
   const list = labels.slice(0, 3).join(', ') + (labels.length > 3 ? '…' : '.');
-  return t(`chat.choice.note.${entry.id}`, { list });
+  return t(`chat.choice.note.${entry.id}`, { list, kinds: list });
 }
 
 function runFood(
@@ -2914,9 +2940,15 @@ function runFood(
         // The kind of place this card stands for: "balık · yüksek protein".
         const r = goal ? getRestaurant(id) : null;
         const m = goal && r ? memberOf(r, goalMembers) : null;
-        return goal && m
-          ? `${memberLabel(m, i18n.language).toLocaleLowerCase(i18n.language.startsWith('en') ? 'en' : 'tr')} · ${entryReason(goal, i18n.language)}`
-          : undefined;
+        const label =
+          goal && m
+            ? memberLabel(m, i18n.language).toLocaleLowerCase(
+                i18n.language.startsWith('en') ? 'en' : 'tr',
+              )
+            : null;
+        // The router's kinds have no reason of their own: the kind alone.
+        const why = goal ? entryReason(goal, i18n.language) : '';
+        return label ? (why ? `${label} · ${why}` : label) : undefined;
       }
       if (hit.byName) return t('chat.reasonNamed', { dish: dishName });
       if (hit.common) return t('chat.reasonCommon', { dish: dishName, shop: hit.common });

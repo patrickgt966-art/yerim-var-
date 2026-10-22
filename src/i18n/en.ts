@@ -987,17 +987,21 @@ const en = {
     // Broad ask -> choices (src/data/choices.ts)
     choice: {
       all: 'All',
+      aiAsk: 'Which of these?',
       ask: {
         protein: 'What kind of high-protein food would you like?',
         healthy: 'What kind of light, healthy food would you like?',
         quick: 'What kind of quick and easy food would you like?',
         sweet: 'Which kind of sweet?',
+        hearty: 'What kind of filling food would you like?',
       },
       note: {
         protein: 'We have no menu data; I picked high-protein options by type of place: {{list}}',
         healthy: 'We have no menu data; I picked light, healthy options by type of place: {{list}}',
         quick:
           'We have no price data; I picked kinds of places that are usually quick and easy: {{list}}',
+        hearty: 'We have no menu data; I picked kinds of places that can be filling: {{list}}',
+        ai: 'We have no menu data; I picked kinds of places that may suit your request: {{kinds}}',
       },
     },
     // Clarify (job 3)

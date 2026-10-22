@@ -4,7 +4,7 @@
 // data of all five cities; the expectations say what the user must see, and only that, so a
 // different sensible answer passes. See convoScore.ts for how a turn is scored.
 import { cleanName } from '../names';
-import { CHOICES, memberLabel } from '../choices';
+import { CHOICES, KINDS, memberLabel } from '../choices';
 import { foodFile } from '../cityData';
 import { quartersOf } from '../quarters';
 import type { FoodCategory } from '../restaurants';
@@ -289,7 +289,7 @@ function food(
 
 /** The broad asks of choices.ts: the words, the wishes the router gives them, the kinds to tap. */
 type AskSpec = {
-  id: 'protein' | 'healthy' | 'quick' | 'sweet';
+  id: 'protein' | 'healthy' | 'quick' | 'sweet' | 'hearty';
   /** The question may be this entry's or its neighbour's (a diet word is both). */
   asks: string[];
   texts: string[];
@@ -376,8 +376,63 @@ const ASK_SPECS: AskSpec[] = [
     ],
     note: false,
   },
+  {
+    id: 'hearty',
+    asks: ['hearty'],
+    texts: [
+      'kilo almak istiyorum',
+      'kilo almam lazım',
+      'bulk yapıyorum',
+      'bulk dönemindeyim bir şey yiyeyim',
+      'doyurucu bir şey',
+      'doyurucu bir şeyler yiyelim',
+      'çok acıktım tok tutsun',
+      'karnım çok aç',
+      'kalorili bir şey lazım',
+      'kilo almak için ne yiyebilirim',
+      'tok tutacak bir şey olsun',
+      'karnımı iyice doyuracak bir şey',
+      'kalorisi yüksek bir şeyler yemek istiyorum',
+      'bol kalorili doyurucu yemek',
+      'çok aç olduğum için doyurucu bir yer',
+    ],
+    wishes: ['hearty'],
+    taps: [
+      { label: 'Döner', member: 'doner', word: 'döner' },
+      { label: 'Pide / Lahmacun', member: 'pide', word: 'pide' },
+      { label: 'Burger', member: 'burger', word: 'burger' },
+    ],
+    note: true,
+  },
 ];
 const ALL_ANSWERS = ['hepsi', 'hepsini göster', 'farketmez', 'herhangi biri', 'tümü', 'hepsi olur'];
+
+/**
+ * Occasions, moods and situations that name no dish and have no entry in choices.ts: the router
+ * picks 3-6 kinds of place from the catalog (protocol.ts KIND_NAMES) and Yerim asks which one.
+ */
+const SITUATIONS = [
+  'ilk buluşmaya gideceğiz',
+  'maçtan sonra 5 kişiyiz bir şey yiyelim',
+  'akşamdan kalmayım',
+  'soğuk havada içimi ısıtacak bir şey',
+  'sınavdan çıktım ödül yemeği yiyelim',
+  'yağmur yağıyor sıcak bir şey',
+  'sevgilimle yıldönümümüzü kutlayacağız',
+  'iş arkadaşlarımla öğle yemeğine çıkıyoruz',
+  'annem geliyor güzel bir yere götürmek istiyorum',
+  'çocuklarla doğum günü yapacağız',
+  'moralim bozuk bir şeyler yiyip düzelmek istiyorum',
+  'gece geç saatte acıktım',
+  'konsere gitmeden önce bir şeyler atıştıralım',
+  'arkadaşlar toplanıyoruz yiyip sohbet edeceğiz',
+  'midem bozuldu rahatlatacak bir şey',
+  'terfi aldım kutlama yapmak istiyorum',
+  'uzun bir yürüyüşten döndük yorgunuz',
+  'misafirim var ağırlamak için güzel bir yer',
+  'arkadaşıma doğum günü sürprizi yapacağız',
+  'tatil için geldim yöresel bir şeyler denemek istiyorum',
+];
 
 /** Broad categories named directly: they show results and offer the kinds inside as chips. */
 type NarrowSpec = { cat: FoodCategory; texts: string[] };
@@ -407,7 +462,7 @@ export const TAPPABLE_LABELS: string[] = [
   tr.chat.actOnlyParking,
   tr.chat.parkAskYes,
   tr.chat.parkAskNo,
-  ...CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))),
+  ...new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr'))),
 ];
 
 /**
@@ -938,6 +993,7 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
     healthy: 16,
     quick: 16,
     sweet: 10,
+    hearty: 15,
   };
   let ck = 0;
   for (const spec of ASK_SPECS) {
@@ -1001,6 +1057,38 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
           hepsi: false,
           ...(placed ? { place: [d] } : { nearMe: true }),
         }),
+      ];
+    });
+  }
+
+  // A goal, situation or mood with no table entry ("ilk buluşma"): the router picks kinds of place,
+  // Yerim asks which one (ask 'ai'; a table entry is right too when the router read a known wish).
+  for (let k = 0; k < SITUATIONS.length * 2; k++) {
+    const city = cityAt(k + Math.floor(k / SITUATIONS.length));
+    add('choice', city, 'food', () => {
+      const ask = goalWhere(city, at(SITUATIONS, k));
+      const asked: TurnExpect = {
+        kind: 'choice',
+        ask: ['ai', ...CHOICES.filter((e) => e.wishes).map((e) => e.id)],
+        hepsi: true,
+        chipsMin: 2,
+        cards: 'none',
+        ...(ask.place ? { place: ask.place } : { nearMe: true }),
+      };
+      const found = (member?: string): TurnExpect => ({
+        kind: 'food',
+        cards: 'some',
+        note: true,
+        ...(member ? { member } : {}),
+      });
+      const how = Math.floor(k / 2) % 3;
+      return [
+        say(ask.text, asked),
+        how === 0
+          ? tap('@1', found())
+          : how === 1
+            ? tap(HEPSI, found('all'))
+            : answerTurn(r.pick(ALL_ANSWERS), found('all')),
       ];
     });
   }

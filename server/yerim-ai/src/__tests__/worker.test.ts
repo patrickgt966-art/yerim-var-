@@ -66,6 +66,7 @@ const searchOut = {
   nearMe: true,
   dishServes: null,
   wishes: [],
+  kinds: [],
   partySize: null,
   clarify: null,
   plan: null,
@@ -88,6 +89,7 @@ const flatSearch = {
   nearMe: true,
   dishServes: [],
   wishes: [],
+  kinds: [],
   partySize: 0,
   clarifyAsk: 'none',
   clarifyText: '',
@@ -569,6 +571,37 @@ describe('the flat model output', () => {
       reply: 'Selam!',
       action: 'none',
     });
+  });
+
+  it('/understand keeps the known kinds of place, once each and at most six, and drops the rest', async () => {
+    const kv = fakeKV();
+    mockParse.mockResolvedValueOnce({
+      stop_reason: 'end_turn',
+      parsed_output: {
+        ...flat,
+        kinds: [
+          'meyhane',
+          'sushi-bar',
+          'steak',
+          'meyhane',
+          'cafe',
+          'italian',
+          'pastry',
+          'kebab',
+          'doner',
+        ],
+      },
+    });
+    const res = await post(envOf(kv), '/understand', understandBody('m1'));
+    const body = (await res.json()) as { understanding: { kinds: string[] } };
+    expect(body.understanding.kinds).toEqual([
+      'meyhane',
+      'steak',
+      'cafe',
+      'italian',
+      'pastry',
+      'kebab',
+    ]);
   });
 
   it('/pick cuts a long reason list instead of failing, and answers an out-of-range index with pick null (200) and keeps the billed use', async () => {

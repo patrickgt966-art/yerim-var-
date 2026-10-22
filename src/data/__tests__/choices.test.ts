@@ -42,6 +42,7 @@ const ASKS = [
   { id: 'protein', msg: 'kaslıyım bana yer bul', wish: 'protein', noData: 'Menü verimiz yok' },
   { id: 'healthy', msg: 'fit menü arıyorum', wish: 'healthy', noData: 'Menü verimiz yok' },
   { id: 'quick', msg: 'hızlı bir şey', wish: 'quick', noData: 'Fiyat verimiz yok' },
+  { id: 'hearty', msg: 'kilo almak istiyorum', wish: 'hearty', noData: 'Menü verimiz yok' },
   { id: 'sweet', msg: 'canım tatlı çekti', wish: null, noData: null },
 ];
 // A broad category named directly: no question, narrowing chips after the results.
@@ -71,6 +72,21 @@ describe('the words of a goal', () => {
     ['düşük kalorili', ['healthy']],
     ['temiz beslenmek istiyorum', ['healthy']],
     ['fitness sonrası', ['protein']],
+    ['kilo almak istiyorum', ['hearty']],
+    ['kilo almam lazım', ['hearty']],
+    ['bulk yapıyorum', ['hearty']],
+    ['doyurucu bir şey', ['hearty']],
+    ['çok acıktım tok tutsun', ['hearty']],
+    ['karnım çok aç', ['hearty']],
+    ['kalorili bir şey lazım', ['hearty']],
+    ['yüksek kalorili', ['hearty']],
+    ['kilo vermek istiyorum', ['healthy']],
+    ['kilo veriyorum bir yer söyle', ['healthy']],
+    ['zayıflamak istiyorum', ['healthy']],
+    ['kalori sayıyorum', ['healthy']],
+    ['az kalorili bir şey', ['healthy']],
+    ['kalorisi yüksek bir şey', ['hearty']],
+    ['kalorisi düşük bir şey', ['healthy']],
   ])('"%s" is %j', (text, wishes) => {
     expect(wishesIn(text)).toEqual(wishes);
   });
