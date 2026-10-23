@@ -24,6 +24,7 @@
     <div style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:#FF8A1F;border:4px solid #fff;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:0 8px 16px -6px rgba(255,138,31,.6)">${FACE}</div>Yerim</div>
   ${tab('favoriler', active === 'favoriler')}${tab('profil', active === 'profil')}
 </div>`;
+  window.canliTabBar = bar;
   document.querySelectorAll('[data-status]').forEach((el) => (el.outerHTML = status));
   document.querySelectorAll('[data-tabbar]').forEach((el) => (el.outerHTML = bar(el.dataset.tabbar)));
 })();

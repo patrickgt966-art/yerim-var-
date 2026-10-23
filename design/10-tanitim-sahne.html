@@ -1,0 +1,215 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>10-tanitim-sahne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  İlk açılış tanıtımı (≈35 sn, döngü). Yerim, Yerim düğmesinden çıkar; önce ana sayfanın önemli yerlerini
+  (arama, Otopark bul, Yemek bul, Canın ne çekiyor?, Yakınında), sonra diğer sekmeleri (Harita, Favoriler,
+  Profil) tek tek gösterir, en sonda "ben hep buradayım" deyip düğmeye geri girer.
+  Hareket: yaylı zıplamalar (çömel, uzan, ezil, otur), konuşurken kısa sekmeler ve ağız, yazı akarak gelir,
+  baktığı yöne döner. Her şey render(t) ile kare kare hesaplanır; ?capture ile oynamaz, window.seek(t).
+-->
+<style>
+#bg img{position:absolute;left:0;top:0;width:390px}
+#bubble{position:absolute;width:228px;z-index:50;background:#fff;border:1px solid #F2E6D6;border-radius:20px;padding:10px 13px 10px;box-shadow:0 14px 30px -12px rgba(0,0,0,.5),0 2px 0 var(--peach-line)}
+#bubble .tail{position:absolute;width:22px;height:13px}
+#bTitle{font-weight:800;font-size:15px;line-height:20px;min-height:20px}
+#bBody{font-size:12.5px;line-height:17px;color:var(--sec);min-height:34px;margin-top:2px}
+.caret{display:inline-block;width:6px;height:13px;background:var(--orange);margin-left:2px;vertical-align:-2px;border-radius:2px}
+#dots{display:flex;gap:4px}
+#dots i{width:6px;height:6px;border-radius:3px;background:#E6DCCD}
+#dots i.on{width:16px;background:var(--orange)}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen" id="screen">
+  <div id="bg">
+    <img id="bgHome" src="4-anasayfa-canli.png" alt="">
+    <img id="bgHarita" src="7-harita-canli.png" alt="">
+    <img id="bgFav" src="8-favoriler-canli.png" alt="">
+    <img id="bgProfil" src="9-profil-canli.png" alt="">
+  </div>
+  <div id="tabbar"></div>
+  <!-- Karartma ve spot ışığı -->
+  <svg id="dim" class="abs" width="390" height="844" viewBox="0 0 390 844" style="left:0;top:0;z-index:30" aria-hidden="true">
+    <defs><mask id="hole"><rect width="390" height="844" fill="#fff"/><rect id="holeR" fill="#000"/></mask></defs>
+    <rect width="390" height="844" fill="rgba(6,31,38,.62)" mask="url(#hole)"/>
+    <rect id="ringR" fill="none" stroke="#FF8A1F" stroke-width="3" stroke-dasharray="6 6"/>
+  </svg>
+  <!-- Maskot -->
+  <div id="mWrap" class="abs" style="z-index:40;left:0;top:0;transform-origin:50% 100%"><div id="mFlip" style="transform-origin:50% 100%"><div id="mSvg"></div></div></div>
+  <!-- Balon -->
+  <div id="bubble">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div id="dots"></div>
+      <span id="count" style="font-weight:800;font-size:11px;color:var(--sec)"></span>
+    </div>
+    <div id="bTitle"></div>
+    <div id="bBody"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+      <span style="font-weight:700;font-size:12.5px;color:var(--sec)">Geç</span>
+      <span id="next" class="btn" style="min-height:32px;font-size:13px;background:var(--orange);padding:0 12px">İleri →</span>
+    </div>
+    <svg class="tail" id="tailUp" viewBox="0 0 22 13" style="top:-12px"><path d="M0 13h22c-6-2-9-6-10-13C10 7 6 11 0 13z" fill="#fff"/></svg>
+    <svg class="tail" id="tailDown" viewBox="0 0 22 13" style="bottom:-12px"><path d="M0 0h22c-6 2-9 6-10 13C10 6 6 2 0 0z" fill="#fff"/></svg>
+  </div>
+</div>
+<script src="canli.js"></script>
+<script>
+// ---------- Senaryo ----------
+const BTN = { x: 161, y: 723, w: 70, h: 70, r: 22 }; // Yerim düğmesi
+const TAB = { harita: { x: 96, y: 748, w: 58, h: 66, r: 18 }, favoriler: { x: 240, y: 748, w: 64, h: 66, r: 18 }, profil: { x: 308, y: 748, w: 60, h: 66, r: 18 } };
+const S = [
+  { d: 3.8, bg: 'home', scroll: 0, tab: 'index', spot: [[0, null]], m: [195, 560], face: 1, bub: 'above', pose: { arm: 'wave' },
+    title: 'Selam, ben Yerim!', body: 'Sana buraları kısaca göstereyim. Hazırsan başlayalım.' },
+  { d: 3.4, bg: 'home', scroll: 0, tab: 'index', spot: [[0, { x: 12, y: 149, w: 366, h: 74, r: 22 }]], m: [292, 335], bub: 'below', pose: { arm: 'point' },
+    title: 'Buraya ne istediğini yaz', body: 'Bir yemek, bir semt ya da otopark; gerisini ben bulurum.' },
+  { d: 3.4, bg: 'home', scroll: 0, tab: 'index', spot: [[0, { x: 12, y: 231, w: 182, h: 140, r: 22 }]], m: [110, 478], bub: 'below', pose: { arm: 'hold', prop: 'park' },
+    title: 'Otopark bul', body: 'Yakındaki boş yerleri canlı sayısıyla gösteririm.' },
+  { d: 3.4, bg: 'home', scroll: 0, tab: 'index', spot: [[0, { x: 196, y: 231, w: 182, h: 140, r: 22 }]], m: [288, 478], bub: 'below', pose: { arm: 'hold', prop: 'fork' },
+    title: 'Yemek bul', body: 'Yakın restoranlar; otoparkı yakın olanlar önde.' },
+  { d: 3.4, bg: 'home', scroll: 0, tab: 'index', spot: [[0, { x: 6, y: 432, w: 384, h: 182, r: 22 }]], m: [312, 428], bub: 'above', pose: { arm: 'point' },
+    title: 'Canın ne çekiyor?', body: 'Birine dokun, saatine göre en uygununu bulayım.' },
+  { d: 3.6, bg: 'home', scroll: 400, tab: 'index', spot: [[0.35, { x: 10, y: 330, w: 370, h: 300, r: 22 }]], m: [300, 326], bub: 'above', pose: { arm: 'point' },
+    title: 'Yakınında', body: 'Etraftaki otopark ve restoranlar, haritasıyla birlikte.' },
+  { d: 4.0, bg: 'harita', tab: 'harita', spot: [[0, TAB.harita], [1.1, { x: 8, y: 556, w: 374, h: 182, r: 24 }]], m: [310, 550], bub: 'above', pose: { arm: 'point' },
+    title: 'Harita', body: 'İğnenin rengi doluluğu söyler: yeşil bol yer, kırmızı dolu.' },
+  { d: 4.0, bg: 'fav', tab: 'favoriler', spot: [[0, TAB.favoriler], [1.1, { x: 10, y: 130, w: 370, h: 200, r: 24 }]], m: [300, 440], bub: 'below', pose: { arm: 'point' },
+    title: 'Favoriler', body: 'Sevdiğin yerler ve aktif parkın; süre de ücret de burada.' },
+  { d: 4.0, bg: 'profil', tab: 'profil', spot: [[0, TAB.profil], [1.1, { x: 10, y: 252, w: 370, h: 186, r: 22 }]], m: [292, 545], bub: 'below', pose: { arm: 'point' },
+    title: 'Profil', body: 'Ayarların burada. Beni susturmak istersen bile.' },
+  { d: 4.6, bg: 'home', scroll: 0, tab: 'index', spot: [[0, BTN]], m: [262, 712], bub: 'above', pose: { arm: 'point' }, final: true,
+    title: 'Ben hep buradayım', body: 'Aklına bir şey gelirse Yerim\'e dokun, sor yeter.' },
+];
+let acc = 0; for (const s of S) { s.t0 = acc; acc += s.d; }
+const T = acc + 0.8; // sonda kısa nefes
+
+// ---------- Yardımcılar ----------
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const outBack = (k) => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const $ = (id) => document.getElementById(id);
+const MS = 108, VB = yerimMascotViewBox, K = MS / VB[2];
+const FOOT_X = (62 - VB[0]) * K, FOOT_Y = (112 - VB[1]) * K, HEAD = (112 - 12) * K;
+$('mSvg').innerHTML = yerimMascotLayers(MS, { eyes: ['open', 'blink', 'side', 'happy', 'up'], mouth: ['smile', 'open', 'o'], arm: ['rest', 'wave', 'wave2', 'point', 'up', 'hold'], prop: ['park', 'fork'] });
+const layers = [...document.querySelectorAll('#mSvg g[id]')];
+const show = (on) => layers.forEach((g) => g.setAttribute('opacity', on.includes(g.id) ? 1 : 0));
+$('dots').innerHTML = S.map(() => '<i></i>').join('');
+let lastTab = null;
+function setTab(k) { if (k !== lastTab) { $('tabbar').innerHTML = canliTabBar(k); lastTab = k; } }
+
+// zıplama: çömel (0-.12), uç (.12-.5), in-ez (.5-.62), otur (.62-.8)
+const HOP = 0.8;
+function hop(from, to, k, height) {
+  if (k <= 0) return { x: from[0], y: from[1], sx: 1, sy: 1 };
+  if (k < 0.12) { const q = k / 0.12; return { x: from[0], y: from[1], sx: 1 + 0.12 * q, sy: 1 - 0.16 * q }; }
+  if (k < 0.5) { const q = (k - 0.12) / 0.38, e = ease(q); return { x: lerp(from[0], to[0], e), y: lerp(from[1], to[1], e) - height * Math.sin(Math.PI * q), sx: 0.92, sy: 1.1 }; }
+  if (k < 0.62) { const q = (k - 0.5) / 0.12; return { x: to[0], y: to[1], sx: lerp(1.16, 1.06, q), sy: lerp(0.8, 0.94, q) }; }
+  if (k < 0.8) { const q = (k - 0.62) / 0.18, b = outBack(q); return { x: to[0], y: to[1], sx: lerp(1.06, 1, b), sy: lerp(0.94, 1, b) }; }
+  return { x: to[0], y: to[1], sx: 1, sy: 1 };
+}
+
+// ---------- Kare ----------
+function render(tt) {
+  const t = ((tt % T) + T) % T;
+  let i = S.findIndex((s) => t < s.t0 + s.d); if (i < 0) i = S.length - 1;
+  const s = S[i], lt = t - s.t0, prev = S[i - 1];
+
+  // arka plan: sekme değişince yumuşak geçiş; ana sayfada kaydırma
+  const bgs = { home: 'bgHome', harita: 'bgHarita', fav: 'bgFav', profil: 'bgProfil' };
+  const fade = prev && prev.bg !== s.bg ? clamp(lt / 0.35, 0, 1) : 1;
+  for (const [k, id] of Object.entries(bgs)) {
+    const o = k === s.bg ? fade : prev && k === prev.bg && prev.bg !== s.bg ? 1 - fade : 0;
+    $(id).style.opacity = o; $(id).style.zIndex = k === s.bg ? 2 : 1;
+  }
+  const sc0 = prev && prev.bg === 'home' && s.bg === 'home' ? prev.scroll : s.scroll || 0;
+  $('bgHome').style.transform = `translateY(${-lerp(sc0, s.scroll || 0, ease(clamp(lt / 0.6, 0, 1)))}px)`;
+  setTab(s.tab);
+
+  // spot ışığı: adımın içindeki hedefler arasında kayar
+  const spots = s.spot; let cur = null, from = prev ? prev.spot[prev.spot.length - 1][1] : null, k = 1;
+  for (let j = 0; j < spots.length; j++) if (lt >= spots[j][0]) { cur = spots[j][1]; from = j > 0 ? spots[j - 1][1] : from; k = clamp((lt - spots[j][0]) / 0.45, 0, 1); }
+  if (!cur) cur = spots[0][1];
+  const R = cur && from ? Object.fromEntries(['x', 'y', 'w', 'h', 'r'].map((p) => [p, lerp(from[p], cur[p], ease(k))])) : cur;
+  const dimIn = clamp(t / 0.6, 0, 1) * (1 - clamp((t - (T - 1.2)) / 0.6, 0, 1));
+  $('dim').style.opacity = dimIn;
+  for (const id of ['holeR', 'ringR']) {
+    const el = $(id);
+    if (R && (cur || from)) { const a = cur ? (from ? 1 : ease(k)) : 1 - ease(k); el.setAttribute('x', R.x); el.setAttribute('y', R.y); el.setAttribute('width', R.w * (cur ? 1 : 1)); el.setAttribute('height', R.h); el.setAttribute('rx', R.r); el.style.opacity = id === 'ringR' ? a : 1; if (id === 'holeR') el.setAttribute('fill', `rgba(0,0,0,${a})`); }
+    else el.setAttribute('width', 0);
+  }
+  $('ringR').style.strokeDashoffset = -t * 18;
+
+  // maskot konumu
+  const BTN_FOOT = [BTN.x + BTN.w / 2, BTN.y + BTN.h / 2 + 18];
+  let pos, popK = 1;
+  if (i === 0) {
+    // düğmeden fırlar
+    const kk = clamp((lt - 0.5) / HOP, 0, 1);
+    pos = hop(BTN_FOOT, s.m, kk, 120); popK = clamp((lt - 0.5) / 0.25, 0, 1);
+  } else pos = hop(prev.m, s.m, clamp(lt / HOP, 0, 1), 70);
+  let scale = lerp(0.25, 1, ease(popK));
+  // final: düğmeye geri girer
+  if (s.final && lt > 3.3) { const kk = clamp((lt - 3.3) / HOP, 0, 1); pos = hop(s.m, BTN_FOOT, kk, 80); scale = 1 - 0.75 * ease(clamp((kk - 0.35) / 0.4, 0, 1)); }
+  const landed = lt > HOP * 0.62 && !(s.final && lt > 3.3);
+  // konuşurken kısa sekmeler, dururken nefes
+  const typing = lt > 0.75 && lt < 0.75 + (s.title.length + s.body.length) / 46;
+  let bob = 0, bx = 1, by = 1;
+  if (landed && typing) { const ph = (lt * 5.5) % 1; bob = -Math.abs(Math.sin(ph * Math.PI)) * 4; by = 1 + Math.sin(ph * Math.PI * 2) * 0.025; bx = 2 - by; }
+  else if (landed) { by = 1 + Math.sin(t * 3.2) * 0.018; bx = 2 - by; }
+  // yüzünü hedefe çevir
+  const target = cur || from;
+  const face = target ? Math.sign(target.x + target.w / 2 - pos.x) || 1 : 1;
+  const flip = s.face ? 1 : -face; // 'side'/'point' sola bakar; hedef sağdaysa aynala
+  const w = $('mWrap');
+  w.style.left = pos.x - FOOT_X + 'px'; w.style.top = pos.y - FOOT_Y + bob + 'px';
+  w.style.transform = `scale(${pos.sx * bx * scale},${pos.sy * by * scale})`;
+  w.style.opacity = i === 0 ? clamp((lt - 0.5) / 0.12, 0, 1) : s.final && lt > 3.3 + HOP * 0.75 ? 0 : 1;
+  $('mFlip').style.transform = `scaleX(${landed ? flip : 1})`;
+
+  // poz: uçarken kollar yukarı, inince adımın pozu; göz kırpma; konuşurken ağız
+  const P = s.pose, on = [];
+  const flying = !landed;
+  if (flying) { on.push('eyes-happy', 'mouth-o', 'arm-up'); }
+  else {
+    const blink = (lt % 2.6) > 2.45;
+    const look = lt < HOP + 0.35 && !s.face;
+    on.push(blink ? 'eyes-blink' : look ? 'eyes-side' : i === S.length - 1 || i === 0 ? 'eyes-happy' : 'eyes-open');
+    on.push(typing ? (Math.floor(lt * 9) % 2 ? 'mouth-open' : 'mouth-smile') : 'mouth-smile');
+    if (P.arm === 'wave') on.push(Math.floor(lt * 5) % 2 ? 'arm-wave' : 'arm-wave2');
+    else on.push('arm-' + P.arm);
+    if (P.prop) on.push('prop-' + P.prop);
+  }
+  show(on);
+
+  // balon: inişten sonra açılır, yazı akar
+  const b = $('bubble');
+  const bk = clamp((lt - 0.62) / 0.22, 0, 1), bout = clamp((lt - (s.d - 0.22)) / 0.2, 0, 1);
+  const bshow = s.final ? (lt < 3.25 ? bk : 1 - clamp((lt - 3.25) / 0.2, 0, 1)) : bk * (1 - bout);
+  const cx = clamp(s.m[0], 16 + 114, 390 - 16 - 114);
+  b.style.left = cx - 114 + 'px';
+  const above = s.bub === 'above';
+  const bh = b.offsetHeight;
+  b.style.top = (above ? s.m[1] - HEAD - 16 - bh : s.m[1] + 14) + 'px';
+  b.style.opacity = bshow;
+  b.style.transformOrigin = `${s.m[0] - (cx - 114)}px ${above ? '100%' : '0%'}`;
+  b.style.transform = `scale(${lerp(0.6, 1, outBack(bshow))})`;
+  $('tailUp').style.display = above ? 'none' : 'block';
+  $('tailDown').style.display = above ? 'block' : 'none';
+  for (const id of ['tailUp', 'tailDown']) $(id).style.left = clamp(s.m[0] - (cx - 114) - 11, 14, 228 - 36) + 'px';
+  const n = Math.floor(clamp(lt - 0.75, 0, 99) * 46);
+  const tt1 = s.title.slice(0, n), tt2 = s.body.slice(0, Math.max(0, n - s.title.length));
+  const caret = typing && Math.floor(lt * 4) % 2 === 0 ? '<span class="caret"></span>' : '';
+  $('bTitle').innerHTML = tt1 + (n <= s.title.length ? caret : '');
+  $('bBody').innerHTML = tt2 + (n > s.title.length ? caret : '');
+  $('count').textContent = `${i + 1}/${S.length}`;
+  [...$('dots').children].forEach((d, j) => (d.className = j === i ? 'on' : ''));
+  $('next').textContent = i === S.length - 1 ? 'Başlayalım!' : 'İleri →';
+}
+
+window.seek = render;
+if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render((now - st) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+else render(0);
+window.TOTAL = T;
+</script>
+</body></html>
