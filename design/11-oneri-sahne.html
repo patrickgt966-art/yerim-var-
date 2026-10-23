@@ -1,0 +1,189 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>11-oneri-sahne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Öneri anı (≈12 sn, döngü; günde en fazla bir kez). Akşam yemeği saatinde Yerim, Yerim düğmesinden çıkıp
+  çubuğun üstüne konar, etrafa bakar, elinde çatalla bir öneri yapar (ana sayfadaki notla çakışmasın diye farklı tür): yakında en çok bulunan, öğüne uyan tür
+  ve otoparka en yakın olanı. "Göster"e dokununca sevinir, düğmeye geri girer; sohbet sonuçlarla açılır.
+  Karartma yok (araya girmez); tanıtımla aynı hareket dili. render(t) kare kare; ?capture ile window.seek(t).
+-->
+<style>
+#bubble{position:absolute;width:246px;z-index:50;background:#fff;border:1px solid #F2E6D6;border-radius:20px;padding:10px 12px 10px;box-shadow:0 14px 30px -12px rgba(11,60,73,.5),0 2px 0 var(--peach-line)}
+#bTitle{font-weight:800;font-size:15px;line-height:20px;min-height:20px}
+#bBody{font-size:12.5px;line-height:17px;color:var(--sec);min-height:34px;margin-top:1px}
+.caret{display:inline-block;width:6px;height:13px;background:var(--orange);margin-left:2px;vertical-align:-2px;border-radius:2px}
+.res{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFE6D8;border-radius:18px 18px 18px 6px;padding:10px 12px;margin-top:8px}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen" id="screen">
+  <img src="4-anasayfa-canli.png" alt="" class="abs" style="left:0;top:0;width:390px">
+  <div id="tabbar"></div>
+
+  <!-- Maskot -->
+  <div id="mWrap" class="abs" style="z-index:40;left:0;top:0;transform-origin:50% 100%"><div id="mFlip" style="transform-origin:50% 100%"><div id="mSvg"></div></div></div>
+
+  <!-- Öneri balonu -->
+  <div id="bubble">
+    <div class="hand" id="bHello" style="font-size:19px;line-height:20px;color:var(--orange-strong)">Akşam yemeği vakti!</div>
+    <div id="bTitle"></div>
+    <div id="bBody"></div>
+    <div id="bCard" style="overflow:hidden;display:flex;align-items:center;gap:9px;margin-top:8px;padding:8px 9px;border-radius:14px 14px 14px 5px;background:var(--peach-soft)">
+      <span style="width:34px;height:34px;border-radius:50%;background:#F6E2B8;display:flex;align-items:center;justify-content:center;flex:none"><svg width="24" height="24" viewBox="0 0 38 38"><path d="M4 30L32 8" stroke="#8A4513" stroke-width="2" stroke-linecap="round"/><rect x="9" y="19" width="7" height="7" rx="2" transform="rotate(-38 12 22)" fill="#A54A07"/><rect x="15" y="14" width="7" height="7" rx="2" transform="rotate(-38 18 18)" fill="#C2410C"/><rect x="21" y="10" width="7" height="7" rx="2" transform="rotate(-38 24 13)" fill="#A54A07"/></svg></span>
+      <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;line-height:17px">Alsancak Kebap Evi</div><div style="font-weight:700;font-size:11.5px;color:var(--peach-text)">6 dk · otoparkı 120 m, 9 boş</div></div>
+    </div>
+    <div id="btns" style="overflow:visible;display:flex;align-items:center;gap:6px;margin-top:9px">
+      <span id="bGo" class="btn rel" style="min-height:34px;font-size:13px;background:var(--orange)">12 kebapçıyı göster
+        <span id="finger" class="abs" style="left:50%;top:50%;width:42px;height:42px;margin:-12px 0 0 -8px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></span>
+      </span>
+      <span style="font-weight:700;font-size:13px;color:var(--sec);padding:0 8px">Sonra</span>
+    </div>
+    <svg id="tail" class="abs" width="22" height="13" viewBox="0 0 22 13" style="bottom:-12px" aria-hidden="true"><path d="M0 0h22c-6 2-9 6-10 13C10 6 6 2 0 0z" fill="#fff"/></svg>
+  </div>
+
+  <!-- Sohbet: sonuçlarla açılır -->
+  <div id="dim" class="abs" style="inset:0;background:rgba(11,60,73,.38);z-index:60"></div>
+  <div id="sheet" class="abs" style="left:0;right:0;bottom:0;height:650px;background:var(--paper);border-radius:28px 28px 0 0;box-shadow:0 -10px 30px rgba(11,60,73,.25);padding:10px 16px 0;z-index:61">
+    <div style="width:42px;height:5px;border-radius:3px;background:#D9CFBF;margin:0 auto 12px"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--peach-line)">
+      <div id="avatar" style="width:46px"></div>
+      <div style="flex:1"><div class="disp" style="font-weight:800;font-size:20px;line-height:22px">Yerim</div><div style="font-size:12px;font-weight:700;color:var(--mint-text)">● burada · bugün 8 soru hakkın var</div></div>
+      <div style="width:36px;height:36px;border-radius:18px;background:var(--chip);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+    </div>
+    <div style="padding-top:16px">
+      <div id="cMsg" style="background:var(--card);border:1px solid #EFE6D8;border-radius:18px 18px 18px 6px;padding:11px 14px;font-size:14px;line-height:20px;max-width:300px">
+        <b>Alsancak'ta 12 kebapçı</b> buldum. Park derdi en az olan en üstte:
+      </div>
+      <div id="r1" class="res"><span style="width:38px;height:38px;border-radius:50%;background:#F6E2B8;display:flex;align-items:center;justify-content:center;flex:none"><svg width="26" height="26" viewBox="0 0 38 38"><path d="M4 30L32 8" stroke="#8A4513" stroke-width="2" stroke-linecap="round"/><rect x="9" y="19" width="7" height="7" rx="2" transform="rotate(-38 12 22)" fill="#A54A07"/><rect x="15" y="14" width="7" height="7" rx="2" transform="rotate(-38 18 18)" fill="#C2410C"/><rect x="21" y="10" width="7" height="7" rx="2" transform="rotate(-38 24 13)" fill="#A54A07"/></svg></span>
+        <div style="flex:1"><div style="font-weight:800;font-size:14px">Alsancak Kebap Evi</div><div class="sub" style="font-size:12px">6 dk · otoparkı 120 m</div></div><span class="pill" style="background:var(--mint-soft);color:var(--mint-text)"><span class="live"></span>9 boş</span></div>
+      <div id="r2" class="res"><span style="width:38px;height:38px;border-radius:50%;background:#F6E2B8;display:flex;align-items:center;justify-content:center;flex:none"><svg width="26" height="26" viewBox="0 0 38 38"><path d="M4 30L32 8" stroke="#8A4513" stroke-width="2" stroke-linecap="round"/><rect x="9" y="19" width="7" height="7" rx="2" transform="rotate(-38 12 22)" fill="#A54A07"/><rect x="15" y="14" width="7" height="7" rx="2" transform="rotate(-38 18 18)" fill="#C2410C"/><rect x="21" y="10" width="7" height="7" rx="2" transform="rotate(-38 24 13)" fill="#A54A07"/></svg></span>
+        <div style="flex:1"><div style="font-weight:800;font-size:14px">Ocakbaşı Kıbrıs Şehitleri</div><div class="sub" style="font-size:12px">9 dk · otoparkı 240 m</div></div><span class="pill" style="background:var(--mint-soft);color:var(--mint-text)">14 boş</span></div>
+      <div id="r3" class="res"><span style="width:38px;height:38px;border-radius:50%;background:#F6E2B8;display:flex;align-items:center;justify-content:center;flex:none"><svg width="26" height="26" viewBox="0 0 38 38"><path d="M4 30L32 8" stroke="#8A4513" stroke-width="2" stroke-linecap="round"/><rect x="9" y="19" width="7" height="7" rx="2" transform="rotate(-38 12 22)" fill="#A54A07"/><rect x="15" y="14" width="7" height="7" rx="2" transform="rotate(-38 18 18)" fill="#C2410C"/><rect x="21" y="10" width="7" height="7" rx="2" transform="rotate(-38 24 13)" fill="#A54A07"/></svg></span>
+        <div style="flex:1"><div style="font-weight:800;font-size:14px">Usta Kebapçı</div><div class="sub" style="font-size:12px">11 dk · otoparkı 380 m</div></div><span class="pill" style="background:var(--peach-soft);color:var(--few)">3 boş</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px" id="chips">
+        <span class="pill" style="background:#fff;border:1.5px solid var(--peach-line);padding:8px 12px">Haritada göster</span><span class="pill" style="background:#fff;border:1.5px solid var(--peach-line);padding:8px 12px">Balık olsun</span>
+      </div>
+    </div>
+    <div class="abs field" style="left:16px;right:16px;bottom:34px;padding:6px 6px 6px 14px">
+      <div style="flex:1;color:var(--sec);font-size:15px">Bir şey yaz…</div>
+      <div style="width:42px;height:42px;border-radius:14px 14px 14px 5px;background:var(--orange);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    </div>
+  </div>
+</div>
+<script src="canli.js"></script>
+<script>
+document.getElementById('tabbar').innerHTML = canliTabBar('index');
+const T = 12.5;
+const TITLE = 'Kuşbaşı nasıl olur?', BODY = 'Yakında 12 kebapçı var; park derdi en az olan şu:';
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const outBack = (k) => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const $ = (id) => document.getElementById(id);
+const MS = 108, VB = yerimMascotViewBox, K = MS / VB[2];
+const FOOT_X = (62 - VB[0]) * K, FOOT_Y = (112 - VB[1]) * K, HEAD = (112 - 12) * K;
+$('mSvg').innerHTML = yerimMascotLayers(MS, { eyes: ['open', 'blink', 'side', 'happy', 'up'], mouth: ['smile', 'open', 'o'], arm: ['rest', 'up', 'hold'], prop: ['fork'] });
+$('avatar').innerHTML = yerimMascot({ size: 46, eyes: 'happy', mouth: 'smile', tilt: 0 });
+const layers = [...document.querySelectorAll('#mSvg g[id]')];
+const show = (on) => layers.forEach((g) => g.setAttribute('opacity', on.includes(g.id) ? 1 : 0));
+
+// Yerim düğmesinin yeri ve maskotun duracağı yer (çubuğun üst kenarı, düğmenin sağı)
+const scr = $('screen').getBoundingClientRect();
+const yb = $('tabbar').querySelector('[style*="border-radius:22px 22px 22px 8px"]');
+const br = yb.getBoundingClientRect();
+const BX = br.left + br.width / 2 - scr.left, BY = br.top + br.height / 2 - scr.top;
+const BAR_TOP = 844 - 22 - 76;
+const HOME = [BX, BY + 16], SPOT = [BX + 78, BAR_TOP + 3];
+
+const HOP = 0.8;
+function hop(from, to, k, height) {
+  if (k <= 0) return { x: from[0], y: from[1], sx: 1, sy: 1 };
+  if (k < 0.12) { const q = k / 0.12; return { x: from[0], y: from[1], sx: 1 + 0.12 * q, sy: 1 - 0.16 * q }; }
+  if (k < 0.5) { const q = (k - 0.12) / 0.38, e = ease(q); return { x: lerp(from[0], to[0], e), y: lerp(from[1], to[1], e) - height * Math.sin(Math.PI * q), sx: 0.92, sy: 1.1 }; }
+  if (k < 0.62) { const q = (k - 0.5) / 0.12; return { x: to[0], y: to[1], sx: lerp(1.16, 1.06, q), sy: lerp(0.8, 0.94, q) }; }
+  if (k < 0.8) { const q = (k - 0.62) / 0.18, b = outBack(q); return { x: to[0], y: to[1], sx: lerp(1.06, 1, b), sy: lerp(0.94, 1, b) }; }
+  return { x: to[0], y: to[1], sx: 1, sy: 1 };
+}
+
+// zaman çizelgesi (sn)
+const OUT = 0.9, TALK = 2.3, TAP = 6.9, BACK = 7.25, SHEET = 8.15;
+function render(tt) {
+  const t = ((tt % T) + T) % T;
+  // Yerim düğmesi: çıkarken ve girerken esner
+  const squash = (c) => { const q = clamp((t - c) / 0.3, 0, 1); return q <= 0 || q >= 1 ? [1, 1] : q < 0.5 ? [1 + 0.16 * (q / 0.5), 1 - 0.2 * (q / 0.5)] : [lerp(1.16, 1, outBack((q - 0.5) / 0.5)), lerp(0.8, 1, outBack((q - 0.5) / 0.5))]; };
+  const [s1x, s1y] = squash(OUT - 0.15), [s2x, s2y] = squash(BACK + HOP * 0.5);
+  yb.style.transform = `rotate(-4deg) scale(${s1x * s2x},${s1y * s2y})`;
+
+  // maskot: düğmeden çık, konuş, düğmeye dön
+  let pos, scale = 1, op = 1;
+  if (t < BACK) {
+    const k = clamp((t - OUT) / HOP, 0, 1); pos = hop(HOME, SPOT, k, 110);
+    scale = lerp(0.25, 1, ease(clamp((t - OUT) / 0.25, 0, 1))); op = t < OUT ? 0 : 1;
+  } else {
+    const k = clamp((t - BACK) / HOP, 0, 1); pos = hop(SPOT, HOME, k, 70);
+    scale = 1 - 0.75 * ease(clamp((k - 0.35) / 0.4, 0, 1)); op = k > 0.75 ? 0 : 1;
+  }
+  const landed = t > OUT + HOP * 0.62 && t < BACK;
+  const nText = Math.floor(clamp(t - TALK, 0, 99) * 44);
+  const typing = t > TALK && nText < TITLE.length + BODY.length;
+  let bob = 0, bx = 1, by = 1;
+  if (landed && typing) { const ph = (t * 5.5) % 1; bob = -Math.abs(Math.sin(ph * Math.PI)) * 4; by = 1 + Math.sin(ph * Math.PI * 2) * 0.025; bx = 2 - by; }
+  else if (landed) { by = 1 + Math.sin(t * 3.2) * 0.018; bx = 2 - by; }
+  const w = $('mWrap');
+  w.style.left = pos.x - FOOT_X + 'px'; w.style.top = pos.y - FOOT_Y + bob + 'px';
+  w.style.transform = `scale(${pos.sx * bx * scale},${pos.sy * by * scale})`; w.style.opacity = op;
+  // etrafa bakar: önce sola, sonra sağa (aynalanır)
+  const lookL = landed && t > 1.75 && t < 2.05, lookR = landed && t > 2.05 && t < 2.3;
+  $('mFlip').style.transform = `scaleX(${lookR ? -1 : 1})`;
+
+  const on = [];
+  if (!landed) on.push(t < BACK ? 'eyes-happy' : 'eyes-happy', 'mouth-o', 'arm-up');
+  else {
+    const blink = t % 2.7 > 2.55;
+    const happy = t > TAP;
+    on.push(blink ? 'eyes-blink' : lookL || lookR ? 'eyes-side' : happy ? 'eyes-happy' : t > 5.6 ? 'eyes-up' : 'eyes-open');
+    on.push(typing ? (Math.floor(t * 9) % 2 ? 'mouth-open' : 'mouth-smile') : happy ? 'mouth-open' : 'mouth-smile');
+    if (happy) on.push('arm-up');
+    else if (t > TALK - 0.15) on.push('arm-hold', 'prop-fork');
+    else on.push('arm-rest');
+  }
+  show(on);
+
+  // balon
+  const b = $('bubble');
+  const bin = clamp((t - (TALK - 0.25)) / 0.22, 0, 1), bout = clamp((t - (TAP + 0.25)) / 0.2, 0, 1);
+  const bs = bin * (1 - bout);
+  const left = clamp(SPOT[0] - 160, 16, 390 - 16 - 246);
+  b.style.left = left + 'px';
+  b.style.opacity = bs;
+  b.style.transformOrigin = `${SPOT[0] - left}px 100%`;
+  b.style.transform = `scale(${lerp(0.6, 1, outBack(bs))})`;
+  $('tail').style.left = SPOT[0] - left - 11 + 'px';
+  const caret = typing && Math.floor(t * 4) % 2 === 0 ? '<span class="caret"></span>' : '';
+  $('bTitle').innerHTML = TITLE.slice(0, nText) + (nText <= TITLE.length ? caret : '');
+  $('bBody').innerHTML = BODY.slice(0, Math.max(0, nText - TITLE.length)) + (nText > TITLE.length ? caret : '');
+  const ck = clamp((t - 4.15) / 0.3, 0, 1);
+  $('bCard').style.opacity = ck; $('bCard').style.maxHeight = ease(ck) * 64 + 'px'; $('bCard').style.marginTop = ck * 8 + 'px'; $('bCard').style.paddingTop = $('bCard').style.paddingBottom = ck * 8 + 'px';
+  const bk = clamp((t - 4.55) / 0.3, 0, 1);
+  $('btns').style.opacity = bk; $('btns').style.maxHeight = ease(bk) * 44 + 'px'; $('btns').style.marginTop = bk * 9 + 'px';
+  b.style.top = SPOT[1] - HEAD - 18 - b.offsetHeight + 'px';
+  // parmak dokunuşu
+  const f = $('finger'), fk = clamp((t - 5.9) / 0.55, 0, 1);
+  const press = t > 6.55 && t < 6.75;
+  f.style.opacity = t < 5.9 ? 0 : t < 6.95 ? 1 : 1 - clamp((t - 6.95) / 0.2, 0, 1);
+  f.style.transform = `translate(${(1 - ease(fk)) * 70}px,${(1 - ease(fk)) * 90}px) scale(${press ? 0.8 : 1})`;
+  $('bGo').style.transform = `scale(${press ? 0.95 : 1})`;
+  $('bGo').style.background = press ? '#E8761A' : 'var(--orange)';
+
+  // sohbet sonuçlarla açılır
+  const sk = clamp((t - SHEET) / 0.55, 0, 1);
+  $('dim').style.opacity = clamp((t - SHEET + 0.1) / 0.4, 0, 1);
+  $('sheet').style.transform = `translateY(${(1 - outBack(sk)) * 660}px)`;
+  const rise = (id, at) => { const q = clamp((t - at) / 0.3, 0, 1); $(id).style.opacity = q; $(id).style.transform = `translateY(${(1 - ease(q)) * 10}px)`; };
+  rise('cMsg', SHEET + 0.6); rise('r1', SHEET + 1.0); rise('r2', SHEET + 1.2); rise('r3', SHEET + 1.4); rise('chips', SHEET + 1.7);
+}
+window.seek = render; window.TOTAL = T;
+if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render((now - st) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+else render(0);
+</script>
+</body></html>
