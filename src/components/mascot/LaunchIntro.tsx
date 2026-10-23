@@ -16,6 +16,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandWordmark } from '@/components/BrandWordmark';
+import { feel } from '@/lib/haptics';
 import { useApp } from '@/store/app';
 import {
   asym,
@@ -76,9 +77,12 @@ export function LaunchIntro() {
     );
     const blink = setTimeout(() => setHappy(true), 180);
     const done = setTimeout(() => setShow(false), LAUNCH_MS);
+    // The lightest tick as Yerim drops into its button.
+    const home = setTimeout(() => feel('tick'), LAUNCH_MS - 60);
     return () => {
       clearTimeout(blink);
       clearTimeout(done);
+      clearTimeout(home);
     };
   }, [show, pop, squash, go]);
 

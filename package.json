@@ -13,6 +13,7 @@
     "expo-blur": "~57.0.3",
     "expo-constants": "~57.0.22",
     "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.13",
     "expo-localization": "~57.0.2",
     "expo-location": "~57.0.22",

@@ -12,6 +12,7 @@ import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { Mascot, type MascotPose } from '@/components/mascot/Mascot';
 import { HOP_IN } from '@/components/mascot/motion';
+import { feel } from '@/lib/haptics';
 import { Txt } from '@/components/Txt';
 import { COACH_STEPS, type CoachKey, resolveStep, useCoach, useCoachHydrated } from '@/store/coach';
 import { brand, fonts, HIT, useColors } from '@/theme';
@@ -86,6 +87,11 @@ export function CoachOverlay() {
   useEffect(() => {
     if (shown && key) measureTarget(key);
   }, [shown, key, W, H]);
+
+  // Yerim lands in each new bubble: a light tap to feel it.
+  useEffect(() => {
+    if (shown && key) feel('land');
+  }, [shown, key]);
 
   // Move screen-reader focus to the new bubble so it reads out.
   useEffect(() => {

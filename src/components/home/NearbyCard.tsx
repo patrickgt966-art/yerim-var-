@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { freshnessText } from '@/components/FreshnessBadge';
 import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
+import { Mascot } from '@/components/mascot/Mascot';
 import { ParkingMap } from '@/components/ParkingMap';
 import { Txt } from '@/components/Txt';
 import { formatClock, getFreshness, occupancyLevel } from '@/data/freshness';
@@ -413,7 +414,16 @@ export function NearbyCard({ nearby }: { nearby: NearbyHome }) {
             </>
           ) : (
             <View style={{ gap: 10, padding: 14 }}>
-              <Txt variant="bodyBold">{t('nearby.locationTitle')}</Txt>
+              {/* Yerim asks for the location itself: it cannot find what is near without it. */}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+                <Mascot size={64} eyes="curious" mouth="none" tilt={-8} />
+                <View style={{ flex: 1, gap: 4, paddingBottom: 8 }}>
+                  <Txt variant="bodyBold">{t('nearby.locationTitle')}</Txt>
+                  <Txt secondary style={{ fontSize: 13, lineHeight: 18 }}>
+                    {t('nearby.locationYerim')}
+                  </Txt>
+                </View>
+              </View>
               <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                 <Button
                   kind="secondary"

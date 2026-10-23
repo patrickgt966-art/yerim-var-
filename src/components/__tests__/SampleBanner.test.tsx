@@ -8,7 +8,8 @@ import { useApp } from '@/store/app';
 
 import { SampleBanner } from '../SampleBanner';
 
-const NOTE = "Ankara'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.";
+const NOTE =
+  "Ankara'da canlı boş yer sayısı yok, baştan söyleyeyim; otoparkları kapasiteleriyle gösteriyorum.";
 
 const staticOnly = (fallbackReason?: string): ParkingResult => ({
   parkings: [],
@@ -27,7 +28,7 @@ describe('SampleBanner in a city without a live parking API', () => {
     useApp.getState().setCity('ankara');
     await render(<SampleBanner result={staticOnly()} />);
     expect(screen.getByText(NOTE)).toBeTruthy();
-    expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
+    expect(screen.queryByText(/ulaşamadım/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -36,10 +37,10 @@ describe('SampleBanner in a city without a live parking API', () => {
     await render(<SampleBanner result={staticOnly()} />);
     expect(
       screen.getByText(
-        "Bursa'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.",
+        "Bursa'da canlı boş yer sayısı yok, baştan söyleyeyim; otoparkları kapasiteleriyle gösteriyorum.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
+    expect(screen.queryByText(/ulaşamadım/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -48,10 +49,10 @@ describe('SampleBanner in a city without a live parking API', () => {
     await render(<SampleBanner result={staticOnly()} />);
     expect(
       screen.getByText(
-        "Antalya'da canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.",
+        "Antalya'da canlı boş yer sayısı yok, baştan söyleyeyim; otoparkları kapasiteleriyle gösteriyorum.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText(/ulaşılamıyor/)).toBeNull();
+    expect(screen.queryByText(/ulaşamadım/)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -59,8 +60,8 @@ describe('SampleBanner in a city without a live parking API', () => {
     useApp.getState().setCity('istanbul');
     const { rerender } = await render(<SampleBanner result={staticOnly()} />);
     expect(screen.queryByText(NOTE)).toBeNull();
-    expect(screen.queryByText(/canlı boş yer verisi yok/)).toBeNull();
+    expect(screen.queryByText(/canlı boş yer sayısı yok/)).toBeNull();
     await rerender(<SampleBanner result={staticOnly('HTTP 503')} />);
-    expect(screen.getByText(/Belediye verisine ulaşılamıyor/)).toBeTruthy();
+    expect(screen.getByText(/Belediye verisine ulaşamadım/)).toBeTruthy();
   });
 });

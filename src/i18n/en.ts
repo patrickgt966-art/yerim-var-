@@ -36,13 +36,15 @@ const en = {
     unknown: 'Unknown',
     sample: 'Sample data',
     noData: 'No free-space info',
-    sampleBanner: "This is sample data, not real. We can't reach the city's data right now.",
+    sampleBanner: "This is sample data, not real: I can't reach the city's data.",
     staticOnlyBanner:
-      "We can't reach the city's data. Car park locations are shown, but no free-space info.",
+      "I can't reach the city's data. The car parks are here, but I don't know their free spaces right now.",
     // Calm note for a city without a live parking API (Ankara); not an outage.
-    noLiveBanner: 'No live free-space data in {{city}}; car parks are shown with their capacity.',
+    noLiveBanner:
+      'There are no live free-space counts in {{city}}, just so you know; I show car parks with their capacity.',
     offline: 'No internet',
-    offlineBanner: 'No internet. Last data {{time}} ({{age}} ago). Old numbers are hidden.',
+    offlineBanner:
+      "No internet; I'm showing what I knew last ({{time}}, {{age}} ago). I've hidden the old numbers.",
     // Age in offlineBanner's {{age}}.
     ageMinutes: '{{count}} min',
     ageHours: '{{count}} h',
@@ -212,6 +214,8 @@ const en = {
     a11yFree_one: '{{count}} free space',
     a11yFree_other: '{{count}} free spaces',
     locationTitle: 'Allow location to see free spaces near you',
+    locationYerim:
+      "I can't find what's near without knowing where you are. Allow it and I'll show the free spaces around you.",
     locationAllow: 'Allow location',
     locationSettings: 'Open Settings',
     locationDismiss: 'Not now',

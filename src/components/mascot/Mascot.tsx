@@ -362,7 +362,7 @@ export function MascotFace({
 }: {
   size?: number;
   color?: string;
-  eyes?: 'open' | 'happy' | 'blink' | 'up';
+  eyes?: 'open' | 'happy' | 'blink' | 'up' | 'sad';
 }) {
   return (
     <Svg
@@ -388,6 +388,18 @@ export function MascotFace({
           strokeWidth={2.8}
           strokeLinecap="round"
         />
+      ) : eyes === 'sad' ? (
+        <>
+          <Ellipse cx={10} cy={11} rx={3.2} ry={4} fill={color} />
+          <Ellipse cx={24} cy={11} rx={3.2} ry={4} fill={color} />
+          <Path
+            d="M5.5 4.5l6 -2M28.5 4.5l-6 -2"
+            fill="none"
+            stroke={color}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+          />
+        </>
       ) : eyes === 'up' ? (
         <>
           <Ellipse cx={10.6} cy={7.6} rx={3.6} ry={4.8} fill={color} />
@@ -406,7 +418,7 @@ export function MascotFace({
       <Ellipse cx={4.5} cy={17} rx={3.2} ry={2} fill="rgba(255,110,80,0.35)" />
       <Ellipse cx={29.5} cy={17} rx={3.2} ry={2} fill="rgba(255,110,80,0.35)" />
       <Path
-        d="M12 18q5 5 10 0"
+        d={eyes === 'sad' ? 'M12 20q2.5-2.5 5 0t5 0' : 'M12 18q5 5 10 0'}
         fill="none"
         stroke={color}
         strokeWidth={2.8}

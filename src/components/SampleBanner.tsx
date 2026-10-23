@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
 
 import { activeCity, hasLiveParking } from '@/data/cities';
 import { ageSince, formatClock } from '@/data/freshness';
@@ -7,9 +6,9 @@ import type { ParkingResult } from '@/data/types';
 import { useAnnounce } from '@/lib/a11y';
 import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
-import { asym, useColors } from '@/theme';
+import { useColors } from '@/theme';
 
-import { Txt } from './Txt';
+import { YerimNote } from './mascot/YerimNote';
 
 /**
  * Says when the list is not a fresh download: sample data, or the last
@@ -23,10 +22,15 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
   useApp((s) => s.city); // re-render when the city changes
   const city = activeCity();
   let text: string | null = null;
+  // How Yerim looks saying it: worried when something failed, thinking for sample data.
+  let eyes: 'sad' | 'up' = 'sad';
   const noLive =
     result?.source === 'static-only' && !result.fallbackReason && !hasLiveParking(city);
   if (!result) text = null;
-  else if (result.source === 'mock') text = t('freshness.sampleBanner');
+  else if (result.source === 'mock') {
+    text = t('freshness.sampleBanner');
+    eyes = 'up';
+  }
   // No fallbackReason: the first download is still running, nothing has failed yet.
   else if (result.source === 'static-only' && result.fallbackReason)
     text = t('freshness.staticOnlyBanner');
@@ -44,25 +48,12 @@ export function SampleBanner({ result }: { result: ParkingResult | undefined }) 
     ) : null;
   }
   return (
-    <View
-      accessibilityRole="alert"
-      style={[asym(14, 4), { backgroundColor: c.warnBg, padding: 10 }]}
-    >
-      <Txt variant="caption" color={c.warnText}>
-        {text}
-      </Txt>
-    </View>
+    <YerimNote accessibilityRole="alert" text={text} eyes={eyes} bg={c.warnBg} fg={c.warnText} />
   );
 }
 
 /** Informational, not an alert: this city never had live counts. */
 function NoLiveNote({ text }: { text: string }) {
   const c = useColors();
-  return (
-    <View style={[asym(14, 4), { backgroundColor: c.badgeInfoBg, padding: 10 }]}>
-      <Txt variant="caption" color={c.badgeInfoText}>
-        {text}
-      </Txt>
-    </View>
-  );
+  return <YerimNote text={text} bg={c.badgeInfoBg} fg={c.badgeInfoText} />;
 }

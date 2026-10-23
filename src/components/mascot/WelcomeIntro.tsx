@@ -17,6 +17,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { Button } from '@/components/Button';
 import { Txt } from '@/components/Txt';
+import { feel } from '@/lib/haptics';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 import { Mascot, MascotFace, type MascotPose } from './Mascot';
@@ -81,6 +82,9 @@ export function WelcomeIntro({ onDone }: { onDone: () => void }) {
     const ids = (Object.entries(BEATS) as [Beat, number][]).map(([b, ms]) =>
       setTimeout(() => setBeat(b), ms),
     );
+    // A light tap each time Yerim lands: on the page, standing up, in the parking bay.
+    for (const ms of [380, BEATS.stand + 300, BEATS.bay + 300])
+      ids.push(setTimeout(() => feel('land'), ms));
     return () => ids.forEach(clearTimeout);
   }, [reduce]);
   // A wave is two arm positions, swapped quickly while saying hello.

@@ -25,6 +25,7 @@ import {
 } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
 import { openDirections } from '@/lib/directions';
+import { feel } from '@/lib/haptics';
 import {
   chooseNudge,
   favFilling,
@@ -163,6 +164,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
       useNudge.getState().shown(pick.kind);
       setNudge(pick);
       setPhase('peek');
+      feel('land');
     }, DELAY_MS);
     return () => clearTimeout(id);
   }, [ready, candidates]);
@@ -202,7 +204,12 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
   const left = W / 2 + 40;
   const cardW = Math.min(320, W - 32);
 
+  const open = () => {
+    feel('tick');
+    setPhase('open');
+  };
   const act = () => {
+    feel('yes');
     useNudge.getState().accepted();
     setPhase('bye');
     switch (nudge.kind) {
@@ -260,7 +267,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
               phase === 'peek' ? `${t('nudge.teaser')}: ${text.title}` : text.title
             }
             accessibilityHint={phase === 'peek' ? t('nudge.a11yOpen') : undefined}
-            onPress={() => setPhase('open')}
+            onPress={open}
             disabled={phase !== 'peek'}
           >
             <Mascot size={SIZE} {...pose} />
@@ -271,7 +278,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
       {phase === 'peek' && (
         <Pressable
           accessible={false}
-          onPress={() => setPhase('open')}
+          onPress={open}
           style={[
             asym(14, 4),
             {

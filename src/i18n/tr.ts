@@ -35,13 +35,15 @@ const tr = {
     unknown: 'Bilinmiyor',
     sample: 'Deneme bilgisi',
     noData: 'Boş yer bilgisi yok',
-    sampleBanner: 'Bu bilgi deneme, gerçek değil. Belediye verisine ulaşılamıyor.',
-    staticOnlyBanner: 'Belediye verisine ulaşılamıyor. Otopark konumları var, boş yer bilgisi yok.',
+    sampleBanner: 'Bu bilgi deneme, gerçek değil: belediye verisine ulaşamadım.',
+    staticOnlyBanner:
+      'Belediye verisine ulaşamadım. Otoparkların yeri burada ama boş yer sayısını şu an bilmiyorum.',
     // Calm note for a city without a live parking API (Ankara); not an outage.
     noLiveBanner:
-      '{{place}} canlı boş yer verisi yok; otoparklar kapasite bilgisiyle gösteriliyor.',
+      '{{place}} canlı boş yer sayısı yok, baştan söyleyeyim; otoparkları kapasiteleriyle gösteriyorum.',
     offline: 'İnternet yok',
-    offlineBanner: 'İnternet yok. Son veri {{time}} ({{age}} önce). Eski sayılar gizlendi.',
+    offlineBanner:
+      'İnternet yok; son bildiklerimi gösteriyorum ({{time}}, {{age}} önce). Eski sayıları gizledim.',
     // Age in offlineBanner's {{age}}.
     ageMinutes: '{{count}} dk',
     ageHours: '{{count}} sa',
@@ -208,6 +210,8 @@ const tr = {
   nearby: {
     a11yFree: '{{count}} boş yer',
     locationTitle: 'Yakındaki boş yerleri görmek için konum izni ver',
+    locationYerim:
+      'Nerede olduğunu bilmeden yakını bulamam. İzin verirsen etraftaki boş yerleri gösteririm.',
     locationAllow: 'Konum izni ver',
     locationSettings: 'Ayarları aç',
     locationDismiss: 'Şimdilik değil',

@@ -19,3 +19,12 @@ jest.mock('expo-notifications', () => ({
   scheduleNotificationAsync: jest.fn(async () => 'notification-id'),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
 }));
+
+// Haptics are a native module; tests that care about them spy on `feel` instead.
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(async () => {}),
+  selectionAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}));
