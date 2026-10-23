@@ -1,0 +1,69 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>18-yerim-etiketi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Sekme çubuğundaki Yerim düğmesinin "Yerim" yazısı için dört seçenek (bugün: düğmenin içinde, yüzün altında,
+  12 pt lacivert). Hepsi aynı beyaz çubukta, solda seçili Ana sayfa ile.
+-->
+<style>
+.page{position:relative;width:390px;margin:0 auto;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy);padding:40px 16px 40px}
+.opt{margin-top:22px}
+.opt .head{display:flex;align-items:center;gap:8px}
+.opt .tag{font-weight:800;font-size:12px;padding:4px 9px;border-radius:9px 9px 9px 3px;background:var(--navy);color:#fff}
+.opt .name{font-weight:800;font-size:16px}
+.opt .why{font-size:12.5px;line-height:17px;color:var(--sec);margin-top:4px}
+.stage{position:relative;height:150px;margin-top:8px;border-radius:20px 20px 20px 6px;background:linear-gradient(#FBF7F1,#F4EEE5);overflow:hidden}
+.bar{position:absolute;left:10px;right:10px;bottom:14px;height:72px;border-radius:24px;background:#fff;display:flex;align-items:center;justify-content:space-around;padding:0 4px;box-shadow:0 10px 24px -10px rgba(11,60,73,.3)}
+.it{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--sec);width:56px}
+.it.on{color:var(--navy);font-weight:800}
+.it .pill{width:44px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.it.on .pill{background:var(--mint-soft)}
+.mid{position:relative;width:76px;height:72px}
+.btn{position:absolute;left:50%;top:-30px;margin-left:-31px;width:62px;height:62px;border-radius:22px 22px 22px 8px;background:var(--orange);border:4px solid #fff;transform:rotate(-4deg);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 16px -6px rgba(255,138,31,.6)}
+.logo{display:inline-flex;align-items:flex-start;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;letter-spacing:-.02em;line-height:1.26}
+.logo .i{position:relative}
+.logo .dot{position:absolute;top:.16em;left:50%;width:.27em;height:.27em;margin-left:-.135em;border-radius:50%;background:var(--orange)}
+.rec{display:inline-block;margin-left:auto;font-family:'Caveat',cursive;font-weight:700;font-size:19px;color:var(--orange-strong);transform:rotate(-4deg)}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="page paper"><div class="rel">
+  <div class="greet">sekme çubuğu</div>
+  <div class="h1" style="margin-top:2px">"Yerim" yazısı</div>
+  <div style="font-size:14px;line-height:20px;color:var(--sec);margin-top:6px">Bugün düğmenin içinde, yüzün altında küçük lacivert bir yazı. Daha özel olması için dört seçenek:</div>
+  <div id="opts"></div>
+</div></div>
+<script src="canli.js"></script>
+<script>
+const FACE = (s = 30) => `<svg width="${s}" height="${s * 28 / 34}" viewBox="0 0 34 28"><ellipse cx="10" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><ellipse cx="24" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><circle cx="11.3" cy="8.2" r="1.3" fill="#fff"/><circle cx="25.3" cy="8.2" r="1.3" fill="#fff"/><ellipse cx="4.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><ellipse cx="29.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><path d="M12 18q5 5 10 0" fill="none" stroke="#0B3C49" stroke-width="2.8" stroke-linecap="round"/></svg>`;
+const ICON = {
+  home: '<path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/>',
+  map: '<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
+  fav: '<path d="M12 20s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.2 12 20 12 20z"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+};
+const it = (k, label, on) => `<div class="it ${on ? 'on' : ''}"><span class="pill"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="${on ? '#0B3C49' : '#4F6A75'}" stroke-width="${on ? 2.3 : 2}" stroke-linejoin="round">${ICON[k]}</svg></span>${label}</div>`;
+const bar = (mid) => `<div class="bar">${it('home', 'Ana sayfa', true)}${it('map', 'Harita')}<div class="mid">${mid}</div>${it('fav', 'Favoriler')}${it('user', 'Profil')}</div>`;
+const logoWord = (size, color = '#0B3C49') => `<span class="logo" style="font-size:${size}px;color:${color}"><span>Yer</span><span class="i">ı<span class="dot"></span></span><span>m</span></span>`;
+
+const OPTS = [
+  { k: 'Bugün', name: 'Düğmenin içinde, küçük', why: 'Yazı yüzle yarışıyor, düğme kalabalık; diğer sekmelerin yazılarıyla da aynı hizada değil.',
+    mid: `<div class="btn">${FACE(28)}<span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:11px;line-height:12px">Yerim</span></div>` },
+  { k: 'A', name: 'Logodaki gibi: ı\'nın noktası turuncu', rec: true,
+    why: 'Düğmede sadece Yerim\'in yüzü; altta, diğer sekmelerle aynı hizada "Yerim", logonun yazı tipiyle ve ı\'nın üstünde turuncu nokta. Marka imzası her ekranda, sade.',
+    mid: `<div class="btn">${FACE(32)}</div><div style="position:absolute;left:0;right:0;bottom:6px;text-align:center">${logoWord(13.5)}</div>` },
+  { k: 'B', name: 'Konuşma balonu etiketi',
+    why: 'Altta lacivert küçük bir balon: "Yerim" bir isim etiketi gibi, ucu düğmeyi gösteriyor. Sohbet olduğunu anlatır.',
+    mid: `<div class="btn">${FACE(32)}</div><div style="position:absolute;left:50%;bottom:4px;transform:translateX(-50%);background:#0B3C49;color:#fff;font-weight:800;font-size:10.5px;padding:2px 8px 3px;border-radius:9px 9px 9px 3px">Yerim<svg width="10" height="6" viewBox="0 0 10 6" style="position:absolute;left:50%;top:-5px;margin-left:-5px"><path d="M0 6 5 0l5 6z" fill="#0B3C49"/></svg></div>` },
+  { k: 'C', name: 'El yazısı',
+    why: 'Altta turuncu, hafif eğik el yazısı "Yerim": ana sayfadaki "İyi akşamlar!" ile aynı dil. En sıcak olan ama küçükte okunması zor.',
+    mid: `<div class="btn">${FACE(32)}</div><div style="position:absolute;left:0;right:0;bottom:2px;text-align:center;font-family:'Caveat';font-weight:700;font-size:17px;color:#C2410C;transform:rotate(-4deg)">Yerim</div>` },
+];
+document.getElementById('opts').innerHTML = OPTS.map((o) => `
+  <div class="opt">
+    <div class="head"><span class="tag" style="${o.k === 'Bugün' ? 'background:#EFE8DD;color:#4F6A75' : ''}">${o.k}</span><span class="name">${o.name}</span>${o.rec ? '<span class="rec">önerim ★</span>' : ''}</div>
+    <div class="stage">${bar(o.mid)}</div>
+    <div class="why">${o.why}</div>
+  </div>`).join('');
+</script>
+</body></html>
