@@ -10,10 +10,11 @@ import { needsStillParkedPrompt } from '@/lib/park';
 import { backToCar } from '@/lib/parkHere';
 import { useNow } from '@/lib/useNow';
 import { useApp } from '@/store/app';
-import { brand, fonts, HIT } from '@/theme';
+import { fonts, HIT, useColors } from '@/theme';
 
 /** One-line active park (name, time, estimated cost) with the "Bitir" action. */
 export function ActiveStrip() {
+  const c = useColors();
   const { t } = useTranslation();
   const now = useNow();
   const active = useApp((s) => s.active);
@@ -33,14 +34,14 @@ export function ActiveStrip() {
         style={{
           borderRadius: 16,
           borderLeftWidth: 4,
-          borderLeftColor: brand.mintText,
+          borderLeftColor: c.mintText,
           paddingVertical: 10,
           paddingLeft: 14,
           paddingRight: 6,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
-          backgroundColor: brand.mintSoft,
+          backgroundColor: c.mintSoft,
         }}
       >
         <Pressable
@@ -66,7 +67,7 @@ export function ActiveStrip() {
             <Txt
               numberOfLines={2}
               style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }}
-              color={brand.mintText}
+              color={c.mintText}
             >
               {sub}
             </Txt>
@@ -84,7 +85,7 @@ export function ActiveStrip() {
             justifyContent: 'center',
           }}
         >
-          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 15 }} color={brand.navy}>
+          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 15 }} color={c.ink}>
             {t('park.backToCar')}
           </Txt>
         </Pressable>
@@ -101,7 +102,7 @@ export function ActiveStrip() {
               justifyContent: 'center',
             }}
           >
-            <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 15 }} color={brand.navy}>
+            <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 15 }} color={c.ink}>
               {t('home.end')}
             </Txt>
           </Pressable>

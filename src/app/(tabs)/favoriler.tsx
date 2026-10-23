@@ -19,7 +19,7 @@ import { cuisineLabels, kindLabel, parkingInfo } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { useApp } from '@/store/app';
-import { asym, brand, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
+import { asym, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
 
 function confirmRemove(t: TFunction, name: string, remove: () => void) {
   Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
@@ -41,6 +41,7 @@ function ActiveSection() {
 
 /** Mint "P" tile, as on the home list (car parks are green). */
 function ParkTile() {
+  const c = useColors();
   return (
     <View
       accessible={false}
@@ -50,13 +51,13 @@ function ParkTile() {
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: brand.mintSoft,
+        backgroundColor: c.mintSoft,
       }}
     >
       <Txt
         allowFontScaling={false}
         style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 23 }}
-        color={brand.mintText}
+        color={c.mintText}
       >
         P
       </Txt>

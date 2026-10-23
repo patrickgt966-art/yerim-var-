@@ -126,6 +126,7 @@ function RowShell({
 }
 
 function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
+  const c = useColors();
   const { t } = useTranslation();
   const f = getFreshness(p);
   const fresh = (f.kind === 'live' || f.kind === 'updated') && p.free != null;
@@ -149,13 +150,13 @@ function ParkRow({ p, last }: { p: RankedParking; last: boolean }) {
           borderRadius: 12,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: brand.mintSoft,
+          backgroundColor: c.mintSoft,
         }}
       >
         <Txt
           allowFontScaling={false}
           style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 22 }}
-          color={brand.mintText}
+          color={c.mintText}
         >
           P
         </Txt>
@@ -216,7 +217,7 @@ function FoodRow({ row, here, last }: { row: RestaurantRow; here: LatLng; last: 
           borderRadius: 18,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: brand.peachSoft,
+          backgroundColor: c.peachSoft,
         }}
       >
         <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={20} color={c.text} />
@@ -313,7 +314,7 @@ function MapPreview({
         <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13, lineHeight: 17 }}>
           {t('home.openMap')}
         </Txt>
-        <Icon name="arrow" size={16} color={brand.navy} strokeWidth={2.4} />
+        <Icon name="arrow" size={16} color={c.ink} strokeWidth={2.4} />
       </View>
     </Pressable>
   );

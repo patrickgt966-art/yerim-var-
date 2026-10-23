@@ -11,10 +11,11 @@ import { Txt } from '@/components/Txt';
 import { aiBaseUrl } from '@/lib/ai/client';
 import { refreshAiQuota } from '@/lib/ai/refresh';
 import { useAi } from '@/store/ai';
-import { brand, fonts } from '@/theme';
+import { fonts, useColors } from '@/theme';
 
 /** Remaining AI uses, only while the AI layer is on and the user agreed to it. */
 function AiPill() {
+  const c = useColors();
   const { t } = useTranslation();
   const consent = useAi((s) => s.consent);
   const left = useAi((s) => s.remaining());
@@ -37,14 +38,14 @@ function AiPill() {
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 6,
-        backgroundColor: brand.peachSoft,
+        backgroundColor: c.peachSoft,
       }}
     >
-      <Icon name="sparkle" size={18} color={brand.peachText} strokeWidth={2} />
+      <Icon name="sparkle" size={18} color={c.peachText} strokeWidth={2} />
       <Txt
         allowFontScaling={false}
         style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14, lineHeight: 18 }}
-        color={brand.peachText}
+        color={c.peachText}
       >
         {left}
       </Txt>

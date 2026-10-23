@@ -324,11 +324,11 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
               justifyContent: 'center',
               backgroundColor: c.card,
               borderWidth: 1,
-              borderColor: brand.peachLine,
+              borderColor: c.peachLine,
             },
           ]}
         >
-          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13 }} color={brand.orangeStrong}>
+          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 13 }} color={c.accentStrong}>
             {t('nudge.teaser')}
           </Txt>
         </Pressable>
@@ -348,7 +348,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
             borderBottomRightRadius: 6,
             backgroundColor: c.card,
             borderWidth: 1,
-            borderColor: brand.peachLine,
+            borderColor: c.peachLine,
             shadowColor: brand.navy,
             shadowOpacity: 0.22,
             shadowRadius: 14,

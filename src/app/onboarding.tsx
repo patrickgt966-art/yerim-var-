@@ -124,12 +124,12 @@ function CityCard({
               paddingHorizontal: 8,
               paddingVertical: 2,
               borderRadius: 999,
-              backgroundColor: live ? brand.mintSoft : c.chipBg,
+              backgroundColor: live ? c.mintSoft : c.chipBg,
             }}
           >
             <Txt
               style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}
-              color={live ? brand.mintText : c.textSecondary}
+              color={live ? c.mintText : c.textSecondary}
             >
               {source}
             </Txt>
@@ -243,7 +243,7 @@ export default function Onboarding() {
   if (welcome) {
     return (
       <>
-        <StatusBar style="dark" />
+        <StatusBar style={c.statusBar} />
         <WelcomeIntro onDone={() => setWelcome(false)} />
       </>
     );
@@ -251,7 +251,7 @@ export default function Onboarding() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <StatusBar style="dark" />
+      <StatusBar style={c.statusBar} />
       <View
         style={{
           flex: 1,
@@ -336,22 +336,22 @@ export default function Onboarding() {
                 <WhyRow
                   icon="locate"
                   text={t('onboarding.locWhy1')}
-                  tile={brand.mintSoft}
-                  fg={brand.mintText}
+                  tile={c.mintSoft}
+                  fg={c.mintText}
                 />
                 <View style={{ height: 1, backgroundColor: c.line }} />
                 <WhyRow
                   icon="check"
                   text={t('onboarding.locWhy2')}
-                  tile={brand.peachSoft}
-                  fg={brand.peachText}
+                  tile={c.peachSoft}
+                  fg={c.peachText}
                 />
                 <View style={{ height: 1, backgroundColor: c.line }} />
                 <WhyRow
                   icon="search"
                   text={t('onboarding.locWhy3')}
-                  tile={brand.mintSoft}
-                  fg={brand.mintText}
+                  tile={c.mintSoft}
+                  fg={c.mintText}
                 />
               </View>
               <Txt variant="caption" color={c.textSecondary} style={{ paddingHorizontal: 4 }}>

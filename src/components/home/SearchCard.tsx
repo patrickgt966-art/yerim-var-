@@ -36,7 +36,7 @@ export function SearchCard() {
         paddingLeft: 14,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: brand.peachLine,
+        borderColor: c.peachLine,
         backgroundColor: c.card,
         flexDirection: 'row',
         alignItems: 'center',
@@ -98,7 +98,7 @@ export function ExampleQuestions() {
         marginHorizontal: 16,
         marginTop: 12,
         borderTopWidth: 1,
-        borderTopColor: brand.peachLine,
+        borderTopColor: c.peachLine,
       }}
     >
       <Pressable
@@ -131,7 +131,7 @@ export function ExampleQuestions() {
                   paddingHorizontal: 12,
                   borderRadius: 20,
                   justifyContent: 'center',
-                  backgroundColor: i === 1 ? brand.mintSoft : brand.peachSoft,
+                  backgroundColor: i === 1 ? c.mintSoft : c.peachSoft,
                 }}
               >
                 <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }}>

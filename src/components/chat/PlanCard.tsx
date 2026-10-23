@@ -52,13 +52,13 @@ export function PlanCard({
                 borderRadius: 11,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: brand.mintSoft,
+                backgroundColor: c.mintSoft,
               }}
             >
               <Txt
                 accessible={false}
                 allowFontScaling={false}
-                color={brand.mintText}
+                color={c.mintText}
                 style={{ fontFamily: fonts.bodyExtraBold, fontSize: 12, lineHeight: 16 }}
               >
                 {i + 1}

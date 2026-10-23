@@ -4,7 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { Txt } from '@/components/Txt';
 import { useNow } from '@/lib/useNow';
-import { brand, fonts, useColors } from '@/theme';
+import { fonts, useColors } from '@/theme';
 
 import { CRAVING_IDS, CravingIcon } from './CravingIcon';
 import { mealSlot, orderCravings } from './cravingOrder';
@@ -30,7 +30,7 @@ export function Cravings() {
         </Txt>
         <Txt
           style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
-          color={brand.peachText}
+          color={c.peachText}
         >
           {t(`home.cravingSlot.${mealSlot(hour)}`)}
         </Txt>
@@ -58,8 +58,8 @@ export function Cravings() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: 1,
-                  borderColor: brand.peachLine,
-                  backgroundColor: brand.peachSoft,
+                  borderColor: c.peachLine,
+                  backgroundColor: c.peachSoft,
                 }}
               >
                 <CravingIcon id={id} color={c.text} size={34} />

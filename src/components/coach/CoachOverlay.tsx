@@ -140,8 +140,8 @@ export function CoachOverlay() {
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
         ...(below
-          ? { borderBottomWidth: ARROW, borderBottomColor: brand.white, marginBottom: -1 }
-          : { borderTopWidth: ARROW, borderTopColor: brand.white, marginTop: -1 }),
+          ? { borderBottomWidth: ARROW, borderBottomColor: c.card, marginBottom: -1 }
+          : { borderTopWidth: ARROW, borderTopColor: c.card, marginTop: -1 }),
       }}
     />
   );
@@ -192,7 +192,7 @@ export function CoachOverlay() {
         borderRadius: 20,
         borderBottomLeftRadius: below ? 20 : 6,
         borderTopLeftRadius: below ? 6 : 20,
-        backgroundColor: brand.white,
+        backgroundColor: c.card,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
@@ -210,15 +210,12 @@ export function CoachOverlay() {
         {position === 0 && (
           <Txt
             style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 22 }}
-            color={brand.orangeStrong}
+            color={c.accentStrong}
           >
             {t('coach.hello')}
           </Txt>
         )}
-        <Txt
-          style={{ fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23 }}
-          color={brand.navy}
-        >
+        <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23 }} color={c.ink}>
           {text}
         </Txt>
         {available.length > 1 && (

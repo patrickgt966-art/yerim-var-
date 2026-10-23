@@ -1,6 +1,10 @@
+import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAppearance } from '@/store/appearance';
+
 import {
+  darkPalette,
   lightPalette,
   TAB_BAR_GAP,
   TAB_BAR_HEIGHT,
@@ -12,12 +16,18 @@ export * from './status';
 export * from './tokens';
 
 /**
- * Brand decision (2026-10-09, warm since V5 2026-10-17): warm paper background, navy as the second colour,
- * orange accent, in every system appearance. `darkPalette` stays in tokens
- * in case a dark theme comes back.
+ * The palette for the look the user picked in Profil (Açık / Koyu / Telefonun ayarı). Light is the
+ * warm paper page with navy ink and the orange accent; dark makes navy the canvas and keeps orange.
  */
 export function useColors(): Palette {
-  return lightPalette;
+  return useIsDark() ? darkPalette : lightPalette;
+}
+
+/** True when the dark look is on: picked in Profil, or 'auto' with the phone in dark mode. */
+export function useIsDark(): boolean {
+  const pref = useAppearance((s) => s.theme);
+  const system = useColorScheme();
+  return pref === 'dark' || (pref === 'auto' && system === 'dark');
 }
 
 /**

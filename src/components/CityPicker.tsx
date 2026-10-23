@@ -7,11 +7,12 @@ import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import { cityById, CITIES, hasLiveParking } from '@/data/cities';
 import { useApp } from '@/store/app';
-import { asym, brand, HIT, useColors } from '@/theme';
+import { asym, HIT, useColors } from '@/theme';
 
 /** Compact "İzmir ▾" button for the hero; opens the city sheet. */
 /** The active city with a chevron, on the light home header. */
 export function CityButton() {
+  const c = useColors();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const name = cityById(useApp((s) => s.city)).name;
@@ -30,11 +31,11 @@ export function CityButton() {
           gap: 4,
         }}
       >
-        <Icon name="pin" size={18} color={brand.navy} />
-        <Txt variant="bodyBold" color={brand.navy} style={{ fontSize: 15 }}>
+        <Icon name="pin" size={18} color={c.ink} />
+        <Txt variant="bodyBold" color={c.ink} style={{ fontSize: 15 }}>
           {name}
         </Txt>
-        <Icon name="chevronDown" size={16} color={brand.textSecondary} />
+        <Icon name="chevronDown" size={16} color={c.textSecondary} />
       </Pressable>
       <CitySheet visible={open} onClose={() => setOpen(false)} />
     </>
@@ -156,11 +157,11 @@ function CitySheet({ visible, onClose }: { visible: boolean; onClose: () => void
                 minHeight: 52,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: brand.navy,
+                backgroundColor: c.primary,
               },
             ]}
           >
-            <Txt variant="bodyBold" color={brand.white}>
+            <Txt variant="bodyBold" color={c.onPrimary}>
               {t('city.close')}
             </Txt>
           </Pressable>

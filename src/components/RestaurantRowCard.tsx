@@ -18,7 +18,7 @@ import {
   kindLabel,
   type RestaurantRow,
 } from '@/data/restaurants';
-import { asym, brand, fonts, useColors } from '@/theme';
+import { asym, fonts, useColors } from '@/theme';
 import { FlaggedLine } from './FlaggedLine';
 import { useIsFlagged } from '@/store/reports';
 
@@ -124,12 +124,12 @@ export function RestaurantRowCard({
           width: 44,
           height: 44,
           borderRadius: 22,
-          backgroundColor: brand.cream,
+          backgroundColor: c.warnBg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={24} color={brand.navy} />
+        <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={24} color={c.ink} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         {!r.verified && (

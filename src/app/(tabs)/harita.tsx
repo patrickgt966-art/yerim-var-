@@ -456,13 +456,13 @@ function ParkingSheetCard({
               borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: brand.mintSoft,
+              backgroundColor: c.mintSoft,
             }}
           >
             <Txt
               allowFontScaling={false}
               style={{ fontFamily: fonts.display, fontSize: 21, lineHeight: 26 }}
-              color={brand.mintText}
+              color={c.mintText}
             >
               P
             </Txt>

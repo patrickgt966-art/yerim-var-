@@ -6,7 +6,7 @@ import Animated, { useReducedMotion } from 'react-native-reanimated';
 
 import { Txt } from '@/components/Txt';
 import { useCoach, useCoachHydrated, type TabHintKey } from '@/store/coach';
-import { brand, fonts, HIT, useColors } from '@/theme';
+import { fonts, HIT, useColors } from '@/theme';
 
 import { HOP_IN } from './motion';
 import { Mascot, type MascotPose } from './Mascot';
@@ -56,7 +56,7 @@ export function TabHint({ tab }: { tab: TabHintKey }) {
           borderBottomLeftRadius: 5,
           backgroundColor: c.card,
           borderWidth: 1,
-          borderColor: brand.peachLine,
+          borderColor: c.peachLine,
         }}
       >
         <Txt style={{ fontSize: 14, lineHeight: 20 }}>{text}</Txt>
@@ -71,7 +71,7 @@ export function TabHint({ tab }: { tab: TabHintKey }) {
           hitSlop={8}
           style={{ alignSelf: 'flex-start', minHeight: HIT - 8, justifyContent: 'center' }}
         >
-          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14 }} color={brand.orangeStrong}>
+          <Txt style={{ fontFamily: fonts.bodyExtraBold, fontSize: 14 }} color={c.accentStrong}>
             {t('coach.hintOk')}
           </Txt>
         </Pressable>

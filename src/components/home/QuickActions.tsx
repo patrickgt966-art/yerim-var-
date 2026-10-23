@@ -7,7 +7,7 @@ import { useCoachTarget } from '@/components/coach/registry';
 import { openFoodNearMe } from '@/components/FoodHome';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
-import { brand, fonts } from '@/theme';
+import { fonts, useColors } from '@/theme';
 
 import type { NearbyHome } from './useNearbyHome';
 
@@ -21,6 +21,7 @@ export function QuickActions({
 }: {
   nearby: Pick<NearbyHome, 'nearestFree' | 'nearestWalk' | 'foodCount'>;
 }) {
+  const c = useColors();
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const [busy, setBusy] = useState(false);
@@ -61,8 +62,8 @@ export function QuickActions({
     >
       <ActionCard
         coach={coachPark}
-        bg={brand.mintSoft}
-        fg={brand.mintText}
+        bg={c.mintSoft}
+        fg={c.mintText}
         mark={
           <Txt
             allowFontScaling={false}
@@ -79,13 +80,13 @@ export function QuickActions({
       />
       <ActionCard
         coach={coachFood}
-        bg={brand.peachSoft}
-        fg={brand.peachText}
+        bg={c.peachSoft}
+        fg={c.peachText}
         mark={
           busy ? (
-            <ActivityIndicator size="small" color={brand.navy} />
+            <ActivityIndicator size="small" color={c.ink} />
           ) : (
-            <Icon name="cutlery" size={24} color={brand.navy} strokeWidth={2.2} />
+            <Icon name="cutlery" size={24} color={c.ink} strokeWidth={2.2} />
           )
         }
         title={t('home.foodNearMe')}
@@ -123,6 +124,7 @@ function ActionCard({
   stacked: boolean;
   onPress: () => void;
 }) {
+  const c = useColors();
   return (
     <Pressable
       {...coach}
@@ -158,7 +160,7 @@ function ActionCard({
         >
           {sub ?? ''}
         </Txt>
-        <Icon name="arrow" size={20} color={brand.navy} strokeWidth={2.2} />
+        <Icon name="arrow" size={20} color={c.ink} strokeWidth={2.2} />
       </View>
     </Pressable>
   );

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 
-import { brand, fonts } from '@/theme';
+import { brand, fonts, useColors } from '@/theme';
 
 type Props = {
   /** Font size of both words. */
@@ -30,7 +30,9 @@ const DOT = 0.175;
  */
 export function BrandWordmark({ size, layout, tone, header }: Props) {
   const { t } = useTranslation();
-  const yerim = tone === 'onDark' ? brand.white : brand.navy;
+  const c = useColors();
+  // On the page the ink follows the look (navy, or near-white in dark); on navy it is white.
+  const yerim = tone === 'onDark' ? brand.white : c.ink;
   const word = {
     fontFamily: fonts.bodyExtraBold,
     fontSize: size,
@@ -69,7 +71,7 @@ export function BrandWordmark({ size, layout, tone, header }: Props) {
  */
 export function YerimWord({
   size,
-  color = brand.navy,
+  color,
   dotScale = 1,
 }: {
   size: number;
@@ -83,16 +85,18 @@ export function YerimWord({
     letterSpacing: -size * 0.02,
     includeFontPadding: false,
   } as const;
+  const c = useColors();
+  const ink = color ?? c.ink;
   const dot = size * DOT * dotScale;
   // Centred where the logo's dot is centred, whatever its size.
   const top = size * (ASCENT - 0.73) - dot / 2;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-      <Text allowFontScaling={false} style={[word, { color }]}>
+      <Text allowFontScaling={false} style={[word, { color: ink }]}>
         Yer
       </Text>
       <View>
-        <Text allowFontScaling={false} style={[word, { color }]}>
+        <Text allowFontScaling={false} style={[word, { color: ink }]}>
           {'ı'}
         </Text>
         <View
@@ -108,7 +112,7 @@ export function YerimWord({
           }}
         />
       </View>
-      <Text allowFontScaling={false} style={[word, { color }]}>
+      <Text allowFontScaling={false} style={[word, { color: ink }]}>
         m
       </Text>
     </View>

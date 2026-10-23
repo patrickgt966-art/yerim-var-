@@ -28,7 +28,7 @@ export function AskYerim({ question }: { question: string }) {
             gap: 8,
             backgroundColor: c.card,
             borderWidth: 1,
-            borderColor: brand.peachLine,
+            borderColor: c.peachLine,
           },
         ]}
       >

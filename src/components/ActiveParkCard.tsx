@@ -10,7 +10,7 @@ import { backToCar } from '@/lib/parkHere';
 import { maybeAskForRating } from '@/lib/rating';
 import { useNow } from '@/lib/useNow';
 import { useApp, type ActivePark } from '@/store/app';
-import { brand, fonts, HIT } from '@/theme';
+import { fonts, HIT, useColors } from '@/theme';
 
 import { Button } from './Button';
 import { ParkReminder } from './ParkReminder';
@@ -42,6 +42,7 @@ const UNDO_MS = 10 * 60_000;
 
 /** "Yanlışlıkla mı? Geri al": ends the park without asking, for the first 10 minutes (key it by the start time). */
 export function UndoPark({ active }: { active: ActivePark }) {
+  const c = useColors();
   const { t } = useTranslation();
   const endPark = useApp((s) => s.endPark);
   const started = new Date(active.startedAt).getTime();
@@ -60,7 +61,7 @@ export function UndoPark({ active }: { active: ActivePark }) {
       hitSlop={4}
       style={{ minHeight: HIT, justifyContent: 'center', alignSelf: 'flex-start' }}
     >
-      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 14 }} color={brand.navy}>
+      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 14 }} color={c.ink}>
         {t('park.undo')}
       </Txt>
     </Pressable>
@@ -96,12 +97,10 @@ export function StillParkedPrompt() {
 
 /** One big figure with its small green label ("Geçen süre", "Tahmini ücret"). */
 function Figure({ label, value }: { label: string; value: string }) {
+  const c = useColors();
   return (
     <View style={{ gap: 2 }}>
-      <Txt
-        style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }}
-        color={brand.mintText}
-      >
+      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }} color={c.mintText}>
         {label}
       </Txt>
       <Txt
@@ -120,6 +119,7 @@ function Figure({ label, value }: { label: string; value: string }) {
  * and the end button give way to "Hâlâ park hâlinde misin?".
  */
 export function ActiveParkCard({ active }: { active: ActivePark }) {
+  const c = useColors();
   const { t } = useTranslation();
   const now = useNow(15_000);
   const endPark = useApp((s) => s.endPark);
@@ -133,10 +133,10 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
       style={{
         borderRadius: 22,
         borderLeftWidth: 4,
-        borderLeftColor: brand.mintText,
+        borderLeftColor: c.mintText,
         padding: 16,
         gap: 12,
-        backgroundColor: brand.mintSoft,
+        backgroundColor: c.mintSoft,
       }}
     >
       <View
@@ -152,7 +152,7 @@ export function ActiveParkCard({ active }: { active: ActivePark }) {
               lineHeight: 16,
               letterSpacing: 1,
             }}
-            color={brand.mintText}
+            color={c.mintText}
           >
             {t('favorites.activeLabel')}
           </Txt>

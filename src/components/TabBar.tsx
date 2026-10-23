@@ -81,7 +81,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             borderRadius: 17,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: focused ? brand.mintSoft : 'transparent',
+            backgroundColor: focused ? c.mintSoft : 'transparent',
           }}
         >
           <TabGlyph

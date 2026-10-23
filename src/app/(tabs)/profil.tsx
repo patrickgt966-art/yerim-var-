@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { Linking, ScrollView, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
@@ -20,6 +21,7 @@ import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
 import { useAi } from '@/store/ai';
 import { useCoach } from '@/store/coach';
+import { THEME_PREFS, useAppearance } from '@/store/appearance';
 import { useNudge } from '@/store/nudge';
 import { useApp } from '@/store/app';
 import { brand, fonts, useColors, useTabBarSpace } from '@/theme';
@@ -51,13 +53,13 @@ function Card({
         gap: 12,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: brand.peachLine,
+        borderColor: c.peachLine,
         backgroundColor: c.card,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Tile bg={tint}>
-          {glyph ?? (icon && <Icon name={icon} size={20} color={brand.navy} strokeWidth={2.2} />)}
+          {glyph ?? (icon && <Icon name={icon} size={20} color={c.ink} strokeWidth={2.2} />)}
         </Tile>
         <Txt
           accessibilityRole="header"
@@ -85,7 +87,7 @@ function Choice({
   return (
     <SuggestionChip
       label={label}
-      bg={selected ? brand.peachSoft : c.surface}
+      bg={selected ? c.peachSoft : c.surface}
       selected={selected}
       onPress={onPress}
     />
@@ -107,6 +109,8 @@ export default function ProfileScreen() {
   const setConsent = useAi((s) => s.setConsent);
   const left = useAi((s) => s.remaining());
   const nudges = useNudge((s) => s.enabled);
+  const theme = useAppearance((s) => s.theme);
+  const setTheme = useAppearance((s) => s.setTheme);
 
   return (
     <ScrollView
@@ -122,7 +126,7 @@ export default function ProfileScreen() {
       <TabHint tab="profil" />
       <Txt secondary>{t('profile.noAccount')}</Txt>
       {aiBaseUrl() ? (
-        <Card icon="sparkle" tint={brand.peachSoft} title={t('chat.aiSetting')}>
+        <Card icon="sparkle" tint={c.peachSoft} title={t('chat.aiSetting')}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
             <Txt style={{ flex: 1 }}>{t('chat.aiConsentBody')}</Txt>
             <Switch
@@ -153,7 +157,29 @@ export default function ProfileScreen() {
           />
         </View>
       </Card>
-      <Card icon="globe" tint={brand.mintSoft} title={t('profile.language')}>
+      <Card
+        glyph={
+          // Half light, half dark: the look.
+          <Svg width={20} height={20} viewBox="0 0 24 24">
+            <Circle cx={12} cy={12} r={8} fill="none" stroke={c.ink} strokeWidth={2.2} />
+            <Path d="M12 4a8 8 0 0 1 0 16z" fill={c.ink} />
+          </Svg>
+        }
+        tint={c.surface}
+        title={t('profile.theme')}
+      >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {THEME_PREFS.map((p) => (
+            <Choice
+              key={p}
+              label={t(`profile.theme_${p}`)}
+              selected={theme === p}
+              onPress={() => setTheme(p)}
+            />
+          ))}
+        </View>
+      </Card>
+      <Card icon="globe" tint={c.mintSoft} title={t('profile.language')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {LANG_CHOICES.map((l) => (
             <Choice
@@ -165,7 +191,7 @@ export default function ProfileScreen() {
           ))}
         </View>
       </Card>
-      <Card icon="map" tint={brand.mintSoft} title={t('profile.mapApp')}>
+      <Card icon="map" tint={c.mintSoft} title={t('profile.mapApp')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           <Choice
             label={t('profile.mapAppAsk')}

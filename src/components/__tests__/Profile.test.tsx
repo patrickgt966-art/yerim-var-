@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import Profile from '@/app/(tabs)/profil';
 import { useAi } from '@/store/ai';
 import { useApp } from '@/store/app';
+import { useAppearance } from '@/store/appearance';
 import { useNudge } from '@/store/nudge';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
@@ -35,13 +36,14 @@ describe('Profil', () => {
     expect(useNudge.getState().enabled).toBe(false);
   });
 
-  it('lists the sections in order: Akıllı yardım, Yerim, Dil, Yol tarifi, Gizlilik, Veri kaynakları last', async () => {
+  it('lists the sections in order: Akıllı yardım, Yerim, Görünüm, Dil, Yol tarifi, Gizlilik, Veri kaynakları last', async () => {
     await render(<Profile />);
     const titles = screen.getAllByRole('header').map((h) => h.props.children);
     expect(titles).toEqual([
       'Profil',
       '✨ Akıllı yardım',
       'Yerim',
+      'Görünüm',
       'Dil / Language',
       'Yol tarifi uygulaması',
       'Gizlilik',
@@ -75,6 +77,15 @@ describe('Profil', () => {
     expect(useApp.getState().mapApp).toBe('apple');
     await fireEvent.press(screen.getByLabelText('Her seferinde sor'));
     expect(useApp.getState().mapApp).toBeNull();
+  });
+
+  it('picks the look: phone setting, light or dark', async () => {
+    useAppearance.setState({ theme: 'auto' });
+    await render(<Profile />);
+    await fireEvent.press(screen.getByText('Koyu'));
+    expect(useAppearance.getState().theme).toBe('dark');
+    await fireEvent.press(screen.getByText('Açık'));
+    expect(useAppearance.getState().theme).toBe('light');
   });
 
   it('changes the language in the store', async () => {

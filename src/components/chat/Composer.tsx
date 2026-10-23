@@ -54,9 +54,9 @@ export function Composer({
                 paddingHorizontal: 12,
                 borderRadius: 16,
                 justifyContent: 'center',
-                backgroundColor: pressed ? brand.peachSoft : c.card,
+                backgroundColor: pressed ? c.peachSoft : c.card,
                 borderWidth: 1.5,
-                borderColor: brand.peachLine,
+                borderColor: c.peachLine,
               })}
             >
               <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}>{s}</Txt>
@@ -85,7 +85,7 @@ export function Composer({
             color: c.text,
             backgroundColor: c.card,
             borderWidth: 1,
-            borderColor: brand.peachLine,
+            borderColor: c.peachLine,
           }}
         />
         <Pressable

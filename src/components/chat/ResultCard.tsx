@@ -26,7 +26,7 @@ export function ResultCard({
   const { t } = useTranslation();
   const badge =
     model.badge === 'picked'
-      ? { text: t('chat.badgePicked'), bg: brand.mintSoft, fg: brand.mintText }
+      ? { text: t('chat.badgePicked'), bg: c.mintSoft, fg: c.mintText }
       : model.badge === 'easy'
         ? { text: t('chat.badgeEasy'), bg: c.badgeFreshBg, fg: c.badgeFreshText }
         : model.badge === 'likely'
@@ -99,12 +99,12 @@ export function ResultCard({
                   borderRadius: 6,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: brand.mintSoft,
+                  backgroundColor: c.mintSoft,
                 }}
               >
                 <Txt
                   allowFontScaling={false}
-                  color={brand.mintText}
+                  color={c.mintText}
                   style={{ fontFamily: fonts.display, fontSize: 11, lineHeight: 14 }}
                 >
                   P

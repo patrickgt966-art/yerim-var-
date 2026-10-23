@@ -220,8 +220,8 @@ export function WelcomeIntro({ onDone }: { onDone: () => void }) {
                 width={SIZE + 36}
                 height={30}
                 rx={10}
-                fill={brand.mintSoft}
-                stroke={brand.mintText}
+                fill={c.mintSoft}
+                stroke={c.mintText}
                 strokeWidth={2.5}
                 strokeDasharray="9 7"
               />
@@ -272,14 +272,14 @@ export function WelcomeIntro({ onDone }: { onDone: () => void }) {
           <Txt
             accessible={false}
             style={{ fontSize: 17, lineHeight: 24, textAlign: 'center' }}
-            color={brand.peachText}
+            color={c.peachText}
           >
             {typedFood || ' '}
           </Txt>
           <Txt
             accessible={false}
             style={{ fontSize: 17, lineHeight: 24, textAlign: 'center' }}
-            color={brand.mintText}
+            color={c.mintText}
           >
             {typedPark || ' '}
           </Txt>

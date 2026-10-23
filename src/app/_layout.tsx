@@ -13,6 +13,7 @@ import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
@@ -110,6 +111,11 @@ export default function RootLayout() {
 
   useEffect(() => setCrashRoute(pathname), [pathname]);
 
+  // The window behind the app follows the look, so no white edge shows in dark mode.
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(c.bg).catch(() => {});
+  }, [c.bg]);
+
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
@@ -119,7 +125,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.bg }}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="dark" />
+        <StatusBar style={c.statusBar} />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
           <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />

@@ -79,6 +79,17 @@ export type Palette = {
   badgeInfoText: string;
   warnBg: string;
   warnText: string;
+  /** Soft green surface (car parks) and its text. */
+  mintSoft: string;
+  mintText: string;
+  /** Soft peach surface (food), its edge and its text. */
+  peachSoft: string;
+  peachLine: string;
+  peachText: string;
+  /** Text and icons in the brand's ink: navy on light, near-white on dark. */
+  ink: string;
+  /** Status bar text over the page. */
+  statusBar: 'dark' | 'light';
 };
 
 export const lightPalette: Palette = {
@@ -110,6 +121,13 @@ export const lightPalette: Palette = {
   badgeInfoText: brand.navy,
   warnBg: brand.cream,
   warnText: '#92400E',
+  mintSoft: brand.mintSoft,
+  mintText: brand.mintText,
+  peachSoft: brand.peachSoft,
+  peachLine: brand.peachLine,
+  peachText: brand.peachText,
+  ink: brand.navy,
+  statusBar: 'dark',
 };
 
 /** Dark palette: navy becomes the canvas, orange stays the accent. */
@@ -142,6 +160,13 @@ export const darkPalette: Palette = {
   badgeInfoText: brand.yellow,
   warnBg: '#4A2A0C',
   warnText: '#FFC48F',
+  mintSoft: '#0E3B36',
+  mintText: '#8FE0CC',
+  peachSoft: '#3A2416',
+  peachLine: '#5A3A24',
+  peachText: '#FFC48F',
+  ink: '#F4F7F8',
+  statusBar: 'light',
 };
 
 export const fonts = {
