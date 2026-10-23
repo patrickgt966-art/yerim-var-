@@ -72,10 +72,19 @@ describe('restoranlar default sort', () => {
     expect(screen.getByText(/parkı en kolay olan üstte/)).toBeTruthy();
   });
 
-  it('switches to the park sort when "Parkı kolay" is chosen by hand', async () => {
+  it('offers the park sort only while "Otoparklı" is on', async () => {
     await render(<Restaurants />);
+    expect(screen.queryByText('Parkı kolay')).toBeNull();
+    await fireEvent.press(screen.getByText('Otoparklı'));
+    expect(screen.getByText('Parkı kolay')).toBeTruthy();
+    await fireEvent.press(screen.getByText('En yakın'));
+    expect(screen.getByText(/en yakın üstte/)).toBeTruthy();
     await fireEvent.press(screen.getByText('Parkı kolay'));
     expect(screen.getByText(/parkı en kolay olan üstte/)).toBeTruthy();
+    // Turning it off drops the park sort with it.
+    await fireEvent.press(screen.getByText('Otoparklı'));
+    expect(screen.queryByText('Parkı kolay')).toBeNull();
+    expect(screen.getByText(/en yakın üstte/)).toBeTruthy();
   });
 });
 

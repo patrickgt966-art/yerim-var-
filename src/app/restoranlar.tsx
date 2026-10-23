@@ -39,6 +39,7 @@ import {
 import { currentLocation } from '@/lib/location';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
+import { isNearRail } from '@/data/places';
 import { rankByDistance, useParkings } from '@/data/useParkings';
 import { useScreenReader } from '@/lib/a11y';
 import { useApp } from '@/store/app';
@@ -166,7 +167,7 @@ function Restaurants() {
     free?: string | string[];
     approx?: string | string[];
   }>();
-  const requireParking = firstParam(params.park) === '1';
+  const parkParam = firstParam(params.park) === '1';
   const parkM = firstParam(params.parkm) === '500' ? 500 : 300;
   const wide = firstParam(params.wide) === '1';
   const dishRaw = firstParam(params.dish)?.trim();
@@ -177,6 +178,23 @@ function Restaurants() {
     () => FOOD_CATEGORIES.find((x) => x === firstParam(params.notcat)) ?? null,
   );
   const [freeOnly, setFreeOnly] = useState(firstParam(params.free) === '1');
+  // "Otoparklı": starts on when the screen was opened with a parking ask (park / free params).
+  // The car park sub-filters exist only while it is on and reset when it is turned off.
+  const [parkChip, setParkChip] = useState(freeOnly);
+  const [indoorOnly, setIndoorOnly] = useState(false);
+  const [railOnly, setRailOnly] = useState(false);
+  const [nonstopOnly, setNonstopOnly] = useState(false);
+  const requireParking = parkParam || parkChip;
+  const turnParkingOff = () => {
+    setParkChip(false);
+    setFreeOnly(false);
+    setIndoorOnly(false);
+    setRailOnly(false);
+    setNonstopOnly(false);
+    setSortState(null);
+    if (parkParam) router.setParams({ park: '0' });
+    setSelectedId(null);
+  };
   const { data, isPlaceholderData } = useParkings();
   const initial = FOOD_CATEGORIES.find((x) => x === firstParam(params.cat)) ?? 'all';
   const [filter, setFilterState] = useState<Filter>(initial);
@@ -189,7 +207,7 @@ function Restaurants() {
     setFilterState(next);
     setSelectedId(null);
   };
-  const sort: RestaurantSort = sortChoice ?? (requireParking || freeOnly ? 'parkEase' : 'distance');
+  const sort: RestaurantSort = sortChoice ?? (requireParking ? 'parkEase' : 'distance');
   const setSort = (next: RestaurantSort) => {
     setSortState(next);
     setSelectedId(null);
@@ -226,6 +244,18 @@ function Restaurants() {
     const items = inCat ? inCat.items : all;
     return notCat ? items.filter((r) => !matchesCategory(r, notCat)) : items;
   }, [inCat, all, notCat]);
+  // Food kinds present in the nearby list, most places first; a kind chosen before opening stays.
+  const kinds = useMemo(() => {
+    const counted = FOOD_CATEGORIES.map((cat, i) => ({
+      cat,
+      i,
+      n: all.filter((r) => matchesCategory(r, cat)).length,
+    }));
+    return counted
+      .filter((x) => x.n > 0 || x.cat === filter)
+      .sort((a, b) => b.n - a.n || a.i - b.i)
+      .map((x) => x.cat);
+  }, [all, filter]);
   const widenedKm = inCat && inCat.radiusM > 1000 ? inCat.radiusM / 1000 : null;
 
   // Nearest car park per row, with its free count only when it is fresh.
@@ -243,9 +273,19 @@ function Restaurants() {
     [built, sort, active, isPlaceholderData],
   );
 
-  const parked = requireParking || freeOnly ? withParkingWithin(rows, parkM) : rows;
-  const visible = freeOnly
-    ? parked.filter((row) => nearestParking(row.r, data?.parkings ?? [])?.parking.isPaid === false)
+  const parked = requireParking ? withParkingWithin(rows, parkM) : rows;
+  const subFiltered = indoorOnly || freeOnly || railOnly || nonstopOnly;
+  const visible = subFiltered
+    ? parked.filter((row) => {
+        const p = nearestParking(row.r, data?.parkings ?? [])?.parking;
+        if (!p) return false;
+        return (
+          (!indoorOnly || p.isIndoor === true) &&
+          (!freeOnly || p.isPaid === false) &&
+          (!railOnly || isNearRail(p)) &&
+          (!nonstopOnly || p.nonstop === true)
+        );
+      })
     : parked;
 
   const orderedVisible = useMemo(() => {
@@ -296,7 +336,7 @@ function Restaurants() {
   const categoryChips = (
     <>
       <Chip label={t('food.all')} selected={active === 'all'} onPress={() => setFilter('all')} />
-      {FOOD_CATEGORIES.map((cat) => (
+      {kinds.map((cat) => (
         <Chip
           key={cat}
           label={t(`food.cats.${cat}`)}
@@ -305,6 +345,37 @@ function Restaurants() {
           onPress={() => setFilter(cat)}
         />
       ))}
+      <Chip
+        label={t('food.withParking')}
+        selected={requireParking}
+        onPress={() => {
+          if (requireParking) turnParkingOff();
+          else {
+            setParkChip(true);
+            setSelectedId(null);
+          }
+        }}
+      />
+    </>
+  );
+  const parkingChips = (
+    <>
+      <Chip
+        label={t('results.indoor')}
+        selected={indoorOnly}
+        onPress={() => setIndoorOnly(!indoorOnly)}
+      />
+      <Chip label={t('results.free')} selected={freeOnly} onPress={() => setFreeOnly(!freeOnly)} />
+      <Chip
+        label={t('results.nearRail')}
+        selected={railOnly}
+        onPress={() => setRailOnly(!railOnly)}
+      />
+      <Chip
+        label={t('results.nonstop')}
+        selected={nonstopOnly}
+        onPress={() => setNonstopOnly(!nonstopOnly)}
+      />
     </>
   );
   const header = (
@@ -329,7 +400,7 @@ function Restaurants() {
           onTurnOn={approx === 'noLocation' ? () => void turnOnLocation() : undefined}
         />
       )}
-      {(notCat || freeOnly) && (
+      {notCat && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {notCat && (
             <Chip
@@ -338,34 +409,34 @@ function Restaurants() {
               onPress={() => setNotCat(null)}
             />
           )}
-          {freeOnly && (
-            <Chip label={t('food.freeParkingChip')} selected onPress={() => setFreeOnly(false)} />
-          )}
         </View>
       )}
       <View style={{ marginBottom: 10 }}>
         <SampleBanner result={data} />
       </View>
-      <View
-        accessibilityLabel={t('food.sortLabel')}
-        style={{
-          flexDirection: 'row',
-          flexWrap: wrapChips ? 'wrap' : 'nowrap',
-          gap: 8,
-          marginBottom: 10,
-        }}
-      >
-        <Chip
-          label={t('food.sortPark')}
-          selected={sort === 'parkEase'}
-          onPress={() => setSort('parkEase')}
-        />
-        <Chip
-          label={t('food.sortNearest')}
-          selected={sort === 'distance'}
-          onPress={() => setSort('distance')}
-        />
-      </View>
+      {/* The park sort belongs to the parking filter; without it the list is just nearest first. */}
+      {requireParking && (
+        <View
+          accessibilityLabel={t('food.sortLabel')}
+          style={{
+            flexDirection: 'row',
+            flexWrap: wrapChips ? 'wrap' : 'nowrap',
+            gap: 8,
+            marginBottom: 10,
+          }}
+        >
+          <Chip
+            label={t('food.sortPark')}
+            selected={sort === 'parkEase'}
+            onPress={() => setSort('parkEase')}
+          />
+          <Chip
+            label={t('food.sortNearest')}
+            selected={sort === 'distance'}
+            onPress={() => setSort('distance')}
+          />
+        </View>
+      )}
       {/* A category chosen before opening must stay changeable, even with nothing within 1 km. */}
       {(all.length > 0 || active !== 'all') && (
         <View style={{ marginBottom: 12 }}>
@@ -382,7 +453,22 @@ function Restaurants() {
           )}
         </View>
       )}
-      {(requireParking || dish || quality) && (
+      {requireParking && (
+        <View style={{ marginBottom: 12 }}>
+          {wrapChips ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{parkingChips}</View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {parkingChips}
+            </ScrollView>
+          )}
+        </View>
+      )}
+      {(parkParam || dish || quality) && (
         <View style={{ marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             <Txt variant="caption" secondary>
@@ -394,10 +480,10 @@ function Restaurants() {
                 onPress={() => setFilter('all')}
               />
             )}
-            {requireParking && (
+            {parkParam && (
               <RemovableChip
                 label={'🅿️ ' + t('food.parkRequired') + (parkM === 500 ? ' · 500 m' : '')}
-                onPress={() => router.setParams({ park: '0' })}
+                onPress={turnParkingOff}
               />
             )}
           </View>
@@ -477,11 +563,7 @@ function Restaurants() {
                       onPress={() => router.setParams({ wide: '1' })}
                     />
                   )}
-                  <Chip
-                    label={t('food.dropParking')}
-                    selected={false}
-                    onPress={() => router.setParams({ park: '0' })}
-                  />
+                  <Chip label={t('food.dropParking')} selected={false} onPress={turnParkingOff} />
                 </View>
               </View>
             ) : (
@@ -499,7 +581,8 @@ function Restaurants() {
               best={index === 0 && topEasy && !selectedId}
               widened={!!widenedKm}
               parkPending={isPlaceholderData}
-              parkAsked={requireParking || freeOnly}
+              parkAsked={requireParking}
+              showParking={requireParking}
             />
           )}
         />

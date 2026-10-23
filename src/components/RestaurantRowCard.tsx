@@ -43,6 +43,7 @@ export function RestaurantRowCard({
   widened,
   parkPending,
   parkAsked = false,
+  showParking = true,
 }: {
   row: RestaurantRow;
   target: LatLng | null;
@@ -51,6 +52,8 @@ export function RestaurantRowCard({
   parkPending: boolean;
   /** The list was filtered by parking: open the detail with its car park section expanded. */
   parkAsked?: boolean;
+  /** False on a food-only list: no car park line and no car park tags. */
+  showParking?: boolean;
 }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -82,16 +85,20 @@ export function RestaurantRowCard({
       ? t('food.freeSpotsAt', { count: parking.free, time: formatClock(parking.at) })
       : null;
   const parkText = [near, free].filter(Boolean).join(' · ');
-  const easy = !best && isClose(parking);
+  const easy = showParking && !best && isClose(parking);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${t('food.a11yRow', {
-        name: r.name,
-        meta: metaParts('food.a11yWalk'),
-        parking: parkText,
-      })}${flagged ? `. ${t('report.flagged')}` : ''}`}
+      accessibilityLabel={`${
+        showParking
+          ? t('food.a11yRow', {
+              name: r.name,
+              meta: metaParts('food.a11yWalk'),
+              parking: parkText,
+            })
+          : `${r.name}. ${metaParts('food.a11yWalk')}`
+      }${flagged ? `. ${t('report.flagged')}` : ''}`}
       onPress={() =>
         router.push({
           pathname: '/restoran/[id]',
@@ -134,7 +141,7 @@ export function RestaurantRowCard({
             <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
           </View>
         )}
-        {(best || easy) && (
+        {showParking && (best || easy) && (
           <View style={{ flexDirection: 'row' }}>
             <Tag
               text={t(best ? 'food.bestPark' : 'food.easyPark')}
@@ -150,12 +157,14 @@ export function RestaurantRowCard({
           {meta}
         </Txt>
         {flagged && <FlaggedLine />}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
-          <PBadge size={18} />
-          <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
-            {parkText}
-          </Txt>
-        </View>
+        {showParking && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
+            <PBadge size={18} />
+            <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
+              {parkText}
+            </Txt>
+          </View>
+        )}
       </View>
     </Pressable>
   );

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
+import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
@@ -26,7 +27,17 @@ import { Txt } from '@/components/Txt';
 import { cityById, isInCityArea } from '@/data/cities';
 import { lacksFreshCounts, visibleFree } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
-import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/restaurants';
+import { isNearRail } from '@/data/places';
+import {
+  FOOD_CATEGORIES,
+  matchesCategory,
+  nearestParking,
+  rankRestaurants,
+  restaurantsNear,
+  withParkingWithin,
+  type FoodCategory,
+  type RestaurantRow,
+} from '@/data/restaurants';
 import { promoteFree, useRanked, type RankedParking } from '@/data/useParkings';
 import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { disabledInfo } from '@/lib/disabledSpots';
@@ -81,6 +92,13 @@ function Results() {
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  // Food results: a kind, and "Otoparklı" with its car park sub-filters (all off by default).
+  const [foodKind, setFoodKind] = useState<FoodCategory | null>(null);
+  const [parkOn, setParkOn] = useState(false);
+  const [indoorOnly, setIndoorOnly] = useState(false);
+  const [freeOnly, setFreeOnly] = useState(false);
+  const [railOnly, setRailOnly] = useState(false);
+  const [nonstopOnly, setNonstopOnly] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(initial.outside ? 'outside' : null);
 
   // "Hemen bul" / locate: resolve the user's position, falling back to the city centre.
@@ -150,23 +168,67 @@ function Results() {
     return list;
   }, [ranked, filter, nearMode, selectedId]);
   const hidden = useHiddenPlaceIds();
+  const nearbyFood = useMemo(
+    () => (filter === 'food' && target && hidden ? restaurantsNear(target, 1000, 600) : []),
+    [filter, target, hidden],
+  );
+  // Food kinds present in the nearby list, most places first.
+  const foodKinds = useMemo(
+    () =>
+      FOOD_CATEGORIES.map((cat, i) => ({
+        cat,
+        i,
+        n: nearbyFood.filter((r) => matchesCategory(r, cat)).length,
+      }))
+        .filter((x) => x.n > 0 || x.cat === foodKind)
+        .sort((a, b) => b.n - a.n || a.i - b.i)
+        .map((x) => x.cat),
+    [nearbyFood, foodKind],
+  );
   const foodRows = useMemo<RestaurantRow[]>(() => {
     if (filter !== 'food' || !target || !hidden) return [];
+    const items = foodKind ? nearbyFood.filter((r) => matchesCategory(r, foodKind)) : nearbyFood;
+    const parkings = data?.parkings ?? [];
     let list = rankRestaurants(
-      buildRestaurantRows(
-        restaurantsNear(target, 1000, 600),
-        data?.parkings ?? [],
-        target,
-        new Date(),
-      ),
+      buildRestaurantRows(items, parkings, target, new Date()),
       'distance',
-    ).slice(0, 60);
+      foodKind ?? undefined,
+    );
+    if (parkOn) {
+      list = withParkingWithin(list, 300);
+      if (indoorOnly || freeOnly || railOnly || nonstopOnly) {
+        list = list.filter((row) => {
+          const p = nearestParking(row.r, parkings)?.parking;
+          return (
+            !!p &&
+            (!indoorOnly || p.isIndoor === true) &&
+            (!freeOnly || p.isPaid === false) &&
+            (!railOnly || isNearRail(p)) &&
+            (!nonstopOnly || p.nonstop === true)
+          );
+        });
+      }
+    }
+    list = list.slice(0, 60);
     if (selectedRestaurantId) {
       const i = list.findIndex((x) => x.r.id === selectedRestaurantId);
       if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
     }
     return list;
-  }, [filter, target, data, selectedRestaurantId, hidden]);
+  }, [
+    filter,
+    target,
+    data,
+    selectedRestaurantId,
+    hidden,
+    nearbyFood,
+    foodKind,
+    parkOn,
+    indoorOnly,
+    freeOnly,
+    railOnly,
+    nonstopOnly,
+  ]);
   // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
   const nearestId = useMemo(() => {
     let best: RankedParking | null = null;
@@ -223,6 +285,73 @@ function Results() {
 
   const snapPoints = useMemo(() => ['30%', '58%', '100%'], []);
 
+  const turnParkOff = () => {
+    setParkOn(false);
+    setIndoorOnly(false);
+    setFreeOnly(false);
+    setRailOnly(false);
+    setNonstopOnly(false);
+    setSelectedRestaurantId(null);
+  };
+  // Food results: the scope chip, then what to eat, then "Otoparklı". Car park filters come
+  // only after "Otoparklı" is on.
+  const foodChips = (
+    <>
+      <Chip
+        label={t('food.nearby')}
+        selected
+        onPress={() => {
+          setFilter('all');
+          setFoodKind(null);
+          turnParkOff();
+          setSelectedId(null);
+        }}
+      />
+      {foodKinds.map((cat) => (
+        <Chip
+          key={cat}
+          label={t(`food.cats.${cat}`)}
+          icon={CATEGORY_ICON[cat]}
+          selected={foodKind === cat}
+          onPress={() => {
+            setFoodKind(foodKind === cat ? null : cat);
+            setSelectedRestaurantId(null);
+          }}
+        />
+      ))}
+      <Chip
+        label={t('food.withParking')}
+        selected={parkOn}
+        onPress={() => {
+          if (parkOn) turnParkOff();
+          else {
+            setParkOn(true);
+            setSelectedRestaurantId(null);
+          }
+        }}
+      />
+    </>
+  );
+  const foodParkChips = (
+    <>
+      <Chip
+        label={t('results.indoor')}
+        selected={indoorOnly}
+        onPress={() => setIndoorOnly(!indoorOnly)}
+      />
+      <Chip label={t('results.free')} selected={freeOnly} onPress={() => setFreeOnly(!freeOnly)} />
+      <Chip
+        label={t('results.nearRail')}
+        selected={railOnly}
+        onPress={() => setRailOnly(!railOnly)}
+      />
+      <Chip
+        label={t('results.nonstop')}
+        selected={nonstopOnly}
+        onPress={() => setNonstopOnly(!nonstopOnly)}
+      />
+    </>
+  );
   const chips = (
     <>
       <Chip label={t('results.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
@@ -339,12 +468,23 @@ function Results() {
       )}
       <SampleBanner result={data} />
       {fontScale > 1.2 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{chips}</View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {filter === 'food' ? foodChips : chips}
+        </View>
       ) : (
         <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-          {chips}
+          {filter === 'food' ? foodChips : chips}
         </ScrollView>
       )}
+      {filter === 'food' &&
+        parkOn &&
+        (fontScale > 1.2 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{foodParkChips}</View>
+        ) : (
+          <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+            {foodParkChips}
+          </ScrollView>
+        ))}
     </View>
   );
 
@@ -407,6 +547,8 @@ function Results() {
                   best={false}
                   widened={false}
                   parkPending={isPlaceholderData}
+                  parkAsked={parkOn}
+                  showParking={parkOn}
                 />
               </View>
             )}
