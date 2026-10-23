@@ -29,7 +29,7 @@
 </div>
 <script src="canli.js"></script>
 <script>
-const SPLASH = 0.5, LAUNCH = 0.7, GO_AT = 0.3, T = SPLASH + LAUNCH + 1.0;
+const SPLASH = 0.5, LAUNCH = 0.65, GO_AT = 0.25, T = SPLASH + LAUNCH + 1.0;
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -49,21 +49,27 @@ const GROW = btn.width / tileR.width;
 const tile = $('tile'); document.getElementById('screen').appendChild(tile);
 Object.assign(tile.style, { position: 'absolute', left: from.x - 27 + 'px', top: from.y - 27 + 'px', bottom: 'auto', marginBottom: 0, zIndex: 55, transformOrigin: '50% 50%' });
 const logoEl = document.querySelector('.logo');
+// arkadaki uygulama: ana sayfa görseli ve sekme çubuğu, bulanıktan nete
+const appEls = [document.querySelector('#screen > img'), document.querySelector('[style*="z-index:20"]')];
 let last = '';
 function render(tt) {
   const t = ((tt % T) + T) % T, l = t - SPLASH;
-  $('cap').textContent = l < 0 ? 'Açılış ekranı' : l < LAUNCH ? 'Yerim Var girişi · 0,7 sn' : 'Uygulama';
-  const pop = spring(clamp(l / 0.35, 0, 1));
-  const sq = l > 0.15 ? Math.exp(-14 * (l - 0.15)) * Math.cos((l - 0.15) * 30) * 0.2 : 0;
+  $('cap').textContent = l < 0 ? 'Açılış ekranı' : l < LAUNCH ? 'Yerim Var girişi · 0,65 sn' : 'Uygulama';
+  const pop = spring(clamp(l / 0.32, 0, 1));
+  const sq = l > 0.14 ? Math.exp(-14 * (l - 0.14)) * Math.cos((l - 0.14) * 30) * 0.2 : 0;
   const g = ease(clamp((l - GO_AT) / (LAUNCH - GO_AT), 0, 1));
   const arc = -70 * Math.sin(Math.PI * Math.min(1, g * 1.1));
   tile.style.opacity = (l < 0 ? 0 : Math.min(1, pop * 3)) * (1 - clamp((g - 0.85) / 0.15, 0, 1));
   tile.style.transform = `translate(${(to.x - from.x) * g}px,${(1 - pop) * 30 + (to.y - from.y) * g + arc}px) scale(${(0.3 + 0.7 * pop) * (1 + (GROW - 1) * g)}) scale(${1 + sq},${1 - sq}) rotate(-4deg)`;
-  const happy = l > 0.2 ? 'h' : 'o';
+  const happy = l > 0.18 ? 'h' : 'o';
   if (happy !== last) { tile.innerHTML = FACE(happy === 'h'); last = happy; }
   logoEl.style.opacity = 1 - clamp(g / 0.6, 0, 1);
   logoEl.style.transform = `translateY(${-24 * g}px) scale(${1 - 0.08 * g})`;
-  $('layer').style.opacity = l < 0 ? 1 : g < 0.35 ? 1 : 1 - (g - 0.35) / 0.65;
+  // beyaz -> bulanık ana sayfa -> net ana sayfa, kademeli
+  const white = l < 0 ? 1 : 1 - clamp(g / 0.55, 0, 1);
+  $('layer').style.background = `rgba(255,255,255,${white})`;
+  const blurPx = l < 0 ? 16 : 16 * (1 - g) * (1 - g);
+  appEls.forEach((el) => { if (el) el.style.filter = blurPx > 0.05 ? `blur(${blurPx}px)` : 'none'; });
 }
 window.seek = render; window.TOTAL = T * 2; // iki kez, görmek kolay olsun
 if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render((now - st) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }

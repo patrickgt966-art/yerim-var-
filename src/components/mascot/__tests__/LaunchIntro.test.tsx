@@ -6,6 +6,7 @@ import { LAUNCH_MS, LaunchIntro } from '../LaunchIntro';
 
 let mockReduce = false;
 // Reanimated needs the native worklets runtime: static stand-ins are enough here.
+jest.mock('expo-blur', () => ({ BlurView: jest.requireActual('react-native').View }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 47, right: 0, bottom: 34, left: 0 }),
 }));
@@ -13,8 +14,9 @@ jest.mock('react-native-reanimated', () => {
   const { View } = jest.requireActual('react-native');
   return {
     __esModule: true,
-    default: { View },
+    default: { View, createAnimatedComponent: (c: unknown) => c },
     Easing: { inOut: () => 0, cubic: 0 },
+    useAnimatedProps: () => ({}),
     interpolate: () => 1,
     useReducedMotion: () => mockReduce,
     // Stable like the real one, so effects that list it do not re-run.
