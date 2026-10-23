@@ -9,6 +9,7 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/components/FoodHome', () => ({ openFoodNearMe: jest.fn() }));
 
 jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     __esModule: true,
