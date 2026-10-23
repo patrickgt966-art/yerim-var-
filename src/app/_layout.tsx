@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { LaunchIntro } from '@/components/mascot/LaunchIntro';
 import { RootErrorBoundary } from '@/components/RootErrorBoundary';
 import { warmUpParkings } from '@/data/useParkings';
 import { installErrorReporting, setCrashRoute } from '@/lib/crashReport';
@@ -123,6 +124,7 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         </Stack>
+        <LaunchIntro />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );
