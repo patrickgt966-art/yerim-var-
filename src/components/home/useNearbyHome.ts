@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking } from 'react-native';
 
 import { getFreshness } from '@/data/freshness';
@@ -9,6 +9,7 @@ import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/res
 import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
 import { isClosedNow } from '@/lib/openNow';
+import { setWidgetNearest } from '@/lib/parkWidget';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { useHiddenPlaceIds } from '@/store/reports';
 
@@ -125,6 +126,28 @@ export function useNearbyHome(): NearbyHome {
     for (const p of pool) if (!best || p.distance < best.distance) best = p;
     return best?.walk ?? null;
   }, [ranked]);
+
+  // The home screen / lock screen widget gets the same nearest car park (never throws, and only
+  // reaches the widget when it changed, at most once a minute). Its free count is the park's own,
+  // and only while that is fresh.
+  const nearestPark = useMemo(() => {
+    const open = ranked.filter((p) => !isClosedNow(p));
+    const pool = open.length > 0 ? open : ranked;
+    let best: RankedParking | null = null;
+    for (const p of pool) if (!best || p.distance < best.distance) best = p;
+    return best;
+  }, [ranked]);
+  useEffect(() => {
+    if (!nearestPark) return;
+    const f = getFreshness(nearestPark);
+    const liveCount = (f.kind === 'live' || f.kind === 'updated') && nearestPark.free != null;
+    setWidgetNearest({
+      name: nearestPark.name,
+      walkMin: nearestPark.walk,
+      free: liveCount ? nearestPark.free : null,
+      at: liveCount ? f.at.getTime() : Date.now(),
+    });
+  }, [nearestPark]);
 
   return {
     here,

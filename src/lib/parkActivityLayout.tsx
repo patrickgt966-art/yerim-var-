@@ -83,6 +83,39 @@ const ParkTimerActivity: LiveActivityComponent<ParkActivityProps> = (props, envi
         )}
       </HStack>
     ),
+    // Apple Watch Smart Stack and CarPlay: one compact column, high contrast, nothing long.
+    bannerSmall: (
+      <VStack
+        alignment="leading"
+        spacing={2}
+        modifiers={[padding({ all: 8 }), activityBackgroundTint(c.bg)]}
+      >
+        <HStack spacing={4} alignment="center">
+          {car(14)}
+          <Text
+            modifiers={[
+              font({ size: 13, weight: 'semibold' }),
+              foregroundStyle(c.muted),
+              lineLimit(1),
+            ]}
+          >
+            {props.name}
+          </Text>
+        </HStack>
+        {timer(26)}
+        {cost != null && (
+          <Text
+            modifiers={[
+              font({ size: 13, weight: 'bold' }),
+              foregroundStyle(c.accent),
+              lineLimit(1),
+            ]}
+          >
+            {cost}
+          </Text>
+        )}
+      </VStack>
+    ),
     compactLeading: car(14),
     compactTrailing: (
       <Text

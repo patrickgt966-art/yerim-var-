@@ -19,6 +19,16 @@ describe('the park Live Activity layout', () => {
     expect(src).toContain('countsDown:false');
     for (const part of ['banner', 'compactLeading', 'compactTrailing', 'minimal', 'expandedBottom'])
       expect(src).toContain(`${part}:`);
+    // The Apple Watch Smart Stack and CarPlay render bannerSmall: name, live timer and cost.
+    const small = src.slice(src.indexOf('bannerSmall:'), src.indexOf('compactLeading:'));
+    expect(small).not.toBe('');
+    expect(small).toContain('props.name');
+    // The same timer helper as the banner's (timerInterval, counting up).
+    expect(small).toContain('timer(26)');
+    expect(small).toContain('cost');
+    expect(small).toContain('lineLimit(1)');
+    // The phone banner stays as it was: the small one is added next to it, not instead.
+    expect(src.indexOf('banner:')).toBeLessThan(src.indexOf('bannerSmall:'));
     // Nothing from this module's scope: imports would be undefined in the extension.
     expect(src).not.toMatch(/_swiftUi|_modifiers|_expoWidgets|_theme|require\(/);
   });
