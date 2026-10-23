@@ -1,87 +1,35 @@
+// GENERATED from src/components/mascot/geometry.ts by `npm run build-mascot`. Do not edit by hand.
 /*
-  Yerim maskotu (V3, "Yerim damlası"): Yerim düğmesinin şekli canlanır. Üç köşesi yuvarlak, sol alt
-  köşesi sivri (konum iğnesinin ucu, konuşma balonunun kuyruğu). Düz turuncu, altta koyu turuncu gölge,
-  sol üstte parlama, lacivert ayaklar, yanak allığı. Kontur yok; yumuşak çizgi.
-  Yemeğe de otoparka da elindekini değiştirerek gider: çatal, P tabelası, soru balonu.
-
-  yerimMascot({ size, eyes, mouth, arm, prop, tilt })
-    eyes:  open | blink | happy | side | up | down | curious | sad
-    mouth: smile | open | o | flat | none
-    arm:   rest | wave | wave2 | point | up | hold   (hold: sağ el eşyayı tutar)
-    prop:  none | fork | park | ask
-  yerimMascotLayers(size, { eyes:[...], mouth:[...], arm:[...], prop:[...] }):
-    sahne için; her değişken <g id="eyes-open" opacity="0"> gibi ayrı katman.
+  Yerim, the Yerim button come alive, for the design drafts. Same drawing as the app's Mascot.
+  yerimMascot({ size, eyes, mouth, arm, prop, tilt, extra })
+    eyes:  open | blink | happy | side | down | up | curious | sad
+    mouth: none | smile | open | o | flat
+    arm:   rest | wave | wave2 | point | up | hold   (with a fork, P sign or star and no arm: hold)
+    prop:  none | fork | park | star | ask
+  yerimMascotLayers(size, { eyes:[...], mouth:[...], arm:[...], prop:[...] }): every variant in its own
+    <g id="eyes-open" opacity="0">, for scenes that switch them frame by frame.
+  yerimFace(size, eyes): the small face (Yerim button, avatars).
 */
 (function () {
-  const N = '#0B3C49', O = '#FF8A1F', OD = '#F07A12', W = '#fff', CH = 'rgba(255,110,80,.32)';
-  const VB = [-26, -34, 176, 156]; // kollar, eşyalar ve soru balonu taşar
-  const CX = 62, CY = 56;
-
-  const body =
-    `<ellipse cx="62" cy="116" rx="40" ry="5" fill="rgba(11,60,73,.12)"/>` +
-    `<rect x="34" y="99" width="15" height="13" rx="6.5" fill="${N}"/><rect x="74" y="99" width="15" height="13" rx="6.5" fill="${N}"/>`;
-  const shell =
-    `<path d="M50 12H78a32 32 0 0 1 32 32V72a32 32 0 0 1-32 32H20a6 6 0 0 1-6-6V44a32 32 0 0 1 32-32z" fill="${O}"/>` +
-    `<path d="M14 80V98a6 6 0 0 0 6 6H78a32 32 0 0 0 31-25c-18 12-58 15-95 1z" fill="${OD}"/>` +
-    `<ellipse cx="42" cy="29" rx="12" ry="6" fill="rgba(255,255,255,.38)" transform="rotate(-22 42 29)"/>` +
-    `<ellipse cx="${CX - 23}" cy="${CY + 10}" rx="6" ry="3.6" fill="${CH}"/><ellipse cx="${CX + 23}" cy="${CY + 10}" rx="6" ry="3.6" fill="${CH}"/>`;
-
-  const eyeDot = (x, y, rx = 5, ry = 6.8, hx = 1.8, hy = -2.4) =>
-    `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${N}"/><circle cx="${x + hx}" cy="${y + hy}" r="1.8" fill="${W}"/>`;
-  const L = CX - 12, R = CX + 12;
-  const eyes = {
-    open: eyeDot(L, CY) + eyeDot(R, CY),
-    blink: `<path d="M${L - 5} ${CY + 1}h10M${R - 5} ${CY + 1}h10" stroke="${N}" stroke-width="3.6" stroke-linecap="round"/>`,
-    happy: `<path d="M${L - 6} ${CY + 2}q6-8 12 0M${R - 6} ${CY + 2}q6-8 12 0" fill="none" stroke="${N}" stroke-width="3.6" stroke-linecap="round"/>`,
-    side: eyeDot(L - 3, CY + 2, 5, 6.4, -1.2, -2.2) + eyeDot(R - 3, CY + 2, 5, 6.4, -1.2, -2.2),
-    down: eyeDot(L, CY + 3, 5, 6, 1.4, -1.6) + eyeDot(R, CY + 3, 5, 6, 1.4, -1.6),
-    up: eyeDot(L + 1, CY - 3, 5, 6.8, 1.6, -2.8) + eyeDot(R + 1, CY - 3, 5, 6.8, 1.6, -2.8),
-    curious: eyeDot(L, CY + 1, 4.4, 5.6) + eyeDot(R, CY - 1, 6, 8) + `<path d="M${R - 6} ${CY - 13}q6-4 12 1" fill="none" stroke="${N}" stroke-width="3" stroke-linecap="round"/>`,
-    sad: eyeDot(L, CY + 2, 4.6, 5.8) + eyeDot(R, CY + 2, 4.6, 5.8) +
-      `<path d="M${L - 7} ${CY - 8}l9-3M${R + 7} ${CY - 8}l-9-3" stroke="${N}" stroke-width="3" stroke-linecap="round"/>`,
+  const D = {"vb":[-26,-34,176,156],"ground":"<ellipse cx=\"62\" cy=\"116\" rx=\"40\" ry=\"5\" fill=\"rgba(11,60,73,0.12)\"/><rect x=\"34\" y=\"99\" width=\"15\" height=\"13\" rx=\"6.5\" fill=\"#0B3C49\"/><rect x=\"74\" y=\"99\" width=\"15\" height=\"13\" rx=\"6.5\" fill=\"#0B3C49\"/>","shell":"<path d=\"M50 12H78a32 32 0 0 1 32 32V72a32 32 0 0 1-32 32H20a6 6 0 0 1-6-6V44a32 32 0 0 1 32-32z\" fill=\"#FF8A1F\"/><path d=\"M14 80V98a6 6 0 0 0 6 6H78a32 32 0 0 0 31-25c-18 12-58 15-95 1z\" fill=\"#F07A12\"/><ellipse cx=\"42\" cy=\"29\" rx=\"12\" ry=\"6\" fill=\"rgba(255,255,255,0.38)\" transform=\"rotate(-22 42 29)\"/><ellipse cx=\"39\" cy=\"66\" rx=\"6\" ry=\"3.6\" fill=\"rgba(255,110,80,0.32)\"/><ellipse cx=\"85\" cy=\"66\" rx=\"6\" ry=\"3.6\" fill=\"rgba(255,110,80,0.32)\"/>","eyes":{"open":"<ellipse cx=\"50\" cy=\"56\" rx=\"5\" ry=\"6.8\" fill=\"#0B3C49\"/><circle cx=\"51.8\" cy=\"53.6\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"74\" cy=\"56\" rx=\"5\" ry=\"6.8\" fill=\"#0B3C49\"/><circle cx=\"75.8\" cy=\"53.6\" r=\"1.8\" fill=\"#FFFFFF\"/>","blink":"<path d=\"M45 57h10M69 57h10\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3.6\" stroke-linecap=\"round\"/>","happy":"<path d=\"M44 58q6-8 12 0M68 58q6-8 12 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3.6\" stroke-linecap=\"round\"/>","side":"<ellipse cx=\"47\" cy=\"58\" rx=\"5\" ry=\"6.4\" fill=\"#0B3C49\"/><circle cx=\"45.8\" cy=\"55.8\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"71\" cy=\"58\" rx=\"5\" ry=\"6.4\" fill=\"#0B3C49\"/><circle cx=\"69.8\" cy=\"55.8\" r=\"1.8\" fill=\"#FFFFFF\"/>","down":"<ellipse cx=\"50\" cy=\"59\" rx=\"5\" ry=\"6\" fill=\"#0B3C49\"/><circle cx=\"51.4\" cy=\"57.4\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"74\" cy=\"59\" rx=\"5\" ry=\"6\" fill=\"#0B3C49\"/><circle cx=\"75.4\" cy=\"57.4\" r=\"1.8\" fill=\"#FFFFFF\"/>","up":"<ellipse cx=\"51\" cy=\"53\" rx=\"5\" ry=\"6.8\" fill=\"#0B3C49\"/><circle cx=\"52.6\" cy=\"50.2\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"75\" cy=\"53\" rx=\"5\" ry=\"6.8\" fill=\"#0B3C49\"/><circle cx=\"76.6\" cy=\"50.2\" r=\"1.8\" fill=\"#FFFFFF\"/>","curious":"<ellipse cx=\"50\" cy=\"57\" rx=\"4.4\" ry=\"5.6\" fill=\"#0B3C49\"/><circle cx=\"51.8\" cy=\"54.6\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"74\" cy=\"55\" rx=\"6\" ry=\"8\" fill=\"#0B3C49\"/><circle cx=\"75.8\" cy=\"52.6\" r=\"1.8\" fill=\"#FFFFFF\"/><path d=\"M68 43q6-4 12 1\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3\" stroke-linecap=\"round\"/>","sad":"<ellipse cx=\"50\" cy=\"58\" rx=\"4.6\" ry=\"5.8\" fill=\"#0B3C49\"/><circle cx=\"51.8\" cy=\"55.6\" r=\"1.8\" fill=\"#FFFFFF\"/><ellipse cx=\"74\" cy=\"58\" rx=\"4.6\" ry=\"5.8\" fill=\"#0B3C49\"/><circle cx=\"75.8\" cy=\"55.6\" r=\"1.8\" fill=\"#FFFFFF\"/><path d=\"M43 48l9-3M81 48l-9-3\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3\" stroke-linecap=\"round\"/>"},"mouth":{"none":"","smile":"<path d=\"M55 68q7 7 14 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3.6\" stroke-linecap=\"round\"/>","open":"<path d=\"M53 66q9 14 18 0z\" fill=\"#0B3C49\" stroke=\"#0B3C49\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M58 71.5q4 3 8 0\" fill=\"none\" stroke=\"#E8604C\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>","o":"<ellipse cx=\"62\" cy=\"70\" rx=\"4\" ry=\"5\" fill=\"#0B3C49\"/>","flat":"<path d=\"M54 71q4-4 8 0t8 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3.2\" stroke-linecap=\"round\"/>"},"arm":{"rest":"<path d=\"M16 70Q12 82 2 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"2\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 70Q118 82 122 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"122\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/>","wave":"<path d=\"M16 66Q9 58 -4 40\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"-4\" cy=\"40\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 70Q118 82 122 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"122\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/>","wave2":"<path d=\"M16 66Q6 65 -10 54\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"-10\" cy=\"54\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 70Q118 82 122 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"122\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/>","point":"<path d=\"M16 72Q8 90 -6 98\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"-6\" cy=\"98\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 70Q118 82 122 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"122\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/>","up":"<path d=\"M16 64Q10 56 -2 38\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"-2\" cy=\"38\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 64Q120 56 126 38\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"126\" cy=\"38\" r=\"5.4\" fill=\"#FF8A1F\"/>","hold":"<path d=\"M16 70Q12 82 2 84\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"2\" cy=\"84\" r=\"5.4\" fill=\"#FF8A1F\"/><path d=\"M108 70Q119 71 124 62\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"7.5\" stroke-linecap=\"round\"/><circle cx=\"124\" cy=\"62\" r=\"5.4\" fill=\"#FF8A1F\"/>"},"prop":{"none":"","fork":"<g transform=\"translate(126 58) rotate(18)\"><rect x=\"-2\" y=\"-4\" width=\"4\" height=\"26\" rx=\"2\" fill=\"#0B3C49\"/><path d=\"M-7 -20v10a7 7 0 0 0 14 0v-10M0 -20v12\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"3.2\" stroke-linecap=\"round\"/></g>","park":"<g transform=\"translate(126 58) rotate(10)\"><rect x=\"-2\" y=\"2\" width=\"4\" height=\"22\" rx=\"2\" fill=\"#0B3C49\"/><rect x=\"-14\" y=\"-24\" width=\"28\" height=\"28\" rx=\"8\" fill=\"#0E6B5A\"/><text x=\"0\" y=\"-3\" text-anchor=\"middle\" font-size=\"20\" fill=\"#FFFFFF\" font-family=\"Bricolage Grotesque,Plus Jakarta Sans,sans-serif\" font-weight=\"800\">P</text></g>","star":"<g transform=\"translate(126 50) rotate(12)\"><path d=\"m0 -20 6 12 13 2-9.5 9 2.2 13L0 10l-11.7 6 2.2-13-9.5-9 13-2z\" fill=\"#FFE08A\" stroke=\"#0B3C49\" stroke-width=\"2.4\" stroke-linejoin=\"round\"/></g>","ask":"<g transform=\"translate(118 2)\"><path d=\"M-14 -26h28a8 8 0 0 1 8 8v10a8 8 0 0 1-8 8h-14l-8 7v-7h-6a8 8 0 0 1-8-8v-10a8 8 0 0 1 8-8z\" fill=\"#FFFFFF\" stroke=\"#0B3C49\" stroke-width=\"2.4\"/><text x=\"0\" y=\"-8\" text-anchor=\"middle\" font-size=\"17\" fill=\"#C2410C\" font-family=\"Bricolage Grotesque,Plus Jakarta Sans,sans-serif\" font-weight=\"800\">?</text></g>"},"face":{"open":"<ellipse cx=\"10\" cy=\"10\" rx=\"3.6\" ry=\"4.8\" fill=\"#0B3C49\"/><ellipse cx=\"24\" cy=\"10\" rx=\"3.6\" ry=\"4.8\" fill=\"#0B3C49\"/><circle cx=\"11.3\" cy=\"8.2\" r=\"1.3\" fill=\"#FFFFFF\"/><circle cx=\"25.3\" cy=\"8.2\" r=\"1.3\" fill=\"#FFFFFF\"/><ellipse cx=\"4.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><ellipse cx=\"29.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><path d=\"M12 18q5 5 10 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>","happy":"<path d=\"M5.5 11q4.5-6 9 0M19.5 11q4.5-6 9 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/><ellipse cx=\"4.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><ellipse cx=\"29.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><path d=\"M12 18q5 5 10 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>","blink":"<path d=\"M6 10.5h8M20 10.5h8\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/><ellipse cx=\"4.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><ellipse cx=\"29.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><path d=\"M12 18q5 5 10 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>","up":"<ellipse cx=\"10.6\" cy=\"7.6\" rx=\"3.6\" ry=\"4.8\" fill=\"#0B3C49\"/><ellipse cx=\"24.6\" cy=\"7.6\" rx=\"3.6\" ry=\"4.8\" fill=\"#0B3C49\"/><circle cx=\"11.799999999999999\" cy=\"5.3999999999999995\" r=\"1.3\" fill=\"#FFFFFF\"/><circle cx=\"25.8\" cy=\"5.3999999999999995\" r=\"1.3\" fill=\"#FFFFFF\"/><ellipse cx=\"4.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><ellipse cx=\"29.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><path d=\"M12 18q5 5 10 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>","sad":"<ellipse cx=\"10\" cy=\"11\" rx=\"3.2\" ry=\"4\" fill=\"#0B3C49\"/><ellipse cx=\"24\" cy=\"11\" rx=\"3.2\" ry=\"4\" fill=\"#0B3C49\"/><path d=\"M5.5 4.5l6 -2M28.5 4.5l-6 -2\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><ellipse cx=\"4.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><ellipse cx=\"29.5\" cy=\"17\" rx=\"3.2\" ry=\"2\" fill=\"rgba(255,110,80,0.35)\"/><path d=\"M12 20q2.5-2.5 5 0t5 0\" fill=\"none\" stroke=\"#0B3C49\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>"}};
+  const open = (size) => {
+    const h = (size * D.vb[3]) / D.vb[2];
+    return '<svg width="' + size + '" height="' + h + '" viewBox="' + D.vb.join(' ') + '" style="overflow:visible;display:block" aria-hidden="true">';
   };
-  const mouth = {
-    none: '',
-    smile: `<path d="M${CX - 7} ${CY + 12}q7 7 14 0" fill="none" stroke="${N}" stroke-width="3.6" stroke-linecap="round"/>`,
-    open: `<path d="M${CX - 9} ${CY + 10}q9 14 18 0z" fill="${N}" stroke="${N}" stroke-width="2" stroke-linejoin="round"/><path d="M${CX - 4} ${CY + 15.5}q4 3 8 0" fill="none" stroke="#E8604C" stroke-width="2.8" stroke-linecap="round"/>`,
-    o: `<ellipse cx="${CX}" cy="${CY + 14}" rx="4" ry="5" fill="${N}"/>`,
-    flat: `<path d="M${CX - 8} ${CY + 15}q4-4 8 0t8 0" fill="none" stroke="${N}" stroke-width="3.2" stroke-linecap="round"/>`,
-  };
-  const limb = (x1, y1, x2, y2) =>
-    `<path d="M${x1} ${y1}Q${(x1 + x2) / 2 + 3} ${(y1 + y2) / 2 + 5} ${x2} ${y2}" fill="none" stroke="${O}" stroke-width="7.5" stroke-linecap="round"/><circle cx="${x2}" cy="${y2}" r="5.4" fill="${O}"/>`;
-  const RIGHT_REST = limb(108, 70, 122, 84);
-  const arms = {
-    rest: limb(16, 70, 2, 84) + RIGHT_REST,
-    wave: limb(16, 66, -4, 40) + RIGHT_REST,
-    wave2: limb(16, 66, -10, 54) + RIGHT_REST,
-    point: limb(16, 72, -6, 98) + RIGHT_REST,
-    up: limb(16, 64, -2, 38) + limb(108, 64, 126, 38),
-    hold: limb(16, 70, 2, 84) + limb(108, 70, 124, 62),
-  };
-  const props = {
-    none: '',
-    fork: `<g transform="translate(126 58) rotate(18)"><rect x="-2" y="-4" width="4" height="26" rx="2" fill="${N}"/><path d="M-7 -20v10a7 7 0 0 0 14 0v-10M0 -20v12" fill="none" stroke="${N}" stroke-width="3.2" stroke-linecap="round"/></g>`,
-    park: `<g transform="translate(126 58) rotate(10)"><rect x="-2" y="2" width="4" height="22" rx="2" fill="${N}"/><rect x="-14" y="-24" width="28" height="28" rx="8" fill="#0E6B5A"/><text x="0" y="-3" text-anchor="middle" font-family="Bricolage Grotesque,Plus Jakarta Sans,sans-serif" font-weight="800" font-size="20" fill="#fff">P</text></g>`,
-    ask: `<g transform="translate(118 2)"><path d="M-14 -26h28a8 8 0 0 1 8 8v10a8 8 0 0 1-8 8h-14l-8 7v-7h-6a8 8 0 0 1-8-8v-10a8 8 0 0 1 8-8z" fill="#fff" stroke="${N}" stroke-width="2.4"/><text x="0" y="-8" text-anchor="middle" font-family="Bricolage Grotesque,Plus Jakarta Sans,sans-serif" font-weight="800" font-size="17" fill="#C2410C">?</text></g>`,
-  };
-
-  function open(size) {
-    const h = (size * VB[3]) / VB[2];
-    return `<svg width="${size}" height="${h}" viewBox="${VB.join(' ')}" style="overflow:visible;display:block" aria-hidden="true">`;
-  }
-  window.yerimMascot = function ({ size = 120, eyes: e = 'open', mouth: m = 'smile', arm: a = 'rest', prop: p = 'none', tilt = -4 } = {}) {
-    if (p !== 'none' && p !== 'ask' && a === 'rest') a = 'hold';
-    return open(size) + `<g transform="rotate(${tilt} 62 100)">` + body + arms[a] + shell + eyes[e] + mouth[m] + props[p] + '</g></svg>';
+  window.yerimMascot = function ({ size = 120, eyes = 'open', mouth = 'smile', arm, prop = 'none', tilt = -4, extra = '' } = {}) {
+    const a = arm || (prop !== 'none' && prop !== 'ask' ? 'hold' : 'rest');
+    return open(size) + '<g transform="rotate(' + tilt + ' 62 100)">' + D.ground + D.arm[a] + D.shell + D.eyes[eyes] + D.mouth[mouth] + D.prop[prop] + extra + '</g></svg>';
   };
   window.yerimMascotLayers = function (size, ids) {
-    const g = (k, v, inner) => `<g id="${k}-${v}" opacity="0">${inner}</g>`;
-    let s = open(size) + `<g transform="rotate(-4 62 100)">` + body;
-    for (const v of ids.arm || []) s += g('arm', v, arms[v]);
-    s += shell;
-    for (const v of ids.eyes || []) s += g('eyes', v, eyes[v]);
-    for (const v of ids.mouth || []) s += g('mouth', v, mouth[v]);
-    for (const v of ids.prop || []) s += g('prop', v, props[v]);
+    const g = (k, v) => '<g id="' + k + '-' + v + '" opacity="0">' + D[k][v] + '</g>';
+    let s = open(size) + '<g transform="rotate(-4 62 100)">' + D.ground;
+    for (const v of ids.arm || []) s += g('arm', v);
+    s += D.shell;
+    for (const k of ['eyes', 'mouth', 'prop']) for (const v of ids[k] || []) s += g(k, v);
     return s + '</g></svg>';
   };
-  window.yerimMascotViewBox = VB;
+  window.yerimFace = function (size = 34, eyes = 'open') {
+    return '<svg width="' + size + '" height="' + (size * 28) / 34 + '" viewBox="0 0 34 28" aria-hidden="true">' + D.face[eyes] + '</svg>';
+  };
+  window.yerimMascotViewBox = D.vb;
 })();

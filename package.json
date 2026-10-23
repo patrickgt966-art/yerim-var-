@@ -63,6 +63,7 @@
     "test": "jest",
     "test:dishes": "DISH_AUDIT=full jest src/data/__tests__/turkishDishes.test.ts",
     "build-icons": "node scripts/build-icons.mjs",
+    "build-mascot": "tsx scripts/build-mascot.ts",
     "site:build": "tsx scripts/build-site.ts",
     "doctor": "expo-doctor"
   },
