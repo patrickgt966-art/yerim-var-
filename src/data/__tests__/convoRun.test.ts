@@ -1,6 +1,6 @@
 // The runner of the conversation eval, driven by a fake AI: the real assistant answers, the way the
 // chat screen drives it (a thread that keeps its context, chips, typed answers, a city switch).
-import '@/i18n';
+import i18n from '@/i18n';
 
 import type { Understanding } from '@/lib/ai/protocol';
 
@@ -256,6 +256,64 @@ describe('playConversation', () => {
       // Only the first message is read by the router: the offer and its answers need no AI call.
       expect(calls.understand).toHaveLength(1);
       for (const obs of t.turns.slice(1)) expect(obs.routerCalls).toBe(0);
+    }
+  });
+
+  it('searches the city centre when the phone gives no location', async () => {
+    const reading = () => search({ food: false, nearMe: true });
+    const park: ConvoCase<string> = {
+      name: 'edge: no location',
+      category: 'edge',
+      city: 'izmir',
+      section: 'park',
+      hour: 13,
+      turns: [say('yakınımda otopark', { kind: 'park', nearMe: true, cards: 'some' })],
+    };
+    const located = await playConversation({ ...park, located: true }, fakeAi(reading).ai);
+    const lost = await playConversation({ ...park, located: false }, fakeAi(reading).ai);
+    expect(located.turns[0]!.text).toMatch(/Konumun/);
+    expect(lost.turns[0]!.text).toMatch(/İzmir merkez/);
+    expect(lost.turns[0]!.cards.length).toBeGreaterThan(0);
+    expect(scoreCase(park, lost.turns).ok).toBe(true);
+  });
+
+  it('plays an English-app conversation in English and tells the AI layer', async () => {
+    const seen: (string | undefined)[] = [];
+    const ai: ConvoAi = {
+      understand: async (req) => {
+        seen.push(req.lang);
+        return search({ district: 'Bornova', dish: 'köfte', nearMe: false });
+      },
+      pick: async () => null,
+      pickPark: async () => null,
+      plan: async () => null,
+      reply: async (req) => {
+        seen.push(req.lang);
+        return null;
+      },
+    };
+    const c: ConvoCase<string> = {
+      name: 'dishes: english app',
+      category: 'dishes',
+      city: 'izmir',
+      section: 'food',
+      hour: 13,
+      ui: 'en',
+      turns: [say('meatballs in bornova', { kind: 'food', place: ['Bornova'], cards: 'some' })],
+    };
+    try {
+      const t = await playConversation(c, ai);
+      // The router and the wording both hear that the app is English; the app speaks English.
+      expect(seen).toEqual(['en', 'en']);
+      expect(t.turns[0]!.text).toMatch(/Bornova/);
+      expect(t.turns[0]!.text).not.toMatch(/buldum|çıktı/);
+      expect(scoreCase(c, t.turns).ok).toBe(true);
+      // A Turkish conversation after it is Turkish again.
+      const tr = await playConversation({ ...c, ui: 'tr' }, ai);
+      expect(seen.slice(2)).toEqual([undefined, undefined]);
+      expect(tr.turns[0]!.text).toMatch(/buldum|çıktı|var/);
+    } finally {
+      await i18n.changeLanguage('tr');
     }
   });
 

@@ -52,29 +52,35 @@ export type ConvoAi = {
     history: ChatTurn[];
     section: 'park' | 'food';
     city: string;
+    /** 'en' when the app is in English (as the app's client sends it); absent: Turkish. */
+    lang?: 'en';
     lastCards?: { count: number; kind: 'restaurant' | 'parking' };
   }): Promise<Understanding | null>;
   pick(req: {
     text: string;
     candidates: PickCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<PickResponse | null>;
   pickPark(req: {
     text: string;
     candidates: ParkPickCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<ParkPickResponse | null>;
   plan(req: {
     text: string;
     when: PlanWhen;
     candidates: PlanCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<PlanResponse | null>;
   reply(req: {
     userText: string;
     kind: AiReplyKind;
     facts: AiReplyFacts;
     city: string;
+    lang?: 'en';
   }): Promise<string | null>;
 };
 
@@ -98,7 +104,9 @@ type Resolved =
   /** A "@n" tap and the reply offered no kind chip at all: nothing to tap, the turn is skipped. */
   | { kind: 'none' };
 
-const KIND_LABELS = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
+const KIND_LABELS = new Set(
+  Object.values(KINDS).flatMap((m) => [memberLabel(m, 'tr'), memberLabel(m, 'en')]),
+);
 
 /**
  * The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too).
@@ -148,9 +156,11 @@ function directionsTap(
 }
 
 /** Plays the conversation; never throws. */
-export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Transcript> {
+export async function playConversation(c: ConvoCase<string>, ai: ConvoAi): Promise<Transcript> {
   let city: string = c.city;
   setActiveCity(city);
+  // The mega set has English-app conversations; the language is global, like the city.
+  if (c.ui && i18n.language !== c.ui) await i18n.changeLanguage(c.ui);
   let ctx: ChatContext = emptyContext(c.section);
   let messages: ChatTurn[] = [];
   let last: BotMessage | null = null;
@@ -166,7 +176,14 @@ export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Trans
       messages = [];
       last = null;
     }
-    const obs = await playTurn(turn, { ai, ctx, messages, last, now });
+    const obs = await playTurn(turn, {
+      ai,
+      ctx,
+      messages,
+      last,
+      now,
+      located: c.located !== false,
+    });
     out.turns.push(obs.observed);
     if (obs.observed.skipped) continue;
     if (obs.observed.infra) out.infra = true;
@@ -191,6 +208,8 @@ type TurnState = {
   messages: ChatTurn[];
   last: BotMessage | null;
   now: Date;
+  /** False: the phone gives no location, so "here" is unknown. */
+  located: boolean;
 };
 
 async function playTurn(
@@ -199,6 +218,7 @@ async function playTurn(
 ): Promise<{ observed: ObservedTurn; ctx: ChatContext; reply: BotMessage; error?: string }> {
   const { ai, ctx, now } = s;
   const city = activeCity();
+  const lang = i18n.language === 'en' ? ({ lang: 'en' } as const) : {};
   const label = turn.input.text;
   const observed: ObservedTurn = {
     input: label,
@@ -235,7 +255,7 @@ async function playTurn(
     .reverse();
 
   const deps: AssistantDeps = {
-    here: async () => city.center,
+    here: async () => (s.located ? city.center : null),
     geocode: async () => null,
     parkings: staticParkings(),
     t: (key, opts) => i18n.t(key, { city: city.name, ...opts }) as string,
@@ -250,6 +270,7 @@ async function playTurn(
             history,
             section: ctx.section,
             city: city.id,
+            ...lang,
             ...(lastCards ? { lastCards } : {}),
           });
           // The app gave up waiting at ROUTER_TIMEOUT_MS: it answered without the AI.
@@ -273,7 +294,12 @@ async function playTurn(
       usesLeft: () => 99,
       pick: async (req) => {
         try {
-          const v = await ai.pick({ text: req.text, candidates: req.candidates, city: city.id });
+          const v = await ai.pick({
+            text: req.text,
+            candidates: req.candidates,
+            city: city.id,
+            ...lang,
+          });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
           outage(e);
@@ -286,6 +312,7 @@ async function playTurn(
             text: req.text,
             candidates: req.candidates,
             city: city.id,
+            ...lang,
           });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
@@ -300,6 +327,7 @@ async function playTurn(
             when: req.when,
             candidates: req.candidates,
             city: city.id,
+            ...lang,
           });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
@@ -322,7 +350,7 @@ async function playTurn(
           };
           observed.wordings.push(w);
           try {
-            w.raw = await ai.reply({ ...req, city: city.id });
+            w.raw = await ai.reply({ ...req, city: city.id, ...lang });
           } catch (e) {
             outage(e);
           }

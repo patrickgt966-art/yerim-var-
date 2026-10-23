@@ -14,6 +14,7 @@ import {
   distanceClaims,
   costOf,
   estimateCost,
+  forbiddenClaims,
   messageSentences,
   rejectionLines,
   repeatedWordings,
@@ -930,5 +931,179 @@ describe('rejection reasons in the report', () => {
 
   it('prints nothing when nothing was rejected', () => {
     expect(rejectionLines([wording('Tamam.')])).toEqual([]);
+  });
+});
+
+describe('claims the app has no data for (noClaim)', () => {
+  it('finds a phone number, a clock time, a booking, a guarantee, a charger and a "best"', () => {
+    expect(forbiddenClaims('Numarası 0232 123 45 67.', ['phone'])[0]).toMatch(/^phone/);
+    expect(forbiddenClaims('Bornova civarında 8 yer buldum.', ['phone'])).toEqual([]);
+    expect(forbiddenClaims('Akşam 20:30 a kadar açık.', ['hours'])[0]).toMatch(/^hours/);
+    expect(forbiddenClaims('Saat 9 pm kapanıyor.', ['hours'])[0]).toMatch(/^hours/);
+    // A walk of 1.25 km and "~12 dk yürüme" are no clock times.
+    expect(forbiddenClaims('En yakını 1.25 km, ~12 dk yürüme.', ['hours'])).toEqual([]);
+    expect(forbiddenClaims('Masanı ayırttım, rezervasyon tamam.', ['reservation'])[0]).toMatch(
+      /^reservation/,
+    );
+    expect(forbiddenClaims('Boş yer garanti, merak etme.', ['guarantee'])[0]).toMatch(/^guarantee/);
+    expect(forbiddenClaims('Bu otoparkta şarj istasyonu var.', ['charging'])[0]).toMatch(
+      /^charging/,
+    );
+    expect(forbiddenClaims('Bornova’nın en iyi balıkçısı burası.', ['best'])[0]).toMatch(/^best/);
+    expect(forbiddenClaims('Take two aspirin and rest.', ['medical'])[0]).toMatch(/^medical/);
+  });
+
+  it('lets a sentence that says it is unknown, a question and a place name through', () => {
+    expect(forbiddenClaims('Rezervasyon yapamıyorum.', ['reservation'])).toEqual([]);
+    expect(forbiddenClaims('Şarj istasyonu bilgimiz yok.', ['charging'])).toEqual([]);
+    expect(forbiddenClaims('We cannot guarantee a free space.', ['guarantee'])).toEqual([]);
+    expect(forbiddenClaims('Şarj istasyonlu otopark mı arıyorsun?', ['charging'])).toEqual([]);
+    expect(forbiddenClaims('En iyi Kebap bu kartta.', ['best'], ['En iyi Kebap'])).toEqual([]);
+    // Only the asked kinds are looked for.
+    expect(forbiddenClaims('Rezervasyon tamam, 0532 123 45 67.', ['best'])).toEqual([]);
+  });
+
+  it('fails the honesty check of a turn that asks for it', () => {
+    const t = say('x', { kind: 'food', noClaim: ['phone', 'best'] });
+    const bad = scoreTurn(t, obs({ text: 'Burası en iyisi. Numara 0232 555 11 22.' }));
+    expect(bad.honesty.ok).toBe(false);
+    expect(bad.honesty.misses.join('|')).toMatch(/best/);
+    expect(bad.honesty.misses.join('|')).toMatch(/phone/);
+    expect(scoreTurn(t, obs({ text: 'Bornova civarında 8 yer buldum.' })).honesty.ok).toBe(true);
+    // Not asked for: no check.
+    expect(
+      scoreTurn(say('x', { kind: 'food' }), obs({ text: 'Numara 0232 555 11 22.' })).honesty.ok,
+    ).toBe(true);
+  });
+});
+
+describe('a dish nobody makes (hedge)', () => {
+  const t = say('uçan tabak kebabı', { kind: 'food', free: true, hedge: true });
+  it('wants no results, or a text that says it is not sure', () => {
+    const plain = scoreTurn(
+      t,
+      obs({ text: 'Bornova civarında 7 yer buldum.', cards: [card('A')] }),
+    );
+    expect(plain.honesty.misses.join('|')).toMatch(/no hedge/);
+    const hedged = scoreTurn(
+      t,
+      obs({
+        text: '"uçan tabak kebabı" yaptığından emin olduğum yer yok. Benzer yerleri gösteriyorum.',
+        cards: [card('A')],
+      }),
+    );
+    expect(hedged.honesty.ok).toBe(true);
+    const none = scoreTurn(t, obs({ text: '"uçan tabak kebabı" yapan bir yer bulamadım.' }));
+    expect(none.honesty.ok).toBe(true);
+  });
+});
+
+describe('out of scope (scope) and no right reading (free)', () => {
+  const scope = say('Konya’da otopark', { kind: 'offtopic', scope: true, cards: 'none' });
+  it('lets the router read an out-of-scope ask as a search, but shows no results', () => {
+    const asSearch = scoreTurn(
+      scope,
+      obs({ understood: search({ place: 'Konya' }), text: 'Konya’yı bulamadım.' }),
+    );
+    expect(asSearch.understanding.misses).toEqual([]);
+    const asChat = scoreTurn(scope, obs({ understood: chat, text: 'Orası benim işim değil.' }));
+    expect(asChat.understanding.misses).toEqual([]);
+    const fake = scoreTurn(
+      scope,
+      obs({
+        understood: search({ place: 'Konya' }),
+        text: 'Konya civarında 4 yer buldum.',
+        cards: [card('A')],
+      }),
+    );
+    expect(fake.understanding.misses.join('|')).toMatch(/cards: want none, got 1/);
+    // Ordinary talk still may not be a search.
+    const talk = say('bugün hava kaç derece', { kind: 'offtopic', cards: 'none' });
+    expect(
+      scoreTurn(talk, obs({ understood: search(), text: 'Buldum.' })).understanding.misses.join(
+        '|',
+      ),
+    ).toMatch(/want chat or unknown, got search/);
+  });
+
+  it('checks only the router and the reply for a "free" turn', () => {
+    const back = say('ikincisi nerede', { kind: 'food', free: true });
+    const anything = scoreTurn(back, obs({ understood: chat, text: 'İkincisi Pina Balık.' }));
+    expect(anything.understanding.misses).toEqual([]);
+    expect(anything.ok).toBe(true);
+    // The router must still have answered; the reply must be a reply.
+    expect(scoreTurn(back, obs({ routerFailed: true, routerCalls: 1 })).understanding.ok).toBe(
+      false,
+    );
+    expect(scoreTurn(back, obs({ understood: chat, text: '' })).reply.misses).toContain(
+      'empty reply',
+    );
+    // And the honesty checks apply.
+    expect(scoreTurn(back, obs({ understood: chat, text: 'Ucuz ve 40 TL.' })).honesty.ok).toBe(
+      false,
+    );
+  });
+});
+
+describe('the English app', () => {
+  it('reads "All" and the English kind labels as the kinds question', () => {
+    const t = say('i am on a diet', {
+      kind: 'choice',
+      hepsi: true,
+      chipsMin: 2,
+      cards: 'none',
+    });
+    const chips = ['Fish', 'Grill', 'All'].map((label) => ({ kind: 'refine' as const, label }));
+    const s = scoreTurn(t, obs({ text: 'Which kind?', actions: chips, understood: search() }));
+    expect(s.choices.misses).toEqual([]);
+    const noAll = scoreTurn(
+      t,
+      obs({ text: 'Which kind?', actions: chips.slice(0, 2), understood: search() }),
+    );
+    expect(noAll.choices.misses.join('|')).toMatch(/chip: want present/);
+  });
+
+  it('counts the English "no data" note, and English price words are claims', () => {
+    const t = say('cheap kebab in Bornova', { kind: 'food', note: true });
+    const noted = scoreTurn(
+      t,
+      obs({ text: "We don't have price info; I sorted by distance and parking." }),
+    );
+    expect(noted.honesty.misses).toEqual([]);
+    expect(scoreTurn(t, obs({ text: 'Here are 5 kebab places.' })).honesty.misses).toContain(
+      'the honest "no data" note is missing',
+    );
+    expect(claimsIn('These places are cheap and great.', [])[0]).toMatch(/^price/);
+    expect(claimsIn('These are the closest places.', [])).toEqual([]);
+    expect(claimsIn("We don't have price info.", [])).toEqual([]);
+  });
+});
+
+describe('the mega report', () => {
+  it('takes the categories and the title it is given', () => {
+    const t = say('x', { kind: 'food', cards: 'some' });
+    const c = {
+      name: 'style: [izmir] x',
+      category: 'style',
+      city: 'izmir',
+      section: 'food',
+      hour: 12,
+      turns: [t],
+    } as const;
+    const ok = scoreCase(c as unknown as ConvoCase<string>, [
+      obs({ understood: search(), cards: [card('A')] }),
+    ]);
+    const md = buildReport([ok], {
+      model: 'm',
+      bar: 0.85,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      seed: 1,
+      planned: 1,
+      categories: ['style', 'edge'],
+      title: 'Mega AI eval',
+    });
+    expect(md).toContain('Mega AI eval (m): 1/1');
+    expect(md).toContain('| style | 1/1 | 100.0% |');
+    expect(md).not.toContain('| edge |');
   });
 });
