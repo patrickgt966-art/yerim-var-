@@ -57,6 +57,7 @@ function screen(
   routed: AiResult<Understanding>[],
   wording: (req: ReplyReq) => string | null = () => null,
   usedIds: string[] = [],
+  located = true,
 ) {
   const queue = [...routed];
   const charged = new Set<string>();
@@ -76,7 +77,7 @@ function screen(
   });
   const fail = async () => ({ ok: false, reason: 'error' });
   const deps: AssistantDeps = {
-    here: async () => ALSANCAK,
+    here: async () => (located ? ALSANCAK : null),
     geocode: async () => null,
     parkings: staticParkings(),
     // eslint-disable-next-line import/no-named-as-default-member
@@ -138,10 +139,15 @@ describe('the phone flow: fit menü -> where? -> Yakınımda -> kinds -> Hepsi',
     ['no wish', [] as Wish[]],
     ['the wish again', ['healthy'] as Wish[]],
   ])('keeps the goal through the clarify turn (%s)', async (_n, again) => {
-    const s = screen([
-      clarifyDistrict(['healthy']),
-      searchU({ nearMe: true, wishes: again, tone: 'Fit bir öğün için hemen bakıyorum.' }),
-    ]);
+    const s = screen(
+      [
+        clarifyDistrict(['healthy']),
+        searchU({ nearMe: true, wishes: again, tone: 'Fit bir öğün için hemen bakıyorum.' }),
+      ],
+      () => null,
+      [],
+      false,
+    );
     const first = await s.send('Fit menü istiyorum');
     expect(first.reply.cards).toEqual([]);
     expect(labels(first.reply)).toContain('Yakınımda');
@@ -183,7 +189,12 @@ describe('the phone flow: fit menü -> where? -> Yakınımda -> kinds -> Hepsi',
   });
 
   it('the wishes carried by a clarify do not override a category the answer names', async () => {
-    const s = screen([clarifyDistrict(['healthy']), searchU({ nearMe: true, cat: 'fish' })]);
+    const s = screen(
+      [clarifyDistrict(['healthy']), searchU({ nearMe: true, cat: 'fish' })],
+      () => null,
+      [],
+      false,
+    );
     await s.send('Fit menü istiyorum');
     const second = await s.send('yakınımda balık');
     expect(second.ctx.ask).toBeUndefined();
@@ -215,10 +226,12 @@ describe('the phone flow: fit menü -> where? -> Yakınımda -> kinds -> Hepsi',
   });
 
   it('no AI pick line on the choice-question turn', async () => {
-    const s = screen([
-      clarifyDistrict(['healthy']),
-      searchU({ nearMe: true, wishes: ['healthy'] }),
-    ]);
+    const s = screen(
+      [clarifyDistrict(['healthy']), searchU({ nearMe: true, wishes: ['healthy'] })],
+      () => null,
+      [],
+      false,
+    );
     const pick = s.deps.ai!.pick as jest.Mock;
     await s.send('Fit menü istiyorum');
     const second = await s.tap('Yakınımda');
@@ -286,7 +299,7 @@ describe('the AI wording of a turn answered without a new router call', () => {
 
   it('uses the unused reply of the routed turn that asked', async () => {
     // The router is down for the answer: the rules read "Bornova" with the pending question.
-    const s = screen([clarifyKebab(), down], wording);
+    const s = screen([clarifyKebab(), down], wording, [], false);
     const asked = await s.send('kebap');
     expect(asked.ctx.replyId).toBe('u1');
     const r = await s.send('Bornova');

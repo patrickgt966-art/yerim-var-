@@ -17,12 +17,12 @@ import {
   type ChatCard,
   type ChatContext,
 } from '@/data/assistant';
-import { CHOICES, memberLabel } from '@/data/choices';
+import { AI_CHOICE_ID, KINDS, memberLabel } from '@/data/choices';
 import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import i18n from '@/i18n';
-import { validateReply } from '@/lib/ai/replyCheck';
+import { validateReplyReason } from '@/lib/ai/replyCheck';
 import {
   REPLY_TIMEOUT_MS,
   ROUTER_TIMEOUT_MS,
@@ -92,22 +92,34 @@ export const eveningOf = (hour: number): Date => new Date(Date.UTC(2026, 9, 17, 
 const message = (e: unknown): string =>
   (e instanceof Error ? e.message : 'unknown error').split('\n')[0]!.slice(0, 200);
 
-type Resolved = { kind: 'chip'; action: ChatAction } | { kind: 'missing' };
+type Resolved =
+  | { kind: 'chip'; action: ChatAction; swapped?: boolean }
+  | { kind: 'missing' }
+  /** A "@n" tap and the reply offered no kind chip at all: nothing to tap, the turn is skipped. */
+  | { kind: 'none' };
 
-const KIND_LABELS = new Set(CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))));
+const KIND_LABELS = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
 
-/** The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too). */
-function chipOf(last: BotMessage | null, label: string): Resolved {
+/**
+ * The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too).
+ * A kind the router did not pick (`aiAsk`: the question was about its kinds) is not the app's
+ * fault: the first kind on offer is tapped instead.
+ */
+function chipOf(last: BotMessage | null, label: string, aiAsk = false): Resolved {
   const actions = (last?.actions ?? []).filter((a) => a.kind !== 'open');
+  const kinds = actions.filter((a) => KIND_LABELS.has(a.label));
   const nth = KIND_TAP.exec(label);
   if (nth) {
-    const kinds = actions.filter((a) => KIND_LABELS.has(a.label));
     const hit = kinds[Math.min(Number(nth[1]), kinds.length) - 1];
-    return hit ? { kind: 'chip', action: hit } : { kind: 'missing' };
+    return hit ? { kind: 'chip', action: hit } : { kind: 'none' };
   }
   const hit =
     actions.find((a) => a.label === label) ?? actions.find((a) => fold(a.label) === fold(label));
-  return hit ? { kind: 'chip', action: hit } : { kind: 'missing' };
+  if (hit) return { kind: 'chip', action: hit };
+  if (aiAsk && KIND_LABELS.has(label) && kinds[0]) {
+    return { kind: 'chip', action: kinds[0], swapped: true };
+  }
+  return { kind: 'missing' };
 }
 
 const observedCard = (c: ChatCard): ObservedCard => ({
@@ -156,6 +168,7 @@ export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Trans
     }
     const obs = await playTurn(turn, { ai, ctx, messages, last, now });
     out.turns.push(obs.observed);
+    if (obs.observed.skipped) continue;
     if (obs.observed.infra) out.infra = true;
     if (obs.error) {
       out.error = obs.error;
@@ -301,9 +314,11 @@ async function playTurn(
             kind: req.kind,
             raw: null,
             accepted: null,
+            rejectReason: null,
             shown: false,
             late: false,
             hasFreeSpots: (req.facts.items ?? []).some((i) => i.freeSpots !== undefined),
+            paidKnown: (req.facts.items ?? []).some((i) => i.free === false),
           };
           observed.wordings.push(w);
           try {
@@ -312,10 +327,14 @@ async function playTurn(
             outage(e);
           }
           w.late = Date.now() - started > REPLY_TIMEOUT_MS;
-          w.accepted = validateReply(w.raw, req.facts, {
+          const verdict = validateReplyReason(w.raw, req.facts, {
             kind: req.kind,
             allow: [city.name, ...city.districts],
+            userText: req.userText,
           });
+          w.accepted = verdict.text;
+          // A call that failed has no text to judge: that is "failed", not a rejection.
+          w.rejectReason = verdict.text === null && w.raw !== null ? verdict.reason : null;
           return w.raw;
         })();
         pending.push(p);
@@ -330,9 +349,15 @@ async function playTurn(
   let observedText = label;
   let chip: ChatAction | null = null;
   if (turn.input.type === 'tap') {
-    const hit = chipOf(s.last, label);
+    const hit = chipOf(s.last, label, ctx.ask === AI_CHOICE_ID);
+    if (hit.kind === 'none') {
+      // Nothing was offered to tap: this turn is not played, it is not a second failure.
+      observed.skipped = true;
+      return { observed, ctx, reply: s.last ?? { text: '', cards: [], actions: [] } };
+    }
     if (hit.kind === 'chip') {
       chip = hit.action;
+      if (hit.swapped) observed.kindSwapped = true;
       // The user sees what they tapped: the chip's own label.
       observed.input = chip.label;
       if (chip.kind === 'say') observedText = chip.text;

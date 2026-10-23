@@ -9,11 +9,12 @@
 //   4. honesty: no price, rating or menu claim, and the honest "no data" note when required.
 // A case passes when every check of every turn passes. How often validateReply accepts the AI's
 // wording is a rate that is reported, not a check: a rejected text falls back to the template.
-import { CHOICES, memberLabel } from '../choices';
+import { KINDS, memberLabel, type Member } from '../choices';
 import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
 import { fold, type AiReplyKind, type Understanding } from '@/lib/ai/protocol';
+import { ECHO_CUES, NOT_KNOWN } from '@/lib/ai/replyCheck';
 import { walkMinFromMeters } from '@/lib/ai/verify';
 
 export type ObservedCard = {
@@ -35,12 +36,16 @@ export type ObservedWording = {
   raw: string | null;
   /** validateReply's verdict on it: the text the app would show, or null (the template is shown). */
   accepted: string | null;
+  /** Why validateReply dropped a text the model wrote; null when accepted or the call failed. */
+  rejectReason: string | null;
   /** The accepted text is in the reply the user saw (it came within the app's wait). */
   shown: boolean;
   /** The model answered after the app's REPLY_TIMEOUT_MS. */
   late: boolean;
   /** The facts held a live free-spot count. */
   hasFreeSpots: boolean;
+  /** The facts called a car park paid (`free: false`): "ücretli" is then a yes/no, not a price claim. */
+  paidKnown?: boolean;
 };
 
 /** Everything the eval keeps of one turn: what the user saw and what the AI layer did. */
@@ -49,6 +54,10 @@ export type ObservedTurn = {
   input: string;
   /** A tap named a chip the last reply did not offer; the label was typed instead. */
   tapMissing: boolean;
+  /** A "@n" tap found no kind chip to tap: the turn was not played (the turn before it failed). */
+  skipped?: boolean;
+  /** The tapped kind was not offered (the router picked other kinds): the first offered kind was tapped. */
+  kindSwapped?: boolean;
   routerCalls: number;
   /** The router's reading, or null (no call, or it failed). */
   understood: Understanding | null;
@@ -105,6 +114,7 @@ const NOTE = /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor/;
 const LACKS = /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)/;
 const PRICE =
   /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat)/;
+const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
 const RATING =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(rating|ratings|review|reviews|star|stars)( |$)/;
 const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
@@ -114,8 +124,6 @@ const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
  * one ("menüsünde köfte var") still does.
  */
 const MENU_HEDGE = /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan)/;
-/** A sentence that says the room is not known ("boş yer bilgisi elimde yok") claims no room. */
-const NOT_KNOWN = /(bilgi\w* yok|elimde yok|bilmiyorum|bilmiyoruz|bilgim yok|bilinmiyor)/;
 /**
  * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
  * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
@@ -128,19 +136,29 @@ const ROOM =
  * The claims of a text: price, rating and menu, outside sentences that say the data is missing. A
  * place called "Yıldız Pide" or "Ucuz Lokanta" is a name, not a claim: `names` are taken out first.
  */
-export function claimsIn(text: string, names: readonly string[] = [], userText = ''): string[] {
+export function claimsIn(
+  text: string,
+  names: readonly string[] = [],
+  userText = '',
+  paidKnown = false,
+): string[] {
   const out: string[] = [];
   const own = names.map((n) => fold(n)).filter((n) => n !== '');
   // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
   // for a kind; it claims nothing about a menu.
   const userMenu = MENU.test(` ${fold(userText)}`);
+  const userPrice = PRICE.test(` ${fold(userText)}`);
   for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
     const sentence = part.replace(/[.!?\n;]+$/, '');
     let f = ` ${fold(sentence)} `;
     for (const n of own) f = f.split(` ${n} `).join('  ');
+    // A car park the facts call paid may be called "ücretli" (mirrors the app's validateReply).
+    if (paidKnown) f = f.replace(PAID_WORDS, ' ');
     f = f.replace(/\s+/g, ' ').trim();
     if (f === '' || LACKS.test(f)) continue;
-    if (PRICE.test(f)) out.push(`price: "${sentence.trim()}"`);
+    // The user's own price word, asked back or restated ("Ucuz derken aklında hangisi var?"), is no claim.
+    const echoed = userPrice && (part.includes('?') || ECHO_CUES.test(f));
+    if (PRICE.test(f) && !echoed) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
     if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
       out.push(`menu: "${sentence.trim()}"`);
@@ -252,7 +270,7 @@ export function repeatedWordings(perCase: readonly (readonly WordingOf[])[]): Se
   });
 }
 
-const memberLabels = new Set(CHOICES.flatMap((e) => e.members.map((m) => memberLabel(m, 'tr'))));
+const memberLabels = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
 
 /** The folded text without the names of the shown places and the searched place (a car park may be in a name). */
 function withoutNames(text: string, cards: readonly ObservedCard[], place: string | null): string {
@@ -352,7 +370,9 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
     m.push(`freeParking: want ${e.freeParking}, got ${obs.ctx.freeParking}`);
   }
   const cards = obs.cards;
-  if (e.cards === 'some' && cards.length === 0) m.push('cards: want results, got none');
+  const asksKinds = e.orAsk === true && isKindsQuestion(obs);
+  if (e.cards === 'some' && cards.length === 0 && !asksKinds)
+    m.push('cards: want results, got none');
   if (e.cards === 'none' && cards.length > 0) m.push(`cards: want none, got ${cards.length}`);
   if (e.kind === 'greeting' && cards.length > 0) m.push('cards: small talk shows no results');
   const cardKind =
@@ -395,6 +415,37 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   return result(m);
 }
 
+const kindById = KINDS as Record<string, Member | undefined>;
+
+/** The same kind of place: one id, or two ids with one label ("Izgara" of the protein and the healthy entry). */
+function sameKind(want: string, got: string | undefined): boolean {
+  if (want === got) return true;
+  const a = kindById[want];
+  const b = got === undefined ? undefined : kindById[got];
+  return !!a && !!b && memberLabel(a, 'tr') === memberLabel(b, 'tr');
+}
+
+/** A typed answer named a kind that was not offered: the results turn searched that kind (its category or dish). */
+function searchedKind(want: string, obs: ObservedTurn): boolean {
+  const k = kindById[want];
+  if (!k) return false;
+  const dish = fold(obs.ctx.dish ?? '');
+  return (
+    (k.cat !== undefined && obs.ctx.cat === k.cat) ||
+    (dish !== '' && k.words.some((w) => dish.includes(w)))
+  );
+}
+
+/** The reply is a question about kinds of place: the "Hepsi" chip, two or more kind chips, no results. */
+function isKindsQuestion(obs: ObservedTurn): boolean {
+  const labels = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
+  return (
+    obs.cards.length === 0 &&
+    labels.includes(HEPSI) &&
+    labels.filter((l) => memberLabels.has(l)).length >= 2
+  );
+}
+
 function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   const e = turn.expect;
   const m: string[] = [];
@@ -415,7 +466,12 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   if (e.ask && !e.ask.includes(obs.ctx.ask ?? '')) {
     m.push(`question: want ${e.ask.join('|')}, got ${obs.ctx.ask ?? 'none'}`);
   }
-  if (e.member && obs.ctx.choice?.member !== e.member) {
+  if (
+    e.member &&
+    !obs.kindSwapped &&
+    !sameKind(e.member, obs.ctx.choice?.member) &&
+    !(turn.input.type === 'answer' && searchedKind(e.member, obs))
+  ) {
     m.push(`kind picked: want ${e.member}, got ${obs.ctx.choice?.member ?? 'none'}`);
   }
   return result(m);
@@ -441,10 +497,13 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
       obs.text,
       obs.cards.map((c) => c.name),
       obs.input,
+      obs.wordings.some((w) => w.paidKnown),
     ),
     ...distanceClaims(obs.text, obs.cards, turn.expect.kind === 'name'),
   ];
-  if (turn.expect.note === true && !NOTE.test(fold(obs.text))) {
+  // A kinds question (`orAsk`) has no results to carry the note: it comes with the results after a tap.
+  const asksKinds = turn.expect.orAsk === true && isKindsQuestion(obs);
+  if (turn.expect.note === true && !asksKinds && !NOTE.test(fold(obs.text))) {
     m.push('the honest "no data" note is missing');
   }
   for (const w of obs.wordings) {
@@ -468,6 +527,11 @@ export function scoreTurn(
   obs: ObservedTurn,
   repeats: ReadonlySet<string> = new Set(),
 ): TurnScore {
+  // A follow-up with nothing to tap was not played: the turn before it already failed.
+  if (obs.skipped) {
+    const na = notApplicable();
+    return { understanding: na, choices: na, reply: na, honesty: na, ok: true };
+  }
   if (obs.infra) {
     const down = result([`outage: ${obs.error ?? 'an AI call failed'}`]);
     return { understanding: down, choices: down, reply: down, honesty: down, ok: false };
@@ -648,7 +712,9 @@ export function conversationLines(r: CaseResult): string[] {
   r.turns.forEach((obs, i) => {
     const s = r.scores[i] as TurnScore;
     const chips = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
-    out.push(`${i + 1}. user: ${obs.tapMissing ? '(tap) ' : ''}${oneLine(obs.input)}`);
+    out.push(
+      `${i + 1}. user: ${obs.skipped ? '(skipped) ' : obs.tapMissing ? '(tap) ' : ''}${oneLine(obs.input)}`,
+    );
     out.push(
       `   yerim: ${clip(oneLine(obs.text), 220)} [cards ${obs.cards.length}${chips.length ? `; chips ${chips.join(' | ')}` : ''}]`,
     );
@@ -722,6 +788,7 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
     const ok = ws.filter((w) => w.accepted !== null).length;
     lines.push(`- ${kind}: ${ok}/${ws.length} (${pct(ok, ws.length)})`);
   }
+  lines.push(...rejectionLines(wordings));
   const lengths = results.flatMap((r) => r.turns.map((t) => messageSentences(t.text)));
   const buckets = [1, 2, 3, 4].map((n) => lengths.filter((l) => l === n).length);
   const long = lengths.filter((l) => l > 4).length;
@@ -753,3 +820,30 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
 
 /** 1234567 -> "1 234 567". */
 export const fmt = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+/** Per kind, the reasons validateReply dropped the model's wordings, most common first, with one text each. */
+export function rejectionLines(wordings: readonly ObservedWording[]): string[] {
+  const rejected = wordings.filter((w) => w.rejectReason !== null);
+  if (rejected.length === 0) return [];
+  const lines = ['', '### Rejected wordings by kind and reason', ''];
+  lines.push('| Kind | Reason | Count | Example |');
+  lines.push('| --- | --- | --- | --- |');
+  for (const kind of [...new Set(rejected.map((w) => w.kind))]) {
+    const ofKind = rejected.filter((w) => w.kind === kind);
+    const reasons = new Map<string, ObservedWording[]>();
+    for (const w of ofKind)
+      reasons.set(w.rejectReason!, [...(reasons.get(w.rejectReason!) ?? []), w]);
+    const top = [...reasons.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, TOP_REASONS);
+    for (const [reason, ws] of top) {
+      const example = (ws[0]!.raw ?? '').replace(/\s+/g, ' ').replace(/\|/g, '/');
+      lines.push(`| ${kind} | ${reason} | ${ws.length}/${ofKind.length} | ${example} |`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+/** How many reasons per kind the rejection table lists. */
+const TOP_REASONS = 3;

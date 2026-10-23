@@ -210,6 +210,7 @@ describe('the flat model output becomes the union the apps read', () => {
     nearMe: false,
     dishServes: ['köfteci', 'a', 'b', 'c', 'd', 'e', 'f'],
     wishes: ['cheap', 'quiet', 'family', 'kids', 'group', 'quick', 'view', 'late'],
+    kinds: [],
     partySize: 0,
     clarifyAsk: 'party',
     clarifyText: '',
@@ -246,6 +247,31 @@ describe('the flat model output becomes the union the apps read', () => {
     const s = u as { dishServes: string[]; wishes: string[] };
     expect(s.dishServes).toHaveLength(5);
     expect(s.wishes).toHaveLength(6);
+  });
+
+  it('kinds keep the known catalog ids once each, drop the unknown ones and stop at six', () => {
+    const kinds = (raw: unknown) =>
+      (toUnderstanding({ ...flat, kinds: raw }) as { kinds: string[] }).kinds;
+    expect(kinds(['kebab', 'pizza', 'kebab', 'cafe', 42, null, 'meyhane'])).toEqual([
+      'kebab',
+      'cafe',
+      'meyhane',
+    ]);
+    expect(kinds(['grill', 'fish', 'chicken', 'steak', 'bowl', 'salad', 'vegan', 'soup'])).toEqual([
+      'grill',
+      'fish',
+      'chicken',
+      'steak',
+      'bowl',
+      'salad',
+    ]);
+    expect(kinds([])).toEqual([]);
+    expect(kinds(undefined)).toEqual([]);
+    expect(kinds('kebab')).toEqual([]);
+    // The model schema takes any string (the catalog is named in the description); the reader filters.
+    const m = UnderstandingModelSchema.parse({ ...flat, kinds: ['kebab', 'nonsense'] });
+    expect(UnderstandingSchema.safeParse(toUnderstanding(m)).success).toBe(true);
+    expect((toUnderstanding(m) as { kinds: string[] }).kinds).toEqual(['kebab']);
   });
 
   it('real values come through; "none" and 0 and [] are not given', () => {
@@ -325,6 +351,7 @@ describe('a code outside the list does not fail the model answer', () => {
     nearMe: false,
     dishServes: [],
     wishes: ['cheap', 'cozy'],
+    kinds: [],
     partySize: 0,
     clarifyAsk: 'when',
     clarifyText: '',

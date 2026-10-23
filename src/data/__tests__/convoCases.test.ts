@@ -1,4 +1,4 @@
-import { CHOICES, memberLabel } from '../choices';
+import { CHOICES, KINDS, memberLabel } from '../choices';
 import { CITIES, cityById } from '../cities';
 import {
   CONVO_CASES,
@@ -25,9 +25,9 @@ import { MAX_MESSAGE_CHARS, WISHES } from '@/lib/ai/protocol';
 const count = (category: string) => CONVO_CASES.filter((c) => c.category === category).length;
 
 describe('the conversation eval cases', () => {
-  it('has about 550 conversations of 1-4 user turns with unique names', () => {
-    expect(CONVO_CASES.length).toBeGreaterThanOrEqual(540);
-    expect(CONVO_CASES.length).toBeLessThanOrEqual(575);
+  it('has about 630 conversations of 1-4 user turns with unique names', () => {
+    expect(CONVO_CASES.length).toBeGreaterThanOrEqual(600);
+    expect(CONVO_CASES.length).toBeLessThanOrEqual(660);
     expect(new Set(CONVO_CASES.map((c) => c.name)).size).toBe(CONVO_CASES.length);
     const lengths = new Set(CONVO_CASES.map((c) => c.turns.length));
     expect([...lengths].sort()).toEqual([1, 2, 3, 4]);
@@ -43,7 +43,7 @@ describe('the conversation eval cases', () => {
     expect(buildConvoCases()).toEqual(CONVO_CASES);
     const other = buildConvoCases(CONVO_SEED + 1);
     expect(other).not.toEqual(CONVO_CASES);
-    expect(other.length).toBeGreaterThanOrEqual(540);
+    expect(other.length).toBeGreaterThanOrEqual(600);
   });
 
   it('has every category, each with a real share of the mix', () => {
@@ -123,10 +123,9 @@ function checkExpectations(c: ConvoCase): void {
     expect(e.cat === undefined || e.cat.length > 0).toBe(true);
     for (const w of e.wishes ?? []) expect(WISHES).toContain(w);
     for (const w of e.dishHas ?? []) expect(fold(w)).toBe(w);
-    for (const id of e.ask ?? []) expect(CHOICES.map((x) => x.id)).toContain(id);
+    for (const id of e.ask ?? []) expect([...CHOICES.map((x) => x.id), 'ai']).toContain(id);
     if (e.member) {
-      const members = CHOICES.flatMap((x) => x.members.map((m) => m.id));
-      expect([...members, 'all']).toContain(e.member);
+      expect([...Object.keys(KINDS), 'all']).toContain(e.member);
     }
     for (const chip of [...(e.chips ?? []), ...(e.noChips ?? [])]) {
       expect(TAPPABLE_LABELS).toContain(chip);
@@ -192,6 +191,36 @@ describe('the expectations of every conversation', () => {
     for (const c of goalCats) expect(c.turns[0]!.expect.note).toBe(true);
   });
 
+  it('asks for the kinds the router picks for situations, and for the filling ask', () => {
+    const asks = (c: ConvoCase) => c.turns[0]!.expect.ask ?? [];
+    const situations = casesOf('choice').filter(
+      (c) => asks(c).includes('ai') && asks(c).includes('protein'),
+    );
+    expect(situations.length).toBeGreaterThanOrEqual(30);
+    expect(new Set(situations.map((c) => c.turns[0]!.input.text)).size).toBeGreaterThanOrEqual(15);
+    for (const c of situations) {
+      // The question is the router's kinds ('ai') or the table entry of a known wish; never no question.
+      expect(asks(c)).toEqual(expect.arrayContaining(['ai', 'protein', 'quick', 'hearty']));
+      expect(c.turns[0]!.expect).toMatchObject({ hepsi: true, chipsMin: 2, cards: 'none' });
+      const found = c.turns[1]!.expect;
+      expect(found).toMatchObject({ kind: 'food', cards: 'some', note: true });
+      expect(['tap', 'answer']).toContain(c.turns[1]!.input.type);
+    }
+    // Tapped and typed, the first kind, "Hepsi" and a typed "hepsi".
+    const follow = situations.map((c) => `${c.turns[1]!.input.type}:${c.turns[1]!.input.text}`);
+    expect(follow).toContain('tap:@1');
+    expect(follow).toContain(`tap:${HEPSI}`);
+    expect(situations.some((c) => c.turns[1]!.input.type === 'answer')).toBe(true);
+    // The filling ask: its own entry, or the router's kinds for it; "karnım çok aç" may also read as quick.
+    const hearty = casesOf('choice').filter((c) => asks(c).join() === 'hearty,ai');
+    expect(hearty.length).toBeGreaterThanOrEqual(10);
+    for (const c of hearty) {
+      expect(c.turns[0]!.expect.wishes).toEqual(
+        c.turns[0]!.input.text.includes('karnım çok aç') ? ['hearty', 'quick'] : ['hearty'],
+      );
+    }
+  });
+
   it('forces wide searches in small districts of every city', () => {
     const far = casesOf('far');
     expect(far.length).toBeGreaterThanOrEqual(15);
@@ -211,7 +240,7 @@ describe('the expectations of every conversation', () => {
     for (const c of casesOf('no_data')) {
       const last = c.turns[c.turns.length - 1]!;
       expect(last.expect.note).toBe(true);
-      expect(last.expect.wishes?.length).toBeGreaterThan(0);
+      expect(c.turns.some((t) => (t.expect.wishes?.length ?? 0) > 0)).toBe(true);
     }
   });
 

@@ -439,7 +439,11 @@ describe('clarify (job 3)', () => {
       );
 
   it('asks the question with the district chips from our own data', async () => {
-    const { ai, deps } = mockAi({ understand: ask('district', 'Hangi semtte yemek istersiniz?') });
+    const { ai, deps: located } = mockAi({
+      understand: ask('district', 'Hangi semtte yemek istersiniz?'),
+    });
+    // Without the user's location (see the next test for the located user).
+    const deps = { ...located, here: async () => null };
     const r = await answer(vague, emptyContext('food'), deps);
     expect(r.reply.cards).toEqual([]);
     expect(r.reply.text).toBe('Hangi semtte yemek istersiniz?');
@@ -452,6 +456,25 @@ describe('clarify (job 3)', () => {
     for (const tap of r.reply.actions) {
       expect(tap).toEqual({ kind: 'say', label: tap.label, text: tap.label });
     }
+  });
+
+  it('does not ask the district when the location is known: the search runs near the user', async () => {
+    const { ai, deps } = mockAi({
+      understand: ask('district', 'Hangi semtte yemek istersiniz?'),
+    });
+    const r = await answer(vague, emptyContext('food'), deps);
+    expect(r.reply.text).not.toBe('Hangi semtte yemek istersiniz?');
+    expect(r.reply.cards.length).toBeGreaterThan(0);
+    expect(r.ctx.place).toBeNull();
+    expect(r.reply.text).toContain('chat.nearYou');
+    expect(ai.pick).toHaveBeenCalledTimes(1);
+    // The other clarify kinds are still asked.
+    const dish = await answer(
+      vague,
+      emptyContext('food'),
+      mockAi({ understand: ask('dish', null) }).deps,
+    );
+    expect(dish.reply.cards).toEqual([]);
   });
 
   it('asks whether an ambiguous word is a place, with the place and "near me" as chips', async () => {
@@ -497,7 +520,8 @@ describe('clarify (job 3)', () => {
 
   it('uses the template when the wording fails validation', async () => {
     for (const text of ['Konak otopark ücretsiz mi?', 'Saat kaçta 3 kişi?', null]) {
-      const { deps } = mockAi({ understand: ask('district', text) });
+      const { deps: located } = mockAi({ understand: ask('district', text) });
+      const deps = { ...located, here: async () => null };
       const r = await answer(vague, emptyContext('food'), deps);
       expect(r.reply.text).toBe('chat.ask_district');
     }

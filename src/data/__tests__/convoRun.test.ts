@@ -142,6 +142,40 @@ describe('playConversation', () => {
     expect(scoreCase(c, t.turns).ok).toBe(false);
   });
 
+  it('skips a "@1" follow-up when the reply offered no kind chip, and fails the case once', async () => {
+    const { ai, calls } = fakeAi(() => search({ district: 'Bornova', dish: 'köfte' }));
+    const c = make('no chips', [
+      say('bornovada köfte', { kind: 'choice', chipsMin: 2, hepsi: true }),
+      { input: { type: 'tap', text: '@1' }, expect: { kind: 'food', cards: 'some' } },
+    ]);
+    const t = await playConversation(c, ai);
+    expect(t.turns).toHaveLength(2);
+    expect(t.turns[1]!.skipped).toBe(true);
+    expect(t.turns[1]!.tapMissing).toBe(false);
+    expect(calls.understand).toEqual(['bornovada köfte']);
+    const scored = scoreCase(c, t.turns);
+    expect(scored.scores[0]!.ok).toBe(false);
+    expect(scored.scores[1]!.ok).toBe(true);
+    expect(scored.ok).toBe(false);
+  });
+
+  it('taps the first offered kind when the router picked kinds without the one named', async () => {
+    const picked = ['meyhane', 'steak', 'italian'] as never;
+    const { ai } = fakeAi(() => search({ kinds: picked }));
+    const c = make('ai kinds', [
+      say('ilk buluşmaya gideceğiz', { kind: 'choice', ask: ['ai'], chipsMin: 2, hepsi: true }),
+      { input: { type: 'tap', text: 'Burger' }, expect: { kind: 'food', member: 'burger' } },
+    ]);
+    const t = await playConversation(c, ai);
+    const first = t.turns[0]!;
+    const second = t.turns[1]!;
+    expect(first.ctx.ask).toBe('ai');
+    expect(second.kindSwapped).toBe(true);
+    expect(second.tapMissing).toBe(false);
+    expect(second.input).toBe(first.actions[0]!.label);
+    expect(scoreCase(c, t.turns).ok).toBe(true);
+  });
+
   it('starts the thread over in another city', async () => {
     const { ai, calls } = fakeAi((text) =>
       text.includes('çankaya')

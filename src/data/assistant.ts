@@ -17,13 +17,17 @@ import {
   ORDER_SINGLE_WORDS,
 } from '@/data/foodLexicon';
 import {
+  aiEntry,
+  AI_CHOICE_ID,
   askEntryFor,
   CHOICES,
-  choiceById,
+  entryById,
   entryForCat,
   entryReason,
   inMember,
   isVague,
+  kindsOf,
+  isAllAnswer,
   memberForAnswer,
   memberLabel,
   memberOf,
@@ -38,8 +42,10 @@ import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
 import { bareNameWordsOf, displayName, fuzzyNameStart, nameWordsOf } from '@/data/nameMatch';
 import { quartersOf } from '@/data/quarters';
 import {
+  dishWithoutBudget,
   isQualifierWord,
   looksLikePlace,
+  occasionSignal,
   parseQuery,
   parkTripIn,
   planWhenIn,
@@ -67,6 +73,7 @@ import {
   type NearbyRestaurant,
   hasWordForm,
   hasWordStart,
+  categoryForQuery,
   isFoodWord,
   WIDE_RADII_M,
   withParkingWithin,
@@ -162,10 +169,12 @@ export type ChatContext = {
   query?: string;
   /** The cards of the last bot reply; "sence" / "sen seç" pick among them. */
   lastCards?: ChatCard[];
-  /** The question the last reply asked (choices.ts entry id): a typed "balık" / "hepsi" answers it. */
+  /** The question the last reply asked (choices.ts entry id, or 'ai'): a typed "balık" / "hepsi" answers it. */
   ask?: string;
   /** The kind of place picked from a choices.ts entry: one member id, or 'all' for the mix. */
   choice?: { id: string; member: string };
+  /** The kinds (choices.ts KINDS ids) of an 'ai' question / choice: the ones the router picked that have a place nearby. */
+  choiceKinds?: string[];
   /** The goal / mood wishes of a message Yerim asked a clarify question about: the answer keeps them. */
   clarifyWishes?: Wish[];
   /**
@@ -371,6 +380,30 @@ function hasExactNameWord(foldedName: string, word: string): boolean {
 }
 /** True for a folded word that names a dish or a food category ("kahvaltı", "kebap"). */
 const isFoodOrDish = (w: string): boolean => isFoodWord(w) || dishProfile(w, false) !== null;
+/**
+ * True when the message is just the dish the search read (plus a district, a city or a generic
+ * word): "adana kebap", "izmir köfte". A message with other words ("bursa kebap evi") may be a name.
+ */
+function messageIsDish(folded: string, dish: string): boolean {
+  if (dishProfile(folded, false) !== null) return true;
+  // Starting with a dish or category word ("kebap evi") is a dish ask, as it always was.
+  const first = bareNameWordsOf(folded)[0];
+  if (first && isDishOrCategoryWord(first)) return true;
+  const dishWords = fold(dish).split(' ');
+  return bareNameWordsOf(folded).every(
+    (w) => isCityOrDistrictWord(w) || dishWords.some((d) => w.startsWith(d) || d.startsWith(w)),
+  );
+}
+
+/**
+ * Like isFoodOrDish, but spelled right: no loose food lexicon and no typo tolerance, so a word of
+ * a name that only looks like a dish ("kardeş" is not "karides") is not a dish.
+ */
+function isDishOrCategoryWord(w: string): boolean {
+  if (categoryForQuery(w, false, false) !== null) return true;
+  const dish = dishProfile(w, false)?.dish;
+  return !!dish && w.startsWith(fold(dish));
+}
 
 /** True when the typed words are a known place (a square, a street, a mall) rather than a restaurant name. */
 function isKnownPlace(words: string[]): boolean {
@@ -395,7 +428,17 @@ function restaurantsNamed(folded: string): Restaurant[] {
     if (exact.length > 0) return exact;
   }
   const bare = bareNameWordsOf(folded);
-  if (bare.length === 0 || bare.some(isFoodOrDish) || isKnownPlace(bare)) return [];
+  // A dish or category phrase is not a name. A food word inside a longer name is ("Kardeş
+  // Balıkçılık", "Bursa Kebap Evi"): only all-food words, a dish phrase, a first word that is
+  // itself a dish or category, or a known place keep the text as it was read.
+  if (
+    bare.length === 0 ||
+    isKnownPlace(bare) ||
+    bare.every(isFoodOrDish) ||
+    isDishOrCategoryWord(bare[0]!) ||
+    dishProfile(bare.join(' '), false) !== null
+  )
+    return [];
   if (trimmed && !asked.some(isFoodOrDish)) {
     const exact = all.filter((r) => fold(r.name).startsWith(q));
     if (exact.length > 0) return exact;
@@ -409,7 +452,17 @@ function restaurantsNamed(folded: string): Restaurant[] {
     });
     if (whole.length > 0) return whole;
   }
+  // A district or the city as the first word is a where, not the start of a name to repair.
+  if (isCityOrDistrictWord(bare[0]!)) return [];
   return all.filter((r) => fuzzyNameStart(fold(r.name), bare));
+}
+
+/** True for a folded word that is the active city's name or the (first word of a) district name. */
+function isCityOrDistrictWord(w: string): boolean {
+  const city = activeCity();
+  return (
+    fold(city.name) === w || city.districtCenters.some((d) => fold(d.name).split(' ')[0] === w)
+  );
 }
 
 /** True when a message of two or more words is the name (or its start) of a restaurant of the city. */
@@ -602,7 +655,7 @@ function intentFromUnderstanding(
     kind: 'search',
     text: fold(text),
     cat: u.cat,
-    dish: u.dish,
+    dish: dishWithoutBudget(u.dish),
     dishServes: u.dishServes,
     district,
     placeQuery: u.place ? fold(u.place) : '',
@@ -908,7 +961,11 @@ async function wording(
     REPLY_TIMEOUT_MS,
   );
   const city = activeCity();
-  return validateReply(said, facts, { kind, allow: [city.name, ...city.districts] });
+  return validateReply(said, facts, {
+    kind,
+    allow: [city.name, ...city.districts],
+    userText: meta.text,
+  });
 }
 
 /** The shown results as the facts of a reply: the first three, only what the app knows to be true. */
@@ -918,7 +975,9 @@ function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps
     if (card.kind === 'parking') {
       if (card.free !== null) item.freeSpots = card.free;
       if (card.open !== 'unknown') item.openNow = card.open === 'open';
-      if (deps.parkings.find((p) => p.id === card.id)?.isPaid === false) item.free = true;
+      const paid = deps.parkings.find((p) => p.id === card.id)?.isPaid;
+      if (paid === false) item.free = true;
+      else if (paid === true) item.free = false;
       return item;
     }
     if (card.narr && card.narr.open !== 'unknown') item.openNow = card.narr.open === 'open';
@@ -927,6 +986,7 @@ function replyItems(cards: ChatCard[], withParking: boolean, deps: AssistantDeps
       if (card.parkingM != null) item.parkWalkMin = walkMinFromMeters(card.parkingM);
       if (card.narr?.parkingFree != null) item.freeSpots = card.narr.parkingFree;
       if (card.narr?.parkingPaid === false) item.free = true;
+      else if (card.narr?.parkingPaid === true) item.free = false;
     }
     return item;
   });
@@ -1302,8 +1362,38 @@ export async function answer(
       await finishAnswer(res, deps, { ...meta, wishes: ctx.wishes ?? [], quotaOut: true }),
     );
   }
+  // "hepsi", "tümü", "farketmez" typed right after results, with no question pending: the user keeps
+  // what is on the screen (or wants all kinds of the ask): never a chat reply.
+  if (!ctx.ask && (ctx.lastCards?.length ?? 0) > 0 && isAllAnswer(fold(text))) {
+    return remember(await showAll(ctx, deps, text));
+  }
   const res = await answerText(text, { ...ctx, ask: undefined }, deps, meta);
   return remember(await finishAnswer(res, deps, meta));
+}
+
+/**
+ * The current search for all kinds of the ask it came from (the router's kinds, or the table entry
+ * of the picked kind or the wishes); without any, the same results again with a short lead.
+ */
+async function showAll(ctx: ChatContext, deps: AssistantDeps, text: string): Promise<Result> {
+  const wishEntry =
+    !ctx.cat && !ctx.dish && !hasNoDataWish(ctx.wishes ?? [])
+      ? askEntryFor(ctx.wishes ?? [])
+      : undefined;
+  const id = ctx.choice?.id ?? (ctx.choiceKinds ? AI_CHOICE_ID : wishEntry?.id);
+  if (id && entryById(id, ctx.choiceKinds)) {
+    const res = await run({ ...ctx, ask: undefined, choice: { id, member: 'all' } }, deps, text);
+    const meta: AnswerMeta = {
+      text,
+      wishes: ctx.wishes ?? [],
+      ai: null,
+      planWhen: null,
+      quotaOut: true,
+    };
+    return finishAnswer(res, deps, meta);
+  }
+  const cards = ctx.lastCards ?? [];
+  return plain({ text: deps.t('chat.allHere'), cards, actions: [] }, ctx);
 }
 
 /** Folded words of a short yes / no answer to the "are you driving?" question. */
@@ -1440,7 +1530,7 @@ async function answerParkAsk(
 
 /** The member (or 'all') a typed answer picks from the question in `ctx.ask`, or null. */
 function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | null {
-  const entry = ctx.ask ? choiceById(ctx.ask) : undefined;
+  const entry = ctx.ask ? entryById(ctx.ask, ctx.choiceKinds) : undefined;
   const hit = entry ? memberForAnswer(entry, fold(text)) : null;
   if (!entry || !hit) return null;
   return { id: entry.id, member: hit === 'all' ? 'all' : hit.id };
@@ -1740,11 +1830,14 @@ async function answerText(
   // The start of a restaurant's name ("Köfteci Yusuf", "Tire Köftecisi"): those places, wherever
   // they are. Not when the words are only a dish our data knows ("adana kebap", "çiğ köfte"): the
   // dish search finds the places nearby that serve it, whatever a far business is called.
+  // Not either when the dish is only part of a longer text that starts like a name ("bursa kebap
+  // evi", "aklan unlu mamüller" read as börek): the name lookup runs first, with its own guards.
   const knownDish =
     it.kind === 'search' &&
     !it.placeQuery &&
     !!it.dish &&
-    dishProfile(fold(it.dish), false) !== null;
+    dishProfile(fold(it.dish), false) !== null &&
+    messageIsDish(folded, it.dish);
   if (!knownDish && folded.split(' ').length >= 2) {
     const matches = restaurantsNamed(folded);
     const first = matches[0];
@@ -1870,7 +1963,10 @@ async function answerText(
 
   const next: ChatContext = { ...ctx };
   // A new food search drops the kind picked before.
-  if (it.cat || it.food || it.dish) next.choice = undefined;
+  if (it.cat || it.food || it.dish) {
+    next.choice = undefined;
+    next.choiceKinds = undefined;
+  }
   if (it.cat) {
     next.cat = it.cat;
     next.dish = it.dish;
@@ -2155,9 +2251,20 @@ async function answerText(
 
   // The AI asked for a missing piece the rules do not have: ask it, with chips from our own data.
   const ask = meta.ai?.clarify?.ask;
+  // The router picked kinds for an occasion ("doğum günü yapacağız"): that question comes first and
+  // the party size stays an optional later detail. With fewer than two kinds around, the party
+  // question is asked as before.
+  let question: Awaited<ReturnType<typeof choiceQuestion>> | undefined;
+  if (ask === 'party' && kindsOf(meta.ai?.kinds).length >= 2) {
+    question = await choiceQuestion(next, it, foldedText, deps, meta);
+    if (question.kind === 'asked') return withNotice(question.result);
+  }
+  // With the user's location known a "where" question is not needed: the search runs near them.
+  const askDistrict =
+    ask === 'district' && next.place === null && !it.nearMe && !(await deps.here());
   if (
     ask &&
-    ((ask === 'district' && next.place === null && !it.nearMe) ||
+    (askDistrict ||
       (ask === 'dish' && next.section === 'food' && !next.cat && !next.dish && !it.dish) ||
       (ask === 'party' &&
         next.section === 'food' &&
@@ -2171,7 +2278,7 @@ async function answerText(
     return withNotice(await clarify(ask, next, it.food, deps, meta));
   }
 
-  const question = await choiceQuestion(next, it, foldedText, deps, meta);
+  question ??= await choiceQuestion(next, it, foldedText, deps, meta);
   if (question.kind === 'asked') return withNotice(question.result);
   return withNotice(await run(question.ctx, deps, text, it.quality, meta));
 }
@@ -2449,7 +2556,7 @@ function goalAsFood(
 
 /** The members of the picked choice: one, or all of the entry's. */
 function activeChoice(ctx: ChatContext): { entry: ChoiceEntry; members: Member[] } | null {
-  const entry = ctx.choice ? choiceById(ctx.choice.id) : undefined;
+  const entry = ctx.choice ? entryById(ctx.choice.id, ctx.choiceKinds) : undefined;
   if (!entry || !ctx.choice) return null;
   if (ctx.choice.member === 'all') return { entry, members: entry.members };
   const one = entry.members.find((m) => m.id === ctx.choice!.member);
@@ -2521,6 +2628,8 @@ const allChip = (patch: Partial<ChatContext>, t: AssistantDeps['t']): ChatAction
  * A goal or mood without a category ("kaslıyım", "fit", "hızlı bir şey", "tatlı bir şey"): Yerim asks
  * which kind first, with one chip per kind that has a place within reach and "Hepsi" last. With one
  * kind only there is nothing to ask: that kind is shown. A category named directly never asks.
+ * When the router picked kinds of place for a goal or situation with no dish ("ilk buluşma"), those
+ * kinds are asked about instead (the 'ai' entry); the table is the fallback.
  */
 async function choiceQuestion(
   next: ChatContext,
@@ -2531,10 +2640,18 @@ async function choiceQuestion(
 ): Promise<{ kind: 'asked'; result: Result } | { kind: 'run'; ctx: ChatContext }> {
   const go = (ctx: ChatContext) => ({ kind: 'run' as const, ctx });
   if (it.kind !== 'search' || next.section !== 'food' || next.notCat) return go(next);
+  const tableEntry = (): ChoiceEntry | undefined =>
+    hasNoDataWish(meta.wishes) ? undefined : askEntryFor(meta.wishes);
+  const picked = !next.cat && !next.dish ? kindsOf(meta.ai?.kinds) : [];
   let entry: ChoiceEntry | undefined;
-  if (!next.cat && !next.dish)
-    entry = hasNoDataWish(meta.wishes) ? undefined : askEntryFor(meta.wishes);
-  else if (next.cat) {
+  if (picked.length > 0) entry = aiEntry(picked);
+  else if (!next.cat && !next.dish) {
+    // The router sent a food search with no kinds: a wish of the table asks, else an occasion or
+    // mood word of the message names the table entry that fits it (none fits: the search goes on).
+    entry = tableEntry();
+    const signal = !entry && meta.ai ? occasionSignal(meta.text) : undefined;
+    if (signal?.wish) entry = askEntryFor([signal.wish]);
+  } else if (next.cat) {
     const e = entryForCat(next.cat);
     const dish = next.dish ? fold(next.dish) : '';
     const namesMember = !!e && e.members.some((m) => m.words.includes(dish));
@@ -2543,20 +2660,32 @@ async function choiceQuestion(
   if (!entry) return go(next);
   const here = (await deps.here()) ?? activeCity().center;
   const target = next.place ?? here;
-  const present = presentMembers(entry, target);
+  let present = presentMembers(entry, target);
   const base: ChatContext = { ...next, cat: null, dish: null, dishServes: null };
+  if (entry.id === AI_CHOICE_ID && present.length === 1) {
+    // One of the router's kinds is around: nothing to choose from, show it (with the honest note).
+    return go({ ...base, choice: { id: entry.id, member: 'all' }, choiceKinds: [present[0]!.id] });
+  }
+  if (entry.id === AI_CHOICE_ID && present.length === 0) {
+    // None of them is around: the table's entry for the wishes, else the search as before.
+    entry = tableEntry();
+    if (!entry) return go(next);
+    present = presentMembers(entry, target);
+  }
   if (present.length < 2) {
     // One kind or none: nothing to choose from, show that kind (or the category) as usual.
     return go(present.length === 1 ? { ...base, choice: { id: entry.id, member: 'all' } } : next);
   }
   const { t } = deps;
   const lang = i18n.language;
+  const ai = entry.id === AI_CHOICE_ID;
+  const aiKinds = ai ? { choiceKinds: present.map((m) => m.id) } : {};
   const chips: ChatAction[] = present.map((m) => ({
     kind: 'refine',
     label: memberLabel(m, lang),
-    patch: { choice: { id: entry.id, member: m.id }, ask: undefined },
+    patch: { choice: { id: entry.id, member: m.id }, ask: undefined, ...aiKinds },
   }));
-  chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined }, t));
+  chips.push(allChip({ choice: { id: entry.id, member: 'all' }, ask: undefined, ...aiKinds }, t));
   // The AI may word the question; the chips stay as built.
   const worded = await wording(
     'choice_question',
@@ -2571,12 +2700,13 @@ async function choiceQuestion(
     ...(meta.wishes.includes('quick') ? { sort: 'distance' as const } : {}),
     ...pendingAsk(meta),
     ask: entry.id,
+    choiceKinds: ai ? present.map((m) => m.id) : undefined,
   };
   return {
     kind: 'asked',
     result: plain(
       {
-        text: worded ?? t(`chat.choice.ask.${entry.id}`),
+        text: worded ?? t(ai ? 'chat.choice.aiAsk' : `chat.choice.ask.${entry.id}`),
         cards: [],
         actions: chips,
         ...(worded ? { sparkle: true } : {}),
@@ -2603,7 +2733,7 @@ function choiceNote(
     memberLabel(m, lang).toLocaleLowerCase(lang.startsWith('en') ? 'en' : 'tr'),
   );
   const list = labels.slice(0, 3).join(', ') + (labels.length > 3 ? '…' : '.');
-  return t(`chat.choice.note.${entry.id}`, { list });
+  return t(`chat.choice.note.${entry.id}`, { list, kinds: list });
 }
 
 function runFood(
@@ -2863,9 +2993,15 @@ function runFood(
         // The kind of place this card stands for: "balık · yüksek protein".
         const r = goal ? getRestaurant(id) : null;
         const m = goal && r ? memberOf(r, goalMembers) : null;
-        return goal && m
-          ? `${memberLabel(m, i18n.language).toLocaleLowerCase(i18n.language.startsWith('en') ? 'en' : 'tr')} · ${entryReason(goal, i18n.language)}`
-          : undefined;
+        const label =
+          goal && m
+            ? memberLabel(m, i18n.language).toLocaleLowerCase(
+                i18n.language.startsWith('en') ? 'en' : 'tr',
+              )
+            : null;
+        // The router's kinds have no reason of their own: the kind alone.
+        const why = goal ? entryReason(goal, i18n.language) : '';
+        return label ? (why ? `${label} · ${why}` : label) : undefined;
       }
       if (hit.byName) return t('chat.reasonNamed', { dish: dishName });
       if (hit.common) return t('chat.reasonCommon', { dish: dishName, shop: hit.common });
@@ -3209,6 +3345,8 @@ function runPark(
           where,
           count: list.length,
           parkSearch: true,
+          // The list was cut to the car parks without a fee.
+          ...(ctx.freeParking ? { freeOnly: true } : {}),
           ...(walkMinFromMeters(nearest.d) > FAR_WALK_MIN
             ? { far: true, farWalkMin: walkMinFromMeters(nearest.d) }
             : {}),

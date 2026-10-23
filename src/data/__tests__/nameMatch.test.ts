@@ -33,6 +33,7 @@ describe('typing slips in a name', () => {
     expect(fuzzyNameStart('parga balik', ['parga', 'baliik'])).toBe(true);
     expect(fuzzyNameStart('parga balik', ['parga', 'blaik'])).toBe(true);
     expect(fuzzyNameStart('aklan unlu mamulleri', ['aklan', 'unlu', 'mamullerri'])).toBe(true);
+    expect(fuzzyNameStart('kardes balikcilik', ['kardes', 'balikciilk'])).toBe(true);
     expect(fuzzyNameStart('aklan unlu mamulleri', ['aklan', 'unlu', 'mamuxlrri'])).toBe(true);
     // Three letters or fewer: no slip is forgiven.
     expect(fuzzyNameStart('ada bar', ['ada', 'bat'])).toBe(false);

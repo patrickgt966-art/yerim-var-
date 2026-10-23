@@ -42,6 +42,7 @@ const narrateReq: NarrateRequest = {
 /** What the client fills in for the newer fields an older server does not send. */
 const NEW_DEFAULTS = {
   wishes: [],
+  kinds: [],
   partySize: null,
   clarify: null,
   plan: null,

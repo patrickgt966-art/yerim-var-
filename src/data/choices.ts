@@ -1,4 +1,4 @@
-import type { Wish } from '../lib/ai/protocol';
+import { KIND_IDS, type KindId, type Wish } from '../lib/ai/protocol';
 import {
   categoryOf,
   hasWordForm,
@@ -55,6 +55,340 @@ export type ChoiceEntry = {
 
 const GRILL_NAMES = ['izgara', 'grill', 'mangal', 'ocakbasi'];
 
+/** Kinds that only the table entries use: another kind of the catalog has their label, so the router is not offered them. */
+export type TableKindId = 'meatgrill' | 'fitbowl';
+
+/**
+ * The catalog of kinds of place, one definition per id (the entries below reference ids). The
+ * router picks from `KindId`s (protocol.ts KIND_NAMES) for a goal or situation the table has no
+ * entry for; the table entries use the same definitions. A kind is only found by category, cuisine,
+ * diet tag or a keyword in the name: no menu data is behind it. Where two entries meant different
+ * things by one word (the "Izgara" of the protein entry is the whole meat category, the one of the
+ * healthy entry is places named so), they are two ids.
+ */
+export const KINDS: Record<KindId | TableKindId, Member> = {
+  grill: {
+    id: 'grill',
+    tr: 'Izgara',
+    en: 'Grill',
+    names: GRILL_NAMES,
+    cuisines: ['grill', 'barbecue'],
+    words: ['izgara'],
+  },
+  meatgrill: {
+    id: 'meatgrill',
+    tr: 'Izgara',
+    en: 'Grill',
+    cat: 'meat',
+    words: ['izgara', 'kebap', 'kofte', 'et', 'mangal'],
+  },
+  fish: { id: 'fish', tr: 'Balık', en: 'Fish', cat: 'fish', words: ['balik'] },
+  chicken: {
+    id: 'chicken',
+    tr: 'Tavuk',
+    en: 'Chicken',
+    names: ['tavuk', 'chicken', 'pilic'],
+    cuisines: ['chicken'],
+    words: ['tavuk', 'pilic'],
+  },
+  steak: {
+    id: 'steak',
+    tr: 'Steak',
+    en: 'Steak',
+    names: ['steak', 'biftek', 'antrikot', 'bonfile'],
+    cuisines: ['steak_house'],
+    words: ['steak', 'biftek'],
+  },
+  bowl: {
+    id: 'bowl',
+    tr: 'Bowl',
+    en: 'Bowl',
+    names: ['bowl', 'poke', 'fit', 'healthy', 'saglikli', 'diyet'],
+    notNames: ['kilo', 'kulup', 'merkezi', 'spor'],
+    cuisines: ['poke', 'healthy', 'juice'],
+    words: ['bowl', 'poke', 'fit'],
+  },
+  fitbowl: {
+    id: 'fitbowl',
+    tr: 'Bowl',
+    en: 'Bowl',
+    names: ['bowl', 'protein', 'proteinli', 'fit', 'fitness'],
+    notNames: ['kilo', 'kulup', 'merkezi', 'spor'],
+    words: ['bowl', 'fit'],
+  },
+  salad: {
+    id: 'salad',
+    tr: 'Salata',
+    en: 'Salad',
+    names: ['salata', 'salad'],
+    cuisines: ['salad'],
+    words: ['salata', 'salad'],
+  },
+  vegan: {
+    id: 'vegan',
+    tr: 'Vegan',
+    en: 'Vegan',
+    names: ['vegan', 'vejetaryen', 'vejeteryan', 'vegetarian'],
+    cuisines: ['vegan', 'vegetarian'],
+    diets: ['vegan', 'vegetarian'],
+    words: ['vegan', 'vejetaryen', 'vejeteryan'],
+  },
+  soup: { id: 'soup', tr: 'Çorba', en: 'Soup', cat: 'soup', words: ['corba'] },
+  zeytinyagli: {
+    id: 'zeytinyagli',
+    tr: 'Zeytinyağlı',
+    en: 'Home-style',
+    cat: 'lokanta',
+    names: ['zeytinyagli'],
+    words: ['zeytinyagli', 'lokanta'],
+  },
+  lokanta: {
+    id: 'lokanta',
+    tr: 'Esnaf lokantası',
+    en: 'Local eatery',
+    cat: 'lokanta',
+    words: ['lokanta', 'esnaf'],
+  },
+  doner: {
+    id: 'doner',
+    tr: 'Döner',
+    en: 'Doner',
+    names: ['doner', 'durum', 'tantuni'],
+    cuisines: ['doner', 'döner'],
+    words: ['doner', 'durum'],
+  },
+  pide: {
+    id: 'pide',
+    tr: 'Pide / Lahmacun',
+    en: 'Pide / Lahmacun',
+    names: ['pide', 'pideci', 'lahmacun', 'lahmacuncu'],
+    cuisines: ['pide', 'lahmacun'],
+    words: ['pide', 'lahmacun'],
+  },
+  burger: {
+    id: 'burger',
+    tr: 'Burger',
+    en: 'Burger',
+    names: ['burger', 'hamburger'],
+    cuisines: ['burger'],
+    words: ['burger', 'hamburger'],
+  },
+  tost: {
+    id: 'tost',
+    tr: 'Tost / Sandviç',
+    en: 'Toast / Sandwich',
+    names: ['tost', 'sandvic', 'sandwich', 'kumru'],
+    cuisines: ['sandwich', 'tost', 'kumru'],
+    words: ['tost', 'sandvic', 'sandwich'],
+  },
+  baklava: {
+    id: 'baklava',
+    tr: 'Baklava',
+    en: 'Baklava',
+    names: ['baklava', 'baklavaci'],
+    words: ['baklava'],
+  },
+  kunefe: {
+    id: 'kunefe',
+    tr: 'Künefe',
+    en: 'Künefe',
+    names: ['kunefe', 'kunefeci'],
+    words: ['kunefe'],
+  },
+  icecream: {
+    id: 'icecream',
+    tr: 'Dondurma',
+    en: 'Ice cream',
+    names: ['dondurma', 'dondurmaci', 'gelato'],
+    cuisines: ['ice_cream'],
+    kinds: ['ice_cream'],
+    words: ['dondurma', 'gelato'],
+  },
+  pastry: {
+    id: 'pastry',
+    tr: 'Pasta / Pastane',
+    en: 'Cake / Pastry',
+    names: ['pastane', 'pastanesi', 'patisserie', 'pasta evi', 'pasta salonu', 'cake'],
+    cuisines: ['cake', 'pastry'],
+    kinds: ['pastry'],
+    words: ['pasta', 'pastane', 'cake'],
+  },
+  pudding: {
+    id: 'pudding',
+    tr: 'Sütlaç / Muhallebi',
+    en: 'Pudding',
+    names: ['sutlac', 'muhallebi', 'muhallebici', 'kazandibi', 'tatlici', 'tatli'],
+    cuisines: ['dessert'],
+    words: ['sutlac', 'muhallebi'],
+  },
+  kebab: {
+    id: 'kebab',
+    tr: 'Kebap',
+    en: 'Kebab',
+    names: ['kebap', 'kebab', 'kebapci', 'sis', 'adana', 'urfa', 'ocakbasi'],
+    cuisines: ['kebab'],
+    words: ['kebap', 'kebab'],
+  },
+  kofte: {
+    id: 'kofte',
+    tr: 'Köfte',
+    en: 'Meatballs',
+    names: ['kofte', 'kofteci'],
+    cuisines: ['meatball', 'köfte', 'kofte'],
+    words: ['kofte'],
+  },
+  liver: { id: 'liver', tr: 'Ciğer', en: 'Liver', names: ['ciger', 'cigerci'], words: ['ciger'] },
+  italian: {
+    id: 'italian',
+    tr: 'Pizza / İtalyan',
+    en: 'Pizza / Italian',
+    names: ['pizza', 'pizzeria', 'italyan', 'pasta evi'],
+    cuisines: ['pizza', 'italian', 'pasta'],
+    words: ['pizza', 'italyan'],
+  },
+  asian: {
+    id: 'asian',
+    tr: 'Sushi / Asya',
+    en: 'Sushi / Asian',
+    names: ['sushi', 'noodle', 'ramen', 'wok'],
+    cuisines: ['sushi', 'asian', 'japanese', 'chinese', 'korean', 'noodles', 'thai', 'vietnamese'],
+    words: ['sushi', 'asya', 'cin', 'cin mutfagi'],
+  },
+  mexican: {
+    id: 'mexican',
+    tr: 'Meksika',
+    en: 'Mexican',
+    names: ['taco', 'burrito', 'meksika'],
+    cuisines: ['mexican'],
+    words: ['meksika', 'taco'],
+  },
+  med: {
+    id: 'med',
+    tr: 'Akdeniz',
+    en: 'Mediterranean',
+    cuisines: ['mediterranean', 'greek', 'french', 'international'],
+    words: ['akdeniz', 'yunan'],
+  },
+  serpme: {
+    id: 'serpme',
+    tr: 'Serpme kahvaltı',
+    en: 'Full breakfast',
+    names: ['serpme', 'kahvalti', 'kahvaltici'],
+    cuisines: ['breakfast'],
+    words: ['serpme'],
+  },
+  borek: {
+    id: 'borek',
+    tr: 'Börek / Poğaça',
+    en: 'Börek / Pastries',
+    names: ['borek', 'borekci', 'pogaca', 'acma'],
+    words: ['borek', 'pogaca'],
+  },
+  simit: {
+    id: 'simit',
+    tr: 'Simit / Gevrek',
+    en: 'Simit / Bagel',
+    names: ['simit', 'gevrek', 'boyoz'],
+    cuisines: ['bagel'],
+    words: ['simit', 'gevrek'],
+  },
+  omelet: {
+    id: 'omelet',
+    tr: 'Menemen / Omlet',
+    en: 'Eggs',
+    names: ['menemen', 'omlet', 'yumurta'],
+    words: ['menemen', 'omlet'],
+  },
+  // Kinds the table has no entry for; found by name or tag in at least two cities (choices.test.ts).
+  cigkofte: {
+    id: 'cigkofte',
+    tr: 'Çiğ köfte',
+    en: 'Çiğ köfte',
+    names: ['cigkofte', 'cig kofte', 'cigkofteci'],
+    cuisines: ['çiğköfte', 'çiğ_köfte', 'cig_kofte'],
+    words: ['cigkofte', 'cig kofte'],
+  },
+  kokorec: {
+    id: 'kokorec',
+    tr: 'Kokoreç',
+    en: 'Kokoreç',
+    names: ['kokorec', 'kokorecci'],
+    cuisines: ['kokoreç'],
+    words: ['kokorec'],
+  },
+  manti: {
+    id: 'manti',
+    tr: 'Mantı',
+    en: 'Mantı',
+    names: ['manti', 'mantici'],
+    cuisines: ['mantı', 'tepsi_mantısı'],
+    words: ['manti'],
+  },
+  pilav: {
+    id: 'pilav',
+    tr: 'Pilav',
+    en: 'Rice dishes',
+    names: ['pilav', 'pilavci'],
+    cuisines: ['pilav', 'türkistan_pilavı'],
+    words: ['pilav'],
+  },
+  evyemegi: {
+    id: 'evyemegi',
+    tr: 'Ev yemekleri',
+    en: 'Home cooking',
+    names: ['ev yemek', 'ev yemegi', 'ev mutfagi', 'ev lezzetleri', 'ev yapimi'],
+    cuisines: ['ev_yemekleri', 'home_cooking'],
+    words: ['ev yemegi', 'ev yemekleri', 'ev yemek'],
+  },
+  meyhane: {
+    id: 'meyhane',
+    tr: 'Meyhane',
+    en: 'Meyhane',
+    cat: 'meyhane',
+    words: ['meyhane', 'raki', 'meze'],
+  },
+  cafe: {
+    id: 'cafe',
+    tr: 'Kafe / Kahve',
+    en: 'Café / Coffee',
+    cat: 'cafe',
+    words: ['cafe', 'kafe', 'kahve'],
+  },
+  islak: {
+    id: 'islak',
+    tr: 'Islak burger',
+    en: 'Wet burger',
+    names: ['islak'],
+    words: ['islak'],
+  },
+  ocakbasi: {
+    id: 'ocakbasi',
+    tr: 'Ocakbaşı',
+    en: 'Ocakbaşı',
+    names: ['ocakbasi'],
+    words: ['ocakbasi'],
+  },
+  waffle: {
+    id: 'waffle',
+    tr: 'Waffle / Krep',
+    en: 'Waffle / Crêpe',
+    names: ['waffle', 'krep', 'crepe'],
+    cuisines: ['waffle', 'crepe'],
+    words: ['waffle', 'krep', 'crepe'],
+  },
+  wings: {
+    id: 'wings',
+    tr: 'Kanat',
+    en: 'Wings',
+    names: ['kanat', 'wings'],
+    cuisines: ['wings'],
+    words: ['kanat', 'wings'],
+  },
+};
+
+/** The members of an entry, by catalog id. */
+const kinds = (...ids: (KindId | TableKindId)[]): Member[] => ids.map((id) => KINDS[id]);
+
 export const CHOICES: ChoiceEntry[] = [
   {
     id: 'protein',
@@ -63,40 +397,7 @@ export const CHOICES: ChoiceEntry[] = [
     reorder: true,
     note: true,
     reason: { tr: 'yüksek protein', en: 'high protein' },
-    members: [
-      {
-        id: 'grill',
-        tr: 'Izgara',
-        en: 'Grill',
-        cat: 'meat',
-        words: ['izgara', 'kebap', 'kofte', 'et', 'mangal'],
-      },
-      { id: 'fish', tr: 'Balık', en: 'Fish', cat: 'fish', words: ['balik'] },
-      {
-        id: 'chicken',
-        tr: 'Tavuk',
-        en: 'Chicken',
-        names: ['tavuk', 'chicken', 'pilic'],
-        cuisines: ['chicken'],
-        words: ['tavuk', 'pilic'],
-      },
-      {
-        id: 'steak',
-        tr: 'Steak',
-        en: 'Steak',
-        names: ['steak', 'biftek', 'antrikot', 'bonfile'],
-        cuisines: ['steak_house'],
-        words: ['steak', 'biftek'],
-      },
-      {
-        id: 'bowl',
-        tr: 'Bowl',
-        en: 'Bowl',
-        names: ['bowl', 'protein', 'proteinli', 'fit', 'fitness'],
-        notNames: ['kilo', 'kulup', 'merkezi', 'spor'],
-        words: ['bowl', 'fit'],
-      },
-    ],
+    members: kinds('meatgrill', 'fish', 'chicken', 'steak', 'fitbowl'),
   },
   {
     id: 'healthy',
@@ -105,277 +406,69 @@ export const CHOICES: ChoiceEntry[] = [
     reorder: true,
     note: true,
     reason: { tr: 'hafif', en: 'light' },
-    members: [
-      {
-        id: 'salad',
-        tr: 'Salata',
-        en: 'Salad',
-        names: ['salata', 'salad'],
-        cuisines: ['salad'],
-        words: ['salata', 'salad'],
-      },
-      {
-        id: 'bowl',
-        tr: 'Bowl',
-        en: 'Bowl',
-        names: ['bowl', 'poke', 'fit', 'healthy', 'saglikli', 'diyet'],
-        notNames: ['kilo', 'kulup', 'merkezi', 'spor'],
-        cuisines: ['poke', 'healthy', 'juice'],
-        words: ['bowl', 'poke', 'fit'],
-      },
-      {
-        id: 'vegan',
-        tr: 'Vegan',
-        en: 'Vegan',
-        names: ['vegan', 'vejetaryen', 'vejeteryan', 'vegetarian'],
-        cuisines: ['vegan', 'vegetarian'],
-        diets: ['vegan', 'vegetarian'],
-        words: ['vegan', 'vejetaryen', 'vejeteryan'],
-      },
-      { id: 'fish', tr: 'Balık', en: 'Fish', cat: 'fish', words: ['balik'] },
-      {
-        id: 'grill',
-        tr: 'Izgara',
-        en: 'Grill',
-        names: GRILL_NAMES,
-        cuisines: ['grill', 'barbecue'],
-        words: ['izgara'],
-      },
-      { id: 'soup', tr: 'Çorba', en: 'Soup', cat: 'soup', words: ['corba'] },
-      {
-        id: 'lokanta',
-        tr: 'Zeytinyağlı',
-        en: 'Home-style',
-        cat: 'lokanta',
-        names: ['zeytinyagli'],
-        words: ['zeytinyagli', 'lokanta'],
-      },
-    ],
+    members: kinds('salad', 'bowl', 'vegan', 'fish', 'grill', 'soup', 'zeytinyagli'),
   },
   {
     id: 'quick',
     wishes: ['quick', 'cheap'],
     note: true,
     reason: { tr: 'genelde hızlı', en: 'usually quick' },
-    members: [
-      {
-        id: 'doner',
-        tr: 'Döner',
-        en: 'Doner',
-        names: ['doner', 'durum', 'tantuni'],
-        cuisines: ['doner', 'döner'],
-        words: ['doner', 'durum'],
-      },
-      {
-        id: 'pide',
-        tr: 'Pide / Lahmacun',
-        en: 'Pide / Lahmacun',
-        names: ['pide', 'pideci', 'lahmacun', 'lahmacuncu'],
-        cuisines: ['pide', 'lahmacun'],
-        words: ['pide', 'lahmacun'],
-      },
-      {
-        id: 'burger',
-        tr: 'Burger',
-        en: 'Burger',
-        names: ['burger', 'hamburger'],
-        cuisines: ['burger'],
-        words: ['burger', 'hamburger'],
-      },
-      {
-        id: 'tost',
-        tr: 'Tost / Sandviç',
-        en: 'Toast / Sandwich',
-        names: ['tost', 'sandvic', 'sandwich', 'kumru'],
-        cuisines: ['sandwich', 'tost', 'kumru'],
-        words: ['tost', 'sandvic', 'sandwich'],
-      },
-      { id: 'soup', tr: 'Çorba', en: 'Soup', cat: 'soup', words: ['corba'] },
-      {
-        id: 'lokanta',
-        tr: 'Esnaf lokantası',
-        en: 'Local eatery',
-        cat: 'lokanta',
-        words: ['lokanta', 'esnaf'],
-      },
-    ],
+    members: kinds('doner', 'pide', 'burger', 'tost', 'soup', 'lokanta'),
+  },
+  {
+    // "doyurucu", "kilo almak": filling food. No wish of the older entries fits, so it has its own.
+    id: 'hearty',
+    goal: true,
+    wishes: ['hearty'],
+    reorder: true,
+    note: true,
+    reason: { tr: 'doyurucu', en: 'filling' },
+    members: kinds('kebab', 'doner', 'pide', 'lokanta', 'burger', 'manti'),
   },
   {
     id: 'sweet',
     cat: 'dessert',
     askWhenVague: true,
     reason: { tr: 'tatlı', en: 'sweet' },
-    members: [
-      {
-        id: 'baklava',
-        tr: 'Baklava',
-        en: 'Baklava',
-        names: ['baklava', 'baklavaci'],
-        words: ['baklava'],
-      },
-      {
-        id: 'kunefe',
-        tr: 'Künefe',
-        en: 'Künefe',
-        names: ['kunefe', 'kunefeci'],
-        words: ['kunefe'],
-      },
-      {
-        id: 'icecream',
-        tr: 'Dondurma',
-        en: 'Ice cream',
-        names: ['dondurma', 'dondurmaci', 'gelato'],
-        cuisines: ['ice_cream'],
-        kinds: ['ice_cream'],
-        words: ['dondurma', 'gelato'],
-      },
-      {
-        id: 'pastry',
-        tr: 'Pasta / Pastane',
-        en: 'Cake / Pastry',
-        names: ['pastane', 'pastanesi', 'patisserie', 'pasta evi', 'pasta salonu', 'cake'],
-        cuisines: ['cake', 'pastry'],
-        kinds: ['pastry'],
-        words: ['pasta', 'pastane', 'cake'],
-      },
-      {
-        id: 'pudding',
-        tr: 'Sütlaç / Muhallebi',
-        en: 'Pudding',
-        names: ['sutlac', 'muhallebi', 'muhallebici', 'kazandibi', 'tatlici', 'tatli'],
-        cuisines: ['dessert'],
-        words: ['sutlac', 'muhallebi'],
-      },
-    ],
+    members: kinds('baklava', 'kunefe', 'icecream', 'pastry', 'pudding'),
   },
   {
     id: 'meat',
     cat: 'meat',
     reason: { tr: 'et', en: 'meat' },
-    members: [
-      {
-        id: 'kebab',
-        tr: 'Kebap',
-        en: 'Kebab',
-        names: ['kebap', 'kebab', 'kebapci', 'sis', 'adana', 'urfa', 'ocakbasi'],
-        cuisines: ['kebab'],
-        words: ['kebap', 'kebab'],
-      },
-      {
-        id: 'kofte',
-        tr: 'Köfte',
-        en: 'Meatballs',
-        names: ['kofte', 'kofteci'],
-        cuisines: ['meatball', 'köfte', 'kofte'],
-        words: ['kofte'],
-      },
-      {
-        id: 'steak',
-        tr: 'Steak',
-        en: 'Steak',
-        names: ['steak', 'biftek', 'antrikot', 'bonfile'],
-        cuisines: ['steak_house'],
-        words: ['steak', 'biftek'],
-      },
-      {
-        id: 'chicken',
-        tr: 'Tavuk',
-        en: 'Chicken',
-        names: ['tavuk', 'chicken', 'pilic'],
-        cuisines: ['chicken'],
-        words: ['tavuk', 'pilic'],
-      },
-      { id: 'liver', tr: 'Ciğer', en: 'Liver', names: ['ciger', 'cigerci'], words: ['ciger'] },
-    ],
+    members: kinds('kebab', 'kofte', 'steak', 'chicken', 'liver'),
   },
   {
     id: 'world',
     cat: 'world',
     reason: { tr: 'dünya mutfağı', en: 'world cuisine' },
-    members: [
-      {
-        id: 'italian',
-        tr: 'Pizza / İtalyan',
-        en: 'Pizza / Italian',
-        names: ['pizza', 'pizzeria', 'italyan', 'pasta evi'],
-        cuisines: ['pizza', 'italian', 'pasta'],
-        words: ['pizza', 'italyan'],
-      },
-      {
-        id: 'asian',
-        tr: 'Sushi / Asya',
-        en: 'Sushi / Asian',
-        names: ['sushi', 'noodle', 'ramen', 'wok'],
-        cuisines: [
-          'sushi',
-          'asian',
-          'japanese',
-          'chinese',
-          'korean',
-          'noodles',
-          'thai',
-          'vietnamese',
-        ],
-        words: ['sushi', 'asya', 'cin', 'cin mutfagi'],
-      },
-      {
-        id: 'mexican',
-        tr: 'Meksika',
-        en: 'Mexican',
-        names: ['taco', 'burrito', 'meksika'],
-        cuisines: ['mexican'],
-        words: ['meksika', 'taco'],
-      },
-      {
-        id: 'med',
-        tr: 'Akdeniz',
-        en: 'Mediterranean',
-        cuisines: ['mediterranean', 'greek', 'french', 'international'],
-        words: ['akdeniz', 'yunan'],
-      },
-    ],
+    members: kinds('italian', 'asian', 'mexican', 'med'),
   },
   {
     id: 'breakfast',
     cat: 'breakfast',
     reason: { tr: 'kahvaltı', en: 'breakfast' },
-    members: [
-      {
-        id: 'serpme',
-        tr: 'Serpme kahvaltı',
-        en: 'Full breakfast',
-        names: ['serpme', 'kahvalti', 'kahvaltici'],
-        cuisines: ['breakfast'],
-        words: ['serpme'],
-      },
-      {
-        id: 'borek',
-        tr: 'Börek / Poğaça',
-        en: 'Börek / Pastries',
-        names: ['borek', 'borekci', 'pogaca', 'acma'],
-        words: ['borek', 'pogaca'],
-      },
-      {
-        id: 'simit',
-        tr: 'Simit / Gevrek',
-        en: 'Simit / Bagel',
-        names: ['simit', 'gevrek', 'boyoz'],
-        cuisines: ['bagel'],
-        words: ['simit', 'gevrek'],
-      },
-      {
-        id: 'omelet',
-        tr: 'Menemen / Omlet',
-        en: 'Eggs',
-        names: ['menemen', 'omlet', 'yumurta'],
-        words: ['menemen', 'omlet'],
-      },
-    ],
+    members: kinds('serpme', 'borek', 'simit', 'omelet'),
   },
 ];
 
 /** What a typed answer to the question means: everything, or one member ("hepsi", "balık"). */
 export const ALL_WORDS = ['hepsi', 'hepsini', 'tumu', 'tumunu', 'farketmez', 'herhangi', 'her sey'];
+
+/** Words that may stand around an "all" word ("hepsini göster", "hepsi olur", "herhangi biri"). */
+const ALL_FILLER = ['goster', 'olur', 'biri', 'bir', 'tamam', 'ya', 'peki', 'lutfen', 'hocam'];
+
+/** "hepsi", "tümü", "farketmez", "herhangi biri": the whole text says "all of them" (folded). */
+export function isAllAnswer(folded: string): boolean {
+  const tokens = folded.split(' ').filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 3) return false;
+  const padded = ` ${folded} `;
+  if (!(ALL_WORDS.some((w) => padded.includes(` ${w} `)) || padded.includes(' fark etmez '))) {
+    return false;
+  }
+  const said = new Set(ALL_WORDS.flatMap((w) => w.split(' ')).concat('fark', 'etmez', ALL_FILLER));
+  return tokens.every((t) => said.has(t));
+}
 
 /** True when `r` is a kind of place `m` describes. Places that are no meal place never are. */
 export function inMember(r: Restaurant, m: Member): boolean {
@@ -405,6 +498,36 @@ export function memberOf(r: Restaurant, members: readonly Member[]): Member | nu
 
 export function choiceById(id: string): ChoiceEntry | undefined {
   return CHOICES.find((e) => e.id === id);
+}
+
+/** The id of the entry built from the kinds the router picked (it is no row of CHOICES). */
+export const AI_CHOICE_ID = 'ai';
+
+/** The catalog kinds among `ids`, once each, in the router's order. */
+export function kindsOf(ids: readonly string[] | undefined): Member[] {
+  const known = (ids ?? []).filter((id): id is KindId => KIND_IDS.some((k) => k === id));
+  return [...new Set(known)].map((id) => KINDS[id]);
+}
+
+/**
+ * The entry of the kinds the router picked for a goal or situation the table does not know: the
+ * same shape as a table entry, so asking, picking and the honest note work alike. It makes no
+ * claim about a wish of its own (no reason after the label); the note names the picked kinds.
+ */
+export function aiEntry(members: Member[]): ChoiceEntry {
+  return {
+    id: AI_CHOICE_ID,
+    // The note says "no menu data", so it also covers the diet wishes the router may have added.
+    wishes: ['healthy', 'protein'],
+    note: true,
+    reason: { tr: '', en: '' },
+    members,
+  };
+}
+
+/** A table entry by id, or the router's entry for 'ai' (its kinds are kept in the chat context). */
+export function entryById(id: string, aiKinds?: readonly string[]): ChoiceEntry | undefined {
+  return id === AI_CHOICE_ID ? aiEntry(kindsOf(aiKinds)) : choiceById(id);
 }
 
 /** The entry a goal / mood wish asks about, or undefined when the wishes have no entry. */

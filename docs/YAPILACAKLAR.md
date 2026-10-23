@@ -1,6 +1,6 @@
 # Yapılacaklar
 
-Son güncelleme: 19 Ekim 2026 (akşam).
+Son güncelleme: 22 Ekim 2026.
 
 ## Sıradaki büyük işler (bu sırayla)
 
@@ -83,12 +83,10 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
-- **Yerim seçeneklerini yapay zekâ kursun (sıradaki büyük iş):** hedef tablosu yerine yapay zekâya tüm yer türlerinin listesi (~40) verilir; karmaşık istekte ("kilo almam lazım ama yağlı olmasın", "ilk buluşma", "maçtan sonra 5 kişi") uyan 3–6 türü kendisi seçer ve kısa soru yazar; uygulama yalnızca yakında olanları + "Hepsi" gösterir. Tablo ✨ yokken yedek kalır; kural yolu kelimelerine kilo, zayıfla, kalori, doyurucu, bulk eklenir; sınava her istek için 10–15 söyleyiş.
 - Seçenek sorusu şablonla, samimi cevap sonuç turunda (bugün tek /reply hakkını soru kullanıyor).
-- Yerim: genel istekler ("kaslıyım", "fit", "ucuz", "canım tatlı çekti") önce seçenek sorar + "Hepsi"; doğrudan tür ("tatlı") sonuçla birlikte daraltma seçenekleri (yazılıyor).
-- Yerim cevaplarını yapay zekâ yazsın: bilgiler bizim veriden, metin doğal; sayı ve adlar uygulamada denetlenir, 3 sn'de gelmezse şablon (seçenekler işi bitince).
-- Yeni sınav: ~550 karmaşık soru (selam, argo, yazım hatası, bölünmüş istek, hedefler, seçim akışı, otopark+yemek, veri olmayan istekler); anlama, seçenekler, uydurma ad/sayı ve doğallık denetimi.
-- Ana sayfa "Yemek bul" kartındaki "Parkı kolay" alt yazısı: yemek aramasını otoparka bağlamayan bir söz ("Canın ne çekiyor?" ya da "Yakınındaki yerler"). Uygulama iki işi ayrı ayrı da yapar; metinler ikisini birbirine bağlamasın.
+- Otopark cevaplarında yapay zekâ metninin kabul oranı (son sınavda %47); ret sebepleri artık sınav raporunda, ona göre ayar.
+- Yerim mesajlarının ~%23'ü hâlâ 4 cümleden uzun (yönlendiricinin ton cümlesi + metin + seçim satırı).
+- "ailece …" isteğinde önce kişi sayısı soruluyor; sonuç + "veri yok" notu daha iyi olabilir.
 - Restoran sayfası: kategori yoksa yedek etiket, Türkçe çalışma saatleri.
 - Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).
 
@@ -96,6 +94,16 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 - Ana sayfa: A mı B mi?
 - Destek e-posta adresi, geri bildirim formu
+
+## Tamamlananlar (21–22 Ekim)
+
+- Yerim seçeneklerini yapay zekâ kuruyor: 41 yer türlük katalogdan hedef, durum ya da ruh hâline uyan 3–6 türü seçer ("ilk buluşma", "maçtan sonra 5 kişi", "akşamdan kalma"); yakında olanlar + "Hepsi"; tablo yedek. Yeni "doyurucu" sorusu (kilo almak, bulk); kilo vermek / kalori → sağlıklı.
+- Restoran ekranları yemekle ilgili: şehir seçiminde otopark etiketleri yok; haritadaki restoran kartında "Yol tarifi"; restoran detayında otoparklar "Arabayla mı geleceksin?" düğmesinin arkasında (otopark istendiyse açık gelir).
+- Sohbette otopark, restoran seçilip "Yol tarifi"ne basınca soruluyor ("Arabayla mı gidiyorsun?").
+- Selamlarda her zaman "Otopark bul / Yemek bul"; "Yemek bul" / "Otopark bul" ve verideki dükkân adları (yazım hatalı olsa da) anlaşılıyor.
+- Daha kısa ve dürüst cevaplar: tekrar eden notlar yok, canlı veri yokken "boş yer var" yok, menü iddiası yok, uzak sonuçlarda "yakında" yok; "ucuz olsun" gibi takip dilekleri yemeği koruyor; "acelem var" hızlı yemek seçeneklerini soruyor.
+- Konuşma sınavı (`AI eval (convo)`, ~630 konuşma): %87,6 → %95,8; `--limit` her kategoriden karışık seçer.
+- Expo SDK 57 yama sürümleri.
 
 ## Tamamlananlar (19 Ekim)
 
