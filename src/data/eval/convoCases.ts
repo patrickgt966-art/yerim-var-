@@ -91,6 +91,8 @@ export type TurnExpect = {
   place?: string[];
   /** The router's place / Apple query / district names one of these (a word start, folded). */
   placeHas?: string[];
+  /** Also right for `placeHas`: other words of the same place (a landmark's own name). */
+  placeAlso?: string[];
   /** Around the user: no place was set. */
   nearMe?: boolean;
   requireParking?: boolean;

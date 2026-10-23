@@ -50,6 +50,8 @@ export type ParkFacts = {
   liveCount: number;
   /** How many of the shown car parks are known to be free of charge. */
   freeOfChargeCount: number;
+  /** The list follows a wish, so the first car park shown is not the nearest one. */
+  reordered?: boolean;
 };
 
 const LEADS = 5;
@@ -126,11 +128,17 @@ export function parkReply(f: ParkFacts, t: T, seed: string, lang?: string): stri
     const o = { name: f.nearestName, min: f.nearestWalkMin };
     // Over FAR_WALK_MIN minutes the first car park is not "the closest": it is said to be far.
     const far = f.nearestWalkMin > FAR_WALK_MIN ? 'Far' : '';
+    // A list in the order of a wish says "the first", not "the closest".
+    const base = f.reordered && !far ? 'First' : '';
     // Live spots only from a fresh reading (the caller passes null otherwise).
     highlight =
       known(f.nearestFree) && f.liveCount > 0
-        ? t(`chat.reply.hlParkLive${far}`, { ...o, free: f.nearestFree, count: f.nearestFree })
-        : t(`chat.reply.hlPark${far}`, o);
+        ? t(`chat.reply.hlParkLive${far || base}`, {
+            ...o,
+            free: f.nearestFree,
+            count: f.nearestFree,
+          })
+        : t(`chat.reply.hlPark${far || base}`, o);
   }
   return capitalize(lead, lang) + (highlight ? ' ' + highlight : '');
 }

@@ -28,6 +28,7 @@ import {
   mess,
   type Dish,
 } from './aiBigCases';
+import { fold } from '@/lib/ai/protocol';
 import { CHOICES } from '../choices';
 import { cityById, hasLiveParking } from '../cities';
 import {
@@ -979,7 +980,8 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         const ask = placed ? `${locative(d)} ${text}` : text;
         const asked: TurnExpect = {
           kind: 'choice',
-          ask: spec.asks,
+          // The router's own kinds ('ai') are as good a question as the table entry of the goal.
+          ask: [...spec.asks, 'ai'],
           hepsi: true,
           chipsMin: 2,
           cards: 'none',
@@ -1534,7 +1536,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         placed = ask.place !== null;
         const asked: TurnExpect = {
           kind: 'choice',
-          ask: spec.asks,
+          ask: [...spec.asks, 'ai'],
           hepsi: true,
           chipsMin: 2,
           cards: 'none',
@@ -1972,7 +1974,19 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
           (ui === 'en' ? r.pick(LANDMARK_EN) : r.pick(LANDMARK_TR)).replace('{P}', lm.n),
           ui,
         );
-        return [say(text, { kind: 'park', cardKind: 'parking', placeHas: [lm.w], cards: 'some' })];
+        // The landmark's name or its district (the word before its name) both place the search.
+        const nameWords = fold(lm.n)
+          .split(' ')
+          .flatMap((w) => (w.length >= 4 ? [w, w.slice(0, 4)] : []));
+        return [
+          say(text, {
+            kind: 'park',
+            cardKind: 'parking',
+            placeHas: [lm.w],
+            placeAlso: nameWords,
+            cards: 'some',
+          }),
+        ];
       },
       { en: true, anywhere: true },
     );
@@ -2326,7 +2340,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         return [
           say(text, {
             kind: 'choice',
-            ask: spec.asks,
+            ask: [...spec.asks, 'ai'],
             hepsi: true,
             chipsMin: 2,
             cards: 'none',

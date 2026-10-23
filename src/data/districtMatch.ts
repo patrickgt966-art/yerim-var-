@@ -1,7 +1,9 @@
 import type { Quarter } from './quarters';
 import { DISHES, dishProfile } from './dishes';
 import { FOOD_LEXICON } from './foodLexicon';
-import { parseQuery } from './intent';
+import { isQualifierWord, parseQuery } from './intent';
+import { activeCity } from './cities';
+import { allRestaurants, isFoodWord } from './restaurants';
 import { fold } from './search';
 import type { Understanding } from '@/lib/ai/protocol';
 
@@ -101,6 +103,135 @@ export function matchDistrict(
     }
   }
   return best?.name ?? null;
+}
+
+/** The folded words of the active city's restaurant names; rebuilt when the city changes. */
+let nameWordCache: { city: string; words: Set<string> } | null = null;
+function nameWordsOfCity(): Set<string> {
+  const city = activeCity().id;
+  if (nameWordCache?.city !== city) {
+    nameWordCache = {
+      city,
+      words: new Set(
+        allRestaurants(true)
+          .flatMap((r) => key(r.name).split(' '))
+          .concat(allRestaurants(true).flatMap((r) => fold(r.name).split(' '))),
+      ),
+    };
+  }
+  return nameWordCache.words;
+}
+
+/**
+ * `typed` is `target` with one typing slip: two neighbouring letters swapped, one letter left out,
+ * or one letter typed twice. A replaced letter is no slip ("çabuk" is not Çubuk, "serin" not Serik).
+ */
+function isTypingSlip(typed: string, target: string): boolean {
+  if (typed === target) return false;
+  if (typed.length === target.length) {
+    const at = [...typed].findIndex((c, i) => c !== target[i]);
+    return (
+      at >= 0 &&
+      typed[at] === target[at + 1] &&
+      typed[at + 1] === target[at] &&
+      typed.slice(at + 2) === target.slice(at + 2)
+    );
+  }
+  if (typed.length === target.length - 1) {
+    return [...target].some((_, i) => target.slice(0, i) + target.slice(i + 1) === typed);
+  }
+  if (typed.length === target.length + 1) {
+    return [...typed].some(
+      (c, i) =>
+        (typed[i - 1] === c || typed[i + 1] === c) &&
+        typed.slice(0, i) + typed.slice(i + 1) === target,
+    );
+  }
+  return false;
+}
+
+/** Endings a district takes when a slip hides them ("kepedze" is "kepezde" with two letters swapped). */
+const SLIP_ENDINGS = ['da', 'de', 'ta', 'te', 'nda', 'nde', 'dan', 'den', 'tan', 'ten', 'ya', 'ye'];
+
+/**
+ * The district(s) closest to a word that is no district as typed ("kepedze" Kepez, "mamk" and
+ * "maak" Mamak, "şişil" Şişli, "şili" Şişli, "buacda" Buca), by edit distance over the city's own
+ * list: one slip (insert, drop, replace, swap two neighbours) from the name, from the name with an
+ * ending ("kepezde"), or from a stem of the word. The first letter is the district's. A name of
+ * four letters is reached only by swapping two neighbours ("bura" is not Buca), and a short word
+ * that is only the start of a longer name ("kira", "kiraz") is not a slip. Words that are food, a
+ * dish, a wish or a business name of the city are never a district. One closest district: `[name]`;
+ * a tie: all of them (the caller asks); none close: `[]`.
+ */
+export function closeDistricts(word: string, districts: readonly string[]): string[] {
+  const w = key(word.split(/['’]/)[0]!);
+  if (w.length < 4 || isQualifierWord(w) || isFoodWord(w) || dishProfile(w, false)) return [];
+  if (nameWordsOfCity().has(w)) return [];
+  // A word that names a district as typed is not a slip of another one.
+  if (districts.some((d) => stems(w).includes(key(d)))) return [];
+  const hits: string[] = [];
+  for (const name of districts) {
+    const n = key(name);
+    if (n.length < 4) continue;
+    const close = (a: string, target: string): boolean => {
+      if (a[0] !== n[0] || !isTypingSlip(a, target)) return false;
+      if (n.length === 4 && a.length !== target.length) return false;
+      return !(target === n && n.startsWith(a) && a.length < 5);
+    };
+    const forms = [n, ...SLIP_ENDINGS.map((e) => n + e)];
+    const stemForms = stems(w).filter((st) => st.length >= 4);
+    if (
+      stemForms.some((st) => close(st, n)) ||
+      forms.some((f) => close(w, f)) ||
+      (n.length === 4 && stemForms.some((st) => close(st, n)))
+    ) {
+      hits.push(name);
+    }
+  }
+  return hits;
+}
+
+/**
+ * The closest district a word of the text is a slip of (see closeDistricts), outside `skip`; used
+ * only when no word of the text names a district as typed. A tie lists every district.
+ */
+export function closeDistrictInText(
+  text: string,
+  districts: readonly string[],
+  skip: readonly string[] = [],
+): { districts: string[]; word: string } | null {
+  const skipped = new Set(skip.flatMap((s) => fold(s).split(' ')).filter(Boolean));
+  const words = text
+    .toLocaleLowerCase('tr')
+    .split(/[^\p{L}'’]+/u)
+    .filter(Boolean);
+  for (const word of words) {
+    if (stems(key(word)).some((st) => skipped.has(st))) continue;
+    const hit = closeDistricts(word, districts);
+    if (hit.length > 0) return { districts: hit, word };
+  }
+  return null;
+}
+
+/**
+ * The text with its district slip written right ("çok yorgunum kepedze" -> "... Kepez"), when no
+ * word of the text names a district as typed and one word is one slip from exactly one district of
+ * the city. A tie between districts comes back as `tie`: the caller asks which one was meant.
+ */
+export function fixDistrictSlip(
+  text: string,
+  districts: readonly string[],
+  skip: readonly string[] = [],
+): { text: string; district: string } | { tie: string[]; word: string } | null {
+  if (districtInText(text, districts, skip)) return null;
+  const close = closeDistrictInText(text, districts, skip);
+  if (!close) return null;
+  if (close.districts.length > 1) return { tie: close.districts, word: close.word };
+  const district = close.districts[0]!;
+  // The word as typed, with whatever ending it carries, becomes the district's own name.
+  const at = text.toLocaleLowerCase('tr').indexOf(close.word);
+  if (at < 0) return null;
+  return { text: text.slice(0, at) + district + text.slice(at + close.word.length), district };
 }
 
 /**
@@ -214,7 +345,12 @@ function settled(
   const skip = [s.dish, ...(s.dishServes ?? [])].filter((v): v is string => !!v);
   if (s.district) {
     const hit = matchDistrict(s.district, districts);
-    if (!hit) return { ...s, district: null, place: s.place ?? s.district };
+    if (!hit) {
+      // The AI's district is a slip of one ("kepedze"): the city's own spelling.
+      const slip = closeDistricts(s.district, districts);
+      if (slip.length === 1) return { ...s, district: slip[0]! };
+      return { ...s, district: null, place: s.place ?? s.district };
+    }
     // The AI's district is nowhere in the text, but a word of it names another one ("sicanda"
     // read as Çankaya): the user's word wins. Not when the AI named a place, whose district it
     // gave ("Kızılay" in Çankaya, "Karşıyaka'dan geçiyorum, Alsancak'ta").
@@ -232,6 +368,8 @@ function settled(
   // A district written into place ("Bornova").
   const asPlace = s.place ? matchDistrict(s.place, districts) : null;
   if (asPlace) return { ...s, district: asPlace, place: null };
+  const slipPlace = s.place ? closeDistricts(s.place, districts) : [];
+  if (slipPlace.length === 1) return { ...s, district: slipPlace[0]!, place: null };
   // A quarter the AI missed ("lara balık" read as near me). Not when it asked which place was meant.
   if (!s.place && s.clarify?.ask !== 'place') {
     const q = quarterInText(text, quarters, skip);

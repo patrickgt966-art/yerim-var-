@@ -14,6 +14,7 @@ import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ClaimKind, ConvoCase, ConvoTurn, TurnExpect } from './convoCases';
 import en from '@/i18n/en';
+import tr from '@/i18n/tr';
 import { fold, type AiReplyKind, type Understanding } from '@/lib/ai/protocol';
 import { ECHO_CUES, NOT_KNOWN } from '@/lib/ai/replyCheck';
 import { walkMinFromMeters } from '@/lib/ai/verify';
@@ -110,10 +111,11 @@ export function sentenceCount(text: string): number {
 /** A leftover of a broken template or of code. */
 const BROKEN = /undefined|\{\{|\}\}|\[object|\bNaN\b|\bnull\b/i;
 /** The honest "we have no data" note of the app (chat.noInfo*, chat.choice.note.*), folded. */
-const NOTE = /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor|we don t have [a-z ]{0,30} info/;
+const NOTE =
+  /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor|(we|i) (don t|do not) have [a-z ]{0,30}(info|data|ratings?)|we have no [a-z ]{0,30}(info|data)/;
 /** A sentence that says we lack the data is honest, whatever word it names. */
 const LACKS =
-  /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)|(^| )(we don t have|no data|no info|not available)( |$)/;
+  /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)|(^| )(we don t have|i don t have|we have no|i have no|no data|no info|not available)( |$)/;
 const PRICE =
   /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat|price|prices|priced|cheap|cheaper|expensive|discount|budget)/;
 const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
@@ -125,7 +127,8 @@ const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
  * var", "adlarından anlaşılıyor") says the menu is not known: it claims no menu data. A positive
  * one ("menüsünde köfte var") still does.
  */
-const MENU_HEDGE = /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan)/;
+const MENU_HEDGE =
+  /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan|may not|might not|not every|not on every|by name|from (the )?(place|restaurant) names|check the menu|probably|likely)/;
 /**
  * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
  * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
@@ -160,7 +163,10 @@ export function claimsIn(
     if (f === '' || LACKS.test(f)) continue;
     // The user's own price word, asked back or restated ("Ucuz derken aklında hangisi var?"), is no claim.
     const echoed = userPrice && (part.includes('?') || ECHO_CUES.test(f));
-    if (PRICE.test(f) && !echoed) out.push(`price: "${sentence.trim()}"`);
+    // Sending the user to the cards for the fee ("ücret durumuna kartlardan bakabilirsin") states no price.
+    const toCards = /(^| )(kart|card)/.test(f) && /(bak|gor|incele|kontrol|check|see|look)/.test(f);
+    const priced = toCards ? f.replace(/(^| )ucret\w*/g, ' ') : f;
+    if (PRICE.test(priced) && !echoed) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
     if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
       out.push(`menu: "${sentence.trim()}"`);
@@ -224,6 +230,12 @@ const HEDGE =
 export const FAR_WALK_MIN = 20;
 /** A place called near: "en yakın", "yakında", "hemen yanında", "nearby", "closest" (folded). */
 const NEAR = /(^| )(en yakin|yakinda( |$)|hemen yaninda|nearby|closest|nearest|close by)/;
+/**
+ * "car park nearby (128 m)", "otoparkı yakın", "nearby car park": it is the car park that is near
+ * the place (its own distance is in the text), nothing is said about how far the place is.
+ */
+const CARPARK_NEAR =
+  /(car ?parks?|parking|otopark\w*) (is |are )?(nearby|close by|yakin\w*)|(nearby|close by) (car ?parks?|parking)/g;
 /** What tells the user the results are far or the search was widened (folded). */
 const FAR = /(genis|uzak|az yer var|wider|far away|farther|\bkm\b)/;
 
@@ -278,9 +290,10 @@ export function distanceClaims(
     if (f === '') continue;
     const mins = minutesIn(f);
     const far = mins.some((m) => m > FAR_WALK_MIN);
-    if (FAR.test(f) || (far && !NEAR.test(f))) signal = true;
+    const near = NEAR.test(f.replace(CARPARK_NEAR, ' '));
+    if (FAR.test(f) || (far && !near)) signal = true;
     // A sentence that says it looked wider is the signal itself, however it words it.
-    if (!NEAR.test(f) || FAR.test(f)) continue;
+    if (!near || FAR.test(f)) continue;
     const q = sentence.trim();
     if (far) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
     else if (namesFarCard(f, cards, mins)) {
@@ -328,6 +341,15 @@ const memberLabels = new Set(
   Object.values(KINDS).flatMap((m) => [memberLabel(m, 'tr'), memberLabel(m, 'en')]),
 );
 const HEPSI_LABELS = [HEPSI, en.chat.choice.all];
+/** The three party-size chips of the "how many of you?" question, in both app languages. */
+export const PARTY_LABELS = [
+  tr.chat.party_1,
+  tr.chat.party_2,
+  tr.chat.party_3,
+  en.chat.party_1,
+  en.chat.party_2,
+  en.chat.party_3,
+];
 
 /** The folded text without the names of the shown places and the searched place (a car park may be in a name). */
 function withoutNames(text: string, cards: readonly ObservedCard[], place: string | null): string {
@@ -396,7 +418,7 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
     }
     if (e.placeHas) {
       const all = [u.place, u.appleQuery, u.district].map((v) => v ?? '').join(' ');
-      if (!e.placeHas.some((w) => hasWordStart(all, w))) {
+      if (![...e.placeHas, ...(e.placeAlso ?? [])].some((w) => hasWordStart(all, w))) {
         m.push(`place: want ${e.placeHas.join('|')}, got ${u.place} / ${u.appleQuery}`);
       }
     }
@@ -499,6 +521,10 @@ function searchedKind(want: string, obs: ObservedTurn): boolean {
 /** The reply is a question about kinds of place: the "Hepsi" chip, two or more kind chips, no results. */
 function isKindsQuestion(obs: ObservedTurn): boolean {
   const labels = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
+  // "kalabalık bir grup" with no number: Yerim may ask how many of them first, then show results.
+  if (obs.cards.length === 0 && labels.filter((l) => PARTY_LABELS.includes(l)).length >= 3) {
+    return true;
+  }
   return (
     obs.cards.length === 0 &&
     labels.some((l) => HEPSI_LABELS.includes(l)) &&
