@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, useWindowDimensions, View } from 'react-native';
 import Animated, {
@@ -15,7 +15,9 @@ import { useCoachRegistry } from '@/components/coach/registry';
 import type { NearbyHome } from '@/components/home/useNearbyHome';
 import { openFood } from '@/components/FoodHome';
 import { Txt } from '@/components/Txt';
+import type { LatLng } from '@/data/geo';
 import { nearestRailStation } from '@/data/places';
+import type { Parking } from '@/data/types';
 import {
   formatDistance,
   getRestaurant,
@@ -32,6 +34,7 @@ import {
   favNearby,
   hardParking,
   meal,
+  nudgeAllowed,
   roundedCount,
   type Nudge,
 } from '@/lib/nudge';
@@ -58,6 +61,34 @@ const POSES: Record<Nudge['kind'], MascotPose> = {
 };
 
 /** `away`: on its way back behind the bar; `bye`: a happy hop before going away. */
+/** Every suggestion that fits right now, built from the current data in one pass. */
+function buildCandidates(
+  d: {
+    parkings: Parking[] | undefined;
+    favorites: readonly { id: string }[];
+    favoriteRestaurants: readonly string[];
+    active: unknown;
+    here: LatLng | null;
+  },
+  now: Date,
+): Nudge[] {
+  const { here } = d;
+  const list = d.parkings ?? [];
+  const savedPlaces = d.favoriteRestaurants
+    .map((id) => getRestaurant(id))
+    .filter((r): r is NonNullable<typeof r> => !!r);
+  // One look around for the meal suggestion, counted per category from it.
+  const around = here ? restaurantsNear(here, MEAL_RADIUS_M, 5000) : [];
+  const countIn = (cat: FoodCategory) => around.filter((r) => matchesCategory(r, cat)).length;
+  return [
+    favFilling(d.favorites, list, here, now),
+    favNearby(savedPlaces, here),
+    // Someone parked already does not need a car park tip.
+    d.active ? null : hardParking(list, here, here ? nearestRailStation(here) : null, now),
+    meal(here, now, countIn),
+  ].filter((n): n is Nudge => !!n);
+}
+
 type Phase = 'hidden' | 'peek' | 'open' | 'bye' | 'away';
 
 /** The texts of a suggestion, in the user's language. */
@@ -133,24 +164,11 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
   const [phase, setPhase] = useState<Phase>('hidden');
   const [decided, setDecided] = useState(false);
 
-  const candidates = useMemo(() => {
-    const now = new Date();
-    const list = parkings ?? [];
-    const savedPlaces = favoriteRestaurants
-      .map((id) => getRestaurant(id))
-      .filter((r): r is NonNullable<typeof r> => !!r);
-    const countIn = (cat: FoodCategory) =>
-      here
-        ? restaurantsNear(here, MEAL_RADIUS_M, 5000).filter((r) => matchesCategory(r, cat)).length
-        : 0;
-    return [
-      favFilling(favorites, list, here, now),
-      favNearby(savedPlaces, here),
-      // Someone parked already does not need a car park tip.
-      active ? null : hardParking(list, here, here ? nearestRailStation(here) : null, now),
-      meal(here, now, countIn),
-    ].filter((n): n is Nudge => !!n);
-  }, [parkings, favorites, favoriteRestaurants, here, active]);
+  // The latest data, read only when Yerim decides: nothing is counted on each car park refresh.
+  const latest = useRef({ parkings, favorites, favoriteRestaurants, active, here });
+  useEffect(() => {
+    latest.current = { parkings, favorites, favoriteRestaurants, active, here };
+  }, [parkings, favorites, favoriteRestaurants, active, here]);
 
   // Decide once per visit, a moment after home is on screen with a location.
   const ready =
@@ -159,7 +177,10 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
     if (!ready) return;
     const id = setTimeout(() => {
       setDecided(true);
-      const pick = chooseNudge(candidates, useNudge.getState(), new Date());
+      const now = new Date();
+      // Off, muted or already shown today: nothing to work out.
+      if (!nudgeAllowed(useNudge.getState(), now)) return;
+      const pick = chooseNudge(buildCandidates(latest.current, now), useNudge.getState(), now);
       if (!pick) return;
       useNudge.getState().shown(pick.kind);
       setNudge(pick);
@@ -167,7 +188,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
       feel('land');
     }, DELAY_MS);
     return () => clearTimeout(id);
-  }, [ready, candidates]);
+  }, [ready]);
 
   // Leaving home puts it away; untouched, the peek goes back by itself.
   useFocusEffect(useCallback(() => () => setPhase('hidden'), []));

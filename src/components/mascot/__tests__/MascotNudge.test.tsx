@@ -61,6 +61,29 @@ describe('MascotNudge', () => {
     expect(useNudge.getState().laters).toBe(1);
   });
 
+  it('looks around once, when it decides, not on every car park refresh', async () => {
+    const restaurants = jest.requireActual('@/data/restaurants');
+    const near = jest.spyOn(restaurants, 'restaurantsNear');
+    const view = await render(<MascotNudge nearby={{ here: HERE }} />);
+    for (let i = 0; i < 3; i++) await view.rerender(<MascotNudge nearby={{ here: { ...HERE } }} />);
+    expect(near).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTime(2600));
+    expect(near).toHaveBeenCalledTimes(1);
+    await view.rerender(<MascotNudge nearby={{ here: { ...HERE } }} />);
+    expect(near).toHaveBeenCalledTimes(1);
+    near.mockRestore();
+  });
+
+  it('does not look around at all once today’s suggestion was shown', async () => {
+    useNudge.getState().shown('favNearby', new Date());
+    const restaurants = jest.requireActual('@/data/restaurants');
+    const near = jest.spyOn(restaurants, 'restaurantsNear');
+    await render(<MascotNudge nearby={{ here: HERE }} />);
+    await act(() => jest.advanceTimersByTime(3000));
+    expect(near).not.toHaveBeenCalled();
+    near.mockRestore();
+  });
+
   it('goes back by itself when nobody taps it', async () => {
     await render(<MascotNudge nearby={{ here: HERE }} />);
     await act(() => jest.advanceTimersByTime(2600));

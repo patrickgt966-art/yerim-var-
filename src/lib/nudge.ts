@@ -46,15 +46,20 @@ export type NudgeMemory = {
 export const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/** Whether a suggestion may come at all now: on, not muted, none shown today. Cheap; check it first. */
+export function nudgeAllowed(memory: NudgeMemory, now: Date): boolean {
+  if (!memory.enabled) return false;
+  if (memory.mutedUntil && now.getTime() < new Date(memory.mutedUntil).getTime()) return false;
+  return memory.lastDay !== dayKey(now);
+}
+
 /** The one suggestion to show now, or null: off, muted, already one today, or nothing worth it. */
 export function chooseNudge(
   candidates: readonly Nudge[],
   memory: NudgeMemory,
   now: Date,
 ): Nudge | null {
-  if (!memory.enabled) return null;
-  if (memory.mutedUntil && now.getTime() < new Date(memory.mutedUntil).getTime()) return null;
-  if (memory.lastDay === dayKey(now)) return null;
+  if (!nudgeAllowed(memory, now)) return null;
   const byOrder = [...candidates].sort(
     (a, b) => NUDGE_ORDER.indexOf(a.kind) - NUDGE_ORDER.indexOf(b.kind),
   );
