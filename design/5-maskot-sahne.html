@@ -44,22 +44,22 @@ body{margin:0;background:#E9E2D8}
     </div>
   </div>
 
-  <!-- Yüzen sekme çubuğu (4-anasayfa-canli ile aynı) -->
-  <div class="abs" style="left:12px;right:12px;bottom:22px;height:76px;border-radius:26px;background:var(--navy);display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 10px 24px -10px rgba(11,60,73,.6)">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-weight:800;font-size:11px">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF8A1F" stroke-width="2.3" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Ana sayfa</div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2" stroke-linejoin="round"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Harita</div>
-    <div style="position:relative;margin-top:-34px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-weight:800;font-size:11px">
+  <!-- Yüzen sekme çubuğu: uygulamadaki gibi beyaz; seçili sekmede nane hap, Yerim düğmesinde maskotun yüzü -->
+<div style="position:absolute;left:12px;right:12px;bottom:22px;height:76px;border-radius:26px;background:#FFFFFF;display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 10px 26px -8px rgba(11,60,73,.28)">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#0B3C49;font-weight:800;font-size:11px">
+    <span style="width:46px;height:30px;border-radius:15px;background:#E2F1EA;display:flex;align-items:center;justify-content:center"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.3" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg></span>Ana sayfa</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#4F6A75;font-weight:700;font-size:11px">
+    <span style="width:46px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2" stroke-linejoin="round"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg></span>Harita</div>
+  <div style="position:relative;margin-top:-34px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0B3C49;font-weight:800;font-size:11px">
       <div id="ring" class="abs" style="left:50%;top:31px;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;border:4px solid var(--orange)"></div>
-      <div id="yerimBtn" style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:var(--orange);border:4px solid var(--paper);display:flex;align-items:center;justify-content:center;transform:rotate(-4deg)">
-        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="8" y="4" width="14" height="22" rx="6" fill="#0B3C49"/><rect x="10.5" y="8" width="9" height="5" rx="2" fill="#FF8A1F"/><rect x="10.5" y="18" width="9" height="3.5" rx="1.5" fill="#FF8A1F"/></svg>
+      <div id="yerimBtn" style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:var(--orange);border:4px solid #FFFFFF;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:0 8px 16px -6px rgba(255,138,31,.6)">
+        <svg width="34" height="28" viewBox="0 0 34 28" aria-hidden="true"><ellipse cx="10" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><ellipse cx="24" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><circle cx="11.3" cy="8.2" r="1.3" fill="#fff"/><circle cx="25.3" cy="8.2" r="1.3" fill="#fff"/><ellipse cx="4.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><ellipse cx="29.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><path d="M12 18q5 5 10 0" fill="none" stroke="#0B3C49" stroke-width="2.8" stroke-linecap="round"/></svg>
       </div>Yerim</div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.2 12 20 12 20z"/></svg>Favoriler</div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Profil</div>
-  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#4F6A75;font-weight:700;font-size:11px">
+    <span style="width:46px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.2 12 20 12 20z"/></svg></span>Favoriler</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#4F6A75;font-weight:700;font-size:11px">
+    <span style="width:46px;height:30px;display:flex;align-items:center;justify-content:center"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg></span>Profil</div>
+</div>
 
   <!-- Maskot: Yerim düğmesinin içinden çıkar, çubuğun üstüne, düğmenin sağına zıplar; konumu JS hesaplar -->
   <div id="mWrap" class="abs" style="transform-origin:50% 100%">
@@ -89,7 +89,7 @@ body{margin:0;background:#E9E2D8}
         <div class="chip" id="ch1">Akşam yemeği</div><div class="chip" id="ch2">Otopark</div><div class="chip" id="ch3">Balık + kolay park</div>
       </div>
     </div>
-    <div class="abs" style="left:16px;right:16px;bottom:34px;display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--navy);border-radius:20px;padding:6px 6px 6px 14px;box-shadow:3px 4px 0 var(--peach-line)">
+    <div class="abs" style="left:16px;right:16px;bottom:34px;display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid #F4BE8E;border-radius:20px;padding:6px 6px 6px 14px;box-shadow:0 3px 0 var(--peach-soft)">
       <div style="flex:1;color:var(--sec);font-size:15px">Bir şey yaz…</div>
       <div style="width:42px;height:42px;border-radius:14px 14px 14px 5px;background:var(--orange);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
     </div>
