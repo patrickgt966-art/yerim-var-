@@ -10,6 +10,7 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Caveat_700Bold } from '@expo-google-fonts/caveat';
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -96,6 +97,7 @@ export default function RootLayout() {
   const hydrated = useHydrated();
   const pathname = usePathname();
   const [fontsLoaded, fontError] = useFonts({
+    Caveat_700Bold,
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,
     PlusJakartaSans_500Medium,

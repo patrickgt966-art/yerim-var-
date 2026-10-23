@@ -175,6 +175,8 @@ export const fonts = {
   body: 'PlusJakartaSans_500Medium',
   bodyBold: 'PlusJakartaSans_700Bold',
   bodyExtraBold: 'PlusJakartaSans_800ExtraBold',
+  /** Hand-written notes and greetings (Caveat), used sparingly. */
+  hand: 'Caveat_700Bold',
 } as const;
 
 /** Signature asymmetric corner: three round corners, bottom-left tight. */

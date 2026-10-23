@@ -406,7 +406,7 @@ const en = {
       "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. Your location is never sent to our server. When you search, the text you type is sent to Apple Maps, and for car park search and address lookup so is a rounded location (about 100 m). The only request sent to the municipality is for free-space info. When ✨ Smart help is on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. A random device ID is kept for the daily usage counter and deleted within 2 days. If you report a place as closed or wrong, our server receives the place's ID, the reason and the city; your device ID and network are stored only as one-way hashes tied to that place and deleted after 180 days. A link you share opens a page on yerimvar.app that only shows what the link itself carries (name, address, location); the page stores nothing and uses no cookies or analytics.",
     licenses: 'Open source licenses',
     licensesBody:
-      'Code: MIT. Fonts Bricolage Grotesque and Plus Jakarta Sans: SIL Open Font License 1.1.',
+      'Code: MIT. Fonts Bricolage Grotesque, Plus Jakarta Sans and Caveat: SIL Open Font License 1.1.',
     github: 'View on GitHub',
     yerim: 'Yerim',
     nudges: 'Yerim says hi now and then',

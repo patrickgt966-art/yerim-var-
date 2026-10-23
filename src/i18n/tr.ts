@@ -396,7 +396,7 @@ const tr = {
       'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Konumun sunucumuza hiç gönderilmez. Arama yaparken yazdığın metin, otopark araması ve adres bulma için de yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar\'a gider. Belediyeye giden tek istek boş yer bilgisidir. ✨ Akıllı yardım açıksa sohbete yazdığın mesaj, cevap için Anthropic\'in Claude yapay zekâsına gönderilir; yanında yakındaki yerlerin adları ve yürüme süreleri de gider, bu yüzden yaklaşık bölgen anlaşılabilir. Koordinatların gönderilmez. Günlük hak sayacı için rastgele bir cihaz numarası tutulur, 2 gün içinde silinir. Bir yeri "kapanmış" ya da "bilgisi yanlış" diye bildirirsen sunucumuza yerin kimliği, sebep ve şehir gider; cihaz numaran ve ağın yalnızca o yere özel karıştırılmış (geri çözülemez) hâliyle saklanır, 180 gün sonra silinir. Paylaştığın bağlantı yerimvar.app\'te bir sayfa açar; sayfa yalnızca bağlantının taşıdığını (ad, adres, konum) gösterir, hiçbir şey kaydetmez, çerez ve analitik kullanmaz.',
     licenses: 'Açık kaynak lisansları',
     licensesBody:
-      'Kod: MIT. Yazı tipleri Bricolage Grotesque ve Plus Jakarta Sans: SIL Open Font License 1.1.',
+      'Kod: MIT. Yazı tipleri Bricolage Grotesque, Plus Jakarta Sans ve Caveat: SIL Open Font License 1.1.',
     github: "GitHub'da gör",
     resetOnboarding: 'Tanıtımı yeniden göster',
     yerim: 'Yerim',

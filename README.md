@@ -158,7 +158,7 @@ Bkz. [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUC
 ## Lisans
 
 - Kod: MIT (bkz. [`LICENSE`](LICENSE)).
-- Fontlar: Bricolage Grotesque ve Plus Jakarta Sans, SIL Open Font License 1.1 (bkz. [`licenses/`](licenses/)).
+- Fontlar: Bricolage Grotesque, Plus Jakarta Sans ve Caveat, SIL Open Font License 1.1 (bkz. [`licenses/`](licenses/)).
 - Veri lisansları: [`licenses/DATA.md`](licenses/DATA.md).
 - "Yerim Var" adı, logo ve ikon MIT kapsamı dışındadır; fork'lar farklı ad ve ikon kullanmalıdır (bkz. [`TRADEMARKS.md`](TRADEMARKS.md)).
 - Veri: © İzmir Büyükşehir Belediyesi, Açık Veri Portalı (acikveri.bizizmir.com); İstanbul için İBB Açık Veri / İSPARK; otopark, yer ve restoranların bir kısmı © OpenStreetMap katkıcıları (ODbL); restoranların bir kısmı Overture Maps (CDLA-Permissive-2.0).
