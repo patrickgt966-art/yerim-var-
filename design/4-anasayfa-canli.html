@@ -34,10 +34,17 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
 .tap{transition:transform .12s}.tap:active{transform:scale(.97)}
 .plate{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   box-shadow:inset 0 0 0 5px rgba(255,255,255,.65),0 2px 0 rgba(11,60,73,.08)}
+/* Logo: Plus Jakarta Sans 800; satır yüksekliği = ascent + descent, nokta 0.73 em yukarıda */
+.logo{display:flex;align-items:flex-start;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:26px;line-height:1.26;letter-spacing:-.02em;color:var(--navy)}
+.logo .i{position:relative}
+.logo .dot{position:absolute;top:.2205em;left:50%;width:.175em;height:.175em;margin-left:-.0875em;border-radius:50%;background:var(--orange)}
+.logo .var{color:var(--orange);margin-left:.26em}
+@keyframes ping{0%{transform:scale(1);opacity:.5}100%{transform:scale(3.2);opacity:0}}
+.ping{transform-box:fill-box;transform-origin:center;animation:ping 2s ease-out infinite}
 .row{display:flex;align-items:center;gap:12px;min-height:62px;padding:10px 12px;border-bottom:1px dashed #E6DCCD}
 .row:last-child{border-bottom:0}
 </style></head><body>
-<div style="position:relative;width:390px;min-height:1290px;margin:0 auto;overflow:hidden;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy)">
+<div style="position:relative;width:390px;min-height:1460px;margin:0 auto;overflow:hidden;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy)">
 
 <!-- Kâğıt dokusu: çok hafif nokta deseni, düz dijital zemini kırar -->
 <div aria-hidden="true" style="position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(11,60,73,.07) 1px,transparent 1.2px);background-size:14px 14px"></div>
@@ -52,9 +59,9 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
 
 <!-- Başlık: yamuk "var!" etiketi açılıştaki marka diliyle aynı -->
 <div class="r1" style="display:flex;align-items:center;gap:8px;padding:12px 16px 4px">
-  <div style="flex:1;display:flex;align-items:center;gap:6px">
-    <span class="disp" style="font-weight:800;font-size:27px;letter-spacing:-1px">yerim</span>
-    <span class="disp" style="font-weight:800;font-size:17px;background:var(--orange);color:var(--navy);padding:1px 8px 3px;border-radius:8px 8px 8px 2px;transform:rotate(-5deg);display:inline-block;box-shadow:0 2px 0 rgba(11,60,73,.15)">var!</span>
+  <!-- Gerçek logo (BrandWordmark): "Yerim" lacivert, ı'nın noktası turuncu daire, "Var" turuncu -->
+  <div class="logo" role="heading" aria-label="Yerim Var" style="flex:1">
+    <span>Yer</span><span class="i">ı<span class="dot"></span></span><span>m</span><span class="var">Var</span>
   </div>
   <button class="tap" style="min-height:38px;padding:0 12px;border-radius:19px;background:var(--card);border:1px solid var(--peach-line);display:flex;align-items:center;gap:6px;font-weight:800;font-size:14px">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>
@@ -68,12 +75,9 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
   </button>
 </div>
 
-<!-- Selam: saate göre değişir, el yazısı tek dokunuş -->
-<div class="r2" style="padding:10px 18px 14px">
-  <div class="hand" style="font-size:22px;color:var(--orange-strong);transform:rotate(-2deg);transform-origin:left;margin-bottom:-2px">İyi akşamlar!</div>
-  <div class="disp" style="font-weight:800;font-size:30px;line-height:34px;letter-spacing:-.8px;position:relative;display:inline-block">
-    Bu akşam <span style="position:relative;white-space:nowrap">nereye?<svg width="118" height="12" viewBox="0 0 118 12" aria-hidden="true" style="position:absolute;left:-2px;bottom:-7px"><path class="draw" d="M3 8c18-5 36-6 56-3s38 2 56-3" fill="none" stroke="#FF8A1F" stroke-width="4" stroke-linecap="round"/></svg></span>
-  </div>
+<!-- Selam: saate göre değişir (günaydın / iyi günler / iyi akşamlar / iyi geceler), el yazısı tek dokunuş -->
+<div class="r2" style="padding:8px 18px 16px">
+  <div class="hand" style="position:relative;display:inline-block;font-size:30px;line-height:34px;color:var(--orange-strong);transform:rotate(-2deg);transform-origin:left">İyi akşamlar!<svg width="150" height="10" viewBox="0 0 150 10" aria-hidden="true" style="position:absolute;left:0;bottom:-6px"><path class="draw" d="M3 7c22-4 46-5 72-2s48 2 72-3" fill="none" stroke="#FF8A1F" stroke-width="3.5" stroke-linecap="round"/></svg></div>
 </div>
 
 <!-- Arama: aynı kutu, daha konuşkan örnek metin -->
@@ -182,8 +186,9 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
   <div style="display:flex;gap:10px;align-items:flex-start">
     <svg class="wiggle" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="3" y="3" width="24" height="24" rx="7" fill="#FF8A1F"/><text x="15" y="21" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="16" fill="#0B3C49">P</text></svg>
     <div style="flex:1">
-      <div class="hand" style="font-size:21px;line-height:22px">Cuma akşamı Kordon dolar.</div>
-      <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:3px">Konak Pier'de şu an 12 yer var; 19:00'dan sonra genelde azalıyor.</div>
+      <!-- Her bölge için canlı veriden üretilir: {bölge}, otopark sayısı, toplam boş, en boş otopark -->
+      <div class="hand" style="font-size:21px;line-height:22px">Alsancak'ta şu an yer var!</div>
+      <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:3px">Yakındaki 3 otoparkta toplam 23 boş yer var. En boşu Konak Pier (12).</div>
     </div>
   </div>
 </div>
@@ -194,7 +199,6 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
     <div class="disp" style="font-weight:800;font-size:22px;line-height:28px;letter-spacing:-.4px">Yakınında</div>
     <div style="font-weight:700;font-size:13px;color:var(--sec)">Alsancak · konumuna göre</div>
   </div>
-  <button style="font-weight:800;font-size:14px;color:var(--orange-strong);min-height:44px">Haritada aç</button>
 </div>
 <div style="display:flex;gap:4px;padding:0 6px 6px">
   <div style="position:relative;padding:12px 10px;font-weight:800;font-size:14px">Hepsi
@@ -204,7 +208,43 @@ button{font-family:inherit;border:0;background:none;padding:0;color:inherit;curs
   <div style="padding:12px 10px;font-size:14px;color:var(--sec)">Yemek</div>
 </div>
 
-<div style="margin:0 16px;background:var(--card);border-radius:20px 20px 20px 6px;border:1px solid #EFE6D8;box-shadow:0 1px 0 #EFE6D8">
+<div style="margin:0 16px;background:var(--card);border-radius:20px 20px 20px 6px;border:1px solid #EFE6D8;box-shadow:0 1px 0 #EFE6D8;overflow:hidden">
+  <!-- Harita önizlemesi (MapPreview): dokununca Harita sekmesi açılır; listedeki yerler iğne olarak -->
+  <button class="tap" aria-label="Haritada aç" style="display:block;position:relative;width:100%;height:170px;background:#EAE3D6">
+    <svg width="358" height="170" viewBox="0 0 358 170" aria-hidden="true" style="position:absolute;inset:0">
+      <!-- deniz (Kordon kıyısı) -->
+      <path d="M0 0h120c-6 30-30 52-52 70S20 120 0 128z" fill="#CFE6EC"/>
+      <path d="M120 0c-6 30-30 52-52 70S20 120 0 128" fill="none" stroke="#B9D9E2" stroke-width="3"/>
+      <!-- park / Kültürpark -->
+      <rect x="236" y="92" width="74" height="54" rx="12" fill="#D7EBDD"/>
+      <!-- yollar -->
+      <g stroke="#FFFFFF" stroke-linecap="round" fill="none">
+        <path d="M128 0c-6 32-32 56-56 74S22 124 0 136" stroke-width="7"/>
+        <path d="M40 170L196 12M110 170L250 40l108-10M150 60l208 50M70 112l288 30M200 170l40-170" stroke-width="5"/>
+        <path d="M0 170l130-60M260 0l20 170" stroke-width="3"/>
+      </g>
+      <!-- benim konumum -->
+      <circle class="ping" cx="172" cy="96" r="7" fill="#2E86DE"/>
+      <circle cx="172" cy="96" r="7" fill="#2E86DE" stroke="#fff" stroke-width="3"/>
+      <!-- otopark iğneleri: renk = doluluk -->
+      <g font-family="Bricolage Grotesque" font-weight="800" font-size="13" text-anchor="middle">
+        <path d="M118 44h26a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6h-8l-5 6-5-6h-8a6 6 0 0 1-6-6V50a6 6 0 0 1 6-6z" fill="#0E6B5A"/>
+        <text x="131" y="62" fill="#fff">P 12</text>
+        <path d="M262 64h26a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6h-8l-5 6-5-6h-8a6 6 0 0 1-6-6V70a6 6 0 0 1 6-6z" fill="#A54A07"/>
+        <text x="275" y="82" fill="#fff">P 3</text>
+      </g>
+      <!-- yemek iğneleri -->
+      <g stroke="#fff" stroke-width="2.5">
+        <circle cx="214" cy="118" r="9" fill="#FF8A1F"/>
+        <circle cx="96" cy="104" r="9" fill="#FF8A1F"/>
+        <circle cx="320" cy="40" r="7" fill="#FFB27A"/>
+      </g>
+    </svg>
+    <span style="position:absolute;right:10px;bottom:10px;min-height:36px;padding:0 14px;border-radius:18px;background:var(--card);display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;box-shadow:0 4px 10px -4px rgba(11,60,73,.35)">
+      Haritada aç
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </span>
+  </button>
   <div class="row">
     <span class="disp" style="width:38px;height:38px;border-radius:12px;background:var(--mint-soft);color:var(--mint-text);font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center">P</span>
     <div style="flex:1;min-width:0">
