@@ -1,4 +1,5 @@
 <!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>5-maskot-sahne</title>
+<script src="maskot.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
 <!--
   Maskot sahnesi (11 sn, döngü): ana sayfada Yerim sekme çubuğunun arkasından kafasını uzatır,
@@ -28,32 +29,7 @@ body{margin:0;background:#E9E2D8}
     <div aria-hidden="true" class="abs" style="right:-30px;bottom:-60px;width:220px;height:200px;border-radius:50%;background:radial-gradient(closest-side,rgba(251,247,241,.95),rgba(251,247,241,.7) 55%,rgba(251,247,241,0))" id="glow"></div>
     <div id="mWrap" class="abs" style="right:14px;bottom:0;width:124px;height:96px">
       <div id="mBob" style="width:124px;height:96px">
-        <svg width="124" height="96" viewBox="-24 -8 168 130" style="overflow:visible" aria-hidden="true">
-          <g id="mTilt" style="transform-box:view-box;transform-origin:84px 116px">
-            <!-- kol: gövdenin arkasında, omuz (14,70) -->
-            <g id="arm" style="transform-box:view-box;transform-origin:38px 78px">
-              <path d="M16 70h-34" stroke="#0B3C49" stroke-width="14" stroke-linecap="round"/>
-              <path d="M16 70h-34" stroke="#FF8A1F" stroke-width="9" stroke-linecap="round"/>
-              <circle cx="-22" cy="70" r="9" fill="#FF8A1F" stroke="#0B3C49" stroke-width="2.8"/>
-            </g>
-            <ellipse cx="60" cy="112" rx="42" ry="5" fill="rgba(11,60,73,.14)"/>
-            <rect x="18" y="90" width="20" height="18" rx="6" fill="#0B3C49"/><rect x="82" y="90" width="20" height="18" rx="6" fill="#0B3C49"/>
-            <g id="ant" style="transform-box:view-box;transform-origin:108px 24px">
-              <path d="M84 16l8-12" stroke="#0B3C49" stroke-width="3" stroke-linecap="round"/><circle cx="93" cy="3" r="5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.5"/>
-            </g>
-            <path d="M30 56L37 20Q39 11 48 11H72Q81 11 83 20L90 56Z" fill="#FF8A1F" stroke="#FF8A1F" stroke-width="6" stroke-linejoin="round"/>
-            <rect x="6" y="50" width="108" height="50" rx="24" fill="#FF8A1F"/>
-            <path d="M39 50L44 24Q45 19 51 19H69Q75 19 76 24L81 50Z" fill="#0B3C49" stroke="#0B3C49" stroke-width="3" stroke-linejoin="round"/>
-            <g id="eOpen"><ellipse cx="52" cy="36" rx="6.2" ry="7.2" fill="#fff"/><ellipse cx="68" cy="36" rx="6.2" ry="7.2" fill="#fff"/><circle cx="53" cy="37" r="3.3" fill="#0B3C49"/><circle cx="69" cy="37" r="3.3" fill="#0B3C49"/><circle cx="54.3" cy="35.6" r="1.1" fill="#fff"/><circle cx="70.3" cy="35.6" r="1.1" fill="#fff"/></g>
-            <g id="eDown"><ellipse cx="52" cy="37" rx="6.2" ry="6.4" fill="#fff"/><ellipse cx="68" cy="37" rx="6.2" ry="6.4" fill="#fff"/><circle cx="49.5" cy="40" r="3.3" fill="#0B3C49"/><circle cx="65.5" cy="40" r="3.3" fill="#0B3C49"/></g>
-            <g id="eClosed"><path d="M46 37h12M62 37h12" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/></g>
-            <g id="eHappy"><path d="M46 38q6-8 12 0M62 38q6-8 12 0" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/></g>
-            <circle cx="25" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.6"/><circle cx="95" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.6"/>
-            <circle cx="22.5" cy="65.5" r="2.2" fill="#fff"/><circle cx="92.5" cy="65.5" r="2.2" fill="#fff"/>
-            <g id="mSmile"><path d="M47 77q13 11 26 0" fill="none" stroke="#0B3C49" stroke-width="4" stroke-linecap="round"/></g>
-            <g id="mOpen"><path d="M46 75q14 16 28 0z" fill="#0B3C49" stroke="#0B3C49" stroke-width="2.5" stroke-linejoin="round"/><path d="M53 82q7 4 14 0" fill="none" stroke="#E8604C" stroke-width="3" stroke-linecap="round"/></g>
-          </g>
-        </svg>
+        <div id="mSvg"></div>
       </div>
     </div>
   </div>
@@ -101,7 +77,7 @@ body{margin:0;background:#E9E2D8}
   <div id="sheet" class="abs" style="left:0;right:0;bottom:0;height:640px;background:var(--paper);border-radius:28px 28px 0 0;box-shadow:0 -10px 30px rgba(11,60,73,.25);padding:10px 16px 0">
     <div style="width:42px;height:5px;border-radius:3px;background:#D9CFBF;margin:0 auto 12px"></div>
     <div style="display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--peach-line)">
-      <svg width="44" height="36" viewBox="-6 2 132 108" aria-hidden="true"><rect x="18" y="90" width="20" height="16" rx="6" fill="#0B3C49"/><rect x="82" y="90" width="20" height="16" rx="6" fill="#0B3C49"/><path d="M30 56L37 20Q39 11 48 11H72Q81 11 83 20L90 56Z" fill="#FF8A1F" stroke="#FF8A1F" stroke-width="6" stroke-linejoin="round"/><rect x="6" y="50" width="108" height="50" rx="24" fill="#FF8A1F"/><path d="M39 50L44 24Q45 19 51 19H69Q75 19 76 24L81 50Z" fill="#0B3C49"/><path d="M46 38q6-8 12 0M62 38q6-8 12 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><circle cx="25" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="3"/><circle cx="95" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="3"/><path d="M46 75q14 16 28 0z" fill="#0B3C49"/></svg>
+      <div id="avatar" style="width:46px"></div>
       <div style="flex:1"><div class="disp" style="font-weight:800;font-size:20px;line-height:22px">Yerim</div><div style="font-size:12px;font-weight:700;color:var(--mint-text)">● burada · bugün 8 soru hakkın var</div></div>
       <div style="width:36px;height:36px;border-radius:18px;background:var(--chip,#EFE8DD);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
     </div>
@@ -127,6 +103,8 @@ body{margin:0;background:#E9E2D8}
 </div>
 
 <script>
+document.getElementById('mSvg').innerHTML = yerimMascotLayers(124, { eyes: ['open', 'blink', 'curious', 'side', 'happy'], mouth: ['smile', 'open'], arm: ['rest', 'wave', 'wave2', 'point'], antenna: ['mid', 'left', 'right'] });
+document.getElementById('avatar').innerHTML = yerimMascot({ size: 46, eyes: 'happy', mouth: 'smile' });
 const T = 11; // saniye
 const $ = (id) => document.getElementById(id);
 const anims = [];
@@ -153,21 +131,26 @@ const bob = [[0, tr('translateY(0)')], [1.6, tr('translateY(0)')]];
 for (let t = 2.2, up = true; t < 6.2; t += 0.6, up = !up) bob.push([t, tr(up ? 'translateY(-3px)' : 'translateY(0)')]);
 bob.push([6.25, tr('translateY(0)')]);
 tl($('mBob'), bob);
-tl($('ant'), [[0, tr('rotate(0)')], [1.5, tr('rotate(0)')], [1.7, tr('rotate(-16deg)')], [1.9, tr('rotate(12deg)')], [2.1, tr('rotate(-6deg)')], [2.3, tr('rotate(0)')],
-  [3.3, tr('rotate(0)')], [3.45, tr('rotate(-14deg)')], [3.6, tr('rotate(10deg)')], [3.8, tr('rotate(0)')], [6.25, tr('rotate(0)')], [6.4, tr('rotate(-18deg)')], [6.6, tr('rotate(14deg)')], [6.8, tr('rotate(0)')]]);
-tl($('mTilt'), [[0, tr('rotate(0)')], [3.0, tr('rotate(0)')], [3.3, tr('rotate(-7deg)')], [3.8, tr('rotate(-7deg)')], [4.05, tr('rotate(0)')]]);
+// Anten sallanır (piksel kareleri)
+vis($('antenna-mid'), [[0, 1.6], [2.2, 3.4], [3.9, 6.3], [6.9, T]]);
+vis($('antenna-left'), [[1.6, 1.8], [2.0, 2.2], [3.4, 3.55], [3.7, 3.9], [6.3, 6.45], [6.6, 6.75]]);
+vis($('antenna-right'), [[1.8, 2.0], [3.55, 3.7], [6.45, 6.6], [6.75, 6.9]]);
 tl($('glow'), [[0, { opacity: 0 }], [0.8, { opacity: 0 }], [1.3, { opacity: 1 }], [6.6, { opacity: 1 }], [7.0, { opacity: 0 }]]);
 // Gözler ve ağız
-vis($('eOpen'), [[0, 1.9], [2.05, 4.0], [5.0, 5.2], [5.35, 6.25]]);
-vis($('eClosed'), [[1.9, 2.05], [5.2, 5.35]]);
-vis($('eDown'), [[4.0, 5.0]]);
-vis($('eHappy'), [[6.25, T]]);
-vis($('mSmile'), [[0, 2.6], [4.0, 6.25]]);
-vis($('mOpen'), [[2.6, 4.0], [6.25, T]]);
-// Kol: el sallar, sonra Yerim düğmesini gösterir
-vis($('arm'), [[2.0, 6.3]]);
-tl($('arm'), [[0, tr('rotate(40deg)')], [2.0, tr('rotate(40deg)')], [2.2, tr('rotate(62deg)')], [2.4, tr('rotate(30deg)')], [2.6, tr('rotate(62deg)')], [2.8, tr('rotate(30deg)')],
-  [3.0, tr('rotate(45deg)')], [3.7, tr('rotate(45deg)'), spring], [4.05, tr('rotate(-28deg)')], [5.3, tr('rotate(-28deg)')], [5.45, tr('rotate(-20deg)')], [5.6, tr('rotate(-28deg)')]]);
+vis($('eyes-open'), [[0, 1.9], [2.05, 3.0], [5.0, 5.2], [5.35, 6.25]]);
+vis($('eyes-blink'), [[1.9, 2.05], [5.2, 5.35]]);
+vis($('eyes-curious'), [[3.0, 4.0]]);
+vis($('eyes-side'), [[4.0, 5.0]]);
+vis($('eyes-happy'), [[6.25, T]]);
+vis($('mouth-smile'), [[0, 2.6], [4.0, 6.25]]);
+vis($('mouth-open'), [[2.6, 3.0], [6.25, T]]);
+// Kol: el sallar (iki kare), sonra Yerim düğmesini gösterir
+const wave = [], wave2 = [];
+for (let t = 2.0, i = 0; t < 3.0; t += 0.2, i++) (i % 2 ? wave2 : wave).push([t, t + 0.2]);
+vis($('arm-rest'), [[0, 2.0], [3.0, 4.0], [6.3, T]]);
+vis($('arm-wave'), wave);
+vis($('arm-wave2'), wave2);
+vis($('arm-point'), [[4.0, 6.3]]);
 // Balon
 tl($('bubble'), [[0, { opacity: 0, transform: 'scale(.5)' }], [2.55, { opacity: 0, transform: 'scale(.5)' }, spring], [2.85, { opacity: 1, transform: 'scale(1)' }],
   [6.3, { opacity: 1, transform: 'scale(1)' }, 'ease-in'], [6.55, { opacity: 0, transform: 'scale(.7)' }]]);
