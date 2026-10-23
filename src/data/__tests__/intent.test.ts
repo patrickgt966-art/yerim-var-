@@ -5,6 +5,7 @@ import {
   IZMIR_DISTRICTS,
   localPart,
   looksLikePlace,
+  occasionSignal,
   parseQuery,
   withoutPlanWords,
 } from '../intent';
@@ -530,5 +531,21 @@ describe('budget words are the cheap wish, not part of the dish', () => {
     expect(dishWithoutBudget('Ucuz kebap')).toBe('kebap');
     expect(dishWithoutBudget('ucuz')).toBeNull();
     expect(dishWithoutBudget('hamburger')).toBe('hamburger');
+  });
+});
+
+describe('occasionSignal: groups, a body state, a snack before something', () => {
+  it.each([
+    ['maçtan sonra 5 kişiyiz bir şey yiyelim', 'hearty'],
+    ['kepezde arkadaşlar toplanıyoruz yiyip sohbet edeceğiz', 'hearty'],
+    ['akşamdan kalmayım', 'healthy'],
+    ["Etimesgut'ta konsere gitmeden önce bir şeyler atıştıralım", 'quick'],
+  ])('"%s" -> %s', (text, wish) => {
+    expect(occasionSignal(text)).toEqual({ wish });
+  });
+
+  it('leaves a plain ask alone', () => {
+    expect(occasionSignal('kebap')).toBeUndefined();
+    expect(occasionSignal('mac and cheese')).toBeUndefined();
   });
 });

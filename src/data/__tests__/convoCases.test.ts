@@ -240,7 +240,7 @@ describe('the expectations of every conversation', () => {
     for (const c of casesOf('no_data')) {
       const last = c.turns[c.turns.length - 1]!;
       expect(last.expect.note).toBe(true);
-      expect(last.expect.wishes?.length).toBeGreaterThan(0);
+      expect(c.turns.some((t) => (t.expect.wishes?.length ?? 0) > 0)).toBe(true);
     }
   });
 

@@ -836,6 +836,76 @@ describe('scorer false positives of the 120-case run', () => {
   });
 });
 
+describe('scorer alignment of round 3', () => {
+  const kindChips = ['Bowl', 'Vegan', 'Salata', 'Hepsi'].map((label) => ({
+    kind: 'say' as const,
+    label,
+  }));
+
+  it('the two "Izgara" kinds (protein, healthy) are one kind of place', () => {
+    const t = tap('Izgara', { kind: 'food', member: 'grill', cards: 'some' });
+    const s = scoreTurn(
+      t,
+      obs({
+        input: 'Izgara',
+        cards: [card('A')],
+        ctx: { ...obs().ctx, choice: { id: 'protein', member: 'meatgrill' } },
+      }),
+    );
+    expect(s.choices.misses).toEqual([]);
+    const other = scoreTurn(
+      t,
+      obs({ cards: [card('A')], ctx: { ...obs().ctx, choice: { id: 'protein', member: 'fish' } } }),
+    );
+    expect(other.choices.ok).toBe(false);
+  });
+
+  it('a typed kind that was not offered passes when the results searched it', () => {
+    const t: ConvoTurn = {
+      input: { type: 'answer', text: 'balık olsun' },
+      expect: { kind: 'food', member: 'fish', cards: 'some' },
+    };
+    const searched = obs({ cards: [card('A')], ctx: { ...obs().ctx, cat: 'fish' } });
+    expect(scoreTurn(t, searched).choices.misses).toEqual([]);
+    expect(scoreTurn(t, obs({ cards: [card('A')] })).choices.ok).toBe(false);
+  });
+
+  it('a kinds question passes for an orAsk case, with no note on the question turn', () => {
+    const t = say('romantik bir yer', { kind: 'food', cards: 'some', note: true, orAsk: true });
+    const asked = scoreTurn(
+      t,
+      obs({ text: 'Hangisi?', actions: kindChips, understood: search({ food: true }) }),
+    );
+    expect(asked.understanding.misses).toEqual([]);
+    expect(asked.honesty.misses).toEqual([]);
+    // Not a kinds question (one chip, no Hepsi): the results and the note are still required.
+    const bare = scoreTurn(
+      t,
+      obs({
+        text: 'Hangisi?',
+        actions: kindChips.slice(0, 1),
+        understood: search({ food: true }),
+      }),
+    );
+    expect(bare.understanding.ok).toBe(false);
+    expect(bare.honesty.ok).toBe(false);
+  });
+
+  it('"ücretli" for a car park the facts call paid is no price claim', () => {
+    expect(claimsIn('Mithat Paşa otoparkı ücretli görünüyor.', [])[0]).toMatch(/^price/);
+    expect(claimsIn('Otopark ücretli görünüyor.', [], '', true)).toEqual([]);
+    expect(claimsIn('Otopark 40 TL görünüyor.', [], '', true)[0]).toMatch(/^price/);
+    const s = scoreTurn(
+      say('x', { kind: 'food' }),
+      obs({
+        text: 'Yakındaki otopark ücretli görünüyor.',
+        wordings: [wording('Yakındaki otopark ücretli görünüyor.', { paidKnown: true })],
+      }),
+    );
+    expect(s.honesty.misses.filter((m) => m.startsWith('price'))).toEqual([]);
+  });
+});
+
 describe('rejection reasons in the report', () => {
   const rejected = (kind: ObservedWording['kind'], raw: string, reason: string) =>
     wording(null, { kind, raw, rejectReason: reason });

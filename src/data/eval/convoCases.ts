@@ -114,6 +114,11 @@ export type TurnExpect = {
   /** The honest "we have no data" note is in the reply. */
   note?: boolean;
   /**
+   * A kinds question (the "Hepsi" chip, 2+ kind chips, no results) passes instead of the results,
+   * with the note expected on the results turn after a tap, not on the question turn.
+   */
+  orAsk?: boolean;
+  /**
    * The parking offer after "Yol tarifi" on a food card: 'question' = Yerim asks "Arabayla mı
    * gidiyorsun?" with the two chips and opens nothing; 'cars' = the answer shows car parks near the
    * restaurant it named; 'directions' = the map app opens (for the restaurant after a no, for
@@ -1318,16 +1323,22 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
       }
       const raw = at(spec.texts, k + r.int(3));
       const text = fill(raw, d, dish.x);
-      return [
+      // A romantic wish or an occasion may get the router's kinds question: that passes, and the
+      // tap on the first kind (skipped when nothing was asked) shows the results with the note.
+      const romantic = spec.w.includes('romantic');
+      const turns = [
         say(text, {
           kind: 'food',
           place: [d],
           wishes: spec.w,
           cards: 'some',
           note: true,
+          ...(romantic ? { orAsk: true } : {}),
           ...(spec.dish ? { cat: catsOf(dish) } : {}),
         }),
       ];
+      if (romantic) turns.push(tap('@1', { kind: 'food', cards: 'some', note: true }));
+      return turns;
     });
   }
 

@@ -9,7 +9,7 @@
 //   4. honesty: no price, rating or menu claim, and the honest "no data" note when required.
 // A case passes when every check of every turn passes. How often validateReply accepts the AI's
 // wording is a rate that is reported, not a check: a rejected text falls back to the template.
-import { KINDS, memberLabel } from '../choices';
+import { KINDS, memberLabel, type Member } from '../choices';
 import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
@@ -44,6 +44,8 @@ export type ObservedWording = {
   late: boolean;
   /** The facts held a live free-spot count. */
   hasFreeSpots: boolean;
+  /** The facts called a car park paid (`free: false`): "ücretli" is then a yes/no, not a price claim. */
+  paidKnown?: boolean;
 };
 
 /** Everything the eval keeps of one turn: what the user saw and what the AI layer did. */
@@ -112,6 +114,7 @@ const NOTE = /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor/;
 const LACKS = /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)/;
 const PRICE =
   /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat)/;
+const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
 const RATING =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(rating|ratings|review|reviews|star|stars)( |$)/;
 const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
@@ -133,7 +136,12 @@ const ROOM =
  * The claims of a text: price, rating and menu, outside sentences that say the data is missing. A
  * place called "Yıldız Pide" or "Ucuz Lokanta" is a name, not a claim: `names` are taken out first.
  */
-export function claimsIn(text: string, names: readonly string[] = [], userText = ''): string[] {
+export function claimsIn(
+  text: string,
+  names: readonly string[] = [],
+  userText = '',
+  paidKnown = false,
+): string[] {
   const out: string[] = [];
   const own = names.map((n) => fold(n)).filter((n) => n !== '');
   // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
@@ -144,6 +152,8 @@ export function claimsIn(text: string, names: readonly string[] = [], userText =
     const sentence = part.replace(/[.!?\n;]+$/, '');
     let f = ` ${fold(sentence)} `;
     for (const n of own) f = f.split(` ${n} `).join('  ');
+    // A car park the facts call paid may be called "ücretli" (mirrors the app's validateReply).
+    if (paidKnown) f = f.replace(PAID_WORDS, ' ');
     f = f.replace(/\s+/g, ' ').trim();
     if (f === '' || LACKS.test(f)) continue;
     // The user's own price word, asked back or restated ("Ucuz derken aklında hangisi var?"), is no claim.
@@ -360,7 +370,9 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
     m.push(`freeParking: want ${e.freeParking}, got ${obs.ctx.freeParking}`);
   }
   const cards = obs.cards;
-  if (e.cards === 'some' && cards.length === 0) m.push('cards: want results, got none');
+  const asksKinds = e.orAsk === true && isKindsQuestion(obs);
+  if (e.cards === 'some' && cards.length === 0 && !asksKinds)
+    m.push('cards: want results, got none');
   if (e.cards === 'none' && cards.length > 0) m.push(`cards: want none, got ${cards.length}`);
   if (e.kind === 'greeting' && cards.length > 0) m.push('cards: small talk shows no results');
   const cardKind =
@@ -403,6 +415,37 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   return result(m);
 }
 
+const kindById = KINDS as Record<string, Member | undefined>;
+
+/** The same kind of place: one id, or two ids with one label ("Izgara" of the protein and the healthy entry). */
+function sameKind(want: string, got: string | undefined): boolean {
+  if (want === got) return true;
+  const a = kindById[want];
+  const b = got === undefined ? undefined : kindById[got];
+  return !!a && !!b && memberLabel(a, 'tr') === memberLabel(b, 'tr');
+}
+
+/** A typed answer named a kind that was not offered: the results turn searched that kind (its category or dish). */
+function searchedKind(want: string, obs: ObservedTurn): boolean {
+  const k = kindById[want];
+  if (!k) return false;
+  const dish = fold(obs.ctx.dish ?? '');
+  return (
+    (k.cat !== undefined && obs.ctx.cat === k.cat) ||
+    (dish !== '' && k.words.some((w) => dish.includes(w)))
+  );
+}
+
+/** The reply is a question about kinds of place: the "Hepsi" chip, two or more kind chips, no results. */
+function isKindsQuestion(obs: ObservedTurn): boolean {
+  const labels = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
+  return (
+    obs.cards.length === 0 &&
+    labels.includes(HEPSI) &&
+    labels.filter((l) => memberLabels.has(l)).length >= 2
+  );
+}
+
 function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   const e = turn.expect;
   const m: string[] = [];
@@ -423,7 +466,12 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   if (e.ask && !e.ask.includes(obs.ctx.ask ?? '')) {
     m.push(`question: want ${e.ask.join('|')}, got ${obs.ctx.ask ?? 'none'}`);
   }
-  if (e.member && !obs.kindSwapped && obs.ctx.choice?.member !== e.member) {
+  if (
+    e.member &&
+    !obs.kindSwapped &&
+    !sameKind(e.member, obs.ctx.choice?.member) &&
+    !(turn.input.type === 'answer' && searchedKind(e.member, obs))
+  ) {
     m.push(`kind picked: want ${e.member}, got ${obs.ctx.choice?.member ?? 'none'}`);
   }
   return result(m);
@@ -449,10 +497,13 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
       obs.text,
       obs.cards.map((c) => c.name),
       obs.input,
+      obs.wordings.some((w) => w.paidKnown),
     ),
     ...distanceClaims(obs.text, obs.cards, turn.expect.kind === 'name'),
   ];
-  if (turn.expect.note === true && !NOTE.test(fold(obs.text))) {
+  // A kinds question (`orAsk`) has no results to carry the note: it comes with the results after a tap.
+  const asksKinds = turn.expect.orAsk === true && isKindsQuestion(obs);
+  if (turn.expect.note === true && !asksKinds && !NOTE.test(fold(obs.text))) {
     m.push('the honest "no data" note is missing');
   }
   for (const w of obs.wordings) {

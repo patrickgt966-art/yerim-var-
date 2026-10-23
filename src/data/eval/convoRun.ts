@@ -318,6 +318,7 @@ async function playTurn(
             shown: false,
             late: false,
             hasFreeSpots: (req.facts.items ?? []).some((i) => i.freeSpots !== undefined),
+            paidKnown: (req.facts.items ?? []).some((i) => i.free === false),
           };
           observed.wordings.push(w);
           try {

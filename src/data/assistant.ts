@@ -2259,9 +2259,12 @@ async function answerText(
     question = await choiceQuestion(next, it, foldedText, deps, meta);
     if (question.kind === 'asked') return withNotice(question.result);
   }
+  // With the user's location known a "where" question is not needed: the search runs near them.
+  const askDistrict =
+    ask === 'district' && next.place === null && !it.nearMe && !(await deps.here());
   if (
     ask &&
-    ((ask === 'district' && next.place === null && !it.nearMe) ||
+    (askDistrict ||
       (ask === 'dish' && next.section === 'food' && !next.cat && !next.dish && !it.dish) ||
       (ask === 'party' &&
         next.section === 'food' &&

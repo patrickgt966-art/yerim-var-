@@ -926,6 +926,9 @@ const OCCASION_SIGNALS: { stem: RegExp; wish: Wish | null }[] = [
   { stem: /\b(moral|yorgun|yoruldu)/, wish: 'hearty' },
   { stem: /\b(midem|hasta\b|hastayim)/, wish: 'healthy' },
   { stem: /\bgece gec/, wish: 'quick' },
+  { stem: /\batistir/, wish: 'quick' },
+  { stem: /\bmac(tan|ta)\b|\bkisiyiz|\btoplan|\barkadaslar/, wish: 'hearty' },
+  { stem: /\baksamdan kalma/, wish: 'healthy' },
 ];
 
 /** The occasion / mood signal of a message: the wish of a fitting table entry (or null), undefined without a signal. */
