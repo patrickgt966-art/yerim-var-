@@ -757,6 +757,7 @@ const tr = {
     nearest: 'En yakından başlayarak sıraladım.',
     wideNow: 'Daha geniş alanda baktım.',
     wideAlready: 'Daha geniş alanda da bunlar çıkıyor.',
+    allHere: 'Hepsi burada.',
     foodNoFreePark:
       '{{where}} civarında {{what}} var ama otoparkının ücretsiz olduğunu bildiğim yok. Ne yapalım?',
     parkNoFree: '{{where}} civarında ücretsiz olduğunu bildiğim otopark yok. Ne yapalım?',

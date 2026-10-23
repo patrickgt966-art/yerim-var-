@@ -455,6 +455,21 @@ export const CHOICES: ChoiceEntry[] = [
 /** What a typed answer to the question means: everything, or one member ("hepsi", "balık"). */
 export const ALL_WORDS = ['hepsi', 'hepsini', 'tumu', 'tumunu', 'farketmez', 'herhangi', 'her sey'];
 
+/** Words that may stand around an "all" word ("hepsini göster", "hepsi olur", "herhangi biri"). */
+const ALL_FILLER = ['goster', 'olur', 'biri', 'bir', 'tamam', 'ya', 'peki', 'lutfen', 'hocam'];
+
+/** "hepsi", "tümü", "farketmez", "herhangi biri": the whole text says "all of them" (folded). */
+export function isAllAnswer(folded: string): boolean {
+  const tokens = folded.split(' ').filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 3) return false;
+  const padded = ` ${folded} `;
+  if (!(ALL_WORDS.some((w) => padded.includes(` ${w} `)) || padded.includes(' fark etmez '))) {
+    return false;
+  }
+  const said = new Set(ALL_WORDS.flatMap((w) => w.split(' ')).concat('fark', 'etmez', ALL_FILLER));
+  return tokens.every((t) => said.has(t));
+}
+
 /** True when `r` is a kind of place `m` describes. Places that are no meal place never are. */
 export function inMember(r: Restaurant, m: Member): boolean {
   if (categoryOf(r) === null) return false;

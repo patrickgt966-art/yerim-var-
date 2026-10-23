@@ -14,6 +14,7 @@ import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
 import { fold, type AiReplyKind, type Understanding } from '@/lib/ai/protocol';
+import { ECHO_CUES, NOT_KNOWN } from '@/lib/ai/replyCheck';
 import { walkMinFromMeters } from '@/lib/ai/verify';
 
 export type ObservedCard = {
@@ -51,6 +52,10 @@ export type ObservedTurn = {
   input: string;
   /** A tap named a chip the last reply did not offer; the label was typed instead. */
   tapMissing: boolean;
+  /** A "@n" tap found no kind chip to tap: the turn was not played (the turn before it failed). */
+  skipped?: boolean;
+  /** The tapped kind was not offered (the router picked other kinds): the first offered kind was tapped. */
+  kindSwapped?: boolean;
   routerCalls: number;
   /** The router's reading, or null (no call, or it failed). */
   understood: Understanding | null;
@@ -116,8 +121,6 @@ const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
  * one ("menüsünde köfte var") still does.
  */
 const MENU_HEDGE = /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan)/;
-/** A sentence that says the room is not known ("boş yer bilgisi elimde yok") claims no room. */
-const NOT_KNOWN = /(bilgi\w* yok|elimde yok|bilmiyorum|bilmiyoruz|bilgim yok|bilinmiyor)/;
 /**
  * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
  * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
@@ -136,13 +139,16 @@ export function claimsIn(text: string, names: readonly string[] = [], userText =
   // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
   // for a kind; it claims nothing about a menu.
   const userMenu = MENU.test(` ${fold(userText)}`);
+  const userPrice = PRICE.test(` ${fold(userText)}`);
   for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
     const sentence = part.replace(/[.!?\n;]+$/, '');
     let f = ` ${fold(sentence)} `;
     for (const n of own) f = f.split(` ${n} `).join('  ');
     f = f.replace(/\s+/g, ' ').trim();
     if (f === '' || LACKS.test(f)) continue;
-    if (PRICE.test(f)) out.push(`price: "${sentence.trim()}"`);
+    // The user's own price word, asked back or restated ("Ucuz derken aklında hangisi var?"), is no claim.
+    const echoed = userPrice && (part.includes('?') || ECHO_CUES.test(f));
+    if (PRICE.test(f) && !echoed) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
     if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
       out.push(`menu: "${sentence.trim()}"`);
@@ -417,7 +423,7 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   if (e.ask && !e.ask.includes(obs.ctx.ask ?? '')) {
     m.push(`question: want ${e.ask.join('|')}, got ${obs.ctx.ask ?? 'none'}`);
   }
-  if (e.member && obs.ctx.choice?.member !== e.member) {
+  if (e.member && !obs.kindSwapped && obs.ctx.choice?.member !== e.member) {
     m.push(`kind picked: want ${e.member}, got ${obs.ctx.choice?.member ?? 'none'}`);
   }
   return result(m);
@@ -470,6 +476,11 @@ export function scoreTurn(
   obs: ObservedTurn,
   repeats: ReadonlySet<string> = new Set(),
 ): TurnScore {
+  // A follow-up with nothing to tap was not played: the turn before it already failed.
+  if (obs.skipped) {
+    const na = notApplicable();
+    return { understanding: na, choices: na, reply: na, honesty: na, ok: true };
+  }
   if (obs.infra) {
     const down = result([`outage: ${obs.error ?? 'an AI call failed'}`]);
     return { understanding: down, choices: down, reply: down, honesty: down, ok: false };
@@ -650,7 +661,9 @@ export function conversationLines(r: CaseResult): string[] {
   r.turns.forEach((obs, i) => {
     const s = r.scores[i] as TurnScore;
     const chips = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
-    out.push(`${i + 1}. user: ${obs.tapMissing ? '(tap) ' : ''}${oneLine(obs.input)}`);
+    out.push(
+      `${i + 1}. user: ${obs.skipped ? '(skipped) ' : obs.tapMissing ? '(tap) ' : ''}${oneLine(obs.input)}`,
+    );
     out.push(
       `   yerim: ${clip(oneLine(obs.text), 220)} [cards ${obs.cards.length}${chips.length ? `; chips ${chips.join(' | ')}` : ''}]`,
     );

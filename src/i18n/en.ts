@@ -859,6 +859,7 @@ const en = {
     nearest: 'Sorted closest first.',
     wideNow: 'I looked in a wider area.',
     wideAlready: 'These are what come up in a wider area too.',
+    allHere: 'They are all here.',
     foodNoFreePark:
       'There are {{what}} around {{where}}, but none I know of with free parking. What now?',
     parkNoFree: "I don't know of any free car parks around {{where}}. What now?",

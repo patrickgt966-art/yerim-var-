@@ -279,3 +279,98 @@ describe('the router picks kinds', () => {
     expect(n.ctx.choiceKinds).toBeUndefined();
   });
 });
+
+describe('kinds round 2: occasions, party size, "hepsi" after results', () => {
+  it('a mood word the router sent without kinds asks the table entry that fits it', async () => {
+    const { deps } = fakeAi(routed({ wishes: [] }));
+    const q = await answer(
+      'moralim bozuk bir şeyler yiyip düzelmek istiyorum üsküdarda',
+      emptyContext('food'),
+      deps,
+    );
+    expect(q.ctx.ask).toBe('hearty');
+    expect(q.reply.cards).toEqual([]);
+    expect(labels(q.reply).at(-1)).toBe('Hepsi');
+    const late = await answer('gece geç saatte acıktım', emptyContext('food'), deps);
+    expect(late.ctx.ask).toBe('quick');
+  });
+
+  it('an occasion no table entry fits keeps today\'s results, and a plain "acıktım" is untouched', async () => {
+    const { deps } = fakeAi(routed({ wishes: [] }));
+    for (const text of [
+      'iş arkadaşlarımla öğle yemeğine çıkıyoruz',
+      'tatil için geldim yöresel bir şeyler denemek istiyorum',
+      'acıktım',
+    ]) {
+      const r = await answer(text, emptyContext('food'), deps);
+      expect(r.ctx.ask).toBeUndefined();
+      expect(r.reply.cards.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('the fallback needs the router: without it a mood word changes nothing', async () => {
+    const r = await answer('moralim bozuk bir şeyler yiyelim', emptyContext('food'), {
+      ...fakeAi(routed({})).deps,
+      ai: undefined,
+    });
+    expect(r.ctx.ask).toBeUndefined();
+  });
+
+  const party = (over: Partial<Search>) =>
+    routed({ clarify: { ask: 'party', text: 'Kaç kişi olacaksınız?' }, ...over });
+
+  it('kinds come before the party-size question', async () => {
+    const { deps } = fakeAi(party({ kinds: PICKED, wishes: ['family', 'kids'] }));
+    const q = await answer(
+      'çiğli tarafında çocuklarla doğum günü yapacağız',
+      emptyContext('food'),
+      deps,
+    );
+    expect(q.ctx.ask).toBe(AI_CHOICE_ID);
+    expect(labels(q.reply).at(-1)).toBe('Hepsi');
+    expect(q.reply.text).not.toContain('Kaç kişi');
+  });
+
+  it('without kinds (or with fewer than two around) the party question is still asked', async () => {
+    const none = await answer(
+      'misafirim var',
+      emptyContext('food'),
+      fakeAi(party({ kinds: [] })).deps,
+    );
+    expect(none.reply.text).toContain('Kaç kişi');
+    const absent = await answer(
+      'misafirim var',
+      emptyContext('food'),
+      fakeAi(party({ kinds: [ABSENT[0]!, ABSENT[1]!] })).deps,
+    );
+    expect(absent.reply.text).toContain('Kaç kişi');
+  });
+
+  it('"hepsi" after results shows all kinds of the ask, with no router call', async () => {
+    const { deps, understand } = fakeAi(routed({ kinds: PICKED }));
+    const q = await answer(MSG, emptyContext('food'), deps);
+    const one = await refine(q.ctx, chip(q.reply, 'Steak').patch, deps);
+    const all = await refine(q.ctx, chip(q.reply, 'Hepsi').patch, deps);
+    for (const word of ['hepsi', 'tümü', 'hepsini göster', 'farketmez', 'herhangi biri']) {
+      const r = await answer(word, one.ctx, deps);
+      expect(ids(r.reply)).toEqual(ids(all.reply));
+      expect(r.ctx.choice).toEqual({ id: AI_CHOICE_ID, member: 'all' });
+    }
+    expect(understand).toHaveBeenCalledTimes(1);
+  });
+
+  it('"hepsi" after plain results keeps them under a short lead; not a chat reply', async () => {
+    const { deps, understand } = fakeAi(routed({ dish: 'lahmacun', cat: 'fast' }));
+    const first = await answer('lahmacun', emptyContext('food'), deps);
+    expect(first.reply.cards.length).toBeGreaterThan(0);
+    for (const word of ['hepsi', 'farketmez', 'tümü']) {
+      const r = await answer(word, first.ctx, deps);
+      expect(r.reply.text).toBe('Hepsi burada.');
+      expect(ids(r.reply)).toEqual(ids(first.reply));
+    }
+    expect(understand).toHaveBeenCalledTimes(1);
+    // With no results on screen it is a new message, as before.
+    const fresh = await answer('hepsi', emptyContext('food'), deps);
+    expect(fresh.reply.text).not.toBe('Hepsi burada.');
+  });
+});

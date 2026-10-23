@@ -274,3 +274,90 @@ describe('park wordings', () => {
     no('Kemeraltı Otoparkı yakınında, Kordon Pasajı Otopark da var.', facts, 'unknown-name');
   });
 });
+
+describe('honest wordings the check accepts (convo eval round 2)', () => {
+  const far: AiReplyFacts = {
+    where: 'Çiğli',
+    what: 'balık',
+    count: 5,
+    far: true,
+    farWalkMin: 36,
+    items: [{ name: 'Mavi Balık Restoranı', walkMin: 36 }],
+  };
+  const opts = { allow, kind: 'food' as const };
+  const ok = (text: string, f: AiReplyFacts, extra: { userText?: string } = {}) =>
+    expect(validateReplyReason(text, f, { ...opts, ...extra })).toEqual({ text, reason: null });
+  const no = (text: string, f: AiReplyFacts, reason: string, extra: { userText?: string } = {}) =>
+    expect(validateReplyReason(text, f, { ...opts, ...extra })).toEqual({ text: null, reason });
+
+  it('a far top place may be called the nearest, or near-but-far', () => {
+    ok('En yakını bile 36 dakika yürüme, biraz uzak kalıyor.', far);
+    ok('En yakını bile 36 dakika yürüme.', far);
+    ok('Even the nearest is 36 minutes on foot.', far);
+    ok('Yakın sayılmaz, 36 dakika uzakta.', far);
+  });
+
+  it('a far top place is still never called near', () => {
+    no('Mavi Balık Restoranı yakında, hemen gidebilirsin.', far, 'near-word-for-far');
+    no('Hemen yanında bir yer buldum.', far, 'near-word-for-far');
+    no('Yürüme mesafesinde bir yer buldum.', far, 'near-word-for-far');
+    no('Bu yer yakın, 36 dakika.', far, 'near-word-for-far');
+    no('En yakını Mavi Balık Restoranı.', far, 'near-word-for-far');
+  });
+
+  const park: AiReplyFacts = {
+    where: 'Konak',
+    count: 4,
+    parkSearch: true,
+    items: [{ name: 'A', walkMin: 3 }],
+  };
+  it('says the room is not known in any negated form', () => {
+    ok('Canlı boş yer bilgisi elimde olmadığı için kartlardaki mesafelere bakabilirsin.', park);
+    ok('Boş yer sayısı bilinmiyor, kartlardaki mesafelere bakabilirsin.', park);
+    ok('Boş yerleri göremiyorum, ama dört otopark çıktı.', park);
+    ok('Boş yer bilgisi olmadığından mesafeye göre sıraladım.', park);
+    ok('I can not see how many spots are empty right now.', park);
+    no('Boş yer var, hemen gidebilirsin.', park, 'room-without-live-count');
+    // The negation must be in the clause of the room phrase.
+    no('Şu an boş yer var, yine de bilgi vermiyorum.', park, 'room-without-live-count');
+  });
+
+  it("echoes the user's own price word in a question, never as a claim", () => {
+    const f: AiReplyFacts = {
+      where: 'Alsancak',
+      count: 5,
+      items: [{ name: 'Yıldız Pide', walkMin: 4 }],
+    };
+    const user = { userText: 'ucuz bir yer arıyorum' };
+    ok('Ucuz derken aklında hangisi var?', f, user);
+    ok('Ucuz bir yer aradığını anladım.', f, user);
+    no('Yıldız Pide ucuz.', f, 'price-word', user);
+    no('Ucuz yerler buldum.', f, 'price-word', user);
+    no('Ucuz derken aklında hangisi var?', f, 'price-word');
+    no('Ucuz derken aklında hangisi var?', f, 'price-word', { userText: 'bir yer arıyorum' });
+    const budget = { userText: 'uygun fiyatlı bir şey' };
+    ok('Uygun fiyatlı derken ne kadarını düşünüyorsun?', f, budget);
+  });
+
+  it('points to the fee on the cards only when a fact carries one', () => {
+    const withFee: AiReplyFacts = { ...park, items: [{ name: 'A', walkMin: 3, free: false }] };
+    ok('Kartlardan ücret durumunu görebilirsin.', withFee);
+    no('Kartlardan ücret durumunu görebilirsin.', park, 'price-word');
+    no('Ücret yüksek.', withFee, 'price-word');
+  });
+
+  it('knows a free car park by an abbreviated name', () => {
+    const f: AiReplyFacts = {
+      where: 'Çiğli',
+      count: 2,
+      parkSearch: true,
+      items: [{ name: 'Otopark · Doğanbey yakını', walkMin: 3, free: true }],
+    };
+    ok('Doğanbey yakınındaki otopark ücretsiz görünüyor.', f);
+    no(
+      'Doğanbey yakınındaki otopark ücretsiz görünüyor.',
+      { ...f, items: [{ name: 'Otopark · Doğanbey yakını', walkMin: 3 }] },
+      'free-without-fact',
+    );
+  });
+});

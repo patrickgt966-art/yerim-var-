@@ -378,7 +378,8 @@ const ASK_SPECS: AskSpec[] = [
   },
   {
     id: 'hearty',
-    asks: ['hearty'],
+    // The router may pick kinds of place for a hearty wish itself: that question is right too.
+    asks: ['hearty', 'ai'],
     texts: [
       'kilo almak istiyorum',
       'kilo almam lazım',
@@ -405,6 +406,9 @@ const ASK_SPECS: AskSpec[] = [
     note: true,
   },
 ];
+/** The wishes a right reading of the text holds: "karnım çok aç" is hunger, hearty or quick are both fine. */
+const wishesFor = (spec: AskSpec, text: string): Wish[] =>
+  text.includes('karnım çok aç') ? [...spec.wishes, 'quick'] : spec.wishes;
 const ALL_ANSWERS = ['hepsi', 'hepsini göster', 'farketmez', 'herhangi biri', 'tümü', 'hepsi olur'];
 
 /**
@@ -1007,7 +1011,9 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
           hepsi: true,
           chipsMin: 2,
           cards: 'none',
-          ...(spec.wishes.length > 0 ? { wishes: spec.wishes } : { cat: ['dessert', null] }),
+          ...(spec.wishes.length > 0
+            ? { wishes: wishesFor(spec, ask.text) }
+            : { cat: ['dessert', null] }),
           ...(ask.place ? { place: ask.place } : { nearMe: true }),
         };
         const how = k % 4;

@@ -298,7 +298,7 @@ async function main(): Promise<void> {
       const text = response.stop_reason === 'refusal' ? '' : toReply(response.parsed_output);
       replyRows.push({
         name: c.name,
-        pass: validateReply(text, c.facts, { kind: c.kind, allow }) !== null,
+        pass: validateReply(text, c.facts, { kind: c.kind, allow, userText: c.userText }) !== null,
         text,
       });
     } catch (e) {

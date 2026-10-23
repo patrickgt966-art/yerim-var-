@@ -41,13 +41,22 @@ const RATING_WORDS =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(star|stars|rating|ratings|rated|review|reviews)( |$)/;
 const FREE_WORDS = /(^| )(ucretsiz|free|bedava)( |$)/;
 /** Words that call a place near ("en yakın", "yakında", "hemen yanında", "nearby", "closest"). */
-const NEAR_WORDS = /(^| )(yakin|hemen yan|nearby|nearest|closest|close by|close to|next to)/;
+const NEAR_WORDS =
+  /(^| )(yakin|hemen yan|yurume mesafe|nearby|nearest|closest|close by|close to|next to|walking distance)/;
 /** Folded wordings that say a car park has room: "boş yeri olan", "boş yer var", "müsait", "boş yer sayıları". */
 const ROOM_WORDS =
   /(^| )(bos yer|bos alan|bos kontenjan|musait|(park|otopark|arac) yer\w* var)|(^| )(free|empty|vacant|available|open) (spot|space|parking spot|parking space)s?( |$)|(^| )(spots|spaces|room) (left|available|free)( |$)/;
-/** A sentence that says the room is not known ("boş yer bilgisi elimde yok"): not a room claim. */
-const NOT_KNOWN =
-  /(^| )(bilgi\w* (yok|mevcut degil)|elimde yok|bilmiyorum|bilinmiyor|bilgim yok|(not|n t|no) (know|known|live|data|info)|do not have|dont have|don t have|unknown)/;
+/**
+ * A clause that says the room is not known ("boş yer bilgisi elimde yok", "elimde olmadığı için",
+ * "göremiyorum"): not a room claim. Any negated verb form counts (-mı/-mi/-mu/-mü + yor, -ma/-me +
+ * dık/dı/yan/z), as does an English negation.
+ */
+export const NOT_KNOWN =
+  /(^| )(bilgi\w* (yok|mevcut degil)|elimde yok|bilgim yok|(ol|\w{3,})(m[iu]yor|m[ae]di|m[ae]yan|m[ae]z( |$))|(not|no|cannot|unable|without|unknown|(don|doesn|isn|aren|can|couldn|didn) t|dont|do not|does not|did not)( |$))/;
+/** The clause says the place is far, so a near word in it is not a near claim. */
+const FAR_WORDS = /(^| )(uzak|far|farther|further)/;
+/** "en yakını", "nearest": a superlative that is true of a far place too ("en yakını bile 36 dk"). */
+const NEAREST_WORDS = /(^| )(en yakin\w*|nearest|closest)(?= |$)/g;
 /** A sentence that says nothing was found: it contradicts the cards shown with it ("uygun bir aday bulamadık"). */
 const NOT_FOUND =
   /(^| )(bulamad|bulunamad|aday (yok|bulun)|uygun (bir )?(yer|aday|sonuc) (yok|bulun)|(could not|couldn t|did not|didn t) find|no (match|matches|results?|candidates?)( |$)|nothing (found|matches))/;
@@ -66,6 +75,8 @@ type Options = {
   kind?: AiReplyKind;
   /** Names that need no fact: the city and its districts. */
   allow?: string[];
+  /** What the user wrote: a price or budget word of their own may be echoed back. */
+  userText?: string;
 };
 
 /** Sentences by their end marks (emoji do not count); a trailing fragment counts as one. */
@@ -105,8 +116,13 @@ function overclaims(
     const f = withoutFactStrings(fold(sentence), facts, allow);
     const padded = ` ${f} `;
     if (MENU_ON_CARDS.test(padded) && CARD_WORDS.test(padded)) return 'menu-on-cards';
-    if (!live && ROOM_WORDS.test(padded) && !NOT_KNOWN.test(padded))
-      return 'room-without-live-count';
+    if (!live) {
+      // A room phrase is excused by a negated verb in its own clause.
+      for (const clause of sentence.split(/[,;:–—]/)) {
+        const c = ` ${withoutFactStrings(fold(clause), facts, allow)} `;
+        if (ROOM_WORDS.test(c) && !NOT_KNOWN.test(c)) return 'room-without-live-count';
+      }
+    }
     if (shown && NOT_FOUND.test(padded)) return 'not-found-with-results';
   }
   return null;
@@ -206,6 +222,73 @@ function insideName(words: string[], name: string): boolean {
   return false;
 }
 
+/** Folded price / budget stems; the user's own ones may be echoed back (see priceViolation). */
+const PRICE_STEMS = ['ucuz', 'fiyat', 'budget', 'cheap', 'price', 'ucret'];
+/** The sentence repeats what the user asked for ("ucuz derken", "ucuz bir yer arıyorsun") or asks. */
+export const ECHO_CUES =
+  /(derken|dediginde|istedig|aradig|diledig|ariyor|istiyor|bakiyor|olsun|mean|looking|want)/;
+
+/** The sentences of a text, split after . ! ? and the ellipsis mark. */
+const sentencesOf = (text: string): string[] => text.split(/(?<=[.!?…])\s+/);
+
+/**
+ * True when a sentence calls a place near while the first result is far. "En yakını bile 36 dk"
+ * (the superlative with the far walk stated) or any sentence that also says it is far is honest;
+ * a bare "en yakını X", "yakında", "hemen yanında", "yürüme mesafesinde" are not.
+ */
+function nearClaim(clean: string, facts: AiReplyFacts, allow: string[]): boolean {
+  for (const sentence of sentencesOf(clean)) {
+    const f = ` ${withoutFactStrings(fold(sentence), facts, allow)} `;
+    if (FAR_WORDS.test(f)) continue;
+    const walks = [...f.matchAll(/(\d+) ?(?:dk|dakika|min|minutes)/g)].map((m) => Number(m[1]));
+    const statesFar = walks.some((m) => m > FAR_WALK_MIN);
+    if (NEAR_WORDS.test(statesFar ? f.replace(NEAREST_WORDS, ' ') : f)) return true;
+  }
+  return false;
+}
+
+/**
+ * True when a sentence of the wording has a price word the facts and the user's message do not
+ * excuse. A price or budget word the user wrote may be echoed in a question or a restatement of the
+ * wish ("Ucuz derken aklında hangisi var?"), but never with a number or a shown place ("X ucuz").
+ * "ücret" is fine when the sentence sends the user to cards that carry the fee (a fact says paid /
+ * free) and names no place.
+ */
+function priceViolation(
+  clean: string,
+  facts: AiReplyFacts,
+  allow: string[],
+  userText: string | undefined,
+): boolean {
+  const items = facts.items ?? [];
+  const paidKnown = items.some((i) => i.free === false);
+  const feeOnCards = items.some((i) => i.free !== undefined);
+  const mine = fold(userText ?? '');
+  const own = PRICE_STEMS.filter((st) => mine.includes(st));
+  for (const sentence of sentencesOf(clean)) {
+    const raw = fold(sentence);
+    const rest = ` ${withoutFactStrings(raw, facts, allow)} `.replace(/ feel free /g, ' ');
+    let p = paidKnown ? rest.replace(PAID_WORDS, ' ') : rest;
+    if (!PRICE_WORDS.test(p)) continue;
+    const namesPlace = items.some((i) => ` ${raw} `.includes(` ${fold(i.name)} `));
+    const claim = namesPlace || /\d/.test(raw);
+    if (!claim) {
+      const pointsToCards =
+        CARD_WORDS.test(rest) && /(gor|bak|incele|goster|see|check|look|show)/.test(rest);
+      const asks = /[?]\s*$/.test(sentence.trim()) || ECHO_CUES.test(raw);
+      const words = p.split(' ').filter((w) => {
+        if (own.some((st) => w.startsWith(st)) && asks) return false;
+        // The fee is on the cards: pointing the user there states no amount.
+        if (w.startsWith('ucret') && feeOnCards && pointsToCards) return false;
+        return true;
+      });
+      p = words.join(' ');
+    }
+    if (PRICE_WORDS.test(p)) return true;
+  }
+  return false;
+}
+
 /**
  * The AI's wording of a reply, or null when it must not be shown: more than two sentences or 260
  * characters, a link, a number the facts do not carry (Turkish and English number words count), a
@@ -263,17 +346,14 @@ export function validateReplyReason(
 
   const padded = ` ${rest} `.replace(/ feel free /g, ' ');
   // A car park the facts call paid (`free: false`) may be called "ücretli": a yes/no, not an amount.
-  const paidKnown = (facts.items ?? []).some((i) => i.free === false);
-  if (PRICE_WORDS.test(paidKnown ? padded.replace(PAID_WORDS, ' ') : padded)) {
-    return no('price-word');
-  }
+  if (priceViolation(clean, facts, allow, options.userText)) return no('price-word');
   if (RATING_WORDS.test(padded)) return no('rating-word');
   const freeKnown = facts.freeOnly === true || (facts.items ?? []).some((i) => i.free === true);
   if (!freeKnown && FREE_WORDS.test(padded)) return no('free-without-fact');
   // A far result is never called near: the walk of a shown item (or the far flag) says it is not.
   const far =
     facts.far === true || (facts.items ?? []).some((i) => (i.walkMin ?? 0) > FAR_WALK_MIN);
-  if (far && NEAR_WORDS.test(padded)) return no('near-word-for-far');
+  if (far && nearClaim(clean, facts, allow)) return no('near-word-for-far');
   if (options.kind !== 'greeting' && !hasParkingFacts(facts) && PARKING_WORDS.test(padded)) {
     return no('parking-without-data');
   }

@@ -393,6 +393,13 @@ describe('honesty', () => {
   const t = say('x', { kind: 'food' });
   const note: TurnExpect = { kind: 'food', note: true };
 
+  it("lets the user's own price word be asked back, but not claimed", () => {
+    expect(claimsIn('Ucuz derken aklında hangisi var?', [], 'ucuz bir yer')).toEqual([]);
+    expect(claimsIn('Ucuz bir yer aradığını anladım.', [], 'ucuz bir yer')).toEqual([]);
+    expect(claimsIn('Ucuz yerler buldum.', [], 'ucuz bir yer')[0]).toMatch(/^price/);
+    expect(claimsIn('Ucuz derken aklında hangisi var?', [], 'bir yer')[0]).toMatch(/^price/);
+  });
+
   it('finds price, rating and menu claims', () => {
     expect(claimsIn('Ucuz ve lezzetli bir yer.')[0]).toMatch(/^price/);
     expect(claimsIn('Beş yıldızlı, 4,8 puanlı!')[0]).toMatch(/^rating/);

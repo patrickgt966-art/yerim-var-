@@ -193,7 +193,9 @@ describe('the expectations of every conversation', () => {
 
   it('asks for the kinds the router picks for situations, and for the filling ask', () => {
     const asks = (c: ConvoCase) => c.turns[0]!.expect.ask ?? [];
-    const situations = casesOf('choice').filter((c) => asks(c).includes('ai'));
+    const situations = casesOf('choice').filter(
+      (c) => asks(c).includes('ai') && asks(c).includes('protein'),
+    );
     expect(situations.length).toBeGreaterThanOrEqual(30);
     expect(new Set(situations.map((c) => c.turns[0]!.input.text)).size).toBeGreaterThanOrEqual(15);
     for (const c of situations) {
@@ -209,9 +211,14 @@ describe('the expectations of every conversation', () => {
     expect(follow).toContain('tap:@1');
     expect(follow).toContain(`tap:${HEPSI}`);
     expect(situations.some((c) => c.turns[1]!.input.type === 'answer')).toBe(true);
-    const hearty = casesOf('choice').filter((c) => asks(c).join() === 'hearty');
+    // The filling ask: its own entry, or the router's kinds for it; "karnım çok aç" may also read as quick.
+    const hearty = casesOf('choice').filter((c) => asks(c).join() === 'hearty,ai');
     expect(hearty.length).toBeGreaterThanOrEqual(10);
-    for (const c of hearty) expect(c.turns[0]!.expect.wishes).toEqual(['hearty']);
+    for (const c of hearty) {
+      expect(c.turns[0]!.expect.wishes).toEqual(
+        c.turns[0]!.input.text.includes('karnım çok aç') ? ['hearty', 'quick'] : ['hearty'],
+      );
+    }
   });
 
   it('forces wide searches in small districts of every city', () => {

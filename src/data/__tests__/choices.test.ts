@@ -2,7 +2,14 @@ import '@/i18n';
 import i18n from 'i18next';
 
 import { answer, emptyContext, refine, type AssistantDeps, type BotMessage } from '../assistant';
-import { CHOICES, inMember, memberLabel, memberOf, type ChoiceEntry } from '../choices';
+import {
+  CHOICES,
+  inMember,
+  isAllAnswer,
+  memberLabel,
+  memberOf,
+  type ChoiceEntry,
+} from '../choices';
 import { wishesIn } from '../intent';
 import { CATEGORY_RADII_M, categoryForQuery, getRestaurant, restaurantsNear } from '../restaurants';
 import { staticParkings } from '../staticParkings';
@@ -347,4 +354,23 @@ describe('the quick ask makes no price claim', () => {
       expect(r.reply.text).not.toMatch(/ucuz|uygun fiyat|ekonomik/i);
     },
   );
+});
+
+describe('isAllAnswer', () => {
+  it('reads "all of them" words only when nothing else is said', () => {
+    for (const w of [
+      'hepsi',
+      'tumu',
+      'hepsini goster',
+      'farketmez',
+      'fark etmez',
+      'herhangi biri',
+      'hepsi olur',
+    ]) {
+      expect(isAllAnswer(w)).toBe(true);
+    }
+    for (const w of ['', 'hepsi pahali', 'balik', 'hepsi cok guzel olsun bence']) {
+      expect(isAllAnswer(w)).toBe(false);
+    }
+  });
 });

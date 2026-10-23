@@ -417,6 +417,47 @@ function withoutOrderWords(
   return { words: left, raws: raws ? keep.map((i) => raws[i]!) : null };
 }
 
+/**
+ * "uygun fiyatlı hamburger", "ucuz kebap", "öğrenci bütçesine pide": a budget word is the cheap wish
+ * (wishesIn reads it from the text), not part of the dish, so it goes before the dish is looked up.
+ * Only when a food word is left; a text without food ("ucuz otopark") keeps all its words.
+ */
+function withoutBudgetWords(
+  ws: string[],
+  raws: string[] | null,
+): { words: string[]; raws: string[] | null } {
+  const drop = new Set<number>();
+  for (let i = 0; i < ws.length; i++) {
+    const w = ws[i]!;
+    const next = ws[i + 1] ?? '';
+    if (
+      (w === 'uygun' && next.startsWith('fiyat')) ||
+      (w === 'ogrenci' && next.startsWith('butce'))
+    ) {
+      drop.add(i).add(i + 1);
+      i++;
+    } else if (['ucuz', 'ekonomik', 'hesapli'].includes(w)) drop.add(i);
+  }
+  if (drop.size === 0) return { words: ws, raws };
+  const keep = ws.map((_, i) => i).filter((i) => !drop.has(i));
+  const left = keep.map((i) => ws[i]!);
+  if (!hasFoodWords(left)) return { words: ws, raws };
+  return { words: left, raws: raws ? keep.map((i) => raws[i]!) : null };
+}
+
+/** A dish text from the AI without its budget words ("uygun fiyatlı hamburger" -> "hamburger"), null when none is left. */
+export function dishWithoutBudget(dish: string | null): string | null {
+  if (!dish) return dish;
+  const left = dish
+    .replace(
+      /(?<![\p{L}\p{N}])(?:uygun\s+fiyat\p{L}*|öğrenci\s+bütçe\p{L}*|ogrenci\s+butce\p{L}*|ucuz|ekonomik|hesaplı|hesapli)(?![\p{L}\p{N}])/giu,
+      ' ',
+    )
+    .replace(/\s+/g, ' ')
+    .trim();
+  return left === '' ? null : left;
+}
+
 /** Towns whose name is a köfte style ("tire köfte", "ödemiş köfte"): the dish, not a place to search in. */
 const KOFTE_TOWNS = words('tire odemis bergama');
 
@@ -497,7 +538,8 @@ export function parseQuery(raw: string): QueryIntent {
     .filter(Boolean);
   const spelled = respell(all0, typed0.length === all0.length ? typed0 : null);
   const dished = townDish(spelled.words, spelled.raws);
-  const { words: all, raws: typed } = withoutOrderWords(dished.words, dished.raws);
+  const budgetless = withoutBudgetWords(dished.words, dished.raws);
+  const { words: all, raws: typed } = withoutOrderWords(budgetless.words, budgetless.raws);
   if (all.length === 0) return { kind: 'empty' };
   // "tire köfte": the town right before the köfte word is its style (see KOFTE_TOWNS).
   const kofteStyles = new Set(
@@ -870,6 +912,27 @@ export function wishesIn(text: string): Wish[] {
     if (padded.includes(phrase) && !out.includes(wish)) out.push(wish);
   }
   return out;
+}
+
+/**
+ * Words of an occasion, a person, a mood or a body state that ask for food without naming any
+ * ("doğum günü", "annem geliyor", "moralim bozuk", "midem bozuldu", "yorgunuz", "gece geç saatte").
+ * Folded stems; `wish` is the goal wish whose table entry fits (null: no entry fits, the search
+ * stays as it is). Short on purpose: the router picks the kinds, this is only the fallback.
+ */
+const OCCASION_SIGNALS: { stem: RegExp; wish: Wish | null }[] = [
+  { stem: /\b(dogum gunu|yildonum|misafir|annem|babam|is arkadas|surpriz|yoresel)/, wish: null },
+  { stem: /\b(usud|usuy|soguk)/, wish: null },
+  { stem: /\b(moral|yorgun|yoruldu)/, wish: 'hearty' },
+  { stem: /\b(midem|hasta\b|hastayim)/, wish: 'healthy' },
+  { stem: /\bgece gec/, wish: 'quick' },
+];
+
+/** The occasion / mood signal of a message: the wish of a fitting table entry (or null), undefined without a signal. */
+export function occasionSignal(text: string): { wish: Wish | null } | undefined {
+  const f = fold(text);
+  const hit = OCCASION_SIGNALS.find((x) => x.stem.test(f));
+  return hit ? { wish: hit.wish } : undefined;
 }
 
 /** "önce park sonra yemek", "akşam 8'de yemek", "bu akşam": a plan for a time, or null. */

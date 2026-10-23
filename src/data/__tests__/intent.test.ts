@@ -1,6 +1,7 @@
 import '@/i18n';
 
 import {
+  dishWithoutBudget,
   IZMIR_DISTRICTS,
   localPart,
   looksLikePlace,
@@ -218,7 +219,11 @@ describe('localPart', () => {
     ]) {
       expect(parseQuery(q)).toMatchObject({ kind: 'search', nearMe: true, placeQuery: '' });
     }
-    expect(search('yakınımda balık tabii')).toMatchObject({ nearMe: true, cat: 'fish', placeQuery: '' });
+    expect(search('yakınımda balık tabii')).toMatchObject({
+      nearMe: true,
+      cat: 'fish',
+      placeQuery: '',
+    });
   });
 
   it('gives the district for a car-park text', () => {
@@ -498,5 +503,32 @@ describe('withoutPlanWords', () => {
     expect(r.mentionsParking).toBe(true);
     if (district) expect(r.district?.name).toBe(district);
     else expect(r.placeQuery).toBe('alsancak');
+  });
+});
+
+describe('budget words are the cheap wish, not part of the dish', () => {
+  it('drops them before the dish is looked up', () => {
+    for (const [q, dish] of [
+      ['uygun fiyatlı hamburger', 'hamburger'],
+      ['ucuz hamburger', 'hamburger'],
+      ['ekonomik kebap', 'kebap'],
+      ['hesaplı lahmacun', 'lahmacun'],
+      ['öğrenci bütçesine pide', 'pide'],
+      ['hamburger uygun fiyatlı', 'hamburger'],
+    ] as const) {
+      expect(search(q).dish).toBe(dish);
+    }
+    expect(search('uygun fiyatlı hamburger alsancak').placeQuery).toBe('alsancak');
+  });
+
+  it('keeps a text without food as it is', () => {
+    expect(search('ucuz otopark').placeQuery).toContain('ucuz');
+  });
+
+  it('cleans the AI dish the same way', () => {
+    expect(dishWithoutBudget('uygun fiyatlı hamburger')).toBe('hamburger');
+    expect(dishWithoutBudget('Ucuz kebap')).toBe('kebap');
+    expect(dishWithoutBudget('ucuz')).toBeNull();
+    expect(dishWithoutBudget('hamburger')).toBe('hamburger');
   });
 });

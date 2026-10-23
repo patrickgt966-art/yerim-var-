@@ -27,6 +27,7 @@ import {
   inMember,
   isVague,
   kindsOf,
+  isAllAnswer,
   memberForAnswer,
   memberLabel,
   memberOf,
@@ -41,8 +42,10 @@ import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
 import { bareNameWordsOf, displayName, fuzzyNameStart, nameWordsOf } from '@/data/nameMatch';
 import { quartersOf } from '@/data/quarters';
 import {
+  dishWithoutBudget,
   isQualifierWord,
   looksLikePlace,
+  occasionSignal,
   parseQuery,
   parkTripIn,
   planWhenIn,
@@ -652,7 +655,7 @@ function intentFromUnderstanding(
     kind: 'search',
     text: fold(text),
     cat: u.cat,
-    dish: u.dish,
+    dish: dishWithoutBudget(u.dish),
     dishServes: u.dishServes,
     district,
     placeQuery: u.place ? fold(u.place) : '',
@@ -958,7 +961,11 @@ async function wording(
     REPLY_TIMEOUT_MS,
   );
   const city = activeCity();
-  return validateReply(said, facts, { kind, allow: [city.name, ...city.districts] });
+  return validateReply(said, facts, {
+    kind,
+    allow: [city.name, ...city.districts],
+    userText: meta.text,
+  });
 }
 
 /** The shown results as the facts of a reply: the first three, only what the app knows to be true. */
@@ -1355,8 +1362,38 @@ export async function answer(
       await finishAnswer(res, deps, { ...meta, wishes: ctx.wishes ?? [], quotaOut: true }),
     );
   }
+  // "hepsi", "tümü", "farketmez" typed right after results, with no question pending: the user keeps
+  // what is on the screen (or wants all kinds of the ask): never a chat reply.
+  if (!ctx.ask && (ctx.lastCards?.length ?? 0) > 0 && isAllAnswer(fold(text))) {
+    return remember(await showAll(ctx, deps, text));
+  }
   const res = await answerText(text, { ...ctx, ask: undefined }, deps, meta);
   return remember(await finishAnswer(res, deps, meta));
+}
+
+/**
+ * The current search for all kinds of the ask it came from (the router's kinds, or the table entry
+ * of the picked kind or the wishes); without any, the same results again with a short lead.
+ */
+async function showAll(ctx: ChatContext, deps: AssistantDeps, text: string): Promise<Result> {
+  const wishEntry =
+    !ctx.cat && !ctx.dish && !hasNoDataWish(ctx.wishes ?? [])
+      ? askEntryFor(ctx.wishes ?? [])
+      : undefined;
+  const id = ctx.choice?.id ?? (ctx.choiceKinds ? AI_CHOICE_ID : wishEntry?.id);
+  if (id && entryById(id, ctx.choiceKinds)) {
+    const res = await run({ ...ctx, ask: undefined, choice: { id, member: 'all' } }, deps, text);
+    const meta: AnswerMeta = {
+      text,
+      wishes: ctx.wishes ?? [],
+      ai: null,
+      planWhen: null,
+      quotaOut: true,
+    };
+    return finishAnswer(res, deps, meta);
+  }
+  const cards = ctx.lastCards ?? [];
+  return plain({ text: deps.t('chat.allHere'), cards, actions: [] }, ctx);
 }
 
 /** Folded words of a short yes / no answer to the "are you driving?" question. */
@@ -2214,6 +2251,14 @@ async function answerText(
 
   // The AI asked for a missing piece the rules do not have: ask it, with chips from our own data.
   const ask = meta.ai?.clarify?.ask;
+  // The router picked kinds for an occasion ("doğum günü yapacağız"): that question comes first and
+  // the party size stays an optional later detail. With fewer than two kinds around, the party
+  // question is asked as before.
+  let question: Awaited<ReturnType<typeof choiceQuestion>> | undefined;
+  if (ask === 'party' && kindsOf(meta.ai?.kinds).length >= 2) {
+    question = await choiceQuestion(next, it, foldedText, deps, meta);
+    if (question.kind === 'asked') return withNotice(question.result);
+  }
   if (
     ask &&
     ((ask === 'district' && next.place === null && !it.nearMe) ||
@@ -2230,7 +2275,7 @@ async function answerText(
     return withNotice(await clarify(ask, next, it.food, deps, meta));
   }
 
-  const question = await choiceQuestion(next, it, foldedText, deps, meta);
+  question ??= await choiceQuestion(next, it, foldedText, deps, meta);
   if (question.kind === 'asked') return withNotice(question.result);
   return withNotice(await run(question.ctx, deps, text, it.quality, meta));
 }
@@ -2597,8 +2642,13 @@ async function choiceQuestion(
   const picked = !next.cat && !next.dish ? kindsOf(meta.ai?.kinds) : [];
   let entry: ChoiceEntry | undefined;
   if (picked.length > 0) entry = aiEntry(picked);
-  else if (!next.cat && !next.dish) entry = tableEntry();
-  else if (next.cat) {
+  else if (!next.cat && !next.dish) {
+    // The router sent a food search with no kinds: a wish of the table asks, else an occasion or
+    // mood word of the message names the table entry that fits it (none fits: the search goes on).
+    entry = tableEntry();
+    const signal = !entry && meta.ai ? occasionSignal(meta.text) : undefined;
+    if (signal?.wish) entry = askEntryFor([signal.wish]);
+  } else if (next.cat) {
     const e = entryForCat(next.cat);
     const dish = next.dish ? fold(next.dish) : '';
     const namesMember = !!e && e.members.some((m) => m.words.includes(dish));
