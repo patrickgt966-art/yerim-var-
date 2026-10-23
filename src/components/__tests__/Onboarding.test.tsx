@@ -34,6 +34,8 @@ jest.mock('react-native-reanimated', () => {
     withRepeat: (v: unknown) => v,
     withTiming: (v: unknown) => v,
     withDelay: (_d: number, v: unknown) => v,
+    withSequence: (...v: unknown[]) => v[0],
+    withSpring: (v: unknown) => v,
   };
 });
 
@@ -42,12 +44,19 @@ const METRICS = {
   insets: { top: 47, left: 0, right: 0, bottom: 34 },
 };
 
-const mount = () =>
+const mountWelcome = () =>
   render(
     <SafeAreaProvider initialMetrics={METRICS}>
       <Onboarding />
     </SafeAreaProvider>,
   );
+
+/** The setup steps, past Yerim's welcome. */
+const mount = async () => {
+  const view = await mountWelcome();
+  await fireEvent.press(screen.getByText('Başlayalım'));
+  return view;
+};
 
 const next = async () => fireEvent.press(screen.getByText('Devam'));
 const tap = async (label: RegExp | string) => fireEvent.press(screen.getByLabelText(label));
@@ -60,6 +69,20 @@ beforeEach(() => {
 });
 
 describe('onboarding', () => {
+  it("opens with Yerim's welcome, which can be skipped or finished", async () => {
+    await mountWelcome();
+    // With Reduce Motion (as mocked here) the welcome is its last frame at once.
+    expect(
+      screen.getByLabelText(
+        'Selam, ben Yerim! Yemek mi arıyorsun? Bulurum. Park yeri mi? Onu da bulurum.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Hangi şehirdesin?')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Geç'));
+    expect(screen.getByText('Hangi şehirdesin?')).toBeTruthy();
+    expect(useApp.getState().onboarded).toBe(false);
+  });
+
   it('starts with the hero, tagline and the city list, with two step dots', async () => {
     await mount();
     expect(screen.getByText('Park yeri mi, yemek mi? İkisini de bul.')).toBeTruthy();

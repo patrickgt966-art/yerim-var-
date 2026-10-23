@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { WelcomeIntro } from '@/components/mascot/WelcomeIntro';
 import { Txt } from '@/components/Txt';
 import { cityAt, CITIES, hasLiveParking, type City } from '@/data/cities';
 import { currentLocation } from '@/lib/location';
@@ -207,6 +208,7 @@ export default function Onboarding() {
   const setOnboarded = useApp((s) => s.setOnboarded);
   const cityId = useApp((s) => s.city);
   const setCity = useApp((s) => s.setCity);
+  const [welcome, setWelcome] = useState(true);
   const [page, setPage] = useState(0);
   // The user's own tap always wins over the location-based preselection below.
   const picked = useRef(false);
@@ -236,6 +238,16 @@ export default function Onboarding() {
     setOnboarded(true);
     router.replace('/(tabs)');
   };
+
+  // The very first screen: Yerim says hello, then the two setup steps.
+  if (welcome) {
+    return (
+      <>
+        <StatusBar style="dark" />
+        <WelcomeIntro onDone={() => setWelcome(false)} />
+      </>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
