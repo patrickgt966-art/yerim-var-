@@ -84,6 +84,21 @@ describe('MascotNudge', () => {
     near.mockRestore();
   });
 
+  it('with a screen reader it says it is there and waits to be found', async () => {
+    const { AccessibilityInfo } = jest.requireActual('react-native');
+    jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValueOnce(true);
+    const say = jest
+      .spyOn(AccessibilityInfo, 'announceForAccessibility')
+      .mockImplementation(() => {});
+    await render(<MascotNudge nearby={{ here: HERE }} />);
+    await act(() => jest.advanceTimersByTime(2600));
+    await act(() => jest.advanceTimersByTime(10));
+    expect(say).toHaveBeenCalledWith(expect.stringMatching(/^Bir fikrim var: Akşam yemeği vakti!/));
+    await act(() => jest.advanceTimersByTime(20000));
+    expect(screen.getByText('Bir fikrim var')).toBeTruthy();
+    jest.restoreAllMocks();
+  });
+
   it('goes back by itself when nobody taps it', async () => {
     await render(<MascotNudge nearby={{ here: HERE }} />);
     await act(() => jest.advanceTimersByTime(2600));

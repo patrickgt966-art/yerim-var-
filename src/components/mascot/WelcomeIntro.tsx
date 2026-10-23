@@ -17,6 +17,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { Button } from '@/components/Button';
 import { Txt } from '@/components/Txt';
+import { useScreenReader } from '@/lib/a11y';
 import { feel } from '@/lib/haptics';
 import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
@@ -73,8 +74,12 @@ export function WelcomeIntro({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const c = useColors();
   const insets = useSafeAreaInsets();
-  const reduce = useReducedMotion();
-  const [beat, setBeat] = useState<Beat>(reduce ? 'done' : 'drop');
+  // Reduce Motion, or a screen reader (it would wait seven seconds for the button): the last frame.
+  const motionOff = useReducedMotion();
+  const screenReader = useScreenReader();
+  const reduce = motionOff || screenReader;
+  const [beatState, setBeat] = useState<Beat>(motionOff ? 'done' : 'drop');
+  const beat: Beat = reduce ? 'done' : beatState;
   const [wave, setWave] = useState(false);
 
   useEffect(() => {
@@ -100,7 +105,13 @@ export function WelcomeIntro({ onDone }: { onDone: () => void }) {
   const sy = useSharedValue(1);
   const bay = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
-    if (reduce) return;
+    if (reduce) {
+      y.value = 0;
+      sx.value = 1;
+      sy.value = 1;
+      bay.value = 1;
+      return;
+    }
     if (beat === 'drop') {
       y.value = withSpring(0, SPRING);
       sx.value = withDelay(

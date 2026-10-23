@@ -57,6 +57,16 @@ describe('WelcomeIntro', () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
+  it('with a screen reader it is the last frame too, so nobody waits for the button', async () => {
+    const { AccessibilityInfo } = jest.requireActual('react-native');
+    jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValueOnce(true);
+    await render(<WelcomeIntro onDone={() => {}} />);
+    await act(async () => {});
+    expect(screen.getByText('Başlayalım')).toBeTruthy();
+    expect(screen.getByText('Selam, ben Yerim!')).toBeTruthy();
+    jest.restoreAllMocks();
+  });
+
   it('with Reduce Motion it is the last frame at once', async () => {
     mockReduce = true;
     await render(<WelcomeIntro onDone={() => {}} />);

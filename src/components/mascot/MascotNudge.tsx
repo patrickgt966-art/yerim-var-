@@ -26,6 +26,7 @@ import {
   type FoodCategory,
 } from '@/data/restaurants';
 import { useParkings } from '@/data/useParkings';
+import { useAnnounce, useScreenReader } from '@/lib/a11y';
 import { openDirections } from '@/lib/directions';
 import { feel } from '@/lib/haptics';
 import {
@@ -149,6 +150,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
   const reduce = useReducedMotion();
+  const screenReader = useScreenReader();
   const homeFocused = useCoachRegistry((s) => s.homeFocused);
   const coachReady = useCoachHydrated();
   const tourDone = useCoach((s) => s.coachDone);
@@ -194,7 +196,8 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
   useFocusEffect(useCallback(() => () => setPhase('hidden'), []));
   useEffect(() => {
     const next: Partial<Record<Phase, [Phase, number]>> = {
-      peek: ['away', PEEK_MS],
+      // With a screen reader the peek waits: it may take a while to reach it.
+      ...(screenReader ? {} : { peek: ['away', PEEK_MS] as [Phase, number] }),
       bye: ['away', 380],
       away: ['hidden', 600],
     };
@@ -202,7 +205,7 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
     if (!step) return;
     const id = setTimeout(() => setPhase(step[0]), step[1]);
     return () => clearTimeout(id);
-  }, [phase]);
+  }, [phase, screenReader]);
 
   // 0: standing on the tab bar; PEEK: only the head shows; HIDDEN: all behind the bar.
   const h = (SIZE * MASCOT_VIEWBOX.h) / MASCOT_VIEWBOX.w;
@@ -218,6 +221,16 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
   const mascotStyle = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
   const text = useNudgeText(nudge);
+  // It appears by itself: say so, and read the suggestion when it opens.
+  useAnnounce(
+    !text
+      ? null
+      : phase === 'peek'
+        ? `${t('nudge.teaser')}: ${text.title}`
+        : phase === 'open'
+          ? `${text.title}. ${text.body}`
+          : null,
+  );
   if (!nudge || !text || phase === 'hidden') return null;
 
   const barTop = insets.bottom + TAB_BAR_GAP + TAB_BAR_HEIGHT;
