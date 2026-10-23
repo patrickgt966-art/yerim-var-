@@ -14,6 +14,7 @@ import {
   planModelSchema,
   planSystem,
   replyOutputSchema,
+  replyLangNote,
   replySystem,
   toChat,
   toPick,
@@ -212,7 +213,7 @@ async function replyRoute(req: Request, env: Env): Promise<Response> {
     const response = await client.messages.parse({
       model: MODEL,
       max_tokens: 200,
-      system: cachedSystem(replySystem(parsed.city)),
+      system: cachedSystem(replySystem(parsed.city), replyLangNote(parsed.lang)),
       output_config: { effort: 'low', format: zodOutputFormat(replyOutputSchema) },
       messages: [
         {

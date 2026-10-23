@@ -35,7 +35,7 @@ import {
   type Member,
 } from '@/data/choices';
 import { activeCity, CITIES, cityExamples } from '@/data/cities';
-import { settleDistrict } from '@/data/districtMatch';
+import { fixDistrictSlip, settleDistrict } from '@/data/districtMatch';
 import { isNearRail } from '@/data/places';
 import { getFreshness, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
@@ -44,15 +44,23 @@ import { quartersOf } from '@/data/quarters';
 import {
   dishWithoutBudget,
   isQualifierWord,
+  emojiWords,
+  evAskIn,
   looksLikePlace,
   occasionSignal,
+  outOfScopeIn,
   parseQuery,
+  parkTalkIn,
   parkTripIn,
   planWhenIn,
+  resultsRefIn,
+  roadsideStopIn,
+  statedStayIn,
   typedPlaceText,
   wishesIn,
   withoutPlanWords,
   type QueryIntent,
+  type ResultsRef,
 } from '@/data/intent';
 import {
   allRestaurants,
@@ -130,7 +138,7 @@ import {
   verifyPlan,
   walkMinFromMeters,
 } from '@/lib/ai/verify';
-import { validateReply } from '@/lib/ai/replyCheck';
+import { looksTurkish, validateReply } from '@/lib/ai/replyCheck';
 import { disabledInfo } from '@/lib/disabledSpots';
 import { pickerParams } from '@/lib/pickPlace';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
@@ -187,6 +195,11 @@ export type ChatContext = {
    * message answers it (yes: car parks near it, no: directions to it) and it lasts one answer only.
    */
   parkAsk?: { id: string; name: string; lat: number; lng: number };
+  /**
+   * The ids of the places already shown for this ask: "diğerleri" / "başka var mı" lists the next
+   * ones. It lasts as long as the "more" chain; any other message drops it.
+   */
+  more?: string[];
 };
 
 export const emptyContext = (section: 'park' | 'food'): ChatContext => ({
@@ -695,11 +708,23 @@ function aiLedIntent(
 ): SearchIntent {
   const r = rule.kind === 'search' ? rule : null;
   const sameDish = r !== null && !!r.dish && r.cat === ai.cat && aiNamed(u, r.dish);
+  // The router named no dish, no kind and no place of its own, and the words are a dish of our
+  // dictionary ("san sebastian çekti"): that dish, in its category, not "no such place".
+  const filled =
+    r !== null &&
+    !!r.dish &&
+    !!r.cat &&
+    !ai.dish &&
+    !ai.cat &&
+    !ai.placeQuery &&
+    (u.kinds ?? []).length === 0 &&
+    dishProfile(fold(r.dish), false) !== null;
   return {
     ...ai,
     // Ruling out the category that was picked excludes nothing (köfte and kebap are both meat).
     notCat: u.notCat && u.notCat !== ai.cat ? u.notCat : null,
     ...(sameDish ? { dish: r.dish, dishServes: r.dishServes ?? null } : {}),
+    ...(filled ? { dish: r.dish, cat: r.cat, food: true } : {}),
     quality: r?.quality ?? false,
   };
 }
@@ -734,6 +759,39 @@ function withoutGuessedKind(
     dishWords.every((w) => said.includes(` ${w}`));
   if (typedDish) return u;
   return { ...u, cat: null, dish: null, dishServes: null };
+}
+
+/**
+ * The router's parking need and plan (park, walk, eat) only count when the conversation asked for
+ * parking: a car word in this message, or a parking ask the thread already has. The router sees the
+ * bot's earlier "car park nearby" lines and may carry them into a wish like "şu an açık olanlar";
+ * a car waiting at the roadside is no parking ask either. A search for car parks themselves
+ * (food false) keeps its plan.
+ */
+function withoutUnaskedParking(
+  u: Extract<Understanding, { kind: 'search' }>,
+  text: string,
+  ctx: Pick<ChatContext, 'requireParking' | 'freeParking' | 'place' | 'cat' | 'dish' | 'lastCards'>,
+): Extract<Understanding, { kind: 'search' }> {
+  if (!u.requireParking && !u.plan) return u;
+  const carPark = /\b(otopark\w*|park yeri\w*|car parks?|parking)\b/.test(fold(text));
+  const roadside = roadsideStopIn(text) && !carPark;
+  // A first message is the router's reading; a refine of a search ("şu an açık olanlar") is not a
+  // new parking ask unless the user's words say so.
+  const refine = !!(ctx.place || ctx.cat || ctx.dish || (ctx.lastCards?.length ?? 0) > 0);
+  const said =
+    parkTalkIn(text) ||
+    ctx.requireParking ||
+    ctx.freeParking ||
+    planWhenIn(text) !== null ||
+    !(u.food || u.cat !== null || !!u.dish);
+  const needAsked = roadside || (refine && !said);
+  const planAsked = roadside || !said;
+  return {
+    ...u,
+    ...(needAsked ? { requireParking: false } : {}),
+    ...(planAsked ? { plan: null } : {}),
+  };
 }
 
 type FollowUp =
@@ -836,6 +894,8 @@ type AnswerMeta = {
   replyId?: string;
   /** The wording of this message's own id was asked for (the worker allows one per id). */
   replyUsed?: boolean;
+  /** The places the "more" chain showed before this message (ChatContext.more). */
+  more?: string[];
 };
 
 type GreetKind =
@@ -965,6 +1025,7 @@ async function wording(
     kind,
     allow: [city.name, ...city.districts],
     userText: meta.text,
+    lang: uiLang(),
   });
 }
 
@@ -1228,6 +1289,21 @@ function rulePick(cards: ChatCard[], ctx: ChatContext, deps: AssistantDeps): Bot
   };
 }
 
+/** The app's language as the AI layer knows it. */
+const uiLang = (): 'en' | 'tr' => (i18n.language.startsWith('en') ? 'en' : 'tr');
+
+/**
+ * Free text of the model in the app's language: in the English app a text written in Turkish
+ * (the model slips back into the language of its prompt) is dropped, and the English template
+ * stays. `names` are the places the text may carry.
+ */
+function inUiLanguage(text: string | null, ctx: FreeTextContext): string | null {
+  if (text === null || uiLang() !== 'en') return text;
+  return looksTurkish(text, [...(ctx.names ?? []), ...(ctx.districts ?? activeCity().districts)])
+    ? null
+    : text;
+}
+
 /**
  * The router said "chat": its words are shown only when they pass validateFreeText (zone 'chat');
  * its action is a code that rule code carries out. Null when the reply is not valid: the caller
@@ -1240,11 +1316,8 @@ async function chatFromRouter(
 ): Promise<Result | null> {
   const { t } = deps;
   const cards = ctx.lastCards ?? [];
-  const said = validateFreeText(
-    'chat',
-    res.reply,
-    textContext(deps, ctx.place ?? activeCity().center, cards),
-  );
+  const chatCtx = textContext(deps, ctx.place ?? activeCity().center, cards);
+  const said = inUiLanguage(validateFreeText('chat', res.reply, chatCtx), chatCtx);
   if (!said) return null;
   if (res.action === 'pick_from_last' && cards.length >= 2) {
     // Same message id as the router call: the pick costs no further use.
@@ -1336,9 +1409,9 @@ export async function answer(
 ): Promise<Result> {
   // The rules read what the AI reads: the first MAX_MESSAGE_CHARS (a long paste would also block
   // the JS thread while it is parsed).
-  const text = clipText(typed, MAX_MESSAGE_CHARS);
+  const text = emojiWords(clipText(typed, MAX_MESSAGE_CHARS));
   // What the question Yerim asked last left behind lasts one answer only.
-  const { clarifyWishes, replyId, parkAsk, ...rest } = ctx;
+  const { clarifyWishes, replyId, parkAsk, more, ...rest } = ctx;
   ctx = rest;
   // "Arabayla mı gidiyorsun?": a yes / no answer needs no router call, like a tapped chip.
   const parkWish = parkAsk ? parkAnswer(text) : null;
@@ -1352,6 +1425,7 @@ export async function answer(
     ...(clarifyWishes ? { carried: clarifyWishes } : {}),
     ...(deps.ai?.messageId ? { messageId: deps.ai.messageId() } : {}),
     ...(replyId ? { replyId } : {}),
+    ...(more ? { more } : {}),
   };
   // A typed answer to the question Yerim just asked ("balık", "hepsi") works like its chip: no
   // router call, the same search.
@@ -1367,7 +1441,27 @@ export async function answer(
   if (!ctx.ask && (ctx.lastCards?.length ?? 0) > 0 && isAllAnswer(fold(text))) {
     return remember(await showAll(ctx, deps, text));
   }
-  const res = await answerText(text, { ...ctx, ask: undefined }, deps, meta);
+  // A district typed with a slip ("kepedze", "mamk", "buacda") is the city's own district; two equally
+  // close districts are asked about, never guessed and never replaced by the user's own location.
+  const slip = fixDistrictSlip(text, activeCity().districts);
+  if (slip && 'tie' in slip) {
+    const [a, b] = slip.tie as [string, string];
+    const as = (name: string) => {
+      const at = text.toLocaleLowerCase('tr').indexOf(slip.word);
+      return at < 0 ? name : text.slice(0, at) + name + text.slice(at + slip.word.length);
+    };
+    return remember(
+      plain(
+        {
+          text: deps.t('chat.districtTie', { a, b }),
+          cards: [],
+          actions: [a, b].map((name) => ({ kind: 'say', label: name, text: as(name) })),
+        },
+        ctx,
+      ),
+    );
+  }
+  const res = await answerText(slip ? slip.text : text, { ...ctx, ask: undefined }, deps, meta);
   return remember(await finishAnswer(res, deps, meta));
 }
 
@@ -1452,6 +1546,17 @@ const PARK_FILLER = new Set([
   'bir',
   'de',
   'da',
+  // The English chips ("Yes, show car parks", "No, open directions")
+  'show',
+  'car',
+  'cars',
+  'park',
+  'parks',
+  'parking',
+  'open',
+  'directions',
+  'direction',
+  'please',
 ]);
 
 /** A typed answer to the parking question: 'yes', 'no', or null when it is something else. */
@@ -1528,6 +1633,72 @@ async function answerParkAsk(
   return remember(await run(near, deps, text));
 }
 
+/**
+ * A message that points at the results on the screen. The nearest: the same ask sorted by distance,
+ * the first card named. More: the same ask over a wider area, the shown places left out. An ordinal: that card's name, walk and open state, and its own
+ * "Yol tarifi" button. Never a chat reply.
+ */
+async function answerResultsRef(
+  ref: ResultsRef,
+  ctx: ChatContext,
+  more: string[],
+  deps: AssistantDeps,
+  text: string,
+): Promise<Result> {
+  const { t } = deps;
+  const cards = ctx.lastCards ?? [];
+  if (ref.kind === 'nth') {
+    const card = ref.n === -1 ? cards[cards.length - 1] : cards[ref.n - 1];
+    if (!card) {
+      return plain({ text: t('chat.nthNone', { count: cards.length }), cards, actions: [] }, ctx);
+    }
+    const open = card.kind === 'restaurant' ? (card.narr?.open ?? card.open) : card.open;
+    const state = open === 'unknown' ? '' : t(open === 'open' ? 'chat.nthOpen' : 'chat.nthClosed');
+    const ord = t(`chat.nthOrd_${ref.n === -1 ? 'last' : ref.n}`);
+    const walk = walkMinFromMeters(card.distanceM);
+    return plain(
+      {
+        text: t('chat.nthPlace', { ord, name: card.name, count: walk, state }),
+        cards: [card],
+        actions: [],
+      },
+      // The list stays what "diğerleri" leaves out next.
+      { ...ctx, more: [...new Set([...more, ...cards.map((c) => c.id)])] },
+    );
+  }
+  if (ref.kind === 'nearest') {
+    // A list the search cannot rebuild (places found by their name): the shown cards, nearest first.
+    if (ctx.section === 'food' && !ctx.cat && !ctx.dish && !ctx.choice && !ctx.choiceKinds) {
+      const sorted = [...cards].sort((a, b) => a.distanceM - b.distanceM);
+      const walk = walkMinFromMeters(sorted[0]!.distanceM);
+      const lead = t(walk > FAR_WALK_MIN ? 'chat.nearestIsFar' : 'chat.nearestIs', {
+        name: sorted[0]!.name,
+        count: walk,
+      });
+      return remember(plain({ text: lead, cards: sorted, actions: [] }, ctx));
+    }
+    const res = await run({ ...ctx, sort: 'distance' }, deps, text);
+    const first = res.reply.cards[0];
+    if (first) {
+      const walk = walkMinFromMeters(first.distanceM);
+      const lead = t(walk > FAR_WALK_MIN ? 'chat.nearestIsFar' : 'chat.nearestIs', {
+        name: first.name,
+        count: walk,
+      });
+      res.reply.text = `${lead} ${res.reply.text}`;
+    }
+    return remember(res);
+  }
+  // The same ask over a wider area, with the places shown before left out.
+  const seen = [...new Set([...more, ...cards.map((c) => c.id)])];
+  const res = await run({ ...ctx, wide: true, more: seen }, deps, text);
+  if (res.reply.cards.length === 0) {
+    return plain({ text: t('chat.moreNone'), cards, actions: [] }, { ...ctx, more: seen });
+  }
+  res.reply.text = `${t(ctx.wide ? 'chat.wideAlready' : 'chat.wideNow')} ${res.reply.text}`;
+  return remember(res);
+}
+
 /** The member (or 'all') a typed answer picks from the question in `ctx.ask`, or null. */
 function choiceAnswer(text: string, ctx: ChatContext): ChatContext['choice'] | null {
   const entry = ctx.ask ? entryById(ctx.ask, ctx.choiceKinds) : undefined;
@@ -1575,6 +1746,40 @@ async function answerText(
   // plan of a search, which share the router call's message id.
   if (routed.out.kind !== 'search') meta.quotaOut = true;
   meta.routed = routed.out.kind !== 'none';
+  // Another city, or something that is neither food nor parking (oto yıkama, ATM, eczane ...): the
+  // honest scope answer, no search and no name match against places (a "Paris" is no Cafe De Paris).
+  const scope = outOfScopeIn(text);
+  if (scope) {
+    meta.settled = true;
+    const cities = CITIES.filter((c) => c.available).map((c) => c.name);
+    const list =
+      cities.length > 1
+        ? `${cities.slice(0, -1).join(', ')} ${t('chat.and')} ${cities[cities.length - 1]}`
+        : (cities[0] ?? '');
+    const offerPark = scope.kind === 'thing' && scope.driving;
+    return withNotice(
+      plain(
+        {
+          text:
+            scope.kind === 'city'
+              ? t('chat.scopeCity', { cities: list })
+              : t(offerPark ? 'chat.scopeThingDrive' : 'chat.scopeThing'),
+          cards: [],
+          actions: offerPark
+            ? [say(t, 'chat.exNear'), ...examples(ctx.section, t)]
+            : examples(ctx.section, t),
+        },
+        ctx,
+      ),
+    );
+  }
+  // Results are on screen and the message points at them ("en yakını hangisi", "diğerleri",
+  // "ikincisi nerede"): answered from them, whatever the router made of it (chat included).
+  const ref = (ctx.lastCards?.length ?? 0) > 0 ? resultsRefIn(text) : null;
+  if (ref) {
+    if (ref.kind === 'nth') meta.settled = true;
+    return withNotice(await answerResultsRef(ref, ctx, meta.more ?? [], deps, text));
+  }
   let chatInvalid = false;
   if (routed.out.kind === 'chat') {
     // A hello: the AI words the greeting itself and offers the two jobs as chips.
@@ -1695,15 +1900,19 @@ async function answerText(
   // everything when the AI could not answer.
   if (routed.out.kind === 'search' && !followUp && it.kind !== 'abuse') {
     // The district against the city's own list: a typo fixed, a quarter moved to place.
-    const found = withoutGuessedKind(
-      settleDistrict(
-        routed.out.value,
+    const found = withoutUnaskedParking(
+      withoutGuessedKind(
+        settleDistrict(
+          routed.out.value,
+          text,
+          activeCity().districts,
+          quartersOf(activeCity().id),
+          deps.ai?.earlier?.() ?? [],
+        ),
+        it,
         text,
-        activeCity().districts,
-        quartersOf(activeCity().id),
-        deps.ai?.earlier?.() ?? [],
+        ctx,
       ),
-      it,
       text,
       ctx,
     );
@@ -1838,7 +2047,10 @@ async function answerText(
     !!it.dish &&
     dishProfile(fold(it.dish), false) !== null &&
     messageIsDish(folded, it.dish);
-  if (!knownDish && folded.split(' ').length >= 2) {
+  // A district with a dish or a kind ("konyaaltı balık", "buca balık") is a search there, never a
+  // business that happens to be named so ("Konyaaltı Balıkçısı" across town).
+  const districtFood = it.kind === 'search' && !!it.district && (!!it.cat || !!it.dish || it.food);
+  if (!knownDish && !districtFood && folded.split(' ').length >= 2) {
     const matches = restaurantsNamed(folded);
     const first = matches[0];
     if (first) {
@@ -2251,6 +2463,13 @@ async function answerText(
 
   // The AI asked for a missing piece the rules do not have: ask it, with chips from our own data.
   const ask = meta.ai?.clarify?.ask;
+  // "Bir saat park edeceğim": the stay is said, so it is not asked. It is used the way the chips
+  // would have used it (a few hours prefer free car parks, a night prefers 24 hours).
+  const stay = ask === 'duration' ? statedStayIn(text) : null;
+  if (stay !== null) {
+    const wish: Wish | null = stay > 480 ? 'overnight' : stay > 60 ? 'free' : null;
+    if (wish && !meta.wishes.includes(wish)) meta.wishes = [...meta.wishes, wish];
+  }
   // The router picked kinds for an occasion ("doğum günü yapacağız"): that question comes first and
   // the party size stays an optional later detail. With fewer than two kinds around, the party
   // question is asked as before.
@@ -2271,7 +2490,7 @@ async function answerText(
         ctx.party === undefined &&
         !meta.ai?.partySize) ||
       (ask === 'time' && ctx.when === undefined && meta.planWhen === null) ||
-      (ask === 'duration' && next.section === 'park') ||
+      (ask === 'duration' && next.section === 'park' && stay === null) ||
       // A word that may be a place or not ("bebek", "kas"): ask before searching anywhere.
       (ask === 'place' && !!(meta.ai?.place ?? meta.ai?.district)))
   ) {
@@ -2289,7 +2508,7 @@ export async function refine(
   deps: AssistantDeps,
 ): Promise<Result> {
   // A chip answers the question: what the question left behind is spent.
-  const { clarifyWishes: _wishes, replyId: _replyId, ...kept } = ctx;
+  const { clarifyWishes: _wishes, replyId: _replyId, more: _more, ...kept } = ctx;
   return remember(await run({ ...kept, ...patch }, deps, JSON.stringify(patch), false));
 }
 
@@ -2654,7 +2873,10 @@ async function choiceQuestion(
   } else if (next.cat) {
     const e = entryForCat(next.cat);
     const dish = next.dish ? fold(next.dish) : '';
-    const namesMember = !!e && e.members.some((m) => m.words.includes(dish));
+    // A dish the dictionary knows ("cheesecake", "tiramisu") is as good as a member word: no question.
+    const namesMember =
+      (!!e && e.members.some((m) => m.words.includes(dish))) ||
+      (dish !== '' && !GENERIC_DISH_STEMS.has(dishStem(dish)) && dishProfile(dish, false) !== null);
     if (e?.askWhenVague && isVague(foldedText) && !namesMember) entry = e;
   }
   if (!entry) return go(next);
@@ -2888,6 +3110,11 @@ function runFood(
         if (ordered.length > 0) dishWider = true;
       }
     }
+  }
+  // "diğerleri": the places shown before are left out.
+  if (ctx.more?.length) {
+    const shownBefore = new Set(ctx.more);
+    ordered = ordered.filter((row) => !shownBefore.has(row.r.id));
   }
   const withPark = withParkingWithin(ordered, ctx.parkM);
   const freeOnly = ctx.requireParking && ctx.freeParking;
@@ -3282,13 +3509,17 @@ function runPark(
   const radius = ctx.wide ? 5000 : 1500;
   const list = deps.parkings
     .map((p) => ({ p, d: distanceMeters(target, p) }))
-    .filter((x) => x.d <= radius && (!ctx.freeParking || x.p.isPaid === false))
+    .filter(
+      (x) =>
+        x.d <= radius && (!ctx.freeParking || x.p.isPaid === false) && !ctx.more?.includes(x.p.id),
+    )
     .sort((a, b) => a.d - b.d);
   const prefs = parkPreferences(ctx, now);
   const ranked = prefs ? preferParkings(list, prefs, now) : list;
 
   if (list.length > 0) {
-    const nearest = list[0]!;
+    // The lead describes the first card the user sees: after a wish the list is not in distance order.
+    const nearest = ranked[0]!;
     let text = parkReply(
       {
         where,
@@ -3298,6 +3529,7 @@ function runPark(
         nearestFree: visibleFree(nearest.p, now),
         liveCount: list.filter((x) => visibleFree(x.p, now) !== null).length,
         freeOfChargeCount: list.filter((x) => x.p.isPaid === false).length,
+        reordered: nearest.p.id !== list[0]!.p.id,
       },
       t,
       seed,
@@ -3403,7 +3635,8 @@ async function clarify(
 ): Promise<Result> {
   const { t } = deps;
   const here = (await deps.here()) ?? activeCity().center;
-  const asked = validateFreeText('clarify', meta.ai?.clarify?.text, textContext(deps, here));
+  const askCtx = textContext(deps, here);
+  const asked = inUiLanguage(validateFreeText('clarify', meta.ai?.clarify?.text, askCtx), askCtx);
   const placeName = meta.ai?.place ?? meta.ai?.district ?? '';
   const text =
     asked ?? (ask === 'place' ? t('chat.ask_place', { place: placeName }) : t(`chat.ask_${ask}`));
@@ -4036,7 +4269,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
   const dish = res.ctx.dish ?? '';
   let sparkle = false;
 
-  let tone = validateFreeText('tone', meta.ai?.tone, tctx);
+  let tone = inUiLanguage(validateFreeText('tone', meta.ai?.tone, tctx), tctx);
   let aiPicked = false;
   const after: string[] = [];
   const ai = deps.ai;
@@ -4101,7 +4334,7 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
   }
   lines.push(reply.text);
   if (food) {
-    const note = validateFreeText('dishNote', meta.ai?.dishNote, tctx);
+    const note = inUiLanguage(validateFreeText('dishNote', meta.ai?.dishNote, tctx), tctx);
     if (note && res.ctx.dish) lines.push(note);
     lines.push(...wishLines(res.ctx.wishes ?? [], reply.cards, t));
   }
@@ -4115,6 +4348,8 @@ async function finishAnswer(res: Result, deps: AssistantDeps, meta: AnswerMeta):
     reply.cards.some((c) => c.kind === 'restaurant' && c.parkAsked),
   );
   if (noInfo) lines.push(noInfo);
+  // Charging points for an electric car: no data, said once, in the app's own words.
+  if (evAskIn(meta.text)) lines.push(t('chat.noInfoCharging'));
 
   reply.text = lines.join('\n');
   if (sparkle) reply.sparkle = true;

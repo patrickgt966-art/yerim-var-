@@ -80,6 +80,7 @@ import {
   planModelSchema,
   planSystem,
   replyOutputSchema,
+  replyLangNote,
   replySystem,
   toPick,
   toPlan,
@@ -439,7 +440,7 @@ async function main(): Promise<void> {
         client.messages.parse({
           model: MODEL,
           max_tokens: 200,
-          system: cachedSystem(replySystem(req.city)),
+          system: cachedSystem(replySystem(req.city), replyLangNote(req.lang)),
           output_config: { effort: 'low', format: zodOutputFormat(replyOutputSchema) },
           messages: [
             {

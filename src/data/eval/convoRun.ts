@@ -22,6 +22,7 @@ import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import i18n from '@/i18n';
+import en from '@/i18n/en';
 import { validateReplyReason } from '@/lib/ai/replyCheck';
 import {
   REPLY_TIMEOUT_MS,
@@ -39,8 +40,14 @@ import {
   type Understanding,
   fold,
 } from '@/lib/ai/protocol';
-import { KIND_TAP, type ConvoCase, type ConvoTurn } from './convoCases';
-import type { ObservedAction, ObservedCard, ObservedTurn, ObservedWording } from './convoScore';
+import { HEPSI, KIND_TAP, type ConvoCase, type ConvoTurn } from './convoCases';
+import {
+  PARTY_LABELS,
+  type ObservedAction,
+  type ObservedCard,
+  type ObservedTurn,
+  type ObservedWording,
+} from './convoScore';
 
 /**
  * The model behind the AI layer. A method that throws is an outage (the turn is void and the run is
@@ -115,14 +122,21 @@ const KIND_LABELS = new Set(
  */
 function chipOf(last: BotMessage | null, label: string, aiAsk = false): Resolved {
   const actions = (last?.actions ?? []).filter((a) => a.kind !== 'open');
-  const kinds = actions.filter((a) => KIND_LABELS.has(a.label));
+  const kindChips = actions.filter((a) => KIND_LABELS.has(a.label));
+  // A "how many of you?" question has party chips in the place of kind chips.
+  const kinds =
+    kindChips.length > 0 ? kindChips : actions.filter((a) => PARTY_LABELS.includes(a.label));
   const nth = KIND_TAP.exec(label);
   if (nth) {
     const hit = kinds[Math.min(Number(nth[1]), kinds.length) - 1];
     return hit ? { kind: 'chip', action: hit } : { kind: 'none' };
   }
+  // The "Hepsi" chip is "All" in the English app: either tap finds it.
+  const hepsiLabels = [HEPSI, en.chat.choice.all];
   const hit =
-    actions.find((a) => a.label === label) ?? actions.find((a) => fold(a.label) === fold(label));
+    actions.find((a) => a.label === label) ??
+    actions.find((a) => fold(a.label) === fold(label)) ??
+    (hepsiLabels.includes(label) ? actions.find((a) => hepsiLabels.includes(a.label)) : undefined);
   if (hit) return { kind: 'chip', action: hit };
   if (aiAsk && KIND_LABELS.has(label) && kinds[0]) {
     return { kind: 'chip', action: kinds[0], swapped: true };
@@ -359,6 +373,7 @@ async function playTurn(
             kind: req.kind,
             allow: [city.name, ...city.districts],
             userText: req.userText,
+            lang: i18n.language === 'en' ? 'en' : 'tr',
           });
           w.accepted = verdict.text;
           // A call that failed has no text to judge: that is "failed", not a rejection.
