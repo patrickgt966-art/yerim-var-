@@ -1,0 +1,146 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>6-maskot-fikirler</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<!--
+  Maskot fikirleri V3: araba yalnızca otoparkı anlatıyordu, piksel tarz Claude'a fazla benziyordu.
+  Hedef: hem yemeği hem otoparkı kapsayan, bize ait bir şekil; yumuşak, elle çizilmiş his.
+  A) Yerim damlası: Yerim düğmesinin asimetrik köşeli şekli canlanır (önerilen).
+  B) Konum iğnesi: "yer" (iğne) + "yerim" (ağız).
+  C) Tabela: iki yönlü yol tabelası, bir kolu yemek bir kolu otopark.
+-->
+<style>
+:root{--navy:#0B3C49;--orange:#FF8A1F;--orange-strong:#C2410C;--paper:#FBF7F1;--card:#fff;--sec:#4F6A75;
+  --mint-soft:#E2F1EA;--mint-text:#0E6B5A;--peach-soft:#FCE8D5;--peach-line:#F2D6BC;--peach-text:#8A4513;--yellow:#FFE08A}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E2D8}
+.disp{font-family:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif}
+.hand{font-family:'Caveat',cursive;font-weight:700}
+.page{position:relative;width:390px;margin:0 auto;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy);padding:44px 16px 40px;overflow:hidden}
+.page:before{content:"";position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(11,60,73,.07) 1px,transparent 1.2px);background-size:14px 14px;pointer-events:none}
+.card{position:relative;background:var(--card);border:1px solid #EFE6D8;border-radius:24px 24px 24px 8px;padding:16px 14px 14px;margin-top:16px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:12px;padding:4px 9px;border-radius:9px}
+.minis{display:flex;gap:8px;margin-top:12px}
+.mini{flex:1;border-radius:16px 16px 16px 5px;padding:8px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:800;text-align:center}
+.pro{font-size:12.5px;line-height:17px;color:var(--sec);margin-top:10px}
+.pro b{color:var(--navy)}
+</style></head><body>
+<div class="page"><div style="position:relative">
+  <div class="hand" style="font-size:24px;color:var(--orange-strong);transform:rotate(-2deg);transform-origin:left">Baştan düşünelim:</div>
+  <div class="disp" style="font-weight:800;font-size:30px;line-height:34px;letter-spacing:-.8px">Maskot fikirleri</div>
+  <div style="font-size:14px;line-height:20px;color:var(--sec);margin-top:6px">Hem yemeği hem otoparkı kapsasın, Claude'a değil bize benzesin. Yumuşak çizgi, sıcak renk, elle çizilmiş his. Her fikir üç yerde: yemek, otopark ve "Aklında bir şey var mı?"</div>
+
+  <!-- A -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="badge" style="background:var(--orange);color:var(--navy)">A · Yerim damlası</span>
+      <span class="hand" style="font-size:19px;color:var(--orange-strong);transform:rotate(-4deg)">önerim ★</span>
+    </div>
+    <div style="display:flex;justify-content:center;padding:6px 0 0" id="aHero"></div>
+    <div class="minis">
+      <div class="mini" style="background:var(--peach-soft)" id="aFood"></div>
+      <div class="mini" style="background:var(--mint-soft)" id="aPark"></div>
+      <div class="mini" style="background:#FFF3C4" id="aAsk"></div>
+    </div>
+    <div class="pro"><b>Neden:</b> Şekli zaten bizim: Yerim düğmesinin üç köşesi yuvarlak, sol alt köşesi sivri. Maskot o düğmenin canlanmış hali; sivri köşe hem konum iğnesinin ucu hem konuşma balonunun kuyruğu. Yemeğe de otoparka da elindekini değiştirerek gider.<br><b>Dikkat:</b> Soyut; karakteri yüz ifadesi ve eşyalar taşır.</div>
+  </div>
+
+  <!-- B -->
+  <div class="card">
+    <span class="badge" style="background:var(--mint-soft);color:var(--mint-text)">B · Konum iğnesi</span>
+    <div style="display:flex;justify-content:center;padding:6px 0 0" id="bHero"></div>
+    <div class="minis">
+      <div class="mini" style="background:var(--peach-soft)" id="bFood"></div>
+      <div class="mini" style="background:var(--mint-soft)" id="bPark"></div>
+      <div class="mini" style="background:#FFF3C4" id="bAsk"></div>
+    </div>
+    <div class="pro"><b>Neden:</b> Adın iki anlamı tek şekilde: iğne "yer", kocaman ağız "yerim". Haritadaki her şey bir iğne olduğu için anında anlaşılır.<br><b>Dikkat:</b> Konum iğnesi çok yaygın; ayırt edici olması için ağız ve renk şart.</div>
+  </div>
+
+  <!-- C -->
+  <div class="card">
+    <span class="badge" style="background:var(--peach-soft);color:var(--peach-text)">C · Yol tabelası</span>
+    <div style="display:flex;justify-content:center;padding:6px 0 0" id="cHero"></div>
+    <div class="minis">
+      <div class="mini" style="background:var(--peach-soft)" id="cFood"></div>
+      <div class="mini" style="background:var(--mint-soft)" id="cPark"></div>
+      <div class="mini" style="background:#FFF3C4" id="cAsk"></div>
+    </div>
+    <div class="pro"><b>Neden:</b> "Yol gösteren" olmayı birebir anlatır; iki kolu iki işi gösterir.<br><b>Dikkat:</b> Uzun ve ince; küçük boyutta (sekme düğmesi, bildirim) zor okunur, sevimli olması zor.</div>
+  </div>
+
+  <div class="card" style="background:#FFF3C4;border-color:#F3E2A0;transform:rotate(-.6deg)">
+    <div class="hand" style="font-size:21px;line-height:22px">Neden A?</div>
+    <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:4px">Uygulamada sohbete giren düğme zaten bu şekil. Tanıtımda "ben buradayım" deyip düğmenin içine girmesi, asistanın da ta kendisi olması çok doğal oluyor. Küçükken düğme, büyükken karakter.</div>
+  </div>
+</div></div>
+
+<script>
+const N = '#0B3C49', O = '#FF8A1F', OD = '#F07A12', Y = '#FFE08A', W = '#fff', CH = 'rgba(255,120,90,.35)';
+/* Yüz: göz tipleri open | happy | side | up; ağız smile | open | o */
+function face(cx, cy, s, eyes = 'open', mouth = 'smile') {
+  const ex = 11 * s, ey = cy;
+  const eye = (x) => eyes === 'happy'
+    ? `<path d="M${x - 5 * s} ${ey + 1 * s}q${5 * s} ${-7 * s} ${10 * s} 0" fill="none" stroke="${N}" stroke-width="${3.4 * s}" stroke-linecap="round"/>`
+    : `<ellipse cx="${x + (eyes === 'side' ? -2 * s : 0)}" cy="${ey + (eyes === 'up' ? -3 * s : eyes === 'side' ? 1.5 * s : 0)}" rx="${4.6 * s}" ry="${6.2 * s}" fill="${N}"/><circle cx="${x + 1.6 * s + (eyes === 'side' ? -2 * s : 0)}" cy="${ey - 2.2 * s + (eyes === 'up' ? -3 * s : 0)}" r="${1.6 * s}" fill="${W}"/>`;
+  const m = {
+    smile: `<path d="M${cx - 7 * s} ${cy + 12 * s}q${7 * s} ${7 * s} ${14 * s} 0" fill="none" stroke="${N}" stroke-width="${3.4 * s}" stroke-linecap="round"/>`,
+    open: `<path d="M${cx - 9 * s} ${cy + 10 * s}q${9 * s} ${14 * s} ${18 * s} 0z" fill="${N}"/><path d="M${cx - 4 * s} ${cy + 15.5 * s}q${4 * s} ${3 * s} ${8 * s} 0" fill="none" stroke="#E8604C" stroke-width="${2.6 * s}" stroke-linecap="round"/>`,
+    o: `<ellipse cx="${cx}" cy="${cy + 14 * s}" rx="${4 * s}" ry="${5 * s}" fill="${N}"/>`,
+  }[mouth];
+  return eye(cx - ex) + eye(cx + ex) + `<ellipse cx="${cx - 21 * s}" cy="${cy + 9 * s}" rx="${5 * s}" ry="${3.2 * s}" fill="${CH}"/><ellipse cx="${cx + 21 * s}" cy="${cy + 9 * s}" rx="${5 * s}" ry="${3.2 * s}" fill="${CH}"/>` + m;
+}
+/* Eşyalar (sağ elde) */
+const props = {
+  fork: (x, y) => `<g transform="translate(${x} ${y}) rotate(18)"><rect x="-2" y="-4" width="4" height="26" rx="2" fill="${N}"/><path d="M-7 -20v10a7 7 0 0 0 14 0v-10M0 -20v12" fill="none" stroke="${N}" stroke-width="3.2" stroke-linecap="round"/></g>`,
+  park: (x, y) => `<g transform="translate(${x} ${y}) rotate(10)"><rect x="-2" y="2" width="4" height="22" rx="2" fill="${N}"/><rect x="-13" y="-22" width="26" height="26" rx="7" fill="#0E6B5A"/><text x="0" y="-3" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="19" fill="#fff">P</text></g>`,
+  ask: (x, y) => `<g transform="translate(${x} ${y})"><path d="M-14 -26h28a8 8 0 0 1 8 8v10a8 8 0 0 1-8 8h-14l-8 7v-7h-6a8 8 0 0 1-8-8v-10a8 8 0 0 1 8-8z" fill="#fff" stroke="${N}" stroke-width="2.4"/><text x="0" y="-8" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="17" fill="${'#C2410C'}">?</text></g>`,
+};
+const arm = (x1, y1, x2, y2, c = O) => `<path d="M${x1} ${y1}Q${(x1 + x2) / 2 + 4} ${(y1 + y2) / 2 + 6} ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/><circle cx="${x2}" cy="${y2}" r="5" fill="${c}"/>`;
+const svg = (w, h, vb, inner) => `<svg width="${w}" height="${h}" viewBox="${vb}" style="overflow:visible;display:block" aria-hidden="true">${inner}</svg>`;
+
+/* A: Yerim damlası. Yerim düğmesinin şekli (sol alt köşe sivri), hafif eğik, ayakları var */
+function dropA({ eyes = 'open', mouth = 'smile', prop = null, wave = false } = {}) {
+  const body = `<path d="M50 12H78a32 32 0 0 1 32 32V72a32 32 0 0 1-32 32H22a8 8 0 0 1-8-8V44a32 32 0 0 1 32-32z" fill="${O}"/>
+    <path d="M14 78V96a8 8 0 0 0 8 8H78a32 32 0 0 0 31-24c-18 12-58 14-95-2z" fill="${OD}"/>
+    <ellipse cx="44" cy="30" rx="12" ry="6" fill="rgba(255,255,255,.35)" transform="rotate(-20 44 30)"/>`;
+  const feet = `<rect x="34" y="100" width="14" height="12" rx="6" fill="${N}"/><rect x="74" y="100" width="14" height="12" rx="6" fill="${N}"/>`;
+  const left = wave ? arm(16, 66, -2, 40) : arm(16, 70, 2, 84);
+  const right = prop ? arm(108, 70, 124, 62) + props[prop](126, 58) : arm(108, 70, 122, 84);
+  return `<g transform="rotate(-4 62 60)"><ellipse cx="62" cy="116" rx="40" ry="5" fill="rgba(11,60,73,.12)"/>${feet}${left}${right}${body}${face(62, 56, 1, eyes, mouth)}</g>`;
+}
+/* B: konum iğnesi; ağız "yerim" */
+function pinB({ eyes = 'open', mouth = 'open', prop = null, wave = false } = {}) {
+  const body = `<path d="M62 116C50 96 18 80 18 50a44 44 0 0 1 88 0c0 30-32 46-44 66z" fill="${O}"/>
+    <path d="M24 70c8 18 30 30 38 46 8-16 30-28 38-46-22 12-54 12-76 0z" fill="${OD}"/>
+    <ellipse cx="44" cy="22" rx="11" ry="5" fill="rgba(255,255,255,.35)" transform="rotate(-25 44 22)"/>`;
+  const left = wave ? arm(22, 58, 2, 32) : arm(22, 64, 6, 80);
+  const right = prop ? arm(102, 64, 120, 56) + props[prop](122, 52) : arm(102, 64, 118, 80);
+  return `<ellipse cx="62" cy="118" rx="22" ry="4" fill="rgba(11,60,73,.12)"/>${left}${right}${body}${face(62, 46, 1, eyes, mouth)}`;
+}
+/* C: iki kollu yol tabelası; üst tahtada yüz */
+function signC({ eyes = 'open', mouth = 'smile', prop = null, wave = false } = {}) {
+  const pole = `<rect x="56" y="40" width="10" height="74" rx="4" fill="${N}"/><ellipse cx="61" cy="116" rx="24" ry="4" fill="rgba(11,60,73,.12)"/>`;
+  const top = `<path d="M14 14H96l14 18-14 18H14a8 8 0 0 1-8-8V22a8 8 0 0 1 8-8z" fill="${O}"/>`;
+  const low = prop === 'park'
+    ? `<path d="M108 62H26l-12 14 12 14H108a6 6 0 0 0 6-6V68a6 6 0 0 0-6-6z" fill="#0E6B5A"/><text x="70" y="82" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="15" fill="#fff">P</text>`
+    : `<path d="M108 62H26l-12 14 12 14H108a6 6 0 0 0 6-6V68a6 6 0 0 0-6-6z" fill="${prop === 'fork' ? '#C2410C' : '#0E6B5A'}"/>${prop === 'fork' ? `<path d="M64 70v14M60 70v5a4 4 0 0 0 8 0v-5M78 70c-3 2-4 6-4 9h4v6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>` : `<text x="70" y="82" text-anchor="middle" font-family="Bricolage Grotesque" font-weight="800" font-size="15" fill="#fff">P</text>`}`;
+  const extra = prop === 'ask' ? props.ask(122, 6) : '';
+  const w = wave ? arm(8, 34, -8, 14, O) : '';
+  return pole + w + top + low + face(52, 28, 0.62, eyes, mouth) + extra;
+}
+
+const put = (id, h) => (document.getElementById(id).innerHTML = h);
+const mini = (fn, o, label) => svg(86, 86, '-14 -14 152 140', fn(o)) + `<span>${label}</span>`;
+put('aHero', svg(200, 190, '-20 -8 160 132', dropA({ eyes: 'open', mouth: 'open', wave: true })));
+put('aFood', mini(dropA, { eyes: 'happy', mouth: 'open', prop: 'fork' }, 'Yemek'));
+put('aPark', mini(dropA, { eyes: 'open', mouth: 'smile', prop: 'park' }, 'Otopark'));
+put('aAsk', mini(dropA, { eyes: 'up', mouth: 'o', prop: 'ask' }, 'Sor bana'));
+put('bHero', svg(200, 190, '-20 -8 160 132', pinB({ eyes: 'open', mouth: 'open', wave: true })));
+put('bFood', mini(pinB, { eyes: 'happy', mouth: 'open', prop: 'fork' }, 'Yemek'));
+put('bPark', mini(pinB, { eyes: 'open', mouth: 'smile', prop: 'park' }, 'Otopark'));
+put('bAsk', mini(pinB, { eyes: 'up', mouth: 'o', prop: 'ask' }, 'Sor bana'));
+put('cHero', svg(200, 190, '-20 -8 160 132', signC({ eyes: 'open', mouth: 'smile', wave: true })));
+put('cFood', mini(signC, { eyes: 'happy', mouth: 'open', prop: 'fork' }, 'Yemek'));
+put('cPark', mini(signC, { eyes: 'open', mouth: 'smile', prop: 'park' }, 'Otopark'));
+put('cAsk', mini(signC, { eyes: 'up', mouth: 'o', prop: 'ask' }, 'Sor bana'));
+</script>
+</body></html>
