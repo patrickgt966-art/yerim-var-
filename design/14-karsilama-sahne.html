@@ -1,0 +1,131 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>14-karsilama-sahne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  İlk açılış karşılaması (uygulamada src/components/mascot/WelcomeIntro.tsx, aynı vuruşlar):
+  0.0 Yerim düğmesi sayfaya uykulu düşer, ezilip oturur · 1.0 uyanır · 1.5 zıplayıp Yerim olur (ayaklar, kollar)
+  2.1 el sallar, "Selam, ben Yerim!" yazılır · 3.5 çatal, "Yemek mi arıyorsun? Bulurum." · 4.5 P tabelası,
+  "Park yeri mi? Onu da bulurum." · 5.5 altına park yeri çizilir, içine zıplar, logo çıkar · 6.6 "Başlayalım".
+  render(t) kare kare; ?capture ile oynamaz, window.seek(t).
+-->
+<style>
+.logo{display:flex;align-items:flex-start;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:26px;line-height:1.26;letter-spacing:-.02em;color:var(--navy)}
+.logo .i{position:relative}
+.logo .dot{position:absolute;top:.2205em;left:50%;width:.175em;height:.175em;margin-left:-.0875em;border-radius:50%;background:var(--orange)}
+.logo .var{color:var(--orange);margin-left:.26em}
+.caret{display:inline-block;width:7px;height:.9em;background:var(--orange);margin-left:2px;vertical-align:-.1em;border-radius:2px}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen paper" id="screen">
+  <div class="rel" style="height:100%">
+    <div data-status></div>
+    <div class="abs" style="right:20px;top:58px;font-weight:700;font-size:15px;color:var(--sec)">Geç</div>
+
+    <!-- Sahne -->
+    <div class="abs" style="left:0;right:0;top:170px;height:260px">
+      <svg id="bay" class="abs" width="230" height="40" viewBox="0 0 230 40" style="left:80px;bottom:-4px" aria-hidden="true">
+        <rect id="bayR" x="3" y="3" width="224" height="34" rx="12" fill="#E2F1EA" stroke="#0E6B5A" stroke-width="3" stroke-dasharray="10 8"/>
+      </svg>
+      <div id="body" class="abs" style="left:0;width:390px;bottom:0;display:flex;justify-content:center;transform-origin:50% 100%">
+        <div id="tile" style="width:78px;height:78px;margin-bottom:22px;border-radius:28px 28px 28px 9px;background:var(--orange);transform:rotate(-4deg);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px -10px rgba(194,65,12,.6)"></div>
+        <div id="mascot" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Yazılar -->
+    <div class="abs" style="left:16px;right:16px;top:470px;text-align:center">
+      <div id="t1" class="disp" style="font-weight:800;font-size:34px;line-height:40px;letter-spacing:-.8px;min-height:40px"></div>
+      <div id="t2" style="font-weight:700;font-size:18px;line-height:26px;color:var(--peach-text);min-height:26px;margin-top:6px"></div>
+      <div id="t3" style="font-weight:700;font-size:18px;line-height:26px;color:var(--mint-text);min-height:26px"></div>
+    </div>
+    <div id="logo" class="abs" style="left:0;right:0;top:600px;display:flex;justify-content:center">
+      <div class="logo"><span>Yer</span><span class="i">ı<span class="dot"></span></span><span>m</span><span class="var">Var</span></div>
+    </div>
+
+    <div id="btn" class="abs" style="left:16px;right:16px;bottom:50px;height:56px;border-radius:18px 18px 18px 6px;background:var(--navy);color:#fff;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center">Başlayalım</div>
+  </div>
+</div>
+<script src="canli.js"></script>
+<script>
+const T = 9.2;
+const BEAT = { wake: 1.0, stand: 1.5, hello: 2.1, food: 3.5, park: 4.5, bay: 5.5, done: 6.6 };
+const L1 = 'Selam, ben Yerim!', L2 = 'Yemek mi arıyorsun? Bulurum.', L3 = 'Park yeri mi? Onu da bulurum.';
+const CPS = 22; // harf / sn (uygulamada 45 ms)
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const outBack = (k) => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+// yaylı oturma: sönümlü salınım
+const settle = (k, amp) => (k <= 0 || k >= 1 ? 0 : amp * Math.exp(-5 * k) * Math.cos(k * 14));
+
+const FACE = (blink) => `<svg width="44" height="36" viewBox="0 0 34 28">${blink
+  ? '<path d="M6 10.5h8M20 10.5h8" fill="none" stroke="#0B3C49" stroke-width="2.8" stroke-linecap="round"/>'
+  : '<ellipse cx="10" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><ellipse cx="24" cy="10" rx="3.6" ry="4.8" fill="#0B3C49"/><circle cx="11.3" cy="8.2" r="1.3" fill="#fff"/><circle cx="25.3" cy="8.2" r="1.3" fill="#fff"/>'}<ellipse cx="4.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><ellipse cx="29.5" cy="17" rx="3.2" ry="2" fill="rgba(255,110,80,.35)"/><path d="M12 18q5 5 10 0" fill="none" stroke="#0B3C49" stroke-width="2.8" stroke-linecap="round"/></svg>`;
+
+// zıplama: çömel (0-.1), yüksel ve uza (.1-.32), düş (.32-.5), ezil (.5-.6), otur (.6-1); süre 0.9 sn
+function hop(t, t0, h) {
+  const k = (t - t0) / 0.9;
+  if (k <= 0 || k >= 1) return { y: 0, sx: 1, sy: 1 };
+  if (k < 0.1) { const q = k / 0.1; return { y: 0, sx: 1 + 0.1 * q, sy: 1 - 0.12 * q }; }
+  if (k < 0.5) { const q = (k - 0.1) / 0.4; return { y: -h * Math.sin(Math.PI * q), sx: 0.92, sy: 1.1 }; }
+  if (k < 0.6) { const q = (k - 0.5) / 0.1; return { y: 0, sx: lerp(1.18, 1.08, q), sy: lerp(0.8, 0.92, q) }; }
+  const q = (k - 0.6) / 0.4; const s = settle(q, 0.08);
+  return { y: 0, sx: 1 + s, sy: 1 - s };
+}
+
+let lastPose = '', lastTile = '';
+function render(tt) {
+  const t = ((tt % T) + T) % T;
+  // düşüş: yerçekimi, ezilme, oturma
+  let y = 0, sx = 1, sy = 1;
+  if (t < 0.45) { const k = t / 0.45; y = -300 * (1 - k * k); sx = 0.94; sy = 1.08; }
+  else if (t < 1.1) { const q = (t - 0.45) / 0.65; const s = settle(q, 0.2); sx = 1 + s; sy = 1 - s * 1.1; }
+  for (const h of [hop(t, BEAT.stand, 26), hop(t, BEAT.bay, 50)]) { y += h.y; sx *= h.sx; sy *= h.sy; }
+  // konuşurken küçük sekmeler
+  const typingUntil = BEAT.hello + (L1.length) / CPS;
+  if (t > BEAT.hello && t < typingUntil) { const ph = (t * 5.5) % 1; y -= Math.abs(Math.sin(ph * Math.PI)) * 4; }
+  if (t > BEAT.bay + 0.9) { sy *= 1 + Math.sin(t * 3.2) * 0.015; sx *= 1 - Math.sin(t * 3.2) * 0.015; }
+  $('body').style.transform = `translateY(${y}px) scale(${sx},${sy})`;
+  $('body').style.opacity = t < 0.02 ? 0 : 1;
+
+  // düğme -> maskot (zıplamanın tepesinde)
+  const standing = t >= BEAT.stand + 0.22;
+  $('tile').style.display = standing ? 'none' : 'flex';
+  $('mascot').style.display = standing ? 'block' : 'none';
+  const blink = t < BEAT.wake || (t > BEAT.wake + 0.25 && t < BEAT.wake + 0.35);
+  const tk = blink ? 'b' : 'o';
+  if (tk !== lastTile) { $('tile').innerHTML = FACE(blink); lastTile = tk; }
+
+  let pose;
+  if (t >= BEAT.bay + 0.1) pose = { eyes: 'happy', mouth: 'open', arm: t < BEAT.bay + 0.95 ? 'up' : 'up' };
+  else if (t >= BEAT.park) pose = { eyes: 'open', mouth: 'smile', prop: 'park' };
+  else if (t >= BEAT.food) pose = { eyes: 'happy', mouth: 'open', prop: 'fork' };
+  else if (t >= BEAT.hello) pose = { eyes: 'open', mouth: t < typingUntil && Math.floor(t * 9) % 2 ? 'open' : 'smile', arm: Math.floor(t * 4.5) % 2 ? 'wave' : 'wave2' };
+  else pose = { eyes: t % 2.4 > 2.28 ? 'blink' : 'open', mouth: 'smile' };
+  if (t > BEAT.done + 1.2 && (t % 2.6) > 2.47) pose = { ...pose, eyes: 'blink' };
+  const key = JSON.stringify(pose);
+  if (key !== lastPose) { $('mascot').innerHTML = yerimMascot({ size: 190, ...pose }); lastPose = key; }
+
+  // park yeri: ortadan açılır
+  const bk = clamp((t - BEAT.bay) / 0.45, 0, 1);
+  $('bay').style.opacity = bk;
+  $('bay').style.transform = `scaleX(${0.4 + 0.6 * ease(bk)})`;
+  $('bayR').style.strokeDashoffset = -t * 14;
+
+  // yazılar
+  const typed = (s, t0) => { const n = Math.floor(clamp(t - t0, 0, 99) * CPS); const done = n >= s.length; return t < t0 ? '' : s.slice(0, n) + (done ? '' : '<span class="caret"></span>'); };
+  $('t1').innerHTML = typed(L1, BEAT.hello);
+  $('t2').innerHTML = typed(L2, BEAT.food);
+  $('t3').innerHTML = typed(L3, BEAT.park);
+  const lk = clamp((t - BEAT.bay - 0.4) / 0.35, 0, 1);
+  $('logo').style.opacity = lk; $('logo').style.transform = `scale(${lerp(0.7, 1, outBack(lk))})`;
+  const nk = clamp((t - BEAT.done) / 0.35, 0, 1);
+  $('btn').style.opacity = nk; $('btn').style.transform = `translateY(${(1 - ease(nk)) * 16}px)`;
+}
+window.seek = render; window.TOTAL = T;
+if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render((now - st) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+else render(0);
+</script>
+</body></html>
