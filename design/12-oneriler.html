@@ -1,0 +1,98 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>12-oneriler</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Yerim'in önerileri, tabana yayılmış hali: yalnızca öğün değil; yemek, otopark, konum ve Yerim'i tanıma.
+  Her öneri: ne zaman çıkar, hangi veriden üretilir (kapsamı), dokununca ne açılır. Hepsi uygulamada
+  bugün olan veriden: tür (her şehir), otopark yeri (her şehir), canlı boş yer ve tarife (İzmir, İstanbul),
+  raylı sistem durakları (5 şehir), favoriler ve aktif park (cihazda). Kapsamı düşük alanlar (bahçe,
+  açılış saati) yalnızca yeterince yer bilgisi varsa kullanılır.
+-->
+<style>
+.page{position:relative;width:390px;margin:0 auto;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy);padding:44px 16px 40px;overflow:hidden}
+.grp{display:flex;align-items:center;gap:8px;margin:26px 0 10px}
+.grp .h2{flex:1}
+.sug{display:flex;gap:6px;align-items:flex-end;margin-top:14px}
+.sug .m{flex:none;width:74px;padding-bottom:22px}
+.sug .bub{flex:1;background:#fff;border:1px solid #F2E6D6;border-radius:18px 18px 18px 5px;padding:9px 12px 10px;box-shadow:0 10px 22px -12px rgba(11,60,73,.4),0 2px 0 var(--peach-line)}
+.sug .t{font-weight:800;font-size:14px;line-height:19px}
+.sug .b{font-size:12.5px;line-height:17px;color:var(--sec);margin-top:1px}
+.sug .act{display:inline-flex;margin-top:7px;font-weight:800;font-size:12px;padding:5px 10px;border-radius:10px 10px 10px 3px;background:var(--orange)}
+.meta{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 0 80px}
+.meta span{font-size:11px;font-weight:700;padding:3px 7px;border-radius:7px;background:var(--chip);color:var(--sec)}
+.meta span.all{background:var(--mint-soft);color:var(--mint-text)}
+.meta span.some{background:#FFF3C4;color:#6B5200}
+.meta span.two{background:var(--peach-soft);color:var(--peach-text)}
+.rank{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed #E6DCCD;font-size:13px;line-height:18px}
+.rank:last-child{border-bottom:0}
+.rank b{display:block;font-size:14px}
+.num{flex:none;width:24px;height:24px;border-radius:8px;background:var(--peach-soft);color:var(--peach-text);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="page paper"><div class="rel">
+  <div class="greet">herkese bir şey var</div>
+  <div class="h1" style="margin-top:2px">Yerim'in önerileri</div>
+  <div style="font-size:14px;line-height:20px;color:var(--sec);margin-top:6px">Sadece akşam yemeği değil: park arayana, şehre yeni gelene, kısa işi olana, gece acıkana. Günde en fazla bir öneri; hangisinin çıkacağına aşağıdaki sıra karar verir.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0 0" class="meta" id="legend">
+    <span class="all">her şehir</span><span class="two">İzmir + İstanbul (canlı veri)</span><span class="some">bilgisi olan yerlerde</span>
+  </div>
+  <div id="list"></div>
+
+  <div class="grp"><div class="h2">Hangisi çıkar?</div></div>
+  <div class="card" style="padding:4px 14px">
+    <div class="rank"><span class="num">1</span><div><b>Zamanı daralan</b>Favori otopark doluyor, aktif park uzadı. Bunlar beklemez.</div></div>
+    <div class="rank"><span class="num">2</span><div><b>Bulunduğun yer</b>Yeni şehir ya da semt, yakındaki favorin, park zor bölge.</div></div>
+    <div class="rank"><span class="num">3</span><div><b>Saat</b>Öğün, hafta sonu kahvaltısı, yemek sonrası tatlı, gece.</div></div>
+    <div class="rank"><span class="num">4</span><div><b>Yerim'i tanı</b>Başka hiçbir şey yoksa bir soru ipucu.</div></div>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:10px">
+    <div class="rank"><span class="num" style="background:var(--mint-soft);color:var(--mint-text)">✓</span><div><b>Çeşit</b>Aynı grup iki gün üst üste çıkmaz; ana sayfadaki notla aynı türü önermez.</div></div>
+    <div class="rank"><span class="num" style="background:var(--mint-soft);color:var(--mint-text)">✓</span><div><b>Dürüst</b>Yeterli yer yoksa öneri yok; bilgi eskiyse "olabilir" der, canlı sayı yoksa sayı uydurmaz.</div></div>
+    <div class="rank"><span class="num" style="background:var(--mint-soft);color:var(--mint-text)">✓</span><div><b>Kısa ve senli</b>Bir soru, bir somut yer, bir düğme. Emoji ve ünlem yağmuru yok.</div></div>
+  </div>
+</div></div>
+<script>
+const M = yerimMascot;
+const G = [
+  ['Yemek', '#FCE8D5', [
+    { p: { eyes: 'happy', mouth: 'open', prop: 'fork' }, t: 'Öğle arası!', b: 'Yakında 9 esnaf lokantası var; en yakını Şükrü Usta, 4 dk.', a: 'Lokantaları göster',
+      m: [['all', 'her şehir'], ['', 'saat + yemek türü + konum'], ['', 'sabah · öğle · akşam · gece']] },
+    { p: { eyes: 'open', mouth: 'smile', prop: 'fork' }, t: 'Hafta sonu kahvaltısı?', b: 'Yakında 6 kahvaltıcı; otoparkı en yakın olanı 150 m.', a: 'Kahvaltıcılar',
+      m: [['all', 'her şehir'], ['', 'Cumartesi-Pazar 8-12']] },
+    { p: { eyes: 'up', mouth: 'smile' }, t: 'Üstüne bir tatlı?', b: 'Yemekten çıktın gibi; 300 m içinde 4 tatlıcı var.', a: 'Tatlıcılar',
+      m: [['all', 'her şehir'], ['', 'akşam, bir restoran açıldıktan 1-2 sa sonra']] },
+    { p: { eyes: 'happy', mouth: 'open', arm: 'up' }, t: 'Yaz akşamı', b: 'Bahçesi olan 5 yer buldum, ikisinin otoparkı yakın.', a: 'Bahçeli yerler',
+      m: [['some', 'bahçe bilgisi olan yerler'], ['', 'Mayıs-Eylül akşam · en az 3 yer varsa']] },
+  ]],
+  ['Otopark', '#E2F1EA', [
+    { p: { eyes: 'side', mouth: 'flat', arm: 'point' }, t: 'Konak Pier doluyor', b: 'Favori otoparkında 3 yer kaldı. 250 m ötede Kültürpark\'ta 41 boş var.', a: 'Kültürpark\'a git',
+      m: [['two', 'İzmir + İstanbul'], ['', 'favori otopark %10\'un altına inince']] },
+    { p: { eyes: 'up', mouth: 'o' }, t: '1,5 saattir parktasın', b: 'Şimdiye kadar ~70 TL. Arabana 6 dk yürüme var.', a: 'Arabama yol tarifi',
+      m: [['two', 'ücret: tarifesi olan otoparklar'], ['all', 'süre: her yerde'], ['', 'bir sonraki ücret dilimine 10 dk kala']] },
+    { p: { eyes: 'open', mouth: 'smile', prop: 'park' }, t: 'Kısa bir iş mi?', b: 'Buradaki İSPARK\'ta ilk 15 dakika ücretsiz.', a: 'En yakın İSPARK',
+      m: [['two', 'ücretsiz dakikası olan tarifeler'], ['', 'aynı yerde 2. kez arama yapınca']] },
+    { p: { eyes: 'sad', mouth: 'flat' }, t: 'Burada park zor', b: 'Yakındaki otoparklar dolu görünüyor. Çankaya metrosu 4 dk yürüme.', a: 'Durağı göster',
+      m: [['all', 'raylı sistem: 5 şehir'], ['two', '"dolu" bilgisi canlı veriden']] },
+  ]],
+  ['Bulunduğun yer', '#FFF3C4', [
+    { p: { eyes: 'happy', mouth: 'open', arm: 'wave' }, t: 'Ankara\'ya hoş geldin!', b: 'Burada otoparkları haritadan gösteririm; canlı boş yer sayısı yok, onu baştan söyleyeyim.', a: 'Şehri Ankara yap',
+      m: [['all', 'her şehir'], ['', 'konum başka şehirdeyse, bir kez']] },
+    { p: { eyes: 'open', mouth: 'smile', arm: 'point' }, t: 'Favorin yakında', b: 'Sevdiğin Öz Urfa Lahmacun 300 m ötede. Otoparkında 8 boş var.', a: 'Detayı aç',
+      m: [['all', 'favoriler cihazda'], ['', 'favori restorana 400 m\'den yakınken']] },
+  ]],
+  ['Yerim\'i tanı', '#EFE8DD', [
+    { p: { eyes: 'curious', mouth: 'none', prop: 'ask', tilt: -8 }, t: 'Bunu biliyor muydun?', b: 'Bana "deniz kenarı, park kolay, balık" gibi uzun uzun sorabilirsin.', a: 'Bir şey sor',
+      m: [['all', 'her şehir'], ['', 'başka öneri yoksa · akıllı yardım açıksa']] },
+    { p: { eyes: 'curious', mouth: 'smile', tilt: -6 }, t: 'Bulamadın mı?', b: 'Aradığını bana tarif et, ben bakayım.', a: 'Yerim\'e sor',
+      m: [['all', 'her şehir'], ['', 'arama boş dönünce, hemen']] },
+  ]],
+];
+document.getElementById('list').innerHTML = G.map(([name, bg, items]) => `
+  <div class="grp"><span style="width:12px;height:12px;border-radius:4px 4px 4px 1px;background:${bg};border:1px solid rgba(11,60,73,.15)"></span><div class="h2">${name}</div><span class="sub">${items.length} öneri</span></div>
+  ${items.map((s) => `
+  <div class="sug"><div class="m">${M({ size: 74, ...s.p })}</div>
+    <div class="bub"><div class="t">${s.t}</div><div class="b">${s.b}</div><span class="act">${s.a}</span></div></div>
+  <div class="meta">${s.m.map(([c, x]) => `<span class="${c}">${x}</span>`).join('')}</div>`).join('')}`).join('');
+</script>
+</body></html>
