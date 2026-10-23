@@ -311,7 +311,7 @@ const tr = {
     noAccount: 'Hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır.',
     data: 'Veri kaynakları',
     dataBody:
-      'Boş yer sayıları: İzmir için İzmir Büyükşehir Belediyesi Açık Veri Portalı (İzmir Büyükşehir Belediyesi Açık Veri Lisansı), İstanbul için İBB Açık Veri / İSPARK. Diğer otoparklar ve arama önerileri: © OpenStreetMap katkıcıları (ODbL). Bu otoparklarda boş yer bilgisi yok. Restoranlar: OpenStreetMap (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Yerim Var resmî bir belediye uygulaması değildir.',
+      "Restoranlar: © OpenStreetMap katkıcıları (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Otoparklar: İzmir için İzmir Büyükşehir Belediyesi Açık Veri Portalı (İzmir Büyükşehir Belediyesi Açık Veri Lisansı), İstanbul için İBB Açık Veri / İSPARK, diğer yerler için © OpenStreetMap katkıcıları (ODbL). Canlı boş yer bilgisi yalnızca İzmir ve İstanbul'da var. Yerim Var resmî bir belediye uygulaması değildir.",
     lastFetch: 'Son veri alma: {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
@@ -378,6 +378,7 @@ const tr = {
       dessert: 'Tatlı & Dondurma',
     },
     all: 'Tümü',
+    withParking: 'Otoparklı',
     walk: '~{{count}} dk yürüme',
     a11yWalk: 'yaklaşık {{count}} dakika yürüme',
     distanceFromPoint: '{{distance}} uzaklıkta',

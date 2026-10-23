@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Txt } from '@/components/Txt';
-import { fonts, HIT, useColors } from '@/theme';
+import { brand, fonts, HIT, useColors } from '@/theme';
 
 /** Small caps-style group title ("KISAYOLLAR"), announced as a header. */
 export function SectionTitle({ text, right }: { text: string; right?: ReactNode }) {
@@ -128,16 +128,20 @@ export function SuggestionChip({
   label,
   bg,
   onPress,
+  selected,
 }: {
   label: string;
   bg: string;
   onPress: () => void;
+  /** Set for a choice among several: marks it for screen readers and outlines the chosen one. */
+  selected?: boolean;
 }) {
   const c = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={selected === undefined ? undefined : { selected }}
       hitSlop={{ top: (HIT - 36) / 2, bottom: (HIT - 36) / 2 }}
       onPress={onPress}
       style={({ pressed }) => ({
@@ -147,9 +151,19 @@ export function SuggestionChip({
         justifyContent: 'center',
         backgroundColor: bg,
         opacity: pressed ? 0.7 : 1,
+        ...(selected === undefined
+          ? null
+          : { borderWidth: 1.5, borderColor: selected ? brand.orangeLight : 'transparent' }),
       })}
     >
-      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }} color={c.text}>
+      <Txt
+        style={{
+          fontFamily: selected ? fonts.bodyExtraBold : fonts.bodyBold,
+          fontSize: 13,
+          lineHeight: 18,
+        }}
+        color={c.text}
+      >
         {label}
       </Txt>
     </Pressable>

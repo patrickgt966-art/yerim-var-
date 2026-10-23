@@ -320,7 +320,7 @@ const en = {
     noAccount: 'No account. Your favourites and active parking stay on this device only.',
     data: 'Data sources',
     dataBody:
-      'Free-space counts: İzmir Metropolitan Municipality Open Data Portal (İzmir Metropolitan Municipality Open Data License) for İzmir, İBB Open Data / İSPARK for İstanbul. Other car parks and search suggestions: © OpenStreetMap contributors (ODbL). These car parks have no free-space info. Restaurants: OpenStreetMap (ODbL) and Overture Maps (CDLA-Permissive-2.0). Yerim Var is not an official municipal app.',
+      'Restaurants: © OpenStreetMap contributors (ODbL) and Overture Maps (CDLA-Permissive-2.0). Car parks: İzmir Metropolitan Municipality Open Data Portal (İzmir Metropolitan Municipality Open Data License) for İzmir, İBB Open Data / İSPARK for İstanbul, and © OpenStreetMap contributors (ODbL) elsewhere. Live free-space info is only available in İzmir and İstanbul. Yerim Var is not an official municipal app.',
     lastFetch: 'Last data fetch: {{time}}',
     privacy: 'Privacy',
     privacyBody:
@@ -390,6 +390,7 @@ const en = {
       dessert: 'Desserts & ice cream',
     },
     all: 'All',
+    withParking: 'With parking',
     walk: '~{{count}} min walk',
     a11yWalk_one: 'about {{count}} minute walk',
     a11yWalk_other: 'about {{count}} minutes walk',
