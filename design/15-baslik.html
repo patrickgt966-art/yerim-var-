@@ -1,0 +1,76 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>15-baslik</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Tanıtım videosunun başlık kartları. ?n=1&t=Başlık&s=alt%20satır&pose=wave|fork|park|ask|up&list=a|b|c
+  render(t), ~3 sn: Yerim zıplayarak gelir, numara etiketi patlar, başlık yazılır, alt satır/madde listesi gelir.
+-->
+<style>
+.caret{display:inline-block;width:7px;height:.9em;background:var(--orange);margin-left:2px;vertical-align:-.1em;border-radius:2px}
+.li{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:16px;line-height:22px;font-weight:700;padding:9px 0;border-bottom:1px dashed #E6DCCD}
+.li:last-child{border-bottom:0}
+.li i{flex:none;width:22px;height:22px;border-radius:7px 7px 7px 2px;background:var(--orange);margin-top:1px}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen paper" id="screen">
+  <div class="rel" style="height:100%">
+    <div data-status></div>
+    <div id="m" class="abs" style="left:0;right:0;top:150px;display:flex;justify-content:center;transform-origin:50% 100%"></div>
+    <div class="abs" style="left:20px;right:20px;top:330px;text-align:center">
+      <div id="num" style="display:inline-block;font-weight:800;font-size:14px;letter-spacing:.6px;padding:6px 12px;border-radius:12px 12px 12px 4px;background:var(--navy);color:#fff"></div>
+      <div id="title" class="disp" style="font-weight:800;font-size:34px;line-height:40px;letter-spacing:-.8px;margin-top:14px;min-height:80px"></div>
+      <div id="sub" class="hand" style="font-size:24px;line-height:28px;color:var(--orange-strong);margin-top:4px;transform:rotate(-2deg)"></div>
+      <div id="list" class="card" style="margin-top:18px;padding:4px 16px"></div>
+    </div>
+  </div>
+</div>
+<script src="canli.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const N = q.get('n') || '', TITLE = q.get('t') || '', SUB = q.get('s') || '', POSE = q.get('pose') || 'wave';
+const LIST = (q.get('list') || '').split('|').filter(Boolean);
+const T = Number(q.get('d') || (LIST.length ? 5.5 : 3.2));
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const outBack = (k) => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const settle = (k, amp) => (k <= 0 || k >= 1 ? 0 : amp * Math.exp(-5 * k) * Math.cos(k * 14));
+const POSES = {
+  wave: (t) => ({ eyes: 'open', mouth: 'open', arm: Math.floor(t * 4.5) % 2 ? 'wave' : 'wave2' }),
+  fork: () => ({ eyes: 'happy', mouth: 'open', prop: 'fork' }),
+  park: () => ({ eyes: 'open', mouth: 'smile', prop: 'park' }),
+  ask: () => ({ eyes: 'curious', mouth: 'none', prop: 'ask', tilt: -8 }),
+  up: () => ({ eyes: 'happy', mouth: 'open', arm: 'up' }),
+  star: () => ({ eyes: 'happy', mouth: 'smile', prop: 'star' }),
+};
+$('num').textContent = N;
+$('list').style.display = LIST.length ? 'block' : 'none';
+$('list').innerHTML = LIST.map((x, i) => `<div class="li" id="li${i}"><i></i><span>${x}</span></div>`).join('');
+let last = '';
+function render(tt) {
+  const t = clamp(tt, 0, T);
+  // zıplayarak gelir: yukarıdan düşer, ezilir, oturur
+  let y = 0, sx = 1, sy = 1;
+  if (t < 0.4) { const k = t / 0.4; y = -260 * (1 - k * k); sx = 0.93; sy = 1.08; }
+  else { const s = settle(clamp((t - 0.4) / 0.7, 0, 1), 0.2); sx = 1 + s; sy = 1 - s * 1.1; }
+  $('m').style.transform = `translateY(${y}px) scale(${sx},${sy})`;
+  $('m').style.opacity = t < 0.02 ? 0 : 1;
+  const pose = (POSES[POSE] || POSES.wave)(t);
+  if (t % 2.6 > 2.45 && pose.eyes === 'open') pose.eyes = 'blink';
+  const key = JSON.stringify(pose);
+  if (key !== last) { $('m').innerHTML = yerimMascot({ size: 160, ...pose }); last = key; }
+  const nk = clamp((t - 0.35) / 0.3, 0, 1);
+  $('num').style.opacity = N ? nk : 0; $('num').style.transform = `scale(${lerp(0.5, 1, outBack(nk))})`;
+  const n = Math.floor(clamp(t - 0.55, 0, 99) * 26);
+  $('title').innerHTML = TITLE.slice(0, n) + (n < TITLE.length && t > 0.55 ? '<span class="caret"></span>' : '');
+  const sk = clamp((t - 0.6 - TITLE.length / 26) / 0.3, 0, 1);
+  $('sub').textContent = SUB; $('sub').style.opacity = sk;
+  LIST.forEach((_, i) => { const k = clamp((t - 0.9 - TITLE.length / 26 - i * 0.35) / 0.3, 0, 1); const el = $('li' + i); el.style.opacity = k; el.style.transform = `translateX(${(1 - k) * 16}px)`; });
+  $('list').style.opacity = LIST.length ? clamp((t - 0.8 - TITLE.length / 26) / 0.2, 0, 1) : 0;
+}
+window.seek = render; window.TOTAL = T;
+if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render(((now - st) / 1000) % (T + 1)); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+else render(0);
+</script>
+</body></html>

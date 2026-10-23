@@ -58,7 +58,7 @@
 // ---------- Senaryo ----------
 const BTN = { x: 161, y: 723, w: 70, h: 70, r: 22 }; // Yerim düğmesi
 const TAB = { harita: { x: 96, y: 748, w: 58, h: 66, r: 18 }, favoriler: { x: 240, y: 748, w: 64, h: 66, r: 18 }, profil: { x: 308, y: 748, w: 60, h: 66, r: 18 } };
-const S = [
+let S = [
   { d: 3.8, bg: 'home', scroll: 0, tab: 'index', spot: [[0, null]], m: [195, 560], face: 1, bub: 'above', pose: { arm: 'wave' },
     title: 'Selam, ben Yerim!', body: 'Sana buraları kısaca göstereyim. Hazırsan başlayalım.' },
   { d: 3.4, bg: 'home', scroll: 0, tab: 'index', spot: [[0, { x: 12, y: 149, w: 366, h: 74, r: 22 }]], m: [292, 335], bub: 'below', pose: { arm: 'point' },
@@ -80,6 +80,9 @@ const S = [
   { d: 4.6, bg: 'home', scroll: 0, tab: 'index', spot: [[0, BTN]], m: [262, 712], bub: 'above', pose: { arm: 'point' }, final: true,
     title: 'Ben hep buradayım', body: 'Aklına bir şey gelirse Yerim\'e dokun, sor yeter.' },
 ];
+// ?steps=0,1,2 plays only those steps (the app's tour is 0,1,2,3,6,9).
+const ONLY = new URLSearchParams(location.search).get('steps');
+if (ONLY) S = ONLY.split(',').map(Number).map((i) => S[i]).filter(Boolean);
 let acc = 0; for (const s of S) { s.t0 = acc; acc += s.d; }
 const T = acc + 0.8; // sonda kısa nefes
 
