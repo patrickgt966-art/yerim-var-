@@ -15,6 +15,7 @@ import {
   useColors,
 } from '@/theme';
 
+import { YerimWord } from './BrandWordmark';
 import { CoachTarget, useCoachTarget } from './coach/registry';
 import { TabGlyph, type TabGlyphName } from './home/TabGlyph';
 import { MascotFace } from './mascot/Mascot';
@@ -137,7 +138,16 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         }}
       >
         {items.slice(0, 2)}
-        <View style={{ flex: 1 }} />
+        {/* Under the raised button, in line with the other labels: "Yerim" as in the logo. */}
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 }}
+        >
+          <View style={{ height: 34 }} />
+          <YerimWord size={13} dotScale={1.5} />
+        </View>
         {items.slice(2)}
       </View>
       <Pressable
@@ -171,14 +181,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           },
         ]}
       >
-        <MascotFace size={30} />
-        <Txt
-          allowFontScaling={false}
-          style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 14, marginTop: 1 }}
-          color={brand.navy}
-        >
-          {t('home.tabYerim')}
-        </Txt>
+        <MascotFace size={36} />
       </Pressable>
     </View>
   );

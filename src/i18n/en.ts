@@ -1147,7 +1147,6 @@ const en = {
   },
   home: {
     tabHome: 'Home',
-    tabYerim: 'Yerim',
     a11yYerim: 'Yerim: chat',
     a11yYerimHint: 'Opens the chat',
     a11yAi_one: 'You have {{count}} smart help use left today',

@@ -21,7 +21,6 @@ const ASCENT = 1.038;
 const LINE = 1.26;
 // From the logo: the dot is 0.175 em wide, its centre 0.73 em above the baseline.
 const DOT = 0.175;
-const DOT_TOP = ASCENT - 0.73 - DOT / 2;
 
 /**
  * The real logo as text: "Yerim" (the dot of the ı is an orange circle over a dotless ı)
@@ -39,7 +38,6 @@ export function BrandWordmark({ size, layout, tone, header }: Props) {
     letterSpacing: -size * 0.02,
     includeFontPadding: false,
   } as const;
-  const dot = size * DOT;
   const stacked = layout === 'stacked';
 
   return (
@@ -53,37 +51,65 @@ export function BrandWordmark({ size, layout, tone, header }: Props) {
         columnGap: size * 0.26,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <Text allowFontScaling={false} style={[word, { color: yerim }]}>
-          Yer
-        </Text>
-        <View>
-          <Text allowFontScaling={false} style={[word, { color: yerim }]}>
-            {'ı'}
-          </Text>
-          <View
-            style={{
-              position: 'absolute',
-              top: size * DOT_TOP,
-              left: '50%',
-              width: dot,
-              height: dot,
-              marginLeft: -dot / 2,
-              borderRadius: dot / 2,
-              backgroundColor: brand.orange,
-            }}
-          />
-        </View>
-        <Text allowFontScaling={false} style={[word, { color: yerim }]}>
-          m
-        </Text>
-      </View>
+      <YerimWord size={size} color={yerim} />
       {/* Stacked: the second line tucks under the first, as in the logo. */}
       <Text
         allowFontScaling={false}
         style={[word, { color: brand.orange }, stacked && { marginTop: -size * 0.34 }]}
       >
         Var
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * "Yerim" alone, as in the logo: the dot of the ı is an orange circle over a dotless ı. Small
+ * sizes (the tab bar) pass a larger `dotScale` so the dot still reads.
+ */
+export function YerimWord({
+  size,
+  color = brand.navy,
+  dotScale = 1,
+}: {
+  size: number;
+  color?: string;
+  dotScale?: number;
+}) {
+  const word = {
+    fontFamily: fonts.bodyExtraBold,
+    fontSize: size,
+    lineHeight: size * LINE,
+    letterSpacing: -size * 0.02,
+    includeFontPadding: false,
+  } as const;
+  const dot = size * DOT * dotScale;
+  // Centred where the logo's dot is centred, whatever its size.
+  const top = size * (ASCENT - 0.73) - dot / 2;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+      <Text allowFontScaling={false} style={[word, { color }]}>
+        Yer
+      </Text>
+      <View>
+        <Text allowFontScaling={false} style={[word, { color }]}>
+          {'ı'}
+        </Text>
+        <View
+          style={{
+            position: 'absolute',
+            top,
+            left: '50%',
+            width: dot,
+            height: dot,
+            marginLeft: -dot / 2,
+            borderRadius: dot / 2,
+            backgroundColor: brand.orange,
+          }}
+        />
+      </View>
+      <Text allowFontScaling={false} style={[word, { color }]}>
+        m
       </Text>
     </View>
   );

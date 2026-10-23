@@ -1041,7 +1041,6 @@ const tr = {
   },
   home: {
     tabHome: 'Ana sayfa',
-    tabYerim: 'Yerim',
     a11yYerim: 'Yerim: sohbet',
     a11yYerimHint: 'Sohbeti açar',
     a11yAi: 'Bugün {{count}} akıllı yardım hakkın kaldı',

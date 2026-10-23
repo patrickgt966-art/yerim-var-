@@ -167,7 +167,9 @@ export const HIT = 44;
 
 /** Floating tab bar: bar height, how far the raised "Yerim" button rises above it, gap below. */
 export const TAB_BAR_HEIGHT = 76;
-export const TAB_BAR_OVERHANG = 12;
+// Room for the raised Yerim button above the bar, high enough to leave its "Yerim" label free
+// under it, in line with the other tabs' labels.
+export const TAB_BAR_OVERHANG = 24;
 export const TAB_BAR_GAP = 8;
 /** The raised Yerim button in the middle of the tab bar. */
 export const TAB_CENTER_SIZE = 66;

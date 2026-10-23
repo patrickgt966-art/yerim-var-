@@ -21,7 +21,7 @@
   const bar = (active) => `<div style="position:absolute;left:12px;right:12px;bottom:22px;height:76px;border-radius:26px;background:#fff;display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 10px 26px -8px rgba(11,60,73,.28);z-index:20;font-family:'Plus Jakarta Sans',system-ui,sans-serif">
   ${tab('index', active === 'index')}${tab('harita', active === 'harita')}
   <div style="margin-top:-34px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#0B3C49;font-weight:800;font-size:11px">
-    <div style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:#FF8A1F;border:4px solid #fff;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:0 8px 16px -6px rgba(255,138,31,.6)">${FACE}</div>Yerim</div>
+    <div style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:#FF8A1F;border:4px solid #fff;display:flex;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:0 8px 16px -6px rgba(255,138,31,.6)">${FACE}</div><span style="display:inline-flex;font-family:\'Plus Jakarta Sans\',sans-serif;font-weight:800;font-size:13px;line-height:16px;letter-spacing:-.02em;color:#0B3C49;margin-top:-2px">Yer<span style="position:relative;display:inline-block">ı<span style="position:absolute;top:2px;left:50%;width:3.6px;height:3.6px;margin-left:-1.8px;border-radius:50%;background:#FF8A1F"></span></span>m</span></div>
   ${tab('favoriler', active === 'favoriler')}${tab('profil', active === 'profil')}
 </div>`;
   window.canliTabBar = bar;
