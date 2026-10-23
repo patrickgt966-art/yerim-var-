@@ -22,7 +22,7 @@ Son güncelleme: 22 Ekim 2026.
 
 1. ~~**Sohbet "Listede aç" düğmesi**~~ Yapıldı: liste "hariç" ve "ücretsiz otopark" filtrelerini taşıyor.
 2. **Yemek sözlüğü**: telefonda yanlış ya da eksik çıkan her yemek eklenecek (şu an ~380 yemek).
-3. **Restoran sayfası**: kategori yoksa yedek etiket, Türkçe çalışma saatleri (sadece ~200 yerde saat var).
+3. ~~**Restoran sayfası**~~ Yapıldı: kategori yoksa "Restoran", Türkçe çalışma saatleri (sadece ~200 yerde saat var).
 4. ~~**İngilizce arayüz.**~~ Yapıldı (`src/i18n/en.ts`; telefon Türkçe değilse İngilizce, Profil'den değişir).
 5. **ROADMAP.md güncellemesi.** Alt ajan bölümü güncellendi; planın geri kalanı hâlâ 9 Ekim tarihli.
 
@@ -83,11 +83,8 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
-- Seçenek sorusu şablonla, samimi cevap sonuç turunda (bugün tek /reply hakkını soru kullanıyor).
-- Otopark cevaplarında yapay zekâ metninin kabul oranı (son sınavda %47); ret sebepleri artık sınav raporunda, ona göre ayar.
-- Yerim mesajlarının ~%23'ü hâlâ 4 cümleden uzun (yönlendiricinin ton cümlesi + metin + seçim satırı).
+- Otopark cevaplarında yapay zekâ metninin kabul oranı (son sınavda %79; gereksiz retler düzeltildi, ücreti bilinmeyen otoparka "ücretsiz" demek hâlâ reddediliyor).
 - "ailece …" isteğinde önce kişi sayısı soruluyor; sonuç + "veri yok" notu daha iyi olabilir.
-- Restoran sayfası: kategori yoksa yedek etiket, Türkçe çalışma saatleri.
 - Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).
 
 ## Karar bekleyenler
