@@ -1,0 +1,124 @@
+name: AI eval (mega)
+
+# The mega conversation eval (~3000 whole conversations of src/data/eval/megaCases.ts through the
+# app's real assistant and the real AI layer, run by scripts/ai-eval-convo.ts --set mega). Calls the
+# Anthropic API (about $3-5 for a full run; the script prints an estimate first), so it runs by hand
+# only (a workflow must be on main before it can be started by hand). Without the ANTHROPIC_API_KEY
+# secret it skips. The conversations are split over `shards` jobs (three at a time, to respect the
+# rate limits); the merge job joins their reports into docs/ai-eval-mega.md, publishes it to the job
+# summary and fails when fewer than 85% of the conversations pass. The optional `limit` input plays
+# only the first N conversations (taken round-robin across the categories), also split over the shards.
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: 'Number of shards to split the conversations over'
+        required: false
+        default: '6'
+      limit:
+        description: 'Play only N conversations (empty = all)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+# The live evals share the org's per-minute token limit: one at a time, the next one waits.
+concurrency:
+  group: ai-eval-live
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.matrix.outputs.shards }}
+    env:
+      SHARDS: ${{ inputs.shards }}
+    steps:
+      - id: matrix
+        run: |
+          n="${SHARDS:-6}"
+          case "$n" in ''|*[!0-9]*|0) echo "shards must be a positive number" >&2; exit 1;; esac
+          echo "shards=$(seq 0 $((n - 1)) | paste -sd, - | sed 's/^/[/; s/$/]/')" >> "$GITHUB_OUTPUT"
+
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LIMIT: ${{ inputs.limit }}
+      SHARDS: ${{ inputs.shards }}
+    steps:
+      - name: Skip without the API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret is not set; mega AI eval skipped." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
+      # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-convo.ts imports them from here.
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
+      - name: Run shard ${{ matrix.shard }}
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --set mega --shard "${{ matrix.shard }}/${SHARDS:-6}" ${LIMIT:+--limit "$LIMIT"}
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega-shard-${{ matrix.shard }}
+          path: |
+            docs/ai-eval-mega-${{ matrix.shard }}.md
+            docs/ai-eval-mega-${{ matrix.shard }}.json
+          if-no-files-found: ignore
+
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Skip without the API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret is not set; mega AI eval skipped." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          pattern: ai-eval-mega-shard-*
+          path: shards
+          merge-multiple: true
+      # Fails (after the summary is published) when fewer than 85% of the conversations pass.
+      - name: Merge the shards
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-merge.ts --dir shards --out docs/ai-eval-mega.md
+      - name: Publish summary
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        run: '[ -f docs/ai-eval-mega.md ] && cat docs/ai-eval-mega.md >> "$GITHUB_STEP_SUMMARY" || true'
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega
+          path: docs/ai-eval-mega.md
+          if-no-files-found: ignore
