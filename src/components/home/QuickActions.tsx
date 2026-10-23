@@ -7,14 +7,15 @@ import { useCoachTarget } from '@/components/coach/registry';
 import { openFoodNearMe } from '@/components/FoodHome';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
-import { fonts, useColors } from '@/theme';
+import { LivePulse, TicketCut } from '@/components/lively/Ticket';
+import { asym, fonts, useColors } from '@/theme';
 
 import type { NearbyHome } from './useNearbyHome';
 
 /**
- * The two main jobs (design V5): car parks near me (soft green) and food near
- * me (soft peach). The park card carries a small live line when the nearest
- * car park with a fresh free count is known.
+ * The two main jobs (lively design): car parks near me (soft green) and food near
+ * me (soft peach), each a paper ticket. The park ticket carries the live free count of
+ * the nearest car park when one is known.
  */
 export function QuickActions({
   nearby,
@@ -51,13 +52,14 @@ export function QuickActions({
     }
   };
 
+  const park = nearby.nearestFree;
   return (
     <View
       style={{
         flexDirection: stacked ? 'column' : 'row',
         gap: 10,
         paddingHorizontal: 16,
-        paddingTop: 14,
+        paddingTop: 16,
       }}
     >
       <ActionCard
@@ -67,13 +69,15 @@ export function QuickActions({
         mark={
           <Txt
             allowFontScaling={false}
-            style={{ fontFamily: fonts.display, fontSize: 22, lineHeight: 26 }}
+            style={{ fontFamily: fonts.display, fontSize: 19, lineHeight: 23 }}
+            color={c.mintText}
           >
             P
           </Txt>
         }
         title={t('home.parkNearMe')}
-        sub={live}
+        big={park?.free != null ? { n: park.free, unit: t('home.ticketFree'), live: true } : null}
+        sub={park ? t('home.ticketWhere', { name: park.name, walk: park.walk }) : live}
         label={live ? `${t('home.a11yParkNearMe')}, ${live}` : t('home.a11yParkNearMe')}
         stacked={stacked}
         onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
@@ -86,11 +90,16 @@ export function QuickActions({
           busy ? (
             <ActivityIndicator size="small" color={c.ink} />
           ) : (
-            <Icon name="cutlery" size={24} color={c.ink} strokeWidth={2.2} />
+            <Icon name="cutlery" size={18} color={c.ink} strokeWidth={2.3} />
           )
         }
         title={t('home.foodNearMe')}
-        sub={foodSub}
+        big={
+          nearby.foodCount != null
+            ? { n: nearby.foodCount, unit: t('home.ticketFood', { count: nearby.foodCount }) }
+            : null
+        }
+        sub={nearby.foodCount != null ? t('home.foodRadius') : foodSub}
         label={`${t('home.a11yFoodNearMe')}, ${foodSub}`}
         busy={busy}
         stacked={stacked}
@@ -100,13 +109,18 @@ export function QuickActions({
   );
 }
 
-/** One soft card: mark and title on top, the small line and an arrow below. */
+/**
+ * One job card as a paper ticket (lively design): mark and title above the tear line, a big
+ * number below it when there is one (with a breathing dot when it is live), the small line and
+ * an arrow.
+ */
 function ActionCard({
   coach,
   bg,
   fg,
   mark,
   title,
+  big,
   sub,
   label,
   busy,
@@ -118,6 +132,7 @@ function ActionCard({
   fg: string;
   mark: React.ReactNode;
   title: string;
+  big: { n: number; unit: string; live?: boolean } | null;
   sub: string | null;
   label: string;
   busy?: boolean;
@@ -125,6 +140,8 @@ function ActionCard({
   onPress: () => void;
 }) {
   const c = useColors();
+  // The tear line sits just under the title, however tall large text makes it.
+  const [cut, setCut] = useState(52);
   return (
     <Pressable
       {...coach}
@@ -132,19 +149,38 @@ function ActionCard({
       accessibilityLabel={label}
       accessibilityState={busy != null ? { busy } : undefined}
       onPress={onPress}
-      style={({ pressed }) => ({
-        flex: stacked ? undefined : 1,
-        minHeight: 92,
-        borderRadius: 20,
-        padding: 14,
-        gap: 10,
-        justifyContent: 'space-between',
-        backgroundColor: bg,
-        opacity: pressed ? 0.85 : 1,
-      })}
+      style={({ pressed }) => [
+        asym(20, 6),
+        {
+          flex: stacked ? undefined : 1,
+          minHeight: 132,
+          padding: 14,
+          paddingBottom: 12,
+          justifyContent: 'space-between',
+          backgroundColor: bg,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+        },
+      ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ minWidth: 24, alignItems: 'center' }}>{mark}</View>
+      <TicketCut top={cut} color={fg} />
+      <View
+        onLayout={(e) =>
+          setCut(Math.round(e.nativeEvent.layout.y + e.nativeEvent.layout.height + 8))
+        }
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+      >
+        <View
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 9,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: c.card,
+          }}
+        >
+          {mark}
+        </View>
         <Txt
           numberOfLines={2}
           style={{ flex: 1, fontFamily: fonts.bodyExtraBold, fontSize: 17, lineHeight: 22 }}
@@ -152,14 +188,36 @@ function ActionCard({
           {title}
         </Txt>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Txt
-          numberOfLines={2}
-          style={{ flex: 1, fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 17 }}
-          color={fg}
-        >
-          {sub ?? ''}
-        </Txt>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 18 }}>
+        <View style={{ flex: 1 }}>
+          {big && (
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 5 }}>
+              {big.live && (
+                <View style={{ alignSelf: 'center' }}>
+                  <LivePulse color={fg} />
+                </View>
+              )}
+              <Txt style={{ fontFamily: fonts.display, fontSize: 28, lineHeight: 32 }} color={fg}>
+                {big.n}
+              </Txt>
+              <Txt
+                style={{ flexShrink: 1, fontFamily: fonts.bodyExtraBold, fontSize: 13 }}
+                color={fg}
+              >
+                {big.unit}
+              </Txt>
+            </View>
+          )}
+          {sub ? (
+            <Txt
+              numberOfLines={2}
+              style={{ fontFamily: fonts.bodyBold, fontSize: 12, lineHeight: 16, marginTop: 2 }}
+              color={fg}
+            >
+              {sub}
+            </Txt>
+          ) : null}
+        </View>
         <Icon name="arrow" size={20} color={c.ink} strokeWidth={2.2} />
       </View>
     </Pressable>

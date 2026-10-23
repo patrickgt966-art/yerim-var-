@@ -9,6 +9,8 @@ import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
 import { Mascot } from '@/components/mascot/Mascot';
 import { ParkingMap } from '@/components/ParkingMap';
+import { TabSquiggle } from '@/components/lively/Hand';
+import { Dashes } from '@/components/lively/Ticket';
 import { Txt } from '@/components/Txt';
 import { formatClock, getFreshness, occupancyLevel } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
@@ -44,7 +46,7 @@ function mix(parks: RankedParking[], foods: RestaurantRow[]): Item[] {
   return out;
 }
 
-/** Hepsi · Otopark · Yemek as text tabs; the chosen one is underlined (design V5). */
+/** Hepsi · Otopark · Yemek as text tabs; the chosen one gets a hand-drawn underline. */
 function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -74,17 +76,7 @@ function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) =
             >
               {t(f.label)}
             </Txt>
-            <View
-              style={{
-                position: 'absolute',
-                left: 6,
-                right: 6,
-                bottom: 4,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: selected ? c.text : 'transparent',
-              }}
-            />
+            <TabSquiggle on={selected} />
           </Pressable>
         );
       })}
@@ -116,11 +108,14 @@ function RowShell({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: c.chipBg,
       }}
     >
       {children}
+      {!last && (
+        <View pointerEvents="none" style={{ position: 'absolute', left: 12, right: 12, bottom: 0 }}>
+          <Dashes color={c.rowDash} />
+        </View>
+      )}
     </Pressable>
   );
 }

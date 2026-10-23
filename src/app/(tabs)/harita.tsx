@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { FreshnessBadge, freshnessText, Tag } from '@/components/FreshnessBadge';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
@@ -195,16 +196,11 @@ export default function MapTab() {
         <View
           accessibilityRole="tablist"
           accessibilityLabel={t('map.modeLabel')}
-          style={[
-            asym(16, 5),
-            {
-              flexDirection: bigText ? 'column' : 'row',
-              padding: 3,
-              backgroundColor: c.card,
-              borderWidth: 1,
-              borderColor: c.line,
-            },
-          ]}
+          style={{
+            flexDirection: bigText ? 'column' : 'row',
+            alignItems: bigText ? 'stretch' : 'flex-start',
+            gap: 8,
+          }}
         >
           {(['parkings', 'food'] as const).map((m) => {
             const on = mode === m;
@@ -214,15 +210,53 @@ export default function MapTab() {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 onPress={() => pick(m)}
-                style={{
-                  flex: 1,
-                  minHeight: HIT - 6,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: on ? c.primary : 'transparent',
-                }}
+                style={[
+                  on ? asym(14, 5) : { borderRadius: 14 },
+                  {
+                    minHeight: HIT,
+                    paddingHorizontal: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    backgroundColor: on ? c.primary : c.card,
+                    borderWidth: 1,
+                    borderColor: on ? c.primary : c.peachLine,
+                    shadowColor: '#0B3C49',
+                    shadowOpacity: 0.12,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 3 },
+                    elevation: 2,
+                  },
+                ]}
               >
+                {m === 'parkings' ? (
+                  <View
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 5,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: on ? c.onPrimary : c.mintSoft,
+                    }}
+                  >
+                    <Txt
+                      allowFontScaling={false}
+                      style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 15 }}
+                      color={on ? c.primary : c.mintText}
+                    >
+                      P
+                    </Txt>
+                  </View>
+                ) : (
+                  <Icon
+                    name="cutlery"
+                    size={15}
+                    color={on ? c.onPrimary : c.ink}
+                    strokeWidth={2.3}
+                  />
+                )}
                 <Txt
                   style={{ fontFamily: on ? fonts.display : fonts.bodyBold, fontSize: 15 }}
                   color={on ? c.onPrimary : c.text}
@@ -422,10 +456,10 @@ function ParkingSheetCard({
         left: 16,
         right: 16,
         bottom: tabSpace,
+        ...asym(24, 8),
         padding: 14,
         gap: 10,
-        borderRadius: 22,
-        backgroundColor: c.bg,
+        backgroundColor: c.card,
         shadowColor: brand.navy,
         shadowOpacity: 0.18,
         shadowRadius: 12,
@@ -451,9 +485,9 @@ function ParkingSheetCard({
         >
           <View
             style={{
+              ...asym(14, 4),
               width: 44,
               height: 44,
-              borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: c.mintSoft,

@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,10 +12,12 @@ import { NearbyCard } from '@/components/home/NearbyCard';
 import { QuickActions } from '@/components/home/QuickActions';
 import { ExampleQuestions, SearchCard } from '@/components/home/SearchCard';
 import { useNearbyHome } from '@/components/home/useNearbyHome';
+import { HandNote } from '@/components/lively/Hand';
+import { Paper } from '@/components/lively/Paper';
 import { MascotNudge } from '@/components/mascot/MascotNudge';
 import { useColors, useTabBarSpace } from '@/theme';
 
-/** Home (design V5): one warm screen, search first, then the two main jobs. */
+/** Home (lively design): one warm paper screen, search first, then the two main jobs. */
 export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
@@ -23,14 +26,16 @@ export default function HomeScreen() {
     }, []),
   );
   const c = useColors();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const tabSpace = useTabBarSpace();
   const nearby = useNearbyHome();
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <Paper />
       <ScrollView
-        style={{ flex: 1, backgroundColor: c.bg }}
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: tabSpace }}
         keyboardShouldPersistTaps="handled"
       >
@@ -41,6 +46,11 @@ export default function HomeScreen() {
         <ActiveStrip />
         <Cravings />
         <NearbyCard nearby={nearby} />
+        <View style={{ alignItems: 'center', paddingTop: 22, paddingBottom: 4 }}>
+          <HandNote size={19} color={c.textSecondary} tilt={-1.5}>
+            {t('home.footerNote')}
+          </HandNote>
+        </View>
       </ScrollView>
       <MascotNudge nearby={nearby} />
       <View

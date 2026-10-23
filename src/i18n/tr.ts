@@ -315,6 +315,7 @@ const tr = {
     staticBodyMapped: 'Boş yer bilgisi yok. Gitmeden önce yakında bilgisi olan otoparklara da bak.',
   },
   favorites: {
+    subtitle: 'sevdiğin yerler burada',
     title: 'Favoriler',
     empty: 'Henüz favorin yok. Bir otoparkın detayında yıldıza bas.',
     otherCity: '{{cityLoc}} kayıtlı',
@@ -386,6 +387,10 @@ const tr = {
   },
   profile: {
     title: 'Profil',
+    onDevice: 'Her şey bu cihazda!',
+    groupYerim: 'Yerim',
+    groupPrefs: 'Tercihler',
+    groupAbout: 'Hakkında',
     noAccount: 'Hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır.',
     data: 'Veri kaynakları',
     dataBody:
@@ -1070,9 +1075,21 @@ const tr = {
     a11yFoodNearMe: 'Yakınımda yemek bul',
     foodPlaces: 'Yakınındaki yerler',
     foodPlacesCount: 'yakında {{count}} yer',
-    examplesToggle: 'Örnek sorular',
+    examplesToggle: "Yerim'e sorabileceklerin",
     liveLine: '{{count}} boş · {{walk}} dk',
     nearestWalk: 'en yakın {{walk}} dk',
+    ticketFree: 'boş',
+    ticketFood: 'yer yakında',
+    ticketWhere: '{{name}} · {{walk}} dk',
+    foodRadius: 'yürüme mesafesinde',
+    greeting: {
+      morning: 'Günaydın!',
+      day: 'İyi günler!',
+      evening: 'İyi akşamlar!',
+      night: 'İyi geceler!',
+    },
+    swipe: 'kaydır',
+    footerNote: 'afiyet olsun, park kolay gelsin ✌︎',
     cravingTitle: 'Canın ne çekiyor?',
     a11yCraving: '{{name}} ara',
     cravingSlot: {

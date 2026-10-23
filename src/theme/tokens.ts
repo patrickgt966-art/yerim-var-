@@ -86,6 +86,10 @@ export type Palette = {
   peachSoft: string;
   peachLine: string;
   peachText: string;
+  /** Stronger peach edge around the search box. */
+  peachEdge: string;
+  /** Dashed separator between rows inside a card. */
+  rowDash: string;
   /** Text and icons in the brand's ink: navy on light, near-white on dark. */
   ink: string;
   /** Status bar text over the page. */
@@ -126,6 +130,8 @@ export const lightPalette: Palette = {
   peachSoft: brand.peachSoft,
   peachLine: brand.peachLine,
   peachText: brand.peachText,
+  peachEdge: '#F4BE8E',
+  rowDash: '#E6DCCD',
   ink: brand.navy,
   statusBar: 'dark',
 };
@@ -165,6 +171,8 @@ export const darkPalette: Palette = {
   peachSoft: '#3A2416',
   peachLine: '#5A3A24',
   peachText: '#FFC48F',
+  peachEdge: '#7A4A28',
+  rowDash: '#24505C',
   ink: '#F4F7F8',
   statusBar: 'light',
 };

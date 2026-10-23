@@ -9,7 +9,7 @@ import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
 import { cityExamples } from '@/data/cities';
 import { useApp } from '@/store/app';
-import { brand, fonts, HIT, useColors } from '@/theme';
+import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 const EXAMPLES = ['home.example1', 'home.example2', 'home.example3'] as const;
 
@@ -35,9 +35,14 @@ export function SearchCard() {
         padding: 6,
         paddingLeft: 14,
         borderRadius: 20,
-        borderWidth: 1,
-        borderColor: c.peachLine,
+        borderWidth: 1.5,
+        borderColor: c.peachEdge,
         backgroundColor: c.card,
+        shadowColor: '#C2410C',
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 3,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
@@ -70,9 +75,9 @@ export function SearchCard() {
         accessibilityLabel={t('home.a11yLocate')}
         onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
         style={{
+          ...asym(16, 5),
           width: 52,
           height: 52,
-          borderRadius: 16,
           backgroundColor: c.accent,
           alignItems: 'center',
           justifyContent: 'center',
@@ -84,7 +89,7 @@ export function SearchCard() {
   );
 }
 
-/** "Örnek sorular": closed by default so the home stays short; open, three questions for the chat. */
+/** "Yerim'e sorabileceklerin": closed by default so the home stays short; open, three questions for the chat. */
 export function ExampleQuestions() {
   const c = useColors();
   const { t } = useTranslation();
@@ -108,7 +113,7 @@ export function ExampleQuestions() {
         onPress={() => setOpen((o) => !o)}
         style={{ minHeight: HIT + 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}
       >
-        <Icon name="sparkle" size={20} color={c.textSecondary} />
+        <Icon name="chat" size={20} color={c.textSecondary} strokeWidth={2.2} />
         <Txt style={{ flex: 1, fontFamily: fonts.body, fontSize: 15 }} color={c.textSecondary}>
           {t('home.examplesToggle')}
         </Txt>

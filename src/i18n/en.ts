@@ -323,6 +323,7 @@ const en = {
     staticBodyMapped: 'No free-space info. Before you go, check nearby car parks that have it too.',
   },
   favorites: {
+    subtitle: 'the places you love',
     title: 'Favourites',
     empty: 'No favourites yet. Tap the star on a car park’s details.',
     otherCity: 'Saved in {{city}}',
@@ -396,6 +397,10 @@ const en = {
   },
   profile: {
     title: 'Profile',
+    onDevice: 'Everything stays here!',
+    groupYerim: 'Yerim',
+    groupPrefs: 'Preferences',
+    groupAbout: 'About',
     noAccount: 'No account. Your favourites and active parking stay on this device only.',
     data: 'Data sources',
     dataBody:
@@ -1178,9 +1183,22 @@ const en = {
     foodPlaces: 'Places near you',
     foodPlacesCount_one: '{{count}} place nearby',
     foodPlacesCount_other: '{{count}} places nearby',
-    examplesToggle: 'Example questions',
+    examplesToggle: 'Things to ask Yerim',
     liveLine: '{{count}} free · {{walk}} min',
     nearestWalk: 'closest {{walk}} min',
+    ticketFree: 'free',
+    ticketFood_one: 'place nearby',
+    ticketFood_other: 'places nearby',
+    ticketWhere: '{{name}} · {{walk}} min',
+    foodRadius: 'within walking distance',
+    greeting: {
+      morning: 'Good morning!',
+      day: 'Good afternoon!',
+      evening: 'Good evening!',
+      night: 'Good night!',
+    },
+    swipe: 'swipe',
+    footerNote: 'enjoy your meal, easy parking ✌︎',
     cravingTitle: 'What are you craving?',
     a11yCraving: 'Search {{name}}',
     cravingSlot: {

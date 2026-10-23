@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActiveParkCard } from '@/components/ActiveParkCard';
@@ -10,6 +10,11 @@ import { cityOfPlace, findFavoriteRestaurant, openInCity } from '@/components/fa
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
 import { TabHint } from '@/components/mascot/TabHint';
+import { HandNote, TabSquiggle } from '@/components/lively/Hand';
+import { MascotSays } from '@/components/lively/MascotSays';
+import { Paper } from '@/components/lively/Paper';
+import { Dashes } from '@/components/lively/Ticket';
+import type { MascotPose } from '@/components/mascot/Mascot';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
@@ -20,6 +25,9 @@ import { useParkings } from '@/data/useParkings';
 import { resolveFavoriteParking } from '@/lib/favoriteIds';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, statusTone, useColors, useTabBarSpace } from '@/theme';
+
+/** Yerim holding a star: how a place gets saved. */
+const STAR: MascotPose = { eyes: 'happy', mouth: 'smile', prop: 'star' };
 
 function confirmRemove(t: TFunction, name: string, remove: () => void) {
   Alert.alert(t('favorites.removeConfirmTitle', { name }), undefined, [
@@ -70,16 +78,17 @@ type FavTab = 'parkings' | 'restaurants';
 function FavTabs({ tab, onChange }: { tab: FavTab; onChange: (t: FavTab) => void }) {
   const c = useColors();
   const { t } = useTranslation();
-  const { fontScale } = useWindowDimensions();
-  const options: { id: FavTab; label: string }[] = [
-    { id: 'parkings', label: t('favorites.tabParkings') },
-    { id: 'restaurants', label: t('favorites.tabRestaurants') },
+  const parks = useApp((s) => s.favorites.length);
+  const places = useApp((s) => s.favoriteRestaurants.length);
+  const options: { id: FavTab; label: string; count: number }[] = [
+    { id: 'parkings', label: t('favorites.tabParkings'), count: parks },
+    { id: 'restaurants', label: t('favorites.tabRestaurants'), count: places },
   ];
   return (
     <View
       accessibilityRole="tablist"
       accessibilityLabel={t('favorites.tabsLabel')}
-      style={{ flexDirection: 'row', flexWrap: fontScale > 1.2 ? 'wrap' : 'nowrap', gap: 8 }}
+      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginHorizontal: -10 }}
     >
       {options.map((o) => {
         const selected = tab === o.id;
@@ -90,26 +99,51 @@ function FavTabs({ tab, onChange }: { tab: FavTab; onChange: (t: FavTab) => void
             accessibilityState={{ selected }}
             accessibilityLabel={o.label}
             onPress={() => onChange(o.id)}
-            style={[
-              asym(HIT / 2, 6),
-              {
-                minHeight: HIT,
-                minWidth: 112,
-                paddingHorizontal: 18,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: selected ? c.text : c.card,
-                borderWidth: 1,
-                borderColor: c.line,
-              },
-            ]}
+            style={{
+              minHeight: HIT,
+              paddingHorizontal: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+            }}
           >
-            <Txt variant="bodyBold" color={selected ? c.bg : c.text} style={{ fontSize: 15 }}>
+            <Txt
+              style={{ fontFamily: selected ? fonts.bodyExtraBold : fonts.body, fontSize: 15 }}
+              color={selected ? c.text : c.textSecondary}
+            >
               {o.label}
             </Txt>
+            <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 15 }} color={c.textSecondary}>
+              {o.count}
+            </Txt>
+            <TabSquiggle on={selected} />
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+/** Saved places in one card, rows split by a dashed line. */
+function ListCard({ children }: { children: React.ReactNode[] }) {
+  const c = useColors();
+  return (
+    <View
+      style={[
+        asym(20, 6),
+        { backgroundColor: c.card, borderWidth: 1, borderColor: c.line, overflow: 'hidden' },
+      ]}
+    >
+      {children.map((child, i) => (
+        <View key={i}>
+          {i > 0 && (
+            <View style={{ marginHorizontal: 12 }}>
+              <Dashes color={c.rowDash} />
+            </View>
+          )}
+          {child}
+        </View>
+      ))}
     </View>
   );
 }
@@ -132,11 +166,11 @@ function RestaurantFavorites() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the lookup reads the active city
     [ids, cityId],
   );
-  if (items.length === 0) return <Txt secondary>{t('favorites.emptyRestaurants')}</Txt>;
+  if (items.length === 0) return <MascotSays text={t('favorites.emptyRestaurants')} pose={STAR} />;
   const parkings = data?.parkings ?? [];
   const now = new Date();
   return (
-    <>
+    <ListCard>
       {items.map(({ r, city }) => {
         const meta = [kindLabel(r.kind, t), ...cuisineLabels(r.cuisines, t).slice(0, 2)]
           .filter(Boolean)
@@ -164,18 +198,7 @@ function RestaurantFavorites() {
         return (
           <View
             key={r.id}
-            style={[
-              asym(22, 6),
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                padding: 12,
-                backgroundColor: c.card,
-                borderWidth: 1,
-                borderColor: c.line,
-              },
-            ]}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 }}
           >
             <Pressable
               accessibilityRole="button"
@@ -217,7 +240,7 @@ function RestaurantFavorites() {
           </View>
         );
       })}
-    </>
+    </ListCard>
   );
 }
 
@@ -245,101 +268,103 @@ export default function FavoritesScreen() {
   }, [data, favorites, replaceFavoriteId]);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + 12,
-        paddingHorizontal: 20,
-        paddingBottom: tabSpace,
-        gap: 14,
-      }}
-    >
-      <ScreenHeader title={t('favorites.title')} />
-      <TabHint tab="favoriler" />
-      <ActiveSection />
-      <FavTabs tab={tab} onChange={setTab} />
-      {tab === 'restaurants' ? (
-        <RestaurantFavorites />
-      ) : favorites.length === 0 ? (
-        <Txt secondary>{t('favorites.empty')}</Txt>
-      ) : (
-        favorites.map((f) => {
-          // A car park saved in another city: listed with its city, opened after switching to it.
-          const savedIn = cityOfPlace(f);
-          const elsewhere = savedIn && savedIn.id !== cityId ? savedIn : undefined;
-          const p = data && !elsewhere ? resolveFavoriteParking(f, data.parkings) : null;
-          const fresh = p ? getFreshness(p, now) : null;
-          const free = p ? visibleFree(p, now) : null;
-          // Only fresh counts are shown; anything else reads as no count / unknown, in grey.
-          const live =
-            free != null && fresh && (fresh.kind === 'live' || fresh.kind === 'updated')
-              ? fresh
-              : null;
-          const level = live && p ? occupancyLevel(free, p.capacity) : 'unknown';
-          const status = elsewhere
-            ? t('favorites.otherCity', { city: elsewhere.name, cityLoc: elsewhere.locative })
-            : live
-              ? level === 'full'
-                ? t('favorites.fullAt', { time: formatClock(live.at) })
-                : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
-              : fresh?.kind === 'noData'
-                ? t('favorites.noCount')
-                : t('common.unknown');
-          return (
-            <View
-              key={f.id}
-              style={[
-                asym(22, 6),
-                {
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
-                  backgroundColor: c.card,
-                  borderWidth: 1,
-                  borderColor: c.line,
-                },
-              ]}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
-                onPress={() =>
-                  openInCity(elsewhere, f.name, t, setCity, () =>
-                    router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } }),
-                  )
-                }
-                style={{
-                  flex: 1,
-                  minHeight: HIT,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <ParkTile />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
-                  <Txt
-                    style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
-                    color={statusTone(level).fg}
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <Paper />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 20,
+          paddingBottom: tabSpace,
+          gap: 14,
+        }}
+      >
+        <View>
+          <ScreenHeader title={t('favorites.title')} />
+          <HandNote size={21}>{t('favorites.subtitle')}</HandNote>
+        </View>
+        <TabHint tab="favoriler" />
+        <ActiveSection />
+        <FavTabs tab={tab} onChange={setTab} />
+        {tab === 'restaurants' ? (
+          <RestaurantFavorites />
+        ) : favorites.length === 0 ? (
+          <MascotSays text={t('favorites.empty')} pose={STAR} />
+        ) : (
+          <ListCard>
+            {favorites.map((f) => {
+              // A car park saved in another city: listed with its city, opened after switching to it.
+              const savedIn = cityOfPlace(f);
+              const elsewhere = savedIn && savedIn.id !== cityId ? savedIn : undefined;
+              const p = data && !elsewhere ? resolveFavoriteParking(f, data.parkings) : null;
+              const fresh = p ? getFreshness(p, now) : null;
+              const free = p ? visibleFree(p, now) : null;
+              // Only fresh counts are shown; anything else reads as no count / unknown, in grey.
+              const live =
+                free != null && fresh && (fresh.kind === 'live' || fresh.kind === 'updated')
+                  ? fresh
+                  : null;
+              const level = live && p ? occupancyLevel(free, p.capacity) : 'unknown';
+              const status = elsewhere
+                ? t('favorites.otherCity', { city: elsewhere.name, cityLoc: elsewhere.locative })
+                : live
+                  ? level === 'full'
+                    ? t('favorites.fullAt', { time: formatClock(live.at) })
+                    : t('favorites.freeAt', { count: free ?? 0, time: formatClock(live.at) })
+                  : fresh?.kind === 'noData'
+                    ? t('favorites.noCount')
+                    : t('common.unknown');
+              return (
+                <View
+                  key={f.id}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}
+                >
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('favorites.a11yFav', { name: f.name, status })}
+                    onPress={() =>
+                      openInCity(elsewhere, f.name, t, setCity, () =>
+                        router.push({ pathname: '/otopark/[id]', params: { id: p?.id ?? f.id } }),
+                      )
+                    }
+                    style={{
+                      flex: 1,
+                      minHeight: HIT,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                    }}
                   >
-                    {status}
-                  </Txt>
+                    <ParkTile />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Txt style={{ fontFamily: fonts.display, fontSize: 17 }}>{f.name}</Txt>
+                      <Txt
+                        style={{ fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 }}
+                        color={statusTone(level).fg}
+                      >
+                        {status}
+                      </Txt>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('favorites.a11yRemove', { name: f.name })}
+                    onPress={() => confirmRemove(t, f.name, () => toggleFavorite(f))}
+                    style={{
+                      width: HIT,
+                      height: HIT,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="starFilled" color={c.accentStrong} />
+                  </Pressable>
                 </View>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('favorites.a11yRemove', { name: f.name })}
-                onPress={() => confirmRemove(t, f.name, () => toggleFavorite(f))}
-                style={{ width: HIT, height: HIT, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Icon name="starFilled" color={c.accentStrong} />
-              </Pressable>
-            </View>
-          );
-        })
-      )}
-    </ScrollView>
+              );
+            })}
+          </ListCard>
+        )}
+      </ScrollView>
+    </View>
   );
 }

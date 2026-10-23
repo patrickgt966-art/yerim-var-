@@ -6,7 +6,13 @@ import { Txt } from '@/components/Txt';
 import { brand, fonts, useColors } from '@/theme';
 
 /** A hand-drawn underline: one loose stroke, a little uneven. */
-export function Squiggle({ width, color = brand.orange }: { width: number; color?: string }) {
+export function Squiggle({
+  width,
+  color = brand.orange,
+}: {
+  width: number | `${number}%`;
+  color?: string;
+}) {
   return (
     <Svg width={width} height={10} viewBox="0 0 120 10" preserveAspectRatio="none">
       <Path
@@ -53,6 +59,16 @@ export function HandNote({
           <Squiggle width={underline} />
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** Under the chosen text tab: the hand-drawn underline instead of a ruler-straight bar. */
+export function TabSquiggle({ on }: { on: boolean }) {
+  if (!on) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 5, right: 5, bottom: 2 }}>
+      <Squiggle width="100%" />
     </View>
   );
 }
