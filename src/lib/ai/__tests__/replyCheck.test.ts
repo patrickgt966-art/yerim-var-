@@ -361,3 +361,117 @@ describe('honest wordings the check accepts (convo eval round 2)', () => {
     );
   });
 });
+
+describe('park wordings: false rejections from the convo eval', () => {
+  const opts = { kind: 'park' as const, allow: ['Bursa', 'Üsküdar'] };
+  const ok = (text: string, f: AiReplyFacts) =>
+    expect(validateReplyReason(text, f, opts)).toEqual({ text, reason: null });
+  const no = (text: string, f: AiReplyFacts, reason: string) =>
+    expect(validateReplyReason(text, f, opts)).toEqual({ text: null, reason });
+
+  // Fee flags as replyItems sends them: free from isPaid === false, paid from isPaid === true.
+  const bursa: AiReplyFacts = {
+    where: 'Konumuna',
+    count: 52,
+    parkSearch: true,
+    daypart: 'noon',
+    items: [
+      { name: 'Otopark · Reyhan yakını', walkMin: 1, free: false },
+      { name: 'Zafer Plaza Otoparkı', walkMin: 4, free: false },
+      { name: 'Otopark · Doğanbey yakını', walkMin: 3, free: true },
+    ],
+  };
+  const freeText =
+    'Konumuna yakın 52 otopark buldum; öğle saatinde en yakınları birkaç dakika yürüme mesafesinde. Reyhan ve Zafer Plaza yakınındakiler ücretli görünüyor, Doğanbey yakınındaki ise ücretsiz.';
+
+  it('accepts "ücretsiz" for a car park whose facts say free', () => {
+    ok(freeText, bursa);
+  });
+
+  it('still rejects "ücretsiz" when no car park is free or the fee is unknown', () => {
+    const paid: AiReplyFacts = {
+      ...bursa,
+      items: bursa.items!.map((i) => ({ ...i, free: false })),
+    };
+    const unknown: AiReplyFacts = {
+      ...bursa,
+      items: bursa.items!.map(({ free: _free, ...rest }) => rest),
+    };
+    no(freeText, paid, 'free-without-fact');
+    no(freeText, unknown, 'price-word');
+    no('Doğanbey yakınındaki otopark ücretsiz görünüyor.', unknown, 'free-without-fact');
+  });
+
+  const uskudar: AiReplyFacts = {
+    where: 'Üsküdar',
+    count: 6,
+    parkSearch: true,
+    freeOnly: true,
+    far: true,
+    farWalkMin: 20,
+    items: [
+      { name: 'Servili Park', walkMin: 20, free: true },
+      { name: 'Yavuz Gökmen Parkı', walkMin: 22, free: true },
+    ],
+  };
+  const nearestText =
+    'Üsküdar’da ücretsiz otoparklar buldum; en yakın seçenekler Servili Park ve Yavuz Gökmen Parkı çevresinde, oradan yaklaşık 20 dakika yürüyüşle ulaşabilirsin.';
+
+  it('accepts a superlative in a sentence that states the walk minutes of the facts', () => {
+    ok(nearestText, uskudar);
+    ok('En yakın otopark 22 dakika yürüme.', {
+      ...uskudar,
+      far: true,
+      farWalkMin: 22,
+      items: [{ name: 'Servili Park', walkMin: 22, free: true }],
+    });
+  });
+
+  it('still rejects near claims for a far top place', () => {
+    const far30: AiReplyFacts = {
+      where: 'Konak',
+      count: 3,
+      parkSearch: true,
+      far: true,
+      farWalkMin: 30,
+      items: [{ name: 'Kemeraltı Otoparkı', walkMin: 30 }],
+    };
+    no('Kemeraltı Otoparkı hemen yakında.', far30, 'near-word-for-far');
+    no('Hemen yakında bir otopark buldum, 30 dakika.', far30, 'near-word-for-far');
+    no('En yakın otopark Kemeraltı Otoparkı.', far30, 'near-word-for-far');
+    no('Otopark yürüme mesafesinde, 30 dakika.', far30, 'near-word-for-far');
+    ok('En yakını 30 dakika yürüme.', far30);
+    // A superlative with a walk that is not in the facts is an invented number.
+    no('En yakını 12 dakika yürüme.', far30, 'number-not-in-facts');
+    // A walk of the facts does not excuse "hemen yanında" in the same sentence.
+    no('Hemen yanında, 30 dakika yürüyüşle.', far30, 'near-word-for-far');
+  });
+
+  const noLive: AiReplyFacts = {
+    where: 'Üsküdar',
+    count: 4,
+    parkSearch: true,
+    items: [
+      { name: 'Servili Park', walkMin: 5, free: true },
+      { name: 'Yavuz Gökmen Parkı', walkMin: 8, free: false },
+    ],
+  };
+
+  it('accepts a negated room clause next to a paid-car-park clause', () => {
+    ok('Ücretli olanlar da var, canlı boş yer bilgisi şu an yok.', noLive);
+    ok(
+      'Üsküdar’da 4 otopark buldum. Ücretli olanlar da var, canlı boş yer bilgisi şu an yok.',
+      noLive,
+    );
+    ok('Boş yer bilgisi şu an yok.', noLive);
+    ok('Canlı boş yer sayısı bilinmiyor.', noLive);
+  });
+
+  it('still rejects a room claim without a live count', () => {
+    no('Ücretli olanlar da var, boş yer var.', noLive, 'room-without-live-count');
+    no('Servili Park’ta boş yer var, 5 dakika.', noLive, 'room-without-live-count');
+    no('Boş yer var, şu an yok demiyorum.', noLive, 'room-without-live-count');
+    no('Boş yer var; bilgi şu an yok.', noLive, 'room-without-live-count');
+    no('Otoparkta yer var, 7 dakika.', noLive, 'number-not-in-facts');
+  });
+});

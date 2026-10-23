@@ -52,7 +52,7 @@ const ROOM_WORDS =
  * dık/dı/yan/z), as does an English negation.
  */
 export const NOT_KNOWN =
-  /(^| )(bilgi\w* (yok|mevcut degil)|elimde yok|bilgim yok|(ol|\w{3,})(m[iu]yor|m[ae]di|m[ae]yan|m[ae]z( |$))|(not|no|cannot|unable|without|unknown|(don|doesn|isn|aren|can|couldn|didn) t|dont|do not|does not|did not)( |$))/;
+  /(^| )(bilgi\w*( \w+){0,2} (yok|mevcut degil)|su an yok|elimde yok|bilgim yok|(ol|\w{3,})(m[iu]yor|m[ae]di|m[ae]yan|m[ae]z( |$))|(not|no|cannot|unable|without|unknown|(don|doesn|isn|aren|can|couldn|didn) t|dont|do not|does not|did not)( |$))/;
 /** The clause says the place is far, so a near word in it is not a near claim. */
 const FAR_WORDS = /(^| )(uzak|far|farther|further)/;
 /** "en yakını", "nearest": a superlative that is true of a far place too ("en yakını bile 36 dk"). */
@@ -237,12 +237,18 @@ const sentencesOf = (text: string): string[] => text.split(/(?<=[.!?…])\s+/);
  * a bare "en yakını X", "yakında", "hemen yanında", "yürüme mesafesinde" are not.
  */
 function nearClaim(clean: string, facts: AiReplyFacts, allow: string[]): boolean {
+  const known = new Set<number>();
+  if (typeof facts.farWalkMin === 'number') known.add(facts.farWalkMin);
+  for (const i of facts.items ?? []) {
+    for (const n of [i.walkMin, i.parkWalkMin]) if (typeof n === 'number') known.add(n);
+  }
   for (const sentence of sentencesOf(clean)) {
     const f = ` ${withoutFactStrings(fold(sentence), facts, allow)} `;
     if (FAR_WORDS.test(f)) continue;
     const walks = [...f.matchAll(/(\d+) ?(?:dk|dakika|min|minutes)/g)].map((m) => Number(m[1]));
-    const statesFar = walks.some((m) => m > FAR_WALK_MIN);
-    if (NEAR_WORDS.test(statesFar ? f.replace(NEAREST_WORDS, ' ') : f)) return true;
+    // A superlative is honest whatever the number, as long as the sentence states a walk of the facts.
+    const statesWalk = walks.some((m) => m > FAR_WALK_MIN || known.has(m));
+    if (NEAR_WORDS.test(statesWalk ? f.replace(NEAREST_WORDS, ' ') : f)) return true;
   }
   return false;
 }

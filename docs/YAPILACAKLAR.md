@@ -83,7 +83,7 @@ Apple Developer hesabı 19 Ekim'de açıldı (Team ID `YBC82Z2MP5`, uygulama `co
 
 ## Sıradaki küçük işler (hesap gerekmez)
 
-- Otopark cevaplarında yapay zekâ metninin kabul oranı (son sınavda %79, yazılıyor).
+- Otopark cevaplarında yapay zekâ metninin kabul oranı (son sınavda %79; gereksiz retler düzeltildi, ücreti bilinmeyen otoparka "ücretsiz" demek hâlâ reddediliyor).
 - "ailece …" isteğinde önce kişi sayısı soruluyor; sonuç + "veri yok" notu daha iyi olabilir.
 - Gaziemir ve Bursa BURULAŞ tarifelerinin kontrolü; Ankara ANPARK tarifesi (rakamlar bekleniyor).
 
