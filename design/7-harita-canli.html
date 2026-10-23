@@ -1,0 +1,117 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>7-harita-canli</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Harita sekmesi, "canlı" stil: tam ekran harita, üstte ten-turuncu kenarlı arama ve Otoparklar/Restoranlar
+  seçici, iğneler doluluk renginde (uygulamadaki PPin: beyaz hap, sayı durum renginde; canlı sayısı yoksa
+  küçük lacivert P), seçili otoparkın kartı asimetrik köşeli. Haritada maskot çıkmaz (kural: kaydırırken araya girmez).
+-->
+<style>
+.pin{position:absolute;display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)}
+.pin .b{display:flex;align-items:center;gap:4px;background:#fff;border-radius:12px;padding:4px 8px 4px 5px;font-weight:800;font-size:13px;box-shadow:0 4px 10px -4px rgba(11,60,73,.45)}
+.pin .p{width:20px;height:20px;border-radius:6px;background:var(--navy);color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.pin .tip{width:10px;height:7px;background:#fff;clip-path:polygon(0 0,100% 0,50% 100%);margin-top:-1px}
+.pin.sel .b{background:var(--navy);color:#fff;transform:scale(1.12);box-shadow:0 0 0 4px rgba(255,138,31,.55),0 6px 14px -4px rgba(11,60,73,.6)}
+.pin.sel .p{background:var(--orange);color:var(--navy)}
+.pin.sel .tip{background:var(--navy)}
+.q{position:absolute;width:22px;height:22px;border-radius:7px 7px 7px 2px;background:var(--navy);color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(11,60,73,.35)}
+.food{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--orange);border:2px solid #fff;transform:translate(-50%,-50%);opacity:.75}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen">
+
+  <!-- Harita -->
+  <svg class="abs" width="390" height="844" viewBox="0 0 390 844" style="left:0;top:0" aria-hidden="true">
+    <rect width="390" height="844" fill="#EFE8DC"/>
+    <!-- deniz: Kordon kıyısı -->
+    <path d="M0 0h150c-10 90-40 150-70 210S40 330 30 420 0 520 0 560z" fill="#CFE6EC"/>
+    <path d="M150 0c-10 90-40 150-70 210S40 330 30 420 0 520 0 560" fill="none" stroke="#B9D9E2" stroke-width="4"/>
+    <!-- parklar -->
+    <rect x="248" y="380" width="104" height="92" rx="18" fill="#D7EBDD"/>
+    <rect x="96" y="560" width="70" height="56" rx="14" fill="#D7EBDD"/>
+    <!-- yapı adaları -->
+    <g fill="#E6DED0">
+      <rect x="180" y="120" width="60" height="44" rx="8"/><rect x="262" y="140" width="80" height="50" rx="8"/>
+      <rect x="170" y="250" width="70" height="56" rx="8"/><rect x="280" y="260" width="66" height="70" rx="8"/>
+      <rect x="120" y="420" width="90" height="60" rx="8"/><rect x="200" y="520" width="80" height="70" rx="8"/>
+      <rect x="300" y="520" width="70" height="60" rx="8"/><rect x="40" y="660" width="100" height="60" rx="8"/>
+    </g>
+    <!-- yollar -->
+    <g stroke="#FFFFFF" stroke-linecap="round" fill="none">
+      <path d="M160 0c-10 92-42 154-72 214S48 334 38 424 8 524 4 564" stroke-width="11"/>
+      <path d="M110 844L330 0M60 760L390 420M150 230l240 30M90 360l300 60M40 600l350 -40M0 700l390 40" stroke-width="7"/>
+      <path d="M250 844l40-844M200 100l-60 744M0 500l220-120" stroke-width="4"/>
+    </g>
+    <!-- benim konumum -->
+    <circle cx="214" cy="400" r="34" fill="rgba(46,134,222,.12)"/>
+    <circle cx="214" cy="400" r="8" fill="#2E86DE" stroke="#fff" stroke-width="3.5"/>
+  </svg>
+
+  <!-- Restoranlar soluk (mod: otoparklar) -->
+  <div class="food" style="left:176px;top:452px"></div><div class="food" style="left:248px;top:330px"></div>
+  <div class="food" style="left:120px;top:300px"></div><div class="food" style="left:300px;top:470px"></div>
+  <div class="food" style="left:226px;top:610px"></div>
+
+  <!-- Otopark iğneleri -->
+  <div class="pin sel" style="left:150px;top:350px"><div class="b"><span class="p">P</span>12</div><div class="tip"></div></div>
+  <div class="pin" style="left:300px;top:420px"><div class="b"><span class="p" style="background:#A54A07">P</span><span style="color:var(--few)">3</span></div><div class="tip"></div></div>
+  <div class="pin" style="left:262px;top:250px"><div class="b"><span class="p" style="background:#0E6B5A">P</span><span style="color:var(--mint-text)">41</span></div><div class="tip"></div></div>
+  <div class="pin" style="left:240px;top:560px"><div class="b"><span class="p" style="background:#B91C1C">P</span><span style="color:var(--full)">Dolu</span></div><div class="tip"></div></div>
+  <div class="q" style="left:320px;top:190px">P</div><div class="q" style="left:96px;top:520px">P</div><div class="q" style="left:340px;top:610px">P</div>
+
+  <!-- el yazısı: buradasın -->
+  <div class="hand abs" style="left:232px;top:370px;font-size:18px;color:#2E86DE;transform:rotate(-6deg)">buradasın</div>
+
+  <!-- Üst: kâğıt rengi geçiş, arama ve mod seçici -->
+  <div class="abs" style="left:0;right:0;top:0;height:200px;background:linear-gradient(var(--paper) 55%,rgba(251,247,241,0))"></div>
+  <div class="abs" style="left:0;right:0;top:0">
+    <div data-status></div>
+    <div style="padding:10px 16px 0">
+      <div class="field" style="padding:6px 6px 6px 14px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <div style="flex:1;font-size:15px;color:var(--sec)">Bu bölgede ara</div>
+        <div style="display:flex;align-items:center;gap:5px;height:40px;padding:0 12px;border-radius:14px;background:var(--peach-soft);font-weight:800;font-size:13px;color:var(--peach-text)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A4513" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>İzmir
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <div class="pill" style="background:var(--navy);color:#fff;padding:8px 13px;border-radius:14px 14px 14px 5px"><span style="width:18px;height:18px;border-radius:5px;background:#fff;color:var(--navy);font-family:'Bricolage Grotesque';font-size:12px;display:inline-flex;align-items:center;justify-content:center">P</span>Otoparklar</div>
+        <div class="pill" style="background:#fff;color:var(--navy);padding:8px 13px;border-radius:14px;border:1px solid var(--peach-line)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.3" stroke-linecap="round"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 4-3 7h3v11"/></svg>Restoranlar</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Konumum düğmesi -->
+  <div class="abs" style="right:16px;top:470px;width:48px;height:48px;border-radius:16px 16px 16px 5px;background:#fff;box-shadow:0 6px 14px -6px rgba(11,60,73,.45);display:flex;align-items:center;justify-content:center">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </div>
+
+  <!-- Seçili otoparkın kartı -->
+  <div class="abs card" style="left:12px;right:12px;bottom:112px;padding:14px 14px 12px;box-shadow:0 14px 30px -14px rgba(11,60,73,.5);border-radius:24px 24px 24px 8px">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div class="disp" style="width:44px;height:44px;border-radius:14px 14px 14px 4px;background:var(--mint-soft);color:var(--mint-text);font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center">P</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:17px;line-height:22px">Konak Pier Otoparkı</div>
+        <div class="sub" style="font-size:12.5px">3 dk yürüme · az önce güncellendi</div>
+      </div>
+      <div style="width:32px;height:32px;border-radius:16px;background:var(--chip);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+      <span class="pill" style="background:var(--mint-soft);color:var(--mint-text);font-size:14px"><span class="live"></span>12 boş</span>
+      <span class="pill" style="background:var(--chip);color:var(--sec)">ilk saat ~40 TL</span>
+      <span class="hand" style="margin-left:auto;font-size:17px;color:var(--sec);transform:rotate(-3deg)">en yakını bu</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <div class="btn" style="flex:1;background:var(--orange)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8z"/></svg>Yol tarifi</div>
+      <div class="btn" style="background:var(--mint-soft);color:var(--mint-text)">Buraya park ettim</div>
+      <div class="btn" style="background:var(--peach-soft);color:var(--peach-text);padding:0 12px">Detay</div>
+    </div>
+  </div>
+
+  <div data-tabbar="harita"></div>
+</div>
+<script src="canli.js"></script>
+</body></html>

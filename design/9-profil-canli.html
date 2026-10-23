@@ -1,0 +1,96 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>9-profil-canli</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  Profil sekmesi, "canlı" stil: hesap yok kartı maskotla ("her şey bu cihazda"), Yerim ayarları
+  (akıllı yardım, yeni "arada bir selam versin" anahtarı, tanıtımı yeniden izle), tercihler,
+  veri canlılığı ve hakkında satırları tek tip kartlarda; ✨ yerine maskotun yüzü.
+-->
+<style>
+.set{display:flex;align-items:center;gap:12px;min-height:58px;padding:9px 14px;border-bottom:1px dashed #E6DCCD}
+.set:last-child{border-bottom:0}
+.set .ic{width:34px;height:34px;border-radius:11px 11px 11px 4px;display:flex;align-items:center;justify-content:center;flex:none}
+.set .tx{flex:1;min-width:0}
+.set .tx b{display:block;font-size:14px;line-height:19px}
+.set .tx span{display:block;font-size:12px;line-height:16px;color:var(--sec);font-weight:700}
+.val{font-weight:800;font-size:13px;color:var(--sec);display:flex;align-items:center;gap:4px}
+.lbl{font-weight:800;font-size:12px;letter-spacing:.5px;color:var(--peach-text);margin:18px 20px 7px}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen paper">
+  <div class="rel">
+    <div data-status></div>
+    <div style="padding:12px 18px 0">
+      <div class="h1">Profil</div>
+    </div>
+
+    <!-- Hesap yok: maskot anlatır -->
+    <div class="rel card" style="margin:12px 16px 0;padding:14px 14px 14px 112px;min-height:112px;background:linear-gradient(120deg,#FFF6EC,#FFFFFF 70%)">
+      <div id="mascot" class="abs" style="left:4px;bottom:6px"></div>
+      <div class="hand" style="font-size:21px;line-height:22px;color:var(--orange-strong);transform:rotate(-2deg);transform-origin:left">Her şey bu cihazda!</div>
+      <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:4px">Hesap yok. Favorilerin ve aktif parkın sadece bu telefonda kalır; konumun sunucumuza gitmez.</div>
+    </div>
+
+    <div class="lbl">YERİM</div>
+    <div class="card" style="margin:0 16px">
+      <div class="set">
+        <span class="ic" style="background:var(--orange)" id="faceA"></span>
+        <div class="tx"><b>Akıllı yardım</b><span>Sohbette Yerim cevaplar · bugün 8 soru</span></div>
+        <span class="toggle on"></span>
+      </div>
+      <div class="set">
+        <span class="ic" style="background:var(--peach-soft)" id="faceB"></span>
+        <div class="tx"><b>Yerim arada bir selam versin</b><span>Günde en fazla bir kez</span></div>
+        <span class="toggle on"></span>
+      </div>
+      <div class="set">
+        <span class="ic" style="background:var(--mint-soft)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E6B5A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16l13-8z"/></svg></span>
+        <div class="tx"><b>Tanıtımı yeniden izle</b><span>Yerim uygulamayı baştan gezdirir</span></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+      </div>
+    </div>
+
+    <div class="lbl">TERCİHLER</div>
+    <div class="card" style="margin:0 16px">
+      <div class="set">
+        <span class="ic" style="background:var(--chip)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9z"/></svg></span>
+        <div class="tx"><b>Dil / Language</b></div>
+        <span class="val">Telefonun dili <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      </div>
+      <div class="set">
+        <span class="ic" style="background:var(--chip)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8z"/></svg></span>
+        <div class="tx"><b>Yol tarifi uygulaması</b></div>
+        <span class="val">Her seferinde sor <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      </div>
+    </div>
+
+    <div class="lbl">HAKKINDA</div>
+    <div class="card" style="margin:0 16px">
+      <div class="set">
+        <span class="ic" style="background:var(--mint-soft)"><span class="live"></span></span>
+        <div class="tx"><b>Veri kaynakları</b><span>Son veri alma: 18:42 · İzmir canlı</span></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+      </div>
+      <div class="set">
+        <span class="ic" style="background:var(--chip)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.2" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></span>
+        <div class="tx"><b>Gizlilik</b><span>Analitik, reklam, takip yok</span></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+      </div>
+      <div class="set">
+        <span class="ic" style="background:var(--chip)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.2" stroke-linecap="round"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg></span>
+        <div class="tx"><b>Açık kaynak lisansları</b><span>Kod MIT · GitHub'da gör</span></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F6A75" stroke-width="2.4" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>
+      </div>
+    </div>
+  </div>
+  <div data-tabbar="profil"></div>
+</div>
+<script src="canli.js"></script>
+<script>
+document.getElementById('mascot').innerHTML = yerimMascot({ size: 108, eyes: 'happy', mouth: 'open', arm: 'wave' });
+const face = (c) => `<svg width="22" height="18" viewBox="0 0 34 28"><ellipse cx="10" cy="10" rx="3.6" ry="4.8" fill="${c}"/><ellipse cx="24" cy="10" rx="3.6" ry="4.8" fill="${c}"/><path d="M12 18q5 5 10 0" fill="none" stroke="${c}" stroke-width="2.8" stroke-linecap="round"/></svg>`;
+document.getElementById('faceA').innerHTML = face('#0B3C49');
+document.getElementById('faceB').innerHTML = face('#8A4513');
+</script>
+</body></html>
