@@ -68,7 +68,19 @@ const tr = {
     skip: 'Şimdilik geç',
   },
   coach: {
-    search: "Ne yemek istediğini ya da nereye gideceğini yaz. Uzun bir isteğin varsa Yerim'e sor.",
+    hello: 'Selam, ben Yerim!',
+    search: 'Buraya ne istediğini yaz: bir yemek, bir semt ya da otopark. Gerisini ben bulurum.',
+    park: 'Otopark bul: yakındaki otoparkları, varsa canlı boş yer sayısıyla gösteririm.',
+    food: 'Yemek bul: yakındaki restoranlar; otoparkı yakın olanları öne alırım.',
+    map: 'Harita: otopark iğnelerinin rengi doluluğu söyler. Restoranlar da orada.',
+    yerim: "Ben hep buradayım. Uzun bir isteğin varsa Yerim'e dokun, sor yeter.",
+    hint: {
+      favoriler:
+        'Sevdiğin yerler ve aktif parkın burada. Bir yeri kaydetmek için detayında yıldıza bas.',
+      profil:
+        "Ayarlar burada. Ara sıra selam vermemi istemezsen 'Yerim arada bir selam versin'i kapat.",
+    },
+    hintOk: 'Tamam',
     next: 'Devam',
     skip: 'Geç',
     a11yHint: 'Sonraki ipucuna geçer',

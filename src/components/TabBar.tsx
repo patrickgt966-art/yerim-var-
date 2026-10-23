@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import {
+  asym,
   brand,
   fonts,
   HIT,
@@ -13,7 +14,9 @@ import {
   useColors,
 } from '@/theme';
 
+import { CoachTarget, useCoachTarget } from './coach/registry';
 import { TabGlyph, type TabGlyphName } from './home/TabGlyph';
+import { MascotFace } from './mascot/Mascot';
 import { Txt } from './Txt';
 
 const GLYPHS: Record<string, TabGlyphName> = {
@@ -40,6 +43,7 @@ const CENTER_SIZE = 66;
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const c = useColors();
   const { t } = useTranslation();
+  const coachYerim = useCoachTarget('yerim');
 
   const items = state.routes.map((route, index) => {
     const focused = state.index === index;
@@ -67,7 +71,8 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           gap: 3,
         }}
       >
-        <View
+        <CoachTarget
+          coachKey={route.name === 'harita' ? 'map' : null}
           style={{
             width: 52,
             height: 34,
@@ -83,7 +88,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             size={27}
             strokeWidth={focused ? 2.3 : 2}
           />
-        </View>
+        </CoachTarget>
         <Txt
           color={color}
           numberOfLines={1}
@@ -135,6 +140,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
         {items.slice(2)}
       </View>
       <Pressable
+        {...coachYerim}
         accessibilityRole="button"
         accessibilityLabel={t('home.a11yYerim')}
         accessibilityHint={t('home.a11yYerimHint')}
@@ -147,7 +153,9 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             marginLeft: -CENTER_SIZE / 2,
             width: CENTER_SIZE,
             height: CENTER_SIZE,
-            borderRadius: CENTER_SIZE / 2,
+            // The mascot's shape: three round corners, the bottom-left one tight, a slight lean.
+            ...asym(24, 8),
+            transform: [{ rotate: '-4deg' }],
             borderWidth: 4,
             borderColor: c.card,
             backgroundColor: c.accent,
@@ -162,7 +170,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           },
         ]}
       >
-        <TabGlyph name="chat" color={brand.navy} size={27} strokeWidth={2.3} />
+        <MascotFace size={30} />
         <Txt
           allowFontScaling={false}
           style={{ fontFamily: fonts.display, fontSize: 12, lineHeight: 14, marginTop: 1 }}

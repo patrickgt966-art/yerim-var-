@@ -16,6 +16,8 @@ jest.mock('@/data/useParkings', () => ({
   }),
 }));
 jest.mock('@/lib/ai/client', () => ({ aiBaseUrl: () => 'https://ai.example' }));
+// Yerim's first-visit hint animates with Reanimated; it has its own tests.
+jest.mock('@/components/mascot/TabHint', () => ({ TabHint: () => null }));
 
 beforeEach(() => {
   useApp.setState({ lang: 'auto', mapApp: null });

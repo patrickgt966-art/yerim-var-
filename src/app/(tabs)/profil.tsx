@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { TabHint } from '@/components/mascot/TabHint';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SuggestionChip, Tile } from '@/components/search/SearchBits';
 import { Txt } from '@/components/Txt';
@@ -17,6 +18,7 @@ import type { LangPref } from '@/i18n';
 import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
 import { useAi } from '@/store/ai';
+import { useCoach } from '@/store/coach';
 import { useApp } from '@/store/app';
 import { brand, fonts, useColors, useTabBarSpace } from '@/theme';
 
@@ -111,6 +113,7 @@ export default function ProfileScreen() {
       }}
     >
       <ScreenHeader title={t('profile.title')} />
+      <TabHint tab="profil" />
       <Txt secondary>{t('profile.noAccount')}</Txt>
       {aiBaseUrl() ? (
         <Card icon="sparkle" tint={brand.peachSoft} title={t('chat.aiSetting')}>
@@ -167,6 +170,8 @@ export default function ProfileScreen() {
         kind="secondary"
         label={t('profile.resetOnboarding')}
         onPress={() => {
+          // The welcome, Yerim's tour and the first-visit hints all play again.
+          useCoach.getState().reset();
           setOnboarded(false);
           router.replace('/onboarding');
         }}

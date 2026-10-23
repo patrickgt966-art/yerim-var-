@@ -3,8 +3,11 @@ import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-/** The home coach marks, in the order they are shown. */
-export const COACH_STEPS = ['search'] as const;
+/**
+ * The first-launch tour Yerim gives, in order: the home screen's main jobs, then the map tab and
+ * the Yerim button. The other tabs get a one-line hint on their first visit (`seenHints`).
+ */
+export const COACH_STEPS = ['search', 'park', 'food', 'map', 'yerim'] as const;
 export type CoachKey = (typeof COACH_STEPS)[number];
 
 /**
@@ -19,9 +22,16 @@ export function resolveStep(from: number, available: readonly CoachKey[]): numbe
   return null;
 }
 
+/** Tabs that get a one-line hint from Yerim on their first visit. */
+export const TAB_HINTS = ['favoriler', 'profil'] as const;
+export type TabHintKey = (typeof TAB_HINTS)[number];
+
 type State = {
   /** True once the tour was finished or skipped. Persisted: it never shows again. */
   coachDone: boolean;
+  /** First-visit hints already shown. Persisted. */
+  seenHints: TabHintKey[];
+  seeHint: (key: TabHintKey) => void;
   /** Index into COACH_STEPS. Not persisted: an interrupted tour starts over. */
   step: number;
   /** To the next step with a target in `available`; after the last one sets `coachDone`. */
@@ -35,6 +45,10 @@ export const useCoach = create<State>()(
   persist(
     (set, get) => ({
       coachDone: false,
+      seenHints: [],
+      seeHint: (key) => {
+        if (!get().seenHints.includes(key)) set({ seenHints: [...get().seenHints, key] });
+      },
       step: 0,
       next: (available) => {
         const current = resolveStep(get().step, available);
@@ -43,18 +57,23 @@ export const useCoach = create<State>()(
         else set({ step: next });
       },
       skip: () => set({ coachDone: true }),
-      reset: () => set({ coachDone: false, step: 0 }),
+      reset: () => set({ coachDone: false, step: 0, seenHints: [] }),
     }),
     {
       name: 'yerim-var/coach',
       version: 1,
       storage: createJSONStorage(() => AsyncStorage),
       // Persisted data may be corrupt: only a real `true` counts as done.
-      merge: (persisted, current) => ({
-        ...current,
-        coachDone: (persisted as { coachDone?: unknown } | null)?.coachDone === true,
-      }),
-      partialize: ({ coachDone }) => ({ coachDone }),
+      merge: (persisted, current) => {
+        const p = persisted as { coachDone?: unknown; seenHints?: unknown } | null;
+        const hints = Array.isArray(p?.seenHints) ? p.seenHints : [];
+        return {
+          ...current,
+          coachDone: p?.coachDone === true,
+          seenHints: TAB_HINTS.filter((k) => hints.includes(k)),
+        };
+      },
+      partialize: ({ coachDone, seenHints }) => ({ coachDone, seenHints }),
     },
   ),
 );

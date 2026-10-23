@@ -13,7 +13,7 @@ async function rehydrateWith(state: Record<string, unknown>) {
 describe('coach store', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
-    useCoach.setState({ coachDone: false, step: 0 });
+    useCoach.setState({ coachDone: false, step: 0, seenHints: [] });
   });
 
   it('starts not done, at the first step', () => {
@@ -21,13 +21,23 @@ describe('coach store', () => {
     expect(useCoach.getState().step).toBe(0);
   });
 
-  it('has a single step, the search card', () => {
-    expect([...COACH_STEPS]).toEqual(['search']);
+  it("tours the home screen's main jobs, then the map tab and the Yerim button", () => {
+    expect([...COACH_STEPS]).toEqual(['search', 'park', 'food', 'map', 'yerim']);
   });
 
-  it('sets coachDone after the last step', () => {
+  it('walks every step, then sets coachDone', () => {
+    for (let i = 1; i < COACH_STEPS.length; i++) {
+      useCoach.getState().next(ALL);
+      expect(useCoach.getState().step).toBe(i);
+      expect(useCoach.getState().coachDone).toBe(false);
+    }
     useCoach.getState().next(ALL);
     expect(useCoach.getState().coachDone).toBe(true);
+  });
+
+  it('skips steps whose target is not on screen', () => {
+    useCoach.getState().next(['search', 'map']);
+    expect(useCoach.getState().step).toBe(3);
   });
 
   it('finishes when no target is left on screen', () => {
@@ -47,7 +57,7 @@ describe('coach store', () => {
     useCoach.getState().skip();
     await new Promise((r) => setTimeout(r, 0));
     const stored = JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
-    expect(stored.state).toEqual({ coachDone: true });
+    expect(stored.state).toEqual({ coachDone: true, seenHints: [] });
     const saved = (await AsyncStorage.getItem(KEY)) ?? '';
     // Simulate a restart: a fresh in-memory store, the saved string still in storage.
     useCoach.setState({ coachDone: false, step: 1 });
@@ -63,7 +73,20 @@ describe('coach store', () => {
     useCoach.setState({ step: 1 });
     await new Promise((r) => setTimeout(r, 0));
     const stored = JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
-    expect(stored.state).toEqual({ coachDone: false });
+    expect(stored.state).toEqual({ coachDone: false, seenHints: [] });
+  });
+
+  it('remembers first-visit hints once, and keeps only known ones', async () => {
+    useCoach.getState().seeHint('profil');
+    useCoach.getState().seeHint('profil');
+    expect(useCoach.getState().seenHints).toEqual(['profil']);
+    await rehydrateWith({ coachDone: true, seenHints: ['favoriler', 'nope', 3] });
+    expect(useCoach.getState().seenHints).toEqual(['favoriler']);
+    await rehydrateWith({ coachDone: true, seenHints: 'x' });
+    expect(useCoach.getState().seenHints).toEqual([]);
+    useCoach.getState().seeHint('favoriler');
+    useCoach.getState().reset();
+    expect(useCoach.getState().seenHints).toEqual([]);
   });
 
   it('treats corrupt persisted values as not done', async () => {

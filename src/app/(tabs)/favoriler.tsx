@@ -9,6 +9,7 @@ import { ActiveParkCard } from '@/components/ActiveParkCard';
 import { cityOfPlace, findFavoriteRestaurant, openInCity } from '@/components/favoriteCity';
 import { Icon } from '@/components/Icon';
 import { PBadge } from '@/components/PBadge';
+import { TabHint } from '@/components/mascot/TabHint';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Section } from '@/components/Section';
 import { Txt } from '@/components/Txt';
@@ -253,6 +254,7 @@ export default function FavoritesScreen() {
       }}
     >
       <ScreenHeader title={t('favorites.title')} />
+      <TabHint tab="favoriler" />
       <ActiveSection />
       <FavTabs tab={tab} onChange={setTab} />
       {tab === 'restaurants' ? (

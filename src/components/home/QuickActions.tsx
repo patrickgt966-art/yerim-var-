@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Pressable, useWindowDimensions, View } from 'react-native';
 
+import { useCoachTarget } from '@/components/coach/registry';
 import { openFoodNearMe } from '@/components/FoodHome';
 import { Icon } from '@/components/Icon';
 import { Txt } from '@/components/Txt';
@@ -24,6 +25,8 @@ export function QuickActions({
   const { fontScale } = useWindowDimensions();
   const [busy, setBusy] = useState(false);
   const stacked = fontScale > 1.3;
+  const coachPark = useCoachTarget('park');
+  const coachFood = useCoachTarget('food');
 
   const live = nearby.nearestFree
     ? t('home.liveLine', { count: nearby.nearestFree.free, walk: nearby.nearestFree.walk })
@@ -57,6 +60,7 @@ export function QuickActions({
       }}
     >
       <ActionCard
+        coach={coachPark}
         bg={brand.mintSoft}
         fg={brand.mintText}
         mark={
@@ -74,6 +78,7 @@ export function QuickActions({
         onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
       />
       <ActionCard
+        coach={coachFood}
         bg={brand.peachSoft}
         fg={brand.peachText}
         mark={
@@ -96,6 +101,7 @@ export function QuickActions({
 
 /** One soft card: mark and title on top, the small line and an arrow below. */
 function ActionCard({
+  coach,
   bg,
   fg,
   mark,
@@ -106,6 +112,7 @@ function ActionCard({
   stacked,
   onPress,
 }: {
+  coach: ReturnType<typeof useCoachTarget>;
   bg: string;
   fg: string;
   mark: React.ReactNode;
@@ -118,6 +125,7 @@ function ActionCard({
 }) {
   return (
     <Pressable
+      {...coach}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={busy != null ? { busy } : undefined}

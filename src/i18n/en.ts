@@ -70,7 +70,20 @@ const en = {
     skip: 'Not now',
   },
   coach: {
-    search: "Type what you want to eat or where you're going. For a longer request, ask Yerim.",
+    hello: "Hi, I'm Yerim!",
+    search:
+      "Type what you're after here: a dish, a neighbourhood or a car park. I'll find the rest.",
+    park: 'Find parking: car parks near you, with the live free count where there is one.',
+    food: 'Find food: restaurants near you, the ones with a car park close by first.',
+    map: 'Map: the colour of a car park pin tells how full it is. Restaurants are there too.',
+    yerim: "I'm always here. For a longer request, tap Yerim and just ask.",
+    hint: {
+      favoriler:
+        'Your saved places and your running park live here. To save a place, tap the star on its page.',
+      profil:
+        "Settings live here. If you'd rather I didn't say hi now and then, turn off 'Yerim says hi now and then'.",
+    },
+    hintOk: 'Got it',
     next: 'Next',
     skip: 'Skip',
     a11yHint: 'Goes to the next tip',

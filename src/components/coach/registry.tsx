@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { View } from 'react-native';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 import { create } from 'zustand';
 
 import { type CoachKey, useCoach } from '@/store/coach';
@@ -78,4 +78,39 @@ export function useCoachTarget(key: CoachKey) {
   }, [done, key, measure]);
   // `collapsable: false` keeps the native view on Android, so it can be measured.
   return { ref, onLayout: done ? undefined : measure, collapsable: false } as const;
+}
+
+/** A view that is the target of coach step `coachKey`; a plain view when the key is null. */
+export function CoachTarget({
+  coachKey,
+  style,
+  children,
+}: {
+  coachKey: CoachKey | null;
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+}) {
+  if (!coachKey) return <View style={style}>{children}</View>;
+  return (
+    <MeasuredTarget coachKey={coachKey} style={style}>
+      {children}
+    </MeasuredTarget>
+  );
+}
+
+function MeasuredTarget({
+  coachKey,
+  style,
+  children,
+}: {
+  coachKey: CoachKey;
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+}) {
+  const coach = useCoachTarget(coachKey);
+  return (
+    <View {...coach} style={style}>
+      {children}
+    </View>
+  );
 }

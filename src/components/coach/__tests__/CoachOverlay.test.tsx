@@ -22,6 +22,11 @@ jest.mock('react-native-reanimated', () => {
       },
     },
     FadeIn: { duration: () => 'fade' },
+    Keyframe: class {
+      duration() {
+        return 'hop';
+      }
+    },
     useReducedMotion: () => mockReduce,
   };
 });
@@ -36,8 +41,16 @@ const RECTS = {
   search: { x: 16, y: 190, w: 358, h: 130 },
 };
 
+// The first step opens with Yerim's hello.
 const SEARCH_TEXT =
-  "Ne yemek istediğini ya da nereye gideceğini yaz. Uzun bir isteğin varsa Yerim'e sor.";
+  'Selam, ben Yerim! Buraya ne istediğini yaz: bir yemek, bir semt ya da otopark. Gerisini ben bulurum.';
+const ALL_RECTS = {
+  ...RECTS,
+  park: { x: 16, y: 340, w: 174, h: 130 },
+  food: { x: 200, y: 340, w: 174, h: 130 },
+  map: { x: 96, y: 760, w: 52, h: 34 },
+  yerim: { x: 162, y: 728, w: 66, h: 66 },
+};
 
 const mount = () =>
   render(
@@ -88,6 +101,29 @@ describe('CoachOverlay', () => {
     expect(screen.getByLabelText(SEARCH_TEXT)).toBeTruthy();
   });
 
+  it('with every target on screen, Yerim walks all five steps in order', async () => {
+    useCoachRegistry.setState({ rects: { ...ALL_RECTS }, homeFocused: true });
+    await mount();
+    await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
+    const bubble = screen.getByLabelText(SEARCH_TEXT);
+    expect(bubble.props.accessibilityValue?.text).toBe('İpucu 1 / 5');
+    expect(bubble.props.accessibilityHint).toBe('Sonraki ipucuna geçer');
+    const texts = [
+      'Otopark bul: yakındaki otoparkları, varsa canlı boş yer sayısıyla gösteririm.',
+      'Yemek bul: yakındaki restoranlar; otoparkı yakın olanları öne alırım.',
+      'Harita: otopark iğnelerinin rengi doluluğu söyler. Restoranlar da orada.',
+      "Ben hep buradayım. Uzun bir isteğin varsa Yerim'e dokun, sor yeter.",
+    ];
+    await fireEvent.press(bubble);
+    for (const [i, text] of texts.entries()) {
+      const b = screen.getByLabelText(text);
+      expect(b.props.accessibilityValue?.text).toBe(`İpucu ${i + 2} / 5`);
+      expect(screen.queryByText('Selam, ben Yerim!')).toBeNull();
+      await fireEvent.press(b);
+    }
+    expect(useCoach.getState().coachDone).toBe(true);
+  });
+
   it('has one step: no step counter, and tapping the bubble or "Devam" ends it', async () => {
     await mount();
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
@@ -124,7 +160,9 @@ describe('CoachOverlay', () => {
     await mount();
     await act(() => jest.advanceTimersByTime(COACH_START_DELAY + 10));
     expect(mockEntering.length).toBeGreaterThan(0);
-    expect(mockEntering.every((e) => e === 'fade')).toBe(true);
+    // The layer fades in; Yerim hops in.
+    expect(mockEntering.every((e) => e === 'fade' || e === 'hop')).toBe(true);
+    expect(mockEntering).toContain('hop');
 
     await screen.unmount();
     mockEntering.length = 0;

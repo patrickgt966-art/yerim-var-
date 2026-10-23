@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
+import { Mascot, type MascotPose } from '@/components/mascot/Mascot';
+import { HOP_IN } from '@/components/mascot/motion';
 import { Txt } from '@/components/Txt';
-import { COACH_STEPS, resolveStep, useCoach, useCoachHydrated } from '@/store/coach';
+import { COACH_STEPS, type CoachKey, resolveStep, useCoach, useCoachHydrated } from '@/store/coach';
 import { brand, fonts, HIT, useColors } from '@/theme';
 
 import { measureAllTargets, measureTarget, useCoachRegistry } from './registry';
@@ -25,11 +27,22 @@ const ARROW = 10;
 export const COACH_START_DELAY = 600;
 
 const DIM = '#0B3C49B3';
+
+/** What Yerim does at each step: it holds what the step is about. */
+const POSES: Record<CoachKey, MascotPose> = {
+  search: { eyes: 'open', mouth: 'open', arm: 'wave' },
+  park: { eyes: 'open', mouth: 'smile', prop: 'park' },
+  food: { eyes: 'happy', mouth: 'open', prop: 'fork' },
+  map: { eyes: 'side', mouth: 'smile', arm: 'point' },
+  yerim: { eyes: 'happy', mouth: 'open', arm: 'up' },
+};
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 /**
- * One-time tour of the home screen: a dimmed screen, the current target lit, and a bubble with
- * an arrow. Not a Modal: it is an absolute layer rendered at the end of the tabs layout, so it
+ * One-time first-launch tour, given by Yerim: a dimmed screen, the current target lit, and a
+ * bubble with an arrow where Yerim hops in holding what the step is about (search, the two main
+ * jobs, the map tab, the Yerim button). Not a Modal: it is an absolute layer rendered at the end of the tabs layout, so it
  * sits above the tab bar. Any tap on the bubble, the dimmed area or the target goes on; "Geç" ends it.
  */
 export function CoachOverlay() {
@@ -157,7 +170,7 @@ export function CoachOverlay() {
       ref={bubbleRef}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={text}
+      accessibilityLabel={position === 0 ? `${t('coach.hello')} ${text}` : text}
       accessibilityHint={t(
         position >= available.length - 1 ? 'coach.a11yHintLast' : 'coach.a11yHint',
       )}
@@ -168,12 +181,15 @@ export function CoachOverlay() {
       }
       onPress={next}
       style={{
-        padding: 16,
-        borderRadius: 18,
+        padding: 14,
+        paddingLeft: 10,
+        borderRadius: 20,
+        borderBottomLeftRadius: below ? 20 : 6,
+        borderTopLeftRadius: below ? 6 : 20,
         backgroundColor: brand.white,
-        borderLeftWidth: 5,
-        borderLeftColor: brand.orange,
-        gap: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
         shadowColor: brand.navy,
         shadowOpacity: 0.3,
         shadowRadius: 12,
@@ -181,28 +197,44 @@ export function CoachOverlay() {
         elevation: 8,
       }}
     >
-      <Txt style={{ fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23 }} color={brand.navy}>
-        {text}
-      </Txt>
-      {available.length > 1 && (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{ flexDirection: 'row', gap: 6 }}
+      <Animated.View key={key} entering={reduce ? undefined : HOP_IN}>
+        <Mascot size={70} {...POSES[key]} />
+      </Animated.View>
+      <View style={{ flex: 1, gap: 8 }}>
+        {position === 0 && (
+          <Txt
+            style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 22 }}
+            color={brand.orangeStrong}
+          >
+            {t('coach.hello')}
+          </Txt>
+        )}
+        <Txt
+          style={{ fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23 }}
+          color={brand.navy}
         >
-          {available.map((k, i) => (
-            <View
-              key={k}
-              style={{
-                width: i === position ? 18 : 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: i === position ? brand.orange : c.badgeNearBg,
-              }}
-            />
-          ))}
-        </View>
-      )}
+          {text}
+        </Txt>
+        {available.length > 1 && (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={{ flexDirection: 'row', gap: 6 }}
+          >
+            {available.map((k, i) => (
+              <View
+                key={k}
+                style={{
+                  width: i === position ? 18 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: i === position ? brand.orange : c.badgeNearBg,
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </View>
     </Pressable>
   );
 
@@ -246,7 +278,7 @@ export function CoachOverlay() {
             left: hole.x,
             width: hole.w,
             height: hole.h,
-            borderRadius: 18,
+            borderRadius: key === 'map' || key === 'yerim' ? 22 : 18,
             borderWidth: 2,
             borderColor: brand.orange,
           }}
