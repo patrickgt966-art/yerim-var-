@@ -9,7 +9,7 @@ import {
   respellAlias,
 } from './foodLexicon';
 import type { PlanWhen, Wish } from '../lib/ai/protocol';
-import { activeCity, type District } from './cities';
+import { activeCity, CITIES, type District } from './cities';
 import { fold, searchPlaces } from './search';
 
 export { IZMIR_DISTRICTS } from './cities';
@@ -480,13 +480,18 @@ function respell(
   for (let i = 0; i < words.length; i++) {
     const w = words[i]!;
     const rw = raws?.[i] ?? w;
-    const alias = respellAlias(w);
+    // A dish said as a phrase in another language ("san sebastian", "doner kebab", "ice cream").
+    const span = [3, 2].find(
+      (n) => i + n <= words.length && respellAlias(words.slice(i, i + n).join(' ')) !== null,
+    );
+    const alias = respellAlias(span ? words.slice(i, i + span).join(' ') : w);
     if (alias) {
       const typed = alias.written.split(' ');
       alias.folded.split(' ').forEach((f, j) => {
         outW.push(f);
         outR.push(typed[j] ?? f);
       });
+      if (span) i += span - 1;
       continue;
     }
     const next = words[i + 1];
@@ -983,4 +988,337 @@ export function withoutPlanWords(text: string): string {
     .replace(/\b(?:gideceğim|gidecegim|gidiyorum|gidicem)\b/giu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * The user's own words speak of a car or of parking ("otopark", "park yeri", "arabayla", "bırakıp",
+ * "parking", "driving"). The router's parking need and a plan (park, walk, eat) only count with
+ * such a word, or with parking asked before in the conversation: a wish like "şu an açık olanlar"
+ * or "en yakını" is about the food, whatever the last reply said about car parks.
+ */
+export function parkTalkIn(text: string): boolean {
+  const f = fold(text);
+  return (
+    /\b(park\w*|otopark\w*|araba\w*|arac\w*|otomobil\w*|birak\w*|garaj\w*|vale\b|valet\w*)/.test(
+      f,
+    ) || /\b(car|cars|parking|parked|drive|driving|drove|vehicle|garage|valet)\b/.test(f)
+  );
+}
+
+/**
+ * "Araba kenarda duracak, hemen yanında olsun": the car waits at the roadside, it is no car park
+ * ask. A stop at the roadside / kerb, a quick stop-and-go or double parking, said without any
+ * wish for a car park.
+ */
+export function roadsideStopIn(text: string): boolean {
+  const f = fold(text);
+  return (
+    /\b(kenar\w*|yol kenar\w*|yolda|yolun)\s+(duracak|durur|duruyor|durdur\w*|bekleyecek|bekler|bekliyor|kalacak)/.test(
+      f,
+    ) ||
+    /\b(arabadan inmeden|arabadan inmek istemiyorum|inmeden alayim|drive ?thru|drive ?through|pull(ed)? over|double park\w*|stay in the car)\b/.test(
+      f,
+    )
+  );
+}
+
+/** A message that points at the results on the screen. */
+export type ResultsRef =
+  /** "en yakını hangisi", "which is the nearest". */
+  | { kind: 'nearest' }
+  /** "diğerleri", "başka var mı", "show me more", "daha fazla". */
+  | { kind: 'more' }
+  /** "ikincisi nerede", "listedeki ikinci yer", "the second one": 1-based, -1 = the last card. */
+  | { kind: 'nth'; n: number };
+
+/** Words that may stand around a pointer at the results; any other word makes it a new ask. */
+const REF_FILLER = new Set(
+  (
+    'peki ya hani yani lutfen bana bize hocam abi abla kanka canim bu bunlar bunlardan bunlarin ' +
+    'aralarinda listedeki listede liste sonuc sonuclar sonuclardan yer yeri yerin yerler yerleri ' +
+    'mekan mekani secenek secenekler secenekleri olan olani hangi hangisi hangisini hangisine biri ' +
+    'bir sey nerede neresi neredeydi nasil giderim gidilir gidebilirim adresi adres ne nedir ' +
+    'goster gosterir gosterebilir misin misiniz mi mu var yok de da daha ver bak bakalim ' +
+    'please pls me show tell which one ones is are the a an of them these those what whats where ' +
+    'in on at to how do i get can you list result results place places option options address ' +
+    'there any other and ve acaba'
+  ).split(' '),
+);
+const ORDINALS: [RegExp, number][] = [
+  [/^(ilk|ilki|ilkini|ilkine|birinci|birincisi|birincinin|first|1|1si)$/, 1],
+  [/^(ikinci|ikincisi|ikinciyi|ikincinin|ikinciye|second|2|2si)$/, 2],
+  [/^(ucuncu|ucuncusu|ucuncuyu|ucuncunun|ucuncuye|third|3|3si)$/, 3],
+  [/^(dorduncu|dorduncusu|dorduncuyu|dorduncunun|fourth|4|4si)$/, 4],
+  [/^(besinci|besincisi|besinciyi|besincinin|fifth|5|5si)$/, 5],
+  [/^(son|sonuncu|sonuncusu|sonuncuyu|sonuncunun|last|alttaki\w*)$/, -1],
+];
+
+/**
+ * A short message about the results that are on the screen. Only whole messages made of pointer
+ * words count ("en yakını hangisi", "diğerleri", "başka var mı", "show me more", "ikincisi nerede",
+ * "listedeki ikinci yer", "the second one", "2.si"): any word that names a dish, a place or
+ * something else makes it a new ask for the router. The caller makes sure results are on screen.
+ */
+export function resultsRefIn(text: string): ResultsRef | null {
+  const f = fold(text);
+  if (f === '' || f.length > 60) return null;
+  // "2.si", "2'nci": the digit and its suffix are one token.
+  const raw = f.split(' ').filter(Boolean);
+  const toks: string[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const w = raw[i]!;
+    if (/^[1-5]$/.test(w) && /^(si|ci|nci|inci|uncu|ncu|u|i|st|nd|rd|th)$/.test(raw[i + 1] ?? '')) {
+      toks.push(`${w}si`);
+      i++;
+    } else toks.push(w);
+  }
+  if (toks.length === 0 || toks.length > 8) return null;
+  // Positional words ("sıradaki", "üstteki", "en üstteki") belong to an ordinal.
+  const isPos = (w: string) => /^(sirada\w*|ustteki\w*|alttaki\w*|en|ust|alt)$/.test(w);
+  const isNear = (w: string) => /^(yakin\w*|nearest|closest|near)$/.test(w);
+  const isMoreWord = (w: string) =>
+    /^(digerleri\w*|diger|digeri|digerler\w*|baska\w*|fazla|more|others?|else|another)$/.test(w);
+  const known = (w: string) =>
+    REF_FILLER.has(w) ||
+    isPos(w) ||
+    isNear(w) ||
+    isMoreWord(w) ||
+    ORDINALS.some(([re]) => re.test(w));
+  if (!toks.every(known)) return null;
+  // The nearest: "en yakını hangisi", "which is the nearest".
+  const nearAt = toks.findIndex(isNear);
+  if (nearAt >= 0 && !toks.some(isMoreWord)) {
+    const withEn = toks[nearAt - 1] === 'en' || /^(nearest|closest)$/.test(toks[nearAt]!);
+    // "yakın" alone, "daha yakın" or "near" are the sorting follow-up, not this question.
+    const ordinal = toks.some((w) => ORDINALS.some(([re]) => re.test(w)));
+    return withEn && !ordinal && !toks.includes('daha') ? { kind: 'nearest' } : null;
+  }
+  // The other places: needs a "more" word ("daha" alone is too thin, "daha fazla" is not).
+  if (toks.some(isMoreWord) || (toks.includes('daha') && toks.includes('fazla'))) {
+    if (toks.some((w) => ORDINALS.some(([re]) => re.test(w)))) return null;
+    return { kind: 'more' };
+  }
+  // An ordinal back-reference: the ordinal word (or a positional word like "en üstteki").
+  for (const [re, n] of ORDINALS) {
+    if (toks.some((w) => re.test(w))) {
+      // A bare digit or "son"/"last" alone is not enough: it needs a pointer word with it.
+      const bare = toks.every((w) => re.test(w) || w === 'en');
+      if (bare && /^(son|last|[1-5])$/.test(toks.find((w) => re.test(w)) ?? '')) return null;
+      return { kind: 'nth', n };
+    }
+  }
+  if (toks.includes('en') && toks.some((w) => /^(ustteki\w*|ust)$/.test(w)))
+    return { kind: 'nth', n: 1 };
+  return null;
+}
+
+// --- Out of scope: other cities and things that are neither food nor parking ---------------------
+
+/** Turkish provinces the app does not cover (folded; the five open cities are not in it). */
+const OTHER_PROVINCES =
+  'adana adiyaman afyon afyonkarahisar agri amasya ardahan artvin aydin balikesir bartin batman bayburt bilecik bingol bitlis bolu burdur canakkale cankiri corum denizli diyarbakir duzce edirne elazig erzincan erzurum eskisehir gaziantep antep giresun gumushane hakkari igdir isparta kahramanmaras karabuk karaman kars kastamonu kayseri kilis kirikkale kirklareli kirsehir kocaeli izmit konya kutahya malatya manisa mardin mersin mugla nevsehir nigde osmaniye rize sakarya samsun siirt sinop sivas sanliurfa urfa sirnak tekirdag tokat trabzon tunceli yalova yozgat zonguldak';
+/** Cities and countries abroad (Turkish and English spellings, folded). */
+const FOREIGN_PLACES =
+  'paris londra london roma rome berlin madrid barselona barcelona amsterdam viyana vienna prag prague budapeste budapest atina athens moskova moscow tokyo tokyo dubai chicago miami pekin beijing seul seoul bangkok singapur singapore sidney sydney kahire cairo baku tiflis tbilisi sofya sofia belgrad bukres bucharest varsova warsaw bruksel brussels cenevre geneva zurih zurich munih munich frankfurt koln cologne milano milan napoli naples venedik venice lizbon lisbon dublin kopenhag copenhagen oslo stockholm helsinki lefkosa nicosia erbil bagdat baghdad beyrut beirut riyad riyadh doha almanya fransa italya ispanya ingiltere amerika abd yunanistan hollanda belcika avusturya isvicre rusya japonya germany france italy spain england usa greece';
+const FOREIGN_MULTI = ['new york', 'newyork', 'los angeles', 'san francisco'];
+
+/** Folded names that are a district or a city of the five open cities: never "another city". */
+function ownNames(): Set<string> {
+  return new Set(CITIES.flatMap((c) => [c.name, ...c.districts]).map((n) => fold(n)));
+}
+
+/** Words of a plain "food / car park" ask that may stand next to a city name. */
+const GENERIC_ASK = new Set(
+  (
+    'otopark otoparklar otoparki park parki yemek yemegi yiyecek yiyelim yesek yer yeri yerler restoran restoranlar restorani ' +
+    'onerisi oner oneri tavsiye nerede nerde nereye var mi mu bir bi arabami arabamı araba birakayim birakayim ' +
+    'bulabilir bul goster ara arabamizi lutfen ' +
+    'where can i eat park find me a car parks the food restaurant restaurants place places good best some any to ' +
+    'is there do you know'
+  ).split(' '),
+);
+
+/** Locative / ablative endings of a city name ("konyada", "Mersin'de", "berlinden"). */
+const LOCATIVE_ENDING = /^(?:n?(?:da|de|ta|te)|(?:da|de|ta|te)ki|dan|den|tan|ten|ya|ye)$/;
+
+/** An ask for a city the app does not cover, or null. The word is not matched against place names. */
+function otherCityIn(text: string): string | null {
+  const f = fold(text);
+  const toks = f.split(' ').filter(Boolean);
+  const own = ownNames();
+  if (toks.some((w) => own.has(w) || [...own].some((o) => o.includes(' ') && f.includes(o)))) {
+    return null;
+  }
+  const known = new Set([...OTHER_PROVINCES.split(' '), ...FOREIGN_PLACES.split(' ')]);
+  for (let i = 0; i < toks.length; i++) {
+    let name: string | null = null;
+    let end = i + 1;
+    const two = FOREIGN_MULTI.find((m) => `${toks[i]} ${toks[i + 1] ?? ''}`.startsWith(m));
+    if (two) {
+      name = two;
+      end = i + two.split(' ').length;
+    } else {
+      const w = toks[i]!;
+      // "konyada" -> "konya": a known name with an ending glued on.
+      const stem = known.has(w)
+        ? w
+        : [...known].find(
+            (k) =>
+              w.startsWith(k) && w.length > k.length && LOCATIVE_ENDING.test(w.slice(k.length)),
+          );
+      if (stem && known.has(stem)) name = stem;
+    }
+    if (!name) continue;
+    const glued = toks[i]!.length > name.length && !name.includes(' ');
+    const after = toks[end] ?? '';
+    const before = toks[i - 1] ?? '';
+    const locative =
+      glued || LOCATIVE_ENDING.test(after) || /^(in|at|near|around|to|from)$/.test(before);
+    const rest = toks.filter(
+      (_, k) => k < i || k >= end + (!glued && LOCATIVE_ENDING.test(after) ? 1 : 0),
+    );
+    // "Adana kebap", "Mersin tantuni", "Roma Pizza": a name with a dish or a business word is food.
+    if (
+      locative ||
+      (rest.length > 0 && rest.every((w) => GENERIC_ASK.has(w) || LOCATIVE_ENDING.test(w)))
+    ) {
+      return name;
+    }
+  }
+  return null;
+}
+
+/** Things people look for that are neither food nor parking (folded, matched at a word start). */
+const OTHER_THINGS =
+  /\b(oto ?yikama\w*|yikama\w*|atm\b|bankamatik|banka\b|eczane\w*|hastane\w*|otel\w*|pansiyon\w*|benzinlik\w*|akaryakit|petrol|berber\w*|kuafor\w*|disci\w*|doktor\w*|klinik\w*|sinema\w*|camasirhane\w*|taksi\w*|ucak\w*|bilet\w*|lastik\w*|tamirci\w*|oto servis\w*|market\w*|bakkal\w*|kuyumcu\w*|ptt\b|noter\w*|tuvalet\w*|wc\b|hotel\w*|pharmacy|gas station|petrol station|barber\w*|hairdresser|dentist|cinema|movie theat\w*|laundry|laundromat|taxi|flight|hospital|car wash|mechanic|tires?\b|supermarket|grocery|post office|toilet\w*)/;
+/** The words of someone looking for, ordering or booking a thing. */
+const FIND_CUE =
+  /\b(nerede|nerde|nereden|var ?mi|bul\w*|ari\w*|ara(?!ba)\w*|lazim|gerek|en yakin|yakinimda|yakinda|yakin|rezervasyon\w*|cagir\w*|ayirt\w*|ver|yap|where|find|nearest|closest|nearby|near me|is there|any|need|looking|book|call|order|get me)\b/;
+/** A driver: a car park is a fair offer. */
+const DRIVING = /\b(araba\w*|arac\w*|surucu|car|drive|driving|drove)\b/;
+
+export type OutOfScope = { kind: 'city'; city: string } | { kind: 'thing'; driving: boolean };
+
+/**
+ * The ask is for another city (a Turkish province or a place abroad, with an ending or "in X", or
+ * next to nothing but "otopark" / "yemek"), or for a thing that is neither food nor parking (oto
+ * yıkama, ATM, eczane, otel, benzinlik, berber ...) without any word of food or a car park. The app
+ * says honestly what it covers; nothing is searched.
+ */
+export function outOfScopeIn(text: string): OutOfScope | null {
+  const city = otherCityIn(text);
+  if (city) return { kind: 'city', city };
+  const f = fold(text);
+  if (!OTHER_THINGS.test(f) || !FIND_CUE.test(f) || parkTripIn(text)) return null;
+  // Food or a car park in the same message is a real ask ("hastane yanında otopark", "sinemadan önce yemek").
+  const it = parseQuery(text);
+  const foodOrPark =
+    it.kind === 'search' && (!!it.cat || !!it.dish || it.food || it.mentionsParking);
+  if (foodOrPark) return null;
+  if (
+    /\b(otopark\w*|park\w*|parking|yemek|yiy\w*|ye(mek|sek|lim)|restoran\w*|restaurant\w*|kafe|cafe|lokanta\w*|acik\w*|eat|food|hungry)\b/.test(
+      f,
+    )
+  ) {
+    return null;
+  }
+  return { kind: 'thing', driving: DRIVING.test(f) };
+}
+
+/**
+ * The ask is about charging an electric car ("şarj noktalı otopark", "elektrikli aracım var",
+ * "EV charging", "Tesla"). The app holds no charging data: it says so and sorts by distance.
+ */
+export function evAskIn(text: string): boolean {
+  return /\b(sarj\w*|soket\w*|elektrikli (arac|araba|otomobil|oto)\w*|charg\w*|electric (car|vehicle|cars)|tesla|togg)\b/.test(
+    fold(text),
+  );
+}
+
+/** Number words of a stated stay (folded): "bir saat", "iki saat", "two hours". */
+const STAY_NUMBERS: Record<string, number> = {
+  bir: 1,
+  iki: 2,
+  uc: 3,
+  dort: 4,
+  bes: 5,
+  alti: 6,
+  yedi: 7,
+  sekiz: 8,
+  dokuz: 9,
+  on: 10,
+  one: 1,
+  an: 1,
+  a: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+const STAY_UNITS: [RegExp, number][] = [
+  [/^(saat\w*|sa|hours?|hrs?|h)$/, 60],
+  [/^(dakika\w*|dk|minutes?|mins?)$/, 1],
+  [/^(gun\w*|days?)$/, 1440],
+  [/^(gece\w*|nights?)$/, 720],
+];
+
+/**
+ * How long the user says they will stay, in minutes, or null when they did not say ("bir saat park
+ * edeceğim", "3 saatliğine", "yarım saat", "2 hours", "iki gün", "gece boyu", "all day"). Digits and
+ * number words both count; "birkaç saat" / "a few hours" is taken as three hours.
+ */
+export function statedStayIn(text: string): number | null {
+  const f = fold(text);
+  if (/\b(overnight|gece boyu|gece boyunca|sabaha kadar|all night)\b/.test(f)) return 720;
+  if (/\b(tum gun|gun boyu|gun boyunca|all day|whole day)\b/.test(f)) return 600;
+  if (/\byarim saat\b|\bhalf an hour\b|\bhalf hour\b/.test(f)) return 30;
+  if (/\b(birkac saat|few hours|couple of hours|couple hours)\b/.test(f)) return 180;
+  if (/\bbir bucuk saat\b|\bhour and a half\b/.test(f)) return 90;
+  const toks = f.split(' ');
+  for (let i = 0; i < toks.length - 1; i++) {
+    const w = toks[i]!;
+    const n = /^\d+$/.test(w) ? Number(w) : STAY_NUMBERS[w];
+    if (n === undefined || n <= 0) continue;
+    const unit = STAY_UNITS.find(([re]) => re.test(toks[i + 1]!));
+    // "bir" / "a" / "on" are plain words elsewhere: they count only right before a unit (checked here).
+    if (unit) return n * unit[1];
+  }
+  return null;
+}
+
+/** Emoji that stand for a word of an ask: a car park, the user's own place, a food. */
+const EMOJI_WORDS: [RegExp, string][] = [
+  [/\u{1F17F}️?|🚗|🚙|🚘/gu, ' otopark '],
+  [/📍|📌/gu, ' yakınımda '],
+  [/🍕/gu, ' pizza '],
+  [/🍔/gu, ' hamburger '],
+  [/🥙|🌯/gu, ' döner '],
+  [/🥩|🍖/gu, ' et '],
+  [/🍗/gu, ' tavuk '],
+  [/🐟|🐠|🍤/gu, ' balık '],
+  [/🍳|🥞/gu, ' kahvaltı '],
+  [/🍲|🥣/gu, ' çorba '],
+  [/🍝|🍜/gu, ' makarna '],
+  [/🍣|🍱/gu, ' sushi '],
+  [/🥗/gu, ' salata '],
+  [/🍰|🧁|🍩|🎂/gu, ' tatlı '],
+  [/🍦|🍨/gu, ' dondurma '],
+  [/☕/gu, ' kahve '],
+  [/🥪/gu, ' sandviç '],
+  [/🌮/gu, ' taco '],
+];
+
+/**
+ * The text with its emoji written as words, for the rules ("📍🅿️" -> "yakınımda otopark",
+ * "🅿️ kepez" -> "otopark kepez", "🍕" -> "pizza"). Text without these emoji comes back as it was.
+ */
+export function emojiWords(text: string): string {
+  let out = text;
+  for (const [re, word] of EMOJI_WORDS) out = out.replace(re, word);
+  return out === text ? text : out.replace(/\s+/g, ' ').trim();
 }

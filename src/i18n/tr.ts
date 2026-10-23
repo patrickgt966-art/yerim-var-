@@ -757,6 +757,9 @@ const tr = {
       hlParkFar: 'İlk sıradaki otopark uzakta: {{name}}, ~{{min}} dk yürüme.',
       hlParkLiveFar:
         'İlk sıradaki otopark uzakta: {{name}}, ~{{min}} dk yürüme; şu an {{free}} boş yer var.',
+      // The list follows a wish (free, covered ...): its first car park is not the nearest one.
+      hlParkFirst: 'İlk sıradaki {{name}}, ~{{min}} dk yürüme.',
+      hlParkFirstLive: 'İlk sıradaki {{name}}, ~{{min}} dk yürüme; şu an {{free}} boş yer var.',
     },
     hello_0: 'Selam! Nereye gidiyorsun ya da ne yemek istersin?',
     hello_1: 'Selam! Yer adı ya da "{{cLoc}} köfteci" gibi yazabilirsin.',
@@ -852,6 +855,29 @@ const tr = {
     wideNow: 'Daha geniş alanda baktım.',
     wideAlready: 'Daha geniş alanda da bunlar çıkıyor.',
     allHere: 'Hepsi burada.',
+    noInfoCharging: 'Şarj noktası bilgimiz yok; sıralamayı yakınlığa göre yaptım.',
+    districtTie: '{{a}} mı, {{b}} mı demek istedin?',
+    scopeCity:
+      'Bu şehri henüz kapsamıyorum. Yemek yeri ve otopark için şu şehirlerdeyim: {{cities}}.',
+    scopeThing:
+      'Onu bulamam; ben yalnızca yemek yerleri ve otoparklar konusunda yardımcı olabilirim.',
+    scopeThingDrive:
+      'Onu bulamam; ben yalnızca yemek yerleri ve otoparklar konusunda yardımcı olabilirim. İstersen yakınındaki otoparklara bakabilirim.',
+    nearestIs: 'En yakını {{name}}: yürüyerek yaklaşık {{count}} dk.',
+    nearestIsFar:
+      'Listenin başındaki {{name}} yürüyerek yaklaşık {{count}} dk uzakta; yakın sayılmaz.',
+    moreNone: 'Başka yer bulamadım; hepsi listede.',
+    nthPlace:
+      '{{ord}} sıradaki {{name}}: yürüyerek yaklaşık {{count}} dk.{{state}} Yol tarifi için karttaki düğmeye dokunabilirsin.',
+    nthOpen: ' Şu an açık.',
+    nthClosed: ' Şu an kapalı.',
+    nthNone: 'Listede o sırada bir yer yok, {{count}} yer var.',
+    nthOrd_1: 'İlk',
+    nthOrd_2: 'İkinci',
+    nthOrd_3: 'Üçüncü',
+    nthOrd_4: 'Dördüncü',
+    nthOrd_5: 'Beşinci',
+    nthOrd_last: 'Son',
     foodNoFreePark:
       '{{where}} civarında {{what}} var ama otoparkının ücretsiz olduğunu bildiğim yok. Ne yapalım?',
     parkNoFree: '{{where}} civarında ücretsiz olduğunu bildiğim otopark yok. Ne yapalım?',
@@ -945,7 +971,7 @@ const tr = {
     noInfo_height: 'araç yüksekliği',
     noInfo_motorcycle: 'motosiklet',
     noInfoParkRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa göre yaptım.',
-    noInfoParkAi: '{{what}} bilgimiz yok; yakınlığa, ücrete ve açık olmasına göre seçtim.',
+    noInfoParkAi: '{{what}} bilgimiz yok; yakınlığa ve açık olmasına göre seçtim.',
     whyPark: {
       closest: 'hedefe en yakın olanı (~{{count}} dk yürüme)',
       closestFar: 'hedefe yürüme süresi en kısa olan (~{{count}} dk, uzak)',

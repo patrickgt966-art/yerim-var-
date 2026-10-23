@@ -297,7 +297,50 @@ export const GENERIC_NAME_WORDS: ReadonlySet<string> = new Set([
  * Spellings that are one dish written another way, for the ones no generic joined /
  * split rule can find: "çibörek" is çiğ börek. `key` is the folded token.
  */
-const SPELLING_ALIASES = [{ key: 'ciborek', folded: 'cig borek', written: 'çiğ börek' }];
+const SPELLING_ALIASES = [
+  { key: 'ciborek', folded: 'cig borek', written: 'çiğ börek' },
+  ...foreignNames(),
+];
+
+/**
+ * Common dish names of other languages and their Turkish dish: a guest who writes "Frikadellen",
+ * "meatballs", "gyros" or "San Sebastian" asks for köfte, döner or a cheesecake. Folded keys, the
+ * singular and plural spellings apart where the plural is no regular tail; a key with a space is a
+ * phrase. The dish on the right is a dish of the app's own dictionary (dishes.ts).
+ */
+function foreignNames(): { key: string; folded: string; written: string }[] {
+  const to = (folded: string, written: string, ...keys: string[]) =>
+    keys.map((key) => ({ key, folded, written }));
+  // Only names the dictionary does not know yet: a name that already has a dish of its own
+  // (spaghetti, shawarma, dumpling, kibbeh ...) keeps it.
+  return [
+    // Desserts
+    ...to('cheesecake', 'cheesecake', 'san sebastian cheesecake', 'sansebastian'),
+    ...to('krep', 'krep', 'pancakes', 'crepes', 'blini', 'blinis'),
+    ...to('baklava', 'baklava', 'baklawa'),
+    ...to('kunefe', 'künefe', 'knafeh', 'kunafa', 'kanafeh', 'kunafeh'),
+    ...to('dondurma', 'dondurma', 'icecream', 'ice cream'),
+    ...to('lokum', 'lokum', 'turkish delight'),
+    ...to('profiterol', 'profiterol', 'profiterole', 'profiteroles'),
+    ...to('sutlac', 'sütlaç', 'rice pudding'),
+    // Meat, kebab and fast food
+    ...to('kofte', 'köfte', 'frikadelle', 'frikadellen', 'kofta', 'meatball', 'meatballs'),
+    ...to('kofte', 'köfte', 'cevapi', 'cevapcici', 'polpette', 'albondigas'),
+    ...to('doner', 'döner', 'gyros', 'shawerma', 'schawarma', 'doner kebab'),
+    ...to('sis kebap', 'şiş kebap', 'shish', 'shish kebab'),
+    ...to('sosisli', 'sosisli', 'bratwurst', 'currywurst', 'wurst', 'sausage', 'sausages'),
+    ...to('patates kizartmasi', 'patates kızartması', 'fries', 'french fries', 'frites', 'pommes'),
+    ...to('icli kofte', 'içli köfte', 'kubbeh'),
+    ...to('lahmacun', 'lahmacun', 'lahmajun', 'lahmacoun', 'turkish pizza'),
+    // Dough and stuffed dishes
+    ...to('simit', 'simit', 'pretzel', 'pretzels', 'brezel'),
+    ...to('manti', 'mantı', 'dumplings', 'khinkali'),
+    ...to('borek', 'börek', 'burek', 'burekas', 'bourekas'),
+    ...to('lazanya', 'lazanya', 'lasagne'),
+    ...to('dolma', 'dolma', 'dolmades', 'dolmas'),
+    ...to('humus', 'humus', 'houmous'),
+  ];
+}
 
 /** What may follow an aliased word: the compound ending ("çiböreği"), plural or seller. */
 const ALIAS_TAILS = ['i', 'in', 'e', 'ler', 'leri', 'lar', 'ci', 'cu'];

@@ -845,6 +845,12 @@ const en = {
         'The first car park is far away: {{name}}, ~{{min}} min walk; {{free}} free space right now.',
       hlParkLiveFar_other:
         'The first car park is far away: {{name}}, ~{{min}} min walk; {{free}} free spaces right now.',
+      // The list follows a wish (free, covered ...): its first car park is not the closest one.
+      hlParkFirst: 'The first one is {{name}}, ~{{min}} min walk.',
+      hlParkFirstLive_one:
+        'The first one is {{name}}, ~{{min}} min walk; {{free}} free space right now.',
+      hlParkFirstLive_other:
+        'The first one is {{name}}, ~{{min}} min walk; {{free}} free spaces right now.',
     },
     hello_0: 'Hi! Where are you headed, or what do you feel like eating?',
     hello_1: 'Hi! Type a place name, or something like "meatballs in {{c}}".',
@@ -955,6 +961,27 @@ const en = {
     wideNow: 'I looked in a wider area.',
     wideAlready: 'These are what come up in a wider area too.',
     allHere: 'They are all here.',
+    noInfoCharging: "We don't have charging point info; I sorted by distance.",
+    districtTie: 'Did you mean {{a}} or {{b}}?',
+    scopeCity: "I don't cover that city yet. For food places and car parks I'm in: {{cities}}.",
+    scopeThing: "I can't find that; I can only help with food places and car parks.",
+    scopeThingDrive:
+      "I can't find that; I can only help with food places and car parks. I can look at the car parks near you if you like.",
+    nearestIs: 'The closest is {{name}}, about a {{count}} min walk.',
+    nearestIsFar:
+      'The first one on the list, {{name}}, is about a {{count}} min walk away, which is far.',
+    moreNone: "I couldn't find more places; they are all on the list.",
+    nthPlace:
+      '{{ord}} on the list is {{name}}, about a {{count}} min walk.{{state}} Tap Directions on the card to get there.',
+    nthOpen: ' It is open now.',
+    nthClosed: ' It is closed now.',
+    nthNone: 'There is no place in that spot on the list; it has {{count}}.',
+    nthOrd_1: 'The first',
+    nthOrd_2: 'The second',
+    nthOrd_3: 'The third',
+    nthOrd_4: 'The fourth',
+    nthOrd_5: 'The fifth',
+    nthOrd_last: 'The last',
     foodNoFreePark:
       'There are {{what}} around {{where}}, but none I know of with free parking. What now?',
     parkNoFree: "I don't know of any free car parks around {{where}}. What now?",
@@ -1049,7 +1076,7 @@ const en = {
     noInfo_height: 'vehicle height',
     noInfo_motorcycle: 'motorcycle',
     noInfoParkRule: "We don't have {{what}} info; I sorted by distance.",
-    noInfoParkAi: "We don't have {{what}} info; I picked by distance, price and opening hours.",
+    noInfoParkAi: "We don't have {{what}} info; I picked by distance and opening hours.",
     whyPark: {
       closest: 'it’s the closest to where you’re going (~{{count}} min walk)',
       closestFar: 'the shortest walk to where you’re going (~{{count}} min, far)',

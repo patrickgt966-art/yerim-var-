@@ -8,15 +8,26 @@
  * conversation passes when every check of every turn does. Exits 1 when fewer than CONVO_PASS of the
  * conversations pass.
  *
- * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval-convo.ts [--limit N] [--only <category>] [--seed S]
+ * Usage (needs ANTHROPIC_API_KEY): npx tsx scripts/ai-eval-convo.ts [--set convo|mega] [--limit N]
+ *   [--only <category>] [--shard i/n] [--seed S] [--dry]
+ *   --set mega       the mega set (src/data/eval/megaCases.ts, ~3000 conversations of 1-8 turns);
+ *                    the default is the convo set
  *   --limit N        plays only N conversations, taken round-robin across the categories (a smoke test)
  *   --only <category> plays one category: greeting, thanks_bye, food, park, both, choice, narrow,
- *                    split, city_switch, no_data, offtopic, name
+ *                    split, city_switch, no_data, offtopic, name, far (mega: style, multi, goals,
+ *                    parking, dishes, honesty, plans, edge)
+ *   --shard i/n      plays every n-th conversation from the i-th (after --only and --limit), so a run
+ *                    can be split over n jobs; i is 0 .. n-1
  *   --seed S         another set of conversations from another seed
+ *   --dry            builds the conversations and prints how many there are per category and
+ *                    subcategory with the cost estimate; calls nothing and needs no key
  * The cost is estimated and printed before anything is sent (it needs no key); the batch API is not
  * used: a conversation is interactive, the next turn depends on the last reply. The fixed prompts
  * are cached, as in the Worker.
- * CI: .github/workflows/ai-eval-convo.yml (by hand). Writes docs/ai-eval-convo.md.
+ * CI: .github/workflows/ai-eval-convo.yml and ai-eval-mega.yml (by hand). The convo set writes
+ * docs/ai-eval-convo.md. The mega set writes docs/ai-eval-mega-<i>.md and .json per shard (merged
+ * by scripts/ai-eval-merge.ts into docs/ai-eval-mega.md), or docs/ai-eval-mega.md and
+ * docs/ai-eval-mega-all.json for a run of everything.
  *
  * The SDK is imported from server/yerim-ai/node_modules (pinned, same as the Worker);
  * install it with `npm ci --prefix server/yerim-ai`.
@@ -39,6 +50,15 @@ import {
   sampleCases,
   type ConvoCase,
 } from '@/data/eval/convoCases';
+import {
+  MEGA_CATEGORIES,
+  MEGA_SEED,
+  buildMegaCases,
+  parseShard,
+  shardOf,
+  timeOfDay,
+} from '@/data/eval/megaCases';
+import { MEGA_PASS, buildMegaReport, type ShardFile } from '@/data/eval/megaMerge';
 import { playConversation, type ConvoAi, type Transcript } from '@/data/eval/convoRun';
 import {
   PRICE_IN,
@@ -60,12 +80,14 @@ import {
   planModelSchema,
   planSystem,
   replyOutputSchema,
+  replyLangNote,
   replySystem,
   toPick,
   toPlan,
   toReply,
   toUnderstanding,
   understandSystem,
+  langNote,
   type ChatTurn,
   type ParkPickResponse,
   type PickResponse,
@@ -77,6 +99,8 @@ const MODEL = 'claude-haiku-5-5';
 const CONVO_PASS = 0.85;
 /** The cost one full run should stay under, in USD; a higher estimate is reported, not cut. */
 const COST_TARGET = 1;
+/** The same for the mega set (~3000 conversations: the owner accepts $3-5 for a full run). */
+const MEGA_COST_TARGET = 6;
 /** Conversations played at once (all in one city: the app keeps the selected city globally). */
 const CONCURRENCY = 3;
 /** One call and up to two retries on 429 / 5xx / a dropped connection (the app waits 12 s at most). */
@@ -129,8 +153,17 @@ function unreadable(err: unknown): boolean {
   );
 }
 
-function parseArgs(argv: string[]): { limit?: number; only?: string; seed: number } {
-  const out: { limit?: number; only?: string; seed: number } = { seed: CONVO_SEED };
+type Args = {
+  set: 'convo' | 'mega';
+  limit?: number;
+  only?: string;
+  seed?: number;
+  shard: { i: number; n: number } | null;
+  dry: boolean;
+};
+
+function parseArgs(argv: string[]): Args {
+  const out: Args = { set: 'convo', shard: null, dry: false };
   for (let i = 0; i < argv.length; i++) {
     const [flag, inline] = (argv[i] ?? '').split('=');
     const value = () => inline ?? argv[++i];
@@ -141,7 +174,23 @@ function parseArgs(argv: string[]): { limit?: number; only?: string; seed: numbe
     else if (flag === '--seed') {
       const n = Math.floor(Number(value()));
       if (Number.isFinite(n)) out.seed = n;
-    } else {
+    } else if (flag === '--set') {
+      const v = value();
+      if (v !== 'convo' && v !== 'mega') {
+        console.error(`Unknown set "${v}". One of: convo, mega`);
+        process.exit(2);
+      }
+      out.set = v;
+    } else if (flag === '--shard') {
+      const v = value();
+      const shard = parseShard(v);
+      if (!shard) {
+        console.error(`--shard wants i/n with 0 <= i < n, got "${v}"`);
+        process.exit(2);
+      }
+      out.shard = shard;
+    } else if (flag === '--dry') out.dry = true;
+    else {
       console.error(`Unknown option: ${argv[i]}`);
       process.exit(2);
     }
@@ -163,25 +212,64 @@ function promptSizes(): PromptSizes {
   };
 }
 
+/** How many conversations per category and subcategory, the mix of the rest: the dry run's table. */
+function countLines(cases: readonly ConvoCase<string>[]): string[] {
+  const lines: string[] = [];
+  const by = (key: (c: ConvoCase<string>) => string) => {
+    const m = new Map<string, number>();
+    for (const c of cases) m.set(key(c), (m.get(key(c)) ?? 0) + 1);
+    return m;
+  };
+  const cats = [...new Set(cases.map((c) => c.category))];
+  for (const cat of cats) {
+    const subs = by((c) => (c.category === cat ? (c.sub ?? '-') : ''));
+    subs.delete('');
+    const total = cases.filter((c) => c.category === cat).length;
+    lines.push(`${cat}: ${total}`);
+    for (const [sub, n] of subs) lines.push(`  ${cat}/${sub}: ${n}`);
+  }
+  const mix = (title: string, key: (c: ConvoCase<string>) => string) =>
+    `${title}: ${[...by(key)].map(([k, n]) => `${k} ${n}`).join(', ')}`;
+  lines.push('');
+  lines.push(mix('app language', (c) => c.ui ?? 'tr'));
+  lines.push(mix('location', (c) => (c.located === false ? 'none' : 'given')));
+  lines.push(mix('time of day', (c) => timeOfDay(c.hour)));
+  lines.push(mix('city', (c) => c.city));
+  lines.push(mix('turns', (c) => String(c.turns.length)));
+  return lines;
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  if (args.only && !(CONVO_CATEGORIES as readonly string[]).includes(args.only)) {
-    console.error(`Unknown category "${args.only}". One of: ${CONVO_CATEGORIES.join(', ')}`);
+  const mega = args.set === 'mega';
+  const seed = args.seed ?? (mega ? MEGA_SEED : CONVO_SEED);
+  const categories: readonly string[] = mega ? MEGA_CATEGORIES : CONVO_CATEGORIES;
+  if (args.only && !categories.includes(args.only)) {
+    console.error(`Unknown category "${args.only}". One of: ${categories.join(', ')}`);
     process.exit(2);
   }
-  let cases = buildConvoCases(args.seed).filter((c) => !args.only || c.category === args.only);
-  if (args.limit) cases = sampleCases(cases, args.limit, args.seed);
+  let cases: ConvoCase<string>[] = (mega ? buildMegaCases(seed) : buildConvoCases(seed)).filter(
+    (c) => !args.only || c.category === args.only,
+  );
+  if (args.limit) cases = sampleCases(cases, args.limit, seed);
+  if (args.shard) cases = shardOf(cases, args.shard.i, args.shard.n);
   const turns = cases.reduce((n, c) => n + c.turns.length, 0);
 
   // The estimate comes first and needs no key.
   const estimate = estimateCost(cases, promptSizes());
+  const target = mega ? MEGA_COST_TARGET : COST_TARGET;
   console.error(
-    `${cases.length} conversations, ${turns} turns. Estimated cost: $${estimate.usd.toFixed(3)} ` +
+    `${cases.length} conversations, ${turns} turns${args.shard ? ` (shard ${args.shard.i}/${args.shard.n})` : ''}. ` +
+      `Estimated cost: $${estimate.usd.toFixed(3)} ` +
       `(${estimate.calls.understand} router, ${estimate.calls.pick} pick, ${estimate.calls.reply} reply calls; ` +
       `at $${PRICE_IN} in / $${PRICE_OUT} out per MTok, prompt cache on).`,
   );
-  if (estimate.usd > COST_TARGET) {
-    console.error(`Estimate is above the $${COST_TARGET} target for a run.`);
+  if (estimate.usd > target) {
+    console.error(`Estimate is above the $${target} target for a run.`);
+  }
+  if (args.dry) {
+    console.log(countLines(cases).join('\n'));
+    return;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -241,9 +329,9 @@ async function main(): Promise<void> {
       const cards = req.lastCards;
       const system = cachedSystem(
         understandSystem(req.city, req.section),
-        cards
+        (cards
           ? `\n\nSon cevapta ${cards.count} ${cards.kind === 'parking' ? 'otopark' : 'restoran'} kartı var.`
-          : '',
+          : '') + langNote(req.lang),
       );
       try {
         const response = await call(() =>
@@ -272,7 +360,7 @@ async function main(): Promise<void> {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: cachedSystem(pickSystem(req.city)),
+            system: cachedSystem(pickSystem(req.city), langNote(req.lang)),
             output_config: { effort: 'low', format: zodOutputFormat(pickModelSchema(n)) },
             messages: [
               {
@@ -297,7 +385,7 @@ async function main(): Promise<void> {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: cachedSystem(parkPickSystem(req.city)),
+            system: cachedSystem(parkPickSystem(req.city), langNote(req.lang)),
             output_config: { effort: 'low', format: zodOutputFormat(parkPickModelSchema(n)) },
             messages: [
               {
@@ -322,7 +410,7 @@ async function main(): Promise<void> {
           client.messages.parse({
             model: MODEL,
             max_tokens: 1024,
-            system: cachedSystem(planSystem(req.city)),
+            system: cachedSystem(planSystem(req.city), langNote(req.lang)),
             output_config: {
               effort: 'low',
               format: zodOutputFormat(planModelSchema(req.candidates.length, total)),
@@ -352,13 +440,13 @@ async function main(): Promise<void> {
         client.messages.parse({
           model: MODEL,
           max_tokens: 200,
-          system: cachedSystem(replySystem(req.city)),
+          system: cachedSystem(replySystem(req.city), replyLangNote(req.lang)),
           output_config: { effort: 'low', format: zodOutputFormat(replyOutputSchema) },
           messages: [
             {
               role: 'user',
               content: JSON.stringify({
-                lang: 'tr',
+                lang: req.lang ?? 'tr',
                 userText: req.userText,
                 kind: req.kind,
                 facts: req.facts,
@@ -385,7 +473,9 @@ async function main(): Promise<void> {
   };
 
   // One conversation, played again after an outage; the cost of every play counts.
-  async function play(c: ConvoCase): Promise<{ turns: Transcript['turns']; error?: string }> {
+  async function play(
+    c: ConvoCase<string>,
+  ): Promise<{ turns: Transcript['turns']; error?: string }> {
     let last: Transcript | undefined;
     for (let attempt = 1; attempt <= MAX_PLAYS; attempt++) {
       if (aborted) return { turns: last?.turns ?? [], error: 'run aborted' };
@@ -397,11 +487,13 @@ async function main(): Promise<void> {
     return { turns: last?.turns ?? [], error: `outage after ${MAX_PLAYS} tries: ${why}` };
   }
 
-  // The selected city is global state of the app: conversations of one city run side by side, one
-  // city after the other; conversations that change city run alone at the end.
+  // The selected city and the app language are global state of the app: conversations of one city
+  // and one language run side by side, one after the other; conversations that change city run
+  // alone at the end.
   const slots = cases.map((c, index) => ({ c, index }));
-  const results: ({ c: ConvoCase; turns: Transcript['turns']; error?: string } | undefined)[] =
-    new Array(cases.length);
+  const results: (
+    { c: ConvoCase<string>; turns: Transcript['turns']; error?: string } | undefined
+  )[] = new Array(cases.length);
   let done = 0;
   const phase = async (list: typeof slots, width: number) => {
     let next = 0;
@@ -419,11 +511,15 @@ async function main(): Promise<void> {
     };
     await Promise.all(Array.from({ length: Math.min(width, list.length) }, () => worker()));
   };
-  for (const city of CITY_IDS) {
-    const mine = slots.filter((s) => citiesOf(s.c).length === 1 && s.c.city === city);
-    if (mine.length === 0) continue;
-    setActiveCity(city);
-    await phase(mine, CONCURRENCY);
+  for (const ui of ['tr', 'en'] as const) {
+    for (const city of CITY_IDS) {
+      const mine = slots.filter(
+        (s) => citiesOf(s.c).length === 1 && s.c.city === city && (s.c.ui ?? 'tr') === ui,
+      );
+      if (mine.length === 0) continue;
+      setActiveCity(city);
+      await phase(mine, CONCURRENCY);
+    }
   }
   await phase(
     slots.filter((s) => citiesOf(s.c).length > 1),
@@ -434,23 +530,61 @@ async function main(): Promise<void> {
   const scored = scoreAll(played);
   const passed = scored.filter((r) => r.ok).length;
   const rate = scored.length === 0 ? 0 : passed / scored.length;
-  const report = buildReport(scored, {
+  const cost = costOf(usage);
+  console.error(
+    `Tokens: input ${fmt(usage.inputTokens)} · cache read ${fmt(usage.cacheReadTokens)} · cache write ${fmt(usage.cacheWriteTokens)} · output ${fmt(usage.outputTokens)}; ` +
+      `cost $${cost.toFixed(3)} (estimated $${estimate.usd.toFixed(3)})`,
+  );
+  const date = new Date().toISOString().slice(0, 10);
+  const docs = (name: string) => path.resolve(__dirname, '../docs', name);
+
+  if (!mega) {
+    const report = buildReport(scored, {
+      model: MODEL,
+      bar: CONVO_PASS,
+      usage,
+      estimate,
+      seed,
+      planned: cases.length,
+    });
+    console.log(report);
+    const md = `# AI eval (convo)\n\nDate: ${date}\n\n${report}\n`;
+    fs.writeFileSync(docs('ai-eval-convo.md'), md);
+    if (rate < CONVO_PASS) process.exitCode = 1;
+    return;
+  }
+
+  // The mega set: a report and the scored conversations as JSON (scripts/ai-eval-merge.ts joins the shards).
+  const report = buildMegaReport(scored, {
     model: MODEL,
-    bar: CONVO_PASS,
+    seed,
+    bar: MEGA_PASS,
     usage,
-    estimate,
-    seed: args.seed,
+    estimateUsd: estimate.usd,
     planned: cases.length,
   });
   console.log(report);
-  console.error(
-    `Tokens: input ${fmt(usage.inputTokens)} · cache read ${fmt(usage.cacheReadTokens)} · cache write ${fmt(usage.cacheWriteTokens)} · output ${fmt(usage.outputTokens)}; cost $${costOf(usage).toFixed(3)}`,
+  const tag = args.shard ? String(args.shard.i) : 'all';
+  const file: ShardFile = {
+    version: 1,
+    set: 'mega',
+    seed,
+    model: MODEL,
+    shard: args.shard,
+    planned: cases.length,
+    order: cases.map((c) => c.name),
+    usage,
+    estimateUsd: estimate.usd,
+    results: scored,
+  };
+  fs.writeFileSync(
+    docs(args.shard ? `ai-eval-mega-${tag}.md` : 'ai-eval-mega.md'),
+    `# AI eval (mega${args.shard ? `, shard ${args.shard.i}/${args.shard.n}` : ''})\n\nDate: ${date}\n\n${report}\n`,
   );
-
-  const date = new Date().toISOString().slice(0, 10);
-  const md = `# AI eval (convo)\n\nDate: ${date}\n\n${report}\n`;
-  fs.writeFileSync(path.resolve(__dirname, '../docs/ai-eval-convo.md'), md);
-  if (rate < CONVO_PASS) process.exitCode = 1;
+  fs.writeFileSync(docs(`ai-eval-mega-${tag}.json`), JSON.stringify(file));
+  // A shard reports; the merge decides (scripts/ai-eval-merge.ts). A whole run decides itself.
+  if (!args.shard && rate < MEGA_PASS) process.exitCode = 1;
+  if (scored.length === 0 || aborted) process.exitCode = 1;
 }
 
 void main();

@@ -12,7 +12,9 @@
 import { KINDS, memberLabel, type Member } from '../choices';
 import { replyLeaks } from './aiScore';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
-import type { ConvoCase, ConvoCategory, ConvoTurn, TurnExpect } from './convoCases';
+import type { ClaimKind, ConvoCase, ConvoTurn, TurnExpect } from './convoCases';
+import en from '@/i18n/en';
+import tr from '@/i18n/tr';
 import { fold, type AiReplyKind, type Understanding } from '@/lib/ai/protocol';
 import { ECHO_CUES, NOT_KNOWN } from '@/lib/ai/replyCheck';
 import { walkMinFromMeters } from '@/lib/ai/verify';
@@ -109,11 +111,13 @@ export function sentenceCount(text: string): number {
 /** A leftover of a broken template or of code. */
 const BROKEN = /undefined|\{\{|\}\}|\[object|\bNaN\b|\bnull\b/i;
 /** The honest "we have no data" note of the app (chat.noInfo*, chat.choice.note.*), folded. */
-const NOTE = /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor/;
+const NOTE =
+  /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor|(we|i) (don t|do not) have [a-z ]{0,30}(info|data|ratings?)|we have no [a-z ]{0,30}(info|data)/;
 /** A sentence that says we lack the data is honest, whatever word it names. */
-const LACKS = /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)/;
+const LACKS =
+  /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)|(^| )(we don t have|i don t have|we have no|i have no|no data|no info|not available)( |$)/;
 const PRICE =
-  /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat)/;
+  /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat|price|prices|priced|cheap|cheaper|expensive|discount|budget)/;
 const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
 const RATING =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(rating|ratings|review|reviews|star|stars)( |$)/;
@@ -123,7 +127,8 @@ const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
  * var", "adlarından anlaşılıyor") says the menu is not known: it claims no menu data. A positive
  * one ("menüsünde köfte var") still does.
  */
-const MENU_HEDGE = /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan)/;
+const MENU_HEDGE =
+  /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan|may not|might not|not every|not on every|by name|from (the )?(place|restaurant) names|check the menu|probably|likely)/;
 /**
  * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
  * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
@@ -158,7 +163,10 @@ export function claimsIn(
     if (f === '' || LACKS.test(f)) continue;
     // The user's own price word, asked back or restated ("Ucuz derken aklında hangisi var?"), is no claim.
     const echoed = userPrice && (part.includes('?') || ECHO_CUES.test(f));
-    if (PRICE.test(f) && !echoed) out.push(`price: "${sentence.trim()}"`);
+    // Sending the user to the cards for the fee ("ücret durumuna kartlardan bakabilirsin") states no price.
+    const toCards = /(^| )(kart|card)/.test(f) && /(bak|gor|incele|kontrol|check|see|look)/.test(f);
+    const priced = toCards ? f.replace(/(^| )ucret\w*/g, ' ') : f;
+    if (PRICE.test(priced) && !echoed) out.push(`price: "${sentence.trim()}"`);
     if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
     if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
       out.push(`menu: "${sentence.trim()}"`);
@@ -167,10 +175,67 @@ export function claimsIn(
   return out;
 }
 
+/**
+ * Claims the app has no data for. Each is matched per sentence on the folded text (the raw text for
+ * numbers); a sentence that says the thing is unknown, and a question, is no claim. The words are
+ * the ones the app's own free-text check bans (freeText.ts BANNED_WORDS), so a template or a wording
+ * that slips through is caught here.
+ */
+const CLAIM_WORDS: Record<Exclude<ClaimKind, 'phone' | 'hours'>, RegExp> = {
+  best: /(^| )(en iyi|en lezzetli|lezzetli|meshur|best|tastiest|delicious|famous|popular|top rated)/,
+  reservation: /(^| )(rezervasyon|reservation|reserve|booking|booked)/,
+  guarantee: /(^| )(garanti|guarantee|kesin yer|kesin var|definitely|for sure)/,
+  charging: /(^| )(sarj|soket|charger|chargers|charging|elektrikli arac)/,
+  medical:
+    /(^| )(ilac|doz|tedavi|teshis|recete|antibiyotik|aspirin|medicine|medication|dosage|diagnos|treatment|prescri)/,
+};
+/** Numbers: a phone number (7+ digits in a row, spaces and dashes allowed) and a clock time. */
+const PHONE_DIGITS = /(\+?\d[\d ()-]{7,}\d)/;
+const CLOCK_TIME = /(^|[^\d.:])\d{1,2}[:.]\d{2}(?![\d.]| ?km)|\b\d{1,2} ?(am|pm)\b/i;
+
+/** The claims of the kinds in `kinds` that `text` makes; `names` (the shown places) are taken out first. */
+export function forbiddenClaims(
+  text: string,
+  kinds: readonly ClaimKind[],
+  names: readonly string[] = [],
+): string[] {
+  const out: string[] = [];
+  const own = names.map((n) => fold(n)).filter((n) => n !== '');
+  for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
+    if (part.trim().endsWith('?')) continue;
+    const sentence = part.replace(/[.!?\n;]+$/, '').trim();
+    let f = ` ${fold(sentence)} `;
+    for (const n of own) f = f.split(` ${n} `).join('  ');
+    f = f.replace(/\s+/g, ' ').trim();
+    if (f === '') continue;
+    const unknown = LACKS.test(f) || NOT_KNOWN.test(f);
+    for (const kind of kinds) {
+      if (kind === 'phone') {
+        if (PHONE_DIGITS.test(sentence)) out.push(`phone: "${sentence}"`);
+      } else if (kind === 'hours') {
+        if (CLOCK_TIME.test(sentence)) out.push(`hours: "${sentence}"`);
+      } else if (!unknown && CLAIM_WORDS[kind].test(f)) {
+        out.push(`${kind}: "${sentence}"`);
+      }
+    }
+  }
+  return out;
+}
+
+/** The ask is hedged: nothing found, or the text says the dish is not sure to be made ("emin olduğum yer yok", "benzer"). */
+const HEDGE =
+  /(emin ol|bulamad|buyuk ihtimalle|genelde olur|tam cikaramad|benzer|adinda .{0,40}(yer|gec)|bilgimiz|not sure|similar|couldn t find|could not find|probably|usually|might|no place)/;
+
 /** A walk longer than this is not near, and a list that starts there must say it is far. */
 export const FAR_WALK_MIN = 20;
 /** A place called near: "en yakın", "yakında", "hemen yanında", "nearby", "closest" (folded). */
 const NEAR = /(^| )(en yakin|yakinda( |$)|hemen yaninda|nearby|closest|nearest|close by)/;
+/**
+ * "car park nearby (128 m)", "otoparkı yakın", "nearby car park": it is the car park that is near
+ * the place (its own distance is in the text), nothing is said about how far the place is.
+ */
+const CARPARK_NEAR =
+  /(car ?parks?|parking|otopark\w*) (is |are )?(nearby|close by|yakin\w*)|(nearby|close by) (car ?parks?|parking)/g;
 /** What tells the user the results are far or the search was widened (folded). */
 const FAR = /(genis|uzak|az yer var|wider|far away|farther|\bkm\b)/;
 
@@ -225,9 +290,10 @@ export function distanceClaims(
     if (f === '') continue;
     const mins = minutesIn(f);
     const far = mins.some((m) => m > FAR_WALK_MIN);
-    if (FAR.test(f) || (far && !NEAR.test(f))) signal = true;
+    const near = NEAR.test(f.replace(CARPARK_NEAR, ' '));
+    if (FAR.test(f) || (far && !near)) signal = true;
     // A sentence that says it looked wider is the signal itself, however it words it.
-    if (!NEAR.test(f) || FAR.test(f)) continue;
+    if (!near || FAR.test(f)) continue;
     const q = sentence.trim();
     if (far) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
     else if (namesFarCard(f, cards, mins)) {
@@ -270,7 +336,20 @@ export function repeatedWordings(perCase: readonly (readonly WordingOf[])[]): Se
   });
 }
 
-const memberLabels = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
+/** The kind chips in both app languages: the English app shows its own labels. */
+const memberLabels = new Set(
+  Object.values(KINDS).flatMap((m) => [memberLabel(m, 'tr'), memberLabel(m, 'en')]),
+);
+const HEPSI_LABELS = [HEPSI, en.chat.choice.all];
+/** The three party-size chips of the "how many of you?" question, in both app languages. */
+export const PARTY_LABELS = [
+  tr.chat.party_1,
+  tr.chat.party_2,
+  tr.chat.party_3,
+  en.chat.party_1,
+  en.chat.party_2,
+  en.chat.party_3,
+];
 
 /** The folded text without the names of the shown places and the searched place (a car park may be in a name). */
 function withoutNames(text: string, cards: readonly ObservedCard[], place: string | null): string {
@@ -317,12 +396,15 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   const needsRouter = turn.input.type === 'say' || obs.routerCalls > 0 || obs.routerFailed;
   if (!u && needsRouter)
     m.push(obs.routerFailed ? 'router: no usable answer' : 'router: not asked');
+  // No one reading is right: the reply and honesty checks are all that apply.
+  if (e.free) return result(m);
 
   if (u) {
     if (e.kind === 'greeting') {
       if (u.kind !== 'chat') m.push(`kind: want chat (small talk), got ${u.kind}`);
     } else if (e.kind === 'offtopic' || e.kind === 'none') {
-      if (u.kind === 'search') m.push('kind: want chat or unknown, got search');
+      // An out-of-scope ask may be read as a search the app cannot run: it must still show nothing.
+      if (u.kind === 'search' && !e.scope) m.push('kind: want chat or unknown, got search');
     } else if (u.kind !== 'search') {
       m.push(`kind: want search (${e.kind}), got ${u.kind}`);
     }
@@ -336,7 +418,7 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
     }
     if (e.placeHas) {
       const all = [u.place, u.appleQuery, u.district].map((v) => v ?? '').join(' ');
-      if (!e.placeHas.some((w) => hasWordStart(all, w))) {
+      if (![...e.placeHas, ...(e.placeAlso ?? [])].some((w) => hasWordStart(all, w))) {
         m.push(`place: want ${e.placeHas.join('|')}, got ${u.place} / ${u.appleQuery}`);
       }
     }
@@ -439,9 +521,13 @@ function searchedKind(want: string, obs: ObservedTurn): boolean {
 /** The reply is a question about kinds of place: the "Hepsi" chip, two or more kind chips, no results. */
 function isKindsQuestion(obs: ObservedTurn): boolean {
   const labels = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
+  // "kalabalık bir grup" with no number: Yerim may ask how many of them first, then show results.
+  if (obs.cards.length === 0 && labels.filter((l) => PARTY_LABELS.includes(l)).length >= 3) {
+    return true;
+  }
   return (
     obs.cards.length === 0 &&
-    labels.includes(HEPSI) &&
+    labels.some((l) => HEPSI_LABELS.includes(l)) &&
     labels.filter((l) => memberLabels.has(l)).length >= 2
   );
 }
@@ -456,7 +542,7 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   const labels = obs.actions.filter((a) => a.kind !== 'open').map((a) => a.label);
   for (const c of e.chips ?? []) if (!labels.includes(c)) m.push(`chip missing: ${c}`);
   for (const c of e.noChips ?? []) if (labels.includes(c)) m.push(`chip must not be there: ${c}`);
-  if (e.hepsi !== undefined && labels.includes(HEPSI) !== e.hepsi) {
+  if (e.hepsi !== undefined && labels.some((l) => HEPSI_LABELS.includes(l)) !== e.hepsi) {
     m.push(`"${HEPSI}" chip: want ${e.hepsi ? 'present' : 'absent'}`);
   }
   if (e.chipsMin !== undefined) {
@@ -506,6 +592,19 @@ function honesty(turn: ConvoTurn, obs: ObservedTurn): Check {
   if (turn.expect.note === true && !asksKinds && !NOTE.test(fold(obs.text))) {
     m.push('the honest "no data" note is missing');
   }
+  const e = turn.expect;
+  if (e.noClaim) {
+    m.push(
+      ...forbiddenClaims(
+        obs.text,
+        e.noClaim,
+        obs.cards.map((c) => c.name),
+      ),
+    );
+  }
+  if (e.hedge === true && obs.cards.length > 0 && !HEDGE.test(fold(obs.text))) {
+    m.push(`results shown for something nobody may serve, with no hedge: ${obs.text.slice(0, 80)}`);
+  }
   for (const w of obs.wordings) {
     const claimsRoom =
       w.accepted !== null &&
@@ -546,7 +645,7 @@ export function scoreTurn(
 }
 
 export type CaseResult = {
-  c: ConvoCase;
+  c: ConvoCase<string>;
   turns: ObservedTurn[];
   scores: TurnScore[];
   /** Every check of every turn passed (and every turn ran). */
@@ -556,7 +655,7 @@ export type CaseResult = {
 
 /** Scores a played conversation; a conversation that stopped early fails. */
 export function scoreCase(
-  c: ConvoCase,
+  c: ConvoCase<string>,
   turns: ObservedTurn[],
   repeats: ReadonlySet<string> = new Set(),
   error?: string,
@@ -568,7 +667,7 @@ export function scoreCase(
 
 /** Scores every conversation, with the cross-case repetition check. */
 export function scoreAll(
-  played: { c: ConvoCase; turns: ObservedTurn[]; error?: string }[],
+  played: { c: ConvoCase<string>; turns: ObservedTurn[]; error?: string }[],
 ): CaseResult[] {
   const repeats = repeatedWordings(
     played.map((p) =>
@@ -629,7 +728,7 @@ export type Estimate = {
  * router; a search with results also to the pick; most replies are worded), their sizes, and the
  * prompt cache (the first call of each prompt is a write, the rest are reads).
  */
-export function estimateCost(cases: readonly ConvoCase[], sizes: PromptSizes): Estimate {
+export function estimateCost(cases: readonly ConvoCase<string>[], sizes: PromptSizes): Estimate {
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
   const calls = { understand: 0, pick: 0, reply: 0 };
   const written = new Set<string>();
@@ -678,7 +777,8 @@ export function estimateCost(cases: readonly ConvoCase[], sizes: PromptSizes): E
   return { calls, usage, usd: costOf(usage) };
 }
 
-const pct = (ok: number, n: number): string => (n === 0 ? '-' : `${((100 * ok) / n).toFixed(1)}%`);
+export const pct = (ok: number, n: number): string =>
+  n === 0 ? '-' : `${((100 * ok) / n).toFixed(1)}%`;
 const clip = (s: string, n: number): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const oneLine = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
@@ -691,10 +791,14 @@ export type ReportMeta = {
   seed: number;
   /** How many cases were asked for (stopped early when fewer ran). */
   planned: number;
+  /** The categories to list, in order; the convo set's when absent. */
+  categories?: readonly string[];
+  /** The title of the first line: "Convo AI eval" when absent. */
+  title?: string;
 };
 
 /** The worst failures first: most misses, then the case order. */
-function worst(results: CaseResult[], n: number): CaseResult[] {
+export function worst(results: CaseResult[], n: number): CaseResult[] {
   const misses = (r: CaseResult) =>
     r.scores.reduce((sum, s) => sum + CHECKS.reduce((k, c) => k + s[c].misses.length, 0), 0);
   return results
@@ -731,7 +835,7 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
   const passed = results.filter((r) => r.ok).length;
   const rate = results.length === 0 ? 0 : passed / results.length;
   lines.push(
-    `Convo AI eval (${meta.model}): ${passed}/${results.length} (${pct(passed, results.length)})`,
+    `${meta.title ?? 'Convo AI eval'} (${meta.model}): ${passed}/${results.length} (${pct(passed, results.length)})`,
   );
   lines.push(
     `Pass bar: ${Math.round(meta.bar * 100)}% -> ${rate >= meta.bar ? 'PASS' : 'FAIL'}` +
@@ -743,7 +847,7 @@ export function buildReport(results: CaseResult[], meta: ReportMeta): string {
   lines.push('');
   lines.push('| Category | Pass | % |');
   lines.push('| --- | --- | --- |');
-  const categories = CONVO_CATEGORIES.filter((c: ConvoCategory) =>
+  const categories = (meta.categories ?? CONVO_CATEGORIES).filter((c) =>
     results.some((r) => r.c.category === c),
   );
   for (const cat of categories) {

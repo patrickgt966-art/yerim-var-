@@ -8,6 +8,7 @@ import { CHOICES, KINDS, memberLabel } from '../choices';
 import { foodFile } from '../cityData';
 import { quartersOf } from '../quarters';
 import type { FoodCategory } from '../restaurants';
+import en from '@/i18n/en';
 import tr from '@/i18n/tr';
 import type { AiCityId, Wish } from '@/lib/ai/protocol';
 import {
@@ -90,6 +91,8 @@ export type TurnExpect = {
   place?: string[];
   /** The router's place / Apple query / district names one of these (a word start, folded). */
   placeHas?: string[];
+  /** Also right for `placeHas`: other words of the same place (a landmark's own name). */
+  placeAlso?: string[];
   /** Around the user: no place was set. */
   nearMe?: boolean;
   requireParking?: boolean;
@@ -130,14 +133,43 @@ export type TurnExpect = {
    * and no parking word in the reply).
    */
   parkShown?: boolean;
+  /**
+   * Out of the app's scope (a city or a kind of place it does not cover): the router may read it as
+   * chat, unknown or even a search, but no result may be shown and the reply stays honest.
+   */
+  scope?: boolean;
+  /** These claims are not made in the reply (see CLAIM_KINDS in convoScore.ts); a sentence that says it is unknown is fine. */
+  noClaim?: ClaimKind[];
+  /**
+   * The ask names something nobody may serve: either no results, or the reply says it is not sure
+   * ("yaptığından emin olduğum yer yok", "benzer yerler"). Never a plain list as if it was found.
+   */
+  hedge?: boolean;
+  /**
+   * No one reading is right (a back-reference like "ikincisi nerede"): only the reply and honesty
+   * checks apply, not what the router understood or which chips came.
+   */
+  free?: boolean;
 };
+
+/** The claims a reply may not make when the app has no data (convoScore.ts holds the words). */
+export const CLAIM_KINDS = [
+  'best',
+  'phone',
+  'hours',
+  'reservation',
+  'guarantee',
+  'charging',
+  'medical',
+] as const;
+export type ClaimKind = (typeof CLAIM_KINDS)[number];
 
 export type ConvoTurn = { input: ConvoInput; expect: TurnExpect };
 
-export type ConvoCase = {
+export type ConvoCase<C extends string = ConvoCategory> = {
   /** Unique, starts with the category. */
   name: string;
-  category: ConvoCategory;
+  category: C;
   /** The city the conversation starts in. */
   city: AiCityId;
   /** The chat the user opens: a bare place is a car park in 'park', a food search in 'food'. */
@@ -145,6 +177,14 @@ export type ConvoCase = {
   /** The hour of the day (Istanbul time) the conversation takes place. */
   hour: number;
   turns: ConvoTurn[];
+  /** Mega set only: the part of the category (a style, an occasion), for the report. */
+  sub?: string;
+  /** Mega set only: how the user writes (plain, slang, typo ...), for the report. */
+  style?: string;
+  /** Mega set only: the app language; Turkish when absent. */
+  ui?: 'tr' | 'en';
+  /** Mega set only: false = the phone gives no location (a search around the user uses the city centre). */
+  located?: boolean;
 };
 
 /** The chips of a greeting, in the app's words. */
@@ -160,7 +200,7 @@ export const CORE_DISTRICTS: Record<string, readonly string[]> = {
   antalya: ['Muratpaşa', 'Konyaaltı', 'Kepez'],
 };
 /** Further districts: fine to ask about, but a result is not certain. */
-const MORE_DISTRICTS: Record<string, readonly string[]> = {
+export const MORE_DISTRICTS: Record<string, readonly string[]> = {
   izmir: ['Urla', 'Çeşme', 'Menemen'],
   istanbul: ['Sarıyer', 'Maltepe', 'Kartal'],
   ankara: ['Gölbaşı', 'Sincan'],
@@ -169,7 +209,7 @@ const MORE_DISTRICTS: Record<string, readonly string[]> = {
 };
 
 /** Dishes the city's data always has places for (a result is certain in a core district). */
-const COMMON_DISHES = [
+export const COMMON_DISHES = [
   'lahmacun',
   'pide',
   'döner',
@@ -184,7 +224,7 @@ const COMMON_DISHES = [
   'tost',
 ].map(dishByX);
 /** More dishes to ask about (a result is likely, not certain). */
-const MORE_DISH_XS = [
+export const MORE_DISH_XS = [
   'iskender',
   'midye',
   'işkembe',
@@ -200,7 +240,7 @@ const MORE_DISH_XS = [
 const ALL_DISHES: Dish[] = [...COMMON_DISHES, ...MORE_DISH_XS.map(dishByX)];
 
 /** Typed wrong: a letter dropped, doubled or swapped, as people really write the dish. */
-const DISH_TYPOS: Record<string, string[]> = {
+export const DISH_TYPOS: Record<string, string[]> = {
   lahmacun: ['lahmcun', 'lamacun', 'lahmacunn'],
   pide: ['pidee', 'pıde'],
   döner: ['dönr', 'donerr', 'dönner'],
@@ -218,7 +258,7 @@ const DISH_TYPOS: Record<string, string[]> = {
 };
 
 /** English names of dishes, as a visitor writes them. */
-const EN_DISHES: readonly { en: string; d: Dish }[] = [
+export const EN_DISHES: readonly { en: string; d: Dish }[] = [
   { en: 'kebab', d: dishByX('kebap') },
   { en: 'pizza', d: dishByX('pizza') },
   { en: 'burgers', d: dishByX('hamburger') },
@@ -232,9 +272,9 @@ const EN_DISHES: readonly { en: string; d: Dish }[] = [
 ];
 
 /** Dishes another dish word is also right for: 🥙 is a döner, and a dürüm is its wrap. */
-const DISH_EMOJI_ALSO: Record<string, string[]> = { döner: ['durum'] };
+export const DISH_EMOJI_ALSO: Record<string, string[]> = { döner: ['durum'] };
 
-const DISH_EMOJI: Record<string, string> = {
+export const DISH_EMOJI: Record<string, string> = {
   pizza: '🍕',
   hamburger: '🍔',
   döner: '🥙',
@@ -245,14 +285,14 @@ const DISH_EMOJI: Record<string, string> = {
 };
 
 /** Emoji that stand for a kind of food more than for one dish: reading them as the category alone is right. */
-const GENERIC_DISH_EMOJI = new Set(['köfte']);
+export const GENERIC_DISH_EMOJI = new Set(['köfte']);
 
-const at = <T>(a: readonly T[], k: number): T => a[k % a.length] as T;
-const low = (s: string) => s.toLocaleLowerCase('tr');
-const cap = (s: string) => s.charAt(0).toLocaleUpperCase('tr') + s.slice(1);
+export const at = <T>(a: readonly T[], k: number): T => a[k % a.length] as T;
+export const low = (s: string) => s.toLocaleLowerCase('tr');
+export const cap = (s: string) => s.charAt(0).toLocaleUpperCase('tr') + s.slice(1);
 
 /** One letter dropped, doubled or swapped (never the first two letters). */
-function typo(r: Rng, word: string): string {
+export function typo(r: Rng, word: string): string {
   const s = low(word);
   if (s.length < 5) return s;
   const k = 2 + r.int(s.length - 3);
@@ -264,21 +304,21 @@ function typo(r: Rng, word: string): string {
 
 // --- Turn helpers -----------------------------------------------------------------------------
 
-const say = (text: string, expect: TurnExpect, city?: AiCityId): ConvoTurn => ({
+export const say = (text: string, expect: TurnExpect, city?: AiCityId): ConvoTurn => ({
   input: { type: 'say', text, ...(city ? { city } : {}) },
   expect,
 });
-const tap = (text: string, expect: TurnExpect): ConvoTurn => ({
+export const tap = (text: string, expect: TurnExpect): ConvoTurn => ({
   input: { type: 'tap', text },
   expect,
 });
-const answerTurn = (text: string, expect: TurnExpect): ConvoTurn => ({
+export const answerTurn = (text: string, expect: TurnExpect): ConvoTurn => ({
   input: { type: 'answer', text },
   expect,
 });
 
 /** A food search: in a district (place), or around the user (place null). */
-function food(
+export function food(
   place: string[] | null,
   dish: Dish | null,
   more: Partial<TurnExpect> = {},
@@ -293,7 +333,7 @@ function food(
 }
 
 /** The broad asks of choices.ts: the words, the wishes the router gives them, the kinds to tap. */
-type AskSpec = {
+export type AskSpec = {
   id: 'protein' | 'healthy' | 'quick' | 'sweet' | 'hearty';
   /** The question may be this entry's or its neighbour's (a diet word is both). */
   asks: string[];
@@ -303,7 +343,7 @@ type AskSpec = {
   taps: { label: string; member: string; word: string }[];
   note: boolean;
 };
-const ASK_SPECS: AskSpec[] = [
+export const ASK_SPECS: AskSpec[] = [
   {
     id: 'protein',
     asks: ['protein', 'healthy'],
@@ -412,15 +452,22 @@ const ASK_SPECS: AskSpec[] = [
   },
 ];
 /** The wishes a right reading of the text holds: "karnım çok aç" is hunger, hearty or quick are both fine. */
-const wishesFor = (spec: AskSpec, text: string): Wish[] =>
+export const wishesFor = (spec: AskSpec, text: string): Wish[] =>
   text.includes('karnım çok aç') ? [...spec.wishes, 'quick'] : spec.wishes;
-const ALL_ANSWERS = ['hepsi', 'hepsini göster', 'farketmez', 'herhangi biri', 'tümü', 'hepsi olur'];
+export const ALL_ANSWERS = [
+  'hepsi',
+  'hepsini göster',
+  'farketmez',
+  'herhangi biri',
+  'tümü',
+  'hepsi olur',
+];
 
 /**
  * Occasions, moods and situations that name no dish and have no entry in choices.ts: the router
  * picks 3-6 kinds of place from the catalog (protocol.ts KIND_NAMES) and Yerim asks which one.
  */
-const SITUATIONS = [
+export const SITUATIONS = [
   'ilk buluşmaya gideceğiz',
   'maçtan sonra 5 kişiyiz bir şey yiyelim',
   'akşamdan kalmayım',
@@ -472,6 +519,14 @@ export const TAPPABLE_LABELS: string[] = [
   tr.chat.parkAskYes,
   tr.chat.parkAskNo,
   ...new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr'))),
+  // The same chips in the English app.
+  en.chat.greetPark,
+  en.chat.greetFood,
+  en.chat.choice.all,
+  en.chat.actOnlyParking,
+  en.chat.parkAskYes,
+  en.chat.parkAskNo,
+  ...new Set(Object.values(KINDS).map((m) => memberLabel(m, 'en'))),
 ];
 
 /**
@@ -479,7 +534,7 @@ export const TAPPABLE_LABELS: string[] = [
  * city (checked against the data: the search widens and the first place is more than 20 minutes on
  * foot away). The reply must say it is far and must not call those places near.
  */
-const FAR_DISHES: Record<string, readonly { d: string; x: string }[]> = {
+export const FAR_DISHES: Record<string, readonly { d: string; x: string }[]> = {
   izmir: [
     { d: 'Menderes', x: 'sushi' },
     { d: 'Kemalpaşa', x: 'işkembe' },
@@ -525,7 +580,7 @@ const FAR_DISH_TEMPLATES = [
 // --- Real place names of the data -------------------------------------------------------------
 
 /** Names to search for: 2-3 words, letters only, unique in the city's OpenStreetMap list. */
-function searchableNames(city: AiCityId): string[] {
+export function searchableNames(city: AiCityId): string[] {
   const counts = new Map<string, number>();
   const names: { id: string; name: string }[] = [];
   for (const rec of foodFile(city).items ?? []) {
@@ -1590,7 +1645,7 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
 }
 
 /** Replaces {L} {D} {X} {E} in a template: the district as a place, the bare district, the dish. */
-function fill(template: string, d: string, x: string): string {
+export function fill(template: string, d: string, x: string): string {
   return template
     .replace(/\{LA\}/g, () => locative(d, true))
     .replace(/\{L\}/g, () => locative(d))
@@ -1609,13 +1664,17 @@ export const casesOf = (category: string | undefined): ConvoCase[] =>
  * category shuffled by the seed, so a small run covers every category. All of them when `limit`
  * is not below the number of cases. Same seed, same selection.
  */
-export function sampleCases(cases: ConvoCase[], limit: number, seed: number): ConvoCase[] {
+export function sampleCases<T extends { category: string }>(
+  cases: T[],
+  limit: number,
+  seed: number,
+): T[] {
   if (limit >= cases.length) return cases;
   const r = makeRng(seed);
-  const byCategory = new Map<string, ConvoCase[]>();
+  const byCategory = new Map<string, T[]>();
   for (const c of cases) byCategory.set(c.category, [...(byCategory.get(c.category) ?? []), c]);
   const queues = [...byCategory.values()].map((list) => r.shuffle(list));
-  const out: ConvoCase[] = [];
+  const out: T[] = [];
   for (let round = 0; out.length < limit; round++) {
     for (const q of queues) {
       const c = q[round];
@@ -1626,7 +1685,7 @@ export function sampleCases(cases: ConvoCase[], limit: number, seed: number): Co
 }
 
 /** The cities a conversation passes through (its own, and every switch). */
-export function citiesOf(c: ConvoCase): AiCityId[] {
+export function citiesOf(c: ConvoCase<string>): AiCityId[] {
   const out: AiCityId[] = [c.city];
   for (const t of c.turns) {
     if (t.input.type === 'say' && t.input.city && !out.includes(t.input.city))

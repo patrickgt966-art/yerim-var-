@@ -22,6 +22,7 @@ import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import i18n from '@/i18n';
+import en from '@/i18n/en';
 import { validateReplyReason } from '@/lib/ai/replyCheck';
 import {
   REPLY_TIMEOUT_MS,
@@ -39,8 +40,14 @@ import {
   type Understanding,
   fold,
 } from '@/lib/ai/protocol';
-import { KIND_TAP, type ConvoCase, type ConvoTurn } from './convoCases';
-import type { ObservedAction, ObservedCard, ObservedTurn, ObservedWording } from './convoScore';
+import { HEPSI, KIND_TAP, type ConvoCase, type ConvoTurn } from './convoCases';
+import {
+  PARTY_LABELS,
+  type ObservedAction,
+  type ObservedCard,
+  type ObservedTurn,
+  type ObservedWording,
+} from './convoScore';
 
 /**
  * The model behind the AI layer. A method that throws is an outage (the turn is void and the run is
@@ -52,29 +59,35 @@ export type ConvoAi = {
     history: ChatTurn[];
     section: 'park' | 'food';
     city: string;
+    /** 'en' when the app is in English (as the app's client sends it); absent: Turkish. */
+    lang?: 'en';
     lastCards?: { count: number; kind: 'restaurant' | 'parking' };
   }): Promise<Understanding | null>;
   pick(req: {
     text: string;
     candidates: PickCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<PickResponse | null>;
   pickPark(req: {
     text: string;
     candidates: ParkPickCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<ParkPickResponse | null>;
   plan(req: {
     text: string;
     when: PlanWhen;
     candidates: PlanCandidate[];
     city: string;
+    lang?: 'en';
   }): Promise<PlanResponse | null>;
   reply(req: {
     userText: string;
     kind: AiReplyKind;
     facts: AiReplyFacts;
     city: string;
+    lang?: 'en';
   }): Promise<string | null>;
 };
 
@@ -98,7 +111,9 @@ type Resolved =
   /** A "@n" tap and the reply offered no kind chip at all: nothing to tap, the turn is skipped. */
   | { kind: 'none' };
 
-const KIND_LABELS = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')));
+const KIND_LABELS = new Set(
+  Object.values(KINDS).flatMap((m) => [memberLabel(m, 'tr'), memberLabel(m, 'en')]),
+);
 
 /**
  * The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too).
@@ -107,14 +122,21 @@ const KIND_LABELS = new Set(Object.values(KINDS).map((m) => memberLabel(m, 'tr')
  */
 function chipOf(last: BotMessage | null, label: string, aiAsk = false): Resolved {
   const actions = (last?.actions ?? []).filter((a) => a.kind !== 'open');
-  const kinds = actions.filter((a) => KIND_LABELS.has(a.label));
+  const kindChips = actions.filter((a) => KIND_LABELS.has(a.label));
+  // A "how many of you?" question has party chips in the place of kind chips.
+  const kinds =
+    kindChips.length > 0 ? kindChips : actions.filter((a) => PARTY_LABELS.includes(a.label));
   const nth = KIND_TAP.exec(label);
   if (nth) {
     const hit = kinds[Math.min(Number(nth[1]), kinds.length) - 1];
     return hit ? { kind: 'chip', action: hit } : { kind: 'none' };
   }
+  // The "Hepsi" chip is "All" in the English app: either tap finds it.
+  const hepsiLabels = [HEPSI, en.chat.choice.all];
   const hit =
-    actions.find((a) => a.label === label) ?? actions.find((a) => fold(a.label) === fold(label));
+    actions.find((a) => a.label === label) ??
+    actions.find((a) => fold(a.label) === fold(label)) ??
+    (hepsiLabels.includes(label) ? actions.find((a) => hepsiLabels.includes(a.label)) : undefined);
   if (hit) return { kind: 'chip', action: hit };
   if (aiAsk && KIND_LABELS.has(label) && kinds[0]) {
     return { kind: 'chip', action: kinds[0], swapped: true };
@@ -148,9 +170,11 @@ function directionsTap(
 }
 
 /** Plays the conversation; never throws. */
-export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Transcript> {
+export async function playConversation(c: ConvoCase<string>, ai: ConvoAi): Promise<Transcript> {
   let city: string = c.city;
   setActiveCity(city);
+  // The mega set has English-app conversations; the language is global, like the city.
+  if (c.ui && i18n.language !== c.ui) await i18n.changeLanguage(c.ui);
   let ctx: ChatContext = emptyContext(c.section);
   let messages: ChatTurn[] = [];
   let last: BotMessage | null = null;
@@ -166,7 +190,14 @@ export async function playConversation(c: ConvoCase, ai: ConvoAi): Promise<Trans
       messages = [];
       last = null;
     }
-    const obs = await playTurn(turn, { ai, ctx, messages, last, now });
+    const obs = await playTurn(turn, {
+      ai,
+      ctx,
+      messages,
+      last,
+      now,
+      located: c.located !== false,
+    });
     out.turns.push(obs.observed);
     if (obs.observed.skipped) continue;
     if (obs.observed.infra) out.infra = true;
@@ -191,6 +222,8 @@ type TurnState = {
   messages: ChatTurn[];
   last: BotMessage | null;
   now: Date;
+  /** False: the phone gives no location, so "here" is unknown. */
+  located: boolean;
 };
 
 async function playTurn(
@@ -199,6 +232,7 @@ async function playTurn(
 ): Promise<{ observed: ObservedTurn; ctx: ChatContext; reply: BotMessage; error?: string }> {
   const { ai, ctx, now } = s;
   const city = activeCity();
+  const lang = i18n.language === 'en' ? ({ lang: 'en' } as const) : {};
   const label = turn.input.text;
   const observed: ObservedTurn = {
     input: label,
@@ -235,7 +269,7 @@ async function playTurn(
     .reverse();
 
   const deps: AssistantDeps = {
-    here: async () => city.center,
+    here: async () => (s.located ? city.center : null),
     geocode: async () => null,
     parkings: staticParkings(),
     t: (key, opts) => i18n.t(key, { city: city.name, ...opts }) as string,
@@ -250,6 +284,7 @@ async function playTurn(
             history,
             section: ctx.section,
             city: city.id,
+            ...lang,
             ...(lastCards ? { lastCards } : {}),
           });
           // The app gave up waiting at ROUTER_TIMEOUT_MS: it answered without the AI.
@@ -273,7 +308,12 @@ async function playTurn(
       usesLeft: () => 99,
       pick: async (req) => {
         try {
-          const v = await ai.pick({ text: req.text, candidates: req.candidates, city: city.id });
+          const v = await ai.pick({
+            text: req.text,
+            candidates: req.candidates,
+            city: city.id,
+            ...lang,
+          });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
           outage(e);
@@ -286,6 +326,7 @@ async function playTurn(
             text: req.text,
             candidates: req.candidates,
             city: city.id,
+            ...lang,
           });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
@@ -300,6 +341,7 @@ async function playTurn(
             when: req.when,
             candidates: req.candidates,
             city: city.id,
+            ...lang,
           });
           return v ? { ok: true, value: v, remaining: 99 } : { ok: false, reason: 'error' };
         } catch (e) {
@@ -322,7 +364,7 @@ async function playTurn(
           };
           observed.wordings.push(w);
           try {
-            w.raw = await ai.reply({ ...req, city: city.id });
+            w.raw = await ai.reply({ ...req, city: city.id, ...lang });
           } catch (e) {
             outage(e);
           }
@@ -331,6 +373,7 @@ async function playTurn(
             kind: req.kind,
             allow: [city.name, ...city.districts],
             userText: req.userText,
+            lang: i18n.language === 'en' ? 'en' : 'tr',
           });
           w.accepted = verdict.text;
           // A call that failed has no text to judge: that is "failed", not a rejection.

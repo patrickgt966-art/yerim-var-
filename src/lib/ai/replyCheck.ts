@@ -34,12 +34,14 @@ const UNIT_START = /^(dakika|dk|min|bos)/;
 
 const PARKING_WORDS = /(^| )(otopark|park|parking|garaj|garage|vale|valet)/;
 const PRICE_WORDS =
-  /(^| )tl( |$)|(^| )(fiyat|lira|ucuz|pahali|indirim|kampanya|price|priced|pricey|cheap|expensive|euro|dolar|dollar|discount|budget|cost|ucret(?!siz))/;
+  /(^| )tl( |$)|(^| )(fiyat|lira|ucuz|pahali|indirim|kampanya|price|priced|pricey|cheap|expensive|euro|dolar|dollar|discount|budget|cost|ucret(?!siz)|butce|ekonomik|hesapli|tasarruf|economical|affordable|inexpensive|bargain)/;
 /** "ücretli" / "paid": only a yes/no on the fee, no amount; fine when a fact says the car park is paid. */
 const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
 const RATING_WORDS =
   /(^| )(puan|yildiz|yorum|degerlendirme)|(^| )(star|stars|rating|ratings|rated|review|reviews)( |$)/;
 const FREE_WORDS = /(^| )(ucretsiz|free|bedava)( |$)/;
+/** Charging points and electric cars: the app holds no charging data, so no wording mentions them. */
+const CHARGING_WORDS = /(^| )(sarj|soket|charg|elektrikli|electric|ev charg)/;
 /** Words that call a place near ("en yakın", "yakında", "hemen yanında", "nearby", "closest"). */
 const NEAR_WORDS =
   /(^| )(yakin|hemen yan|yurume mesafe|nearby|nearest|closest|close by|close to|next to|walking distance)/;
@@ -70,7 +72,36 @@ const CARD_WORDS = /(^| )(kart|card|uygulama|app)/;
 const OPERATOR_WORDS = ['ispark', 'izelman', 'burpark', 'belediye', 'belediyesi', 'buyuksehir'];
 const URL_PATTERN = /https?:|www\.|:\/\/|@|#|\.(com|net|org|app|io|tr)\b/i;
 
+/** Turkish function words that no English sentence contains (folded). */
+const TURKISH_WORDS = new Set(
+  (
+    've icin bir bu ama ile yer yeri yerler yerleri yok olsun afiyet guzel secim secenek ' +
+    'bulalim buldum bulamadim dakika yurume yuruyerek yakin yakinda yakininda kartlara kartlardan ' +
+    'bakabilirsin bakalim rica ederim tesekkurler hosgeldin merhaba selam gunler keyfini cikarin ' +
+    'seceneklere otopark yemek bulabilirim'
+  ).split(' '),
+);
+
+/**
+ * True when a text is written in Turkish: a letter only Turkish has (ı ş ğ İ Ş Ğ) or a Turkish
+ * function word, outside the `names` (places, districts) it may carry. Used when the app speaks
+ * English: a wording or a chat reply in Turkish is dropped and the English template stays.
+ */
+export function looksTurkish(text: string, names: readonly string[] = []): boolean {
+  let rest = text;
+  for (const n of [...names].filter((v) => v.trim() !== '').sort((a, b) => b.length - a.length)) {
+    const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    rest = rest.replace(new RegExp(`(?<![\\p{L}])${escaped}(?![\\p{L}])`, 'giu'), ' ');
+  }
+  if (/[ıİşŞğĞ]/u.test(rest)) return true;
+  return fold(rest)
+    .split(' ')
+    .some((w) => TURKISH_WORDS.has(w));
+}
+
 type Options = {
+  /** The app's language: an English app drops a wording that is written in Turkish. */
+  lang?: 'en' | 'tr';
   /** The turn's kind: a greeting may ask "parking or food?" with no parking data. */
   kind?: AiReplyKind;
   /** Names that need no fact: the city and its districts. */
@@ -223,7 +254,18 @@ function insideName(words: string[], name: string): boolean {
 }
 
 /** Folded price / budget stems; the user's own ones may be echoed back (see priceViolation). */
-const PRICE_STEMS = ['ucuz', 'fiyat', 'budget', 'cheap', 'price', 'ucret'];
+const PRICE_STEMS = [
+  'ucuz',
+  'fiyat',
+  'budget',
+  'cheap',
+  'price',
+  'ucret',
+  'butce',
+  'ekonomik',
+  'hesapli',
+  'afford',
+];
 /** The sentence repeats what the user asked for ("ucuz derken", "ucuz bir yer arıyorsun") or asks. */
 export const ECHO_CUES =
   /(derken|dediginde|istedig|aradig|diledig|ariyor|istiyor|bakiyor|olsun|mean|looking|want)/;
@@ -299,7 +341,8 @@ function priceViolation(
  * The AI's wording of a reply, or null when it must not be shown: more than two sentences or 260
  * characters, a link, a number the facts do not carry (Turkish and English number words count), a
  * capitalised name that is not one of the fact names (or an allowed city / district name, or
- * "Yerim"; the word that opens a sentence is free), a price or rating word, "free" without a free
+ * "Yerim"; the word that opens a sentence is free), a price, budget ("bütçe dostu", "ekonomik") or
+ * rating word, a charging point or electric car (the app has no such data), "free" without a free
  * fact, parking talk when the facts hold no parking data, room in car parks without a live free
  * count (unless the sentence says it is not known), cards that show menus, "not found" next to
  * shown results, or a near-word ("yakında", "nearby")
@@ -329,6 +372,12 @@ export function validateReplyReason(
   if (clean.length > MAX_REPLY_TEXT_CHARS) return no('too-long');
   if (sentenceCount(clean) > MAX_REPLY_SENTENCES) return no('too-many-sentences');
   if (URL_PATTERN.test(clean) || /[₺$€]/.test(clean)) return no('link-or-currency');
+  if (
+    options.lang === 'en' &&
+    looksTurkish(clean, [...factStrings(facts), ...(options.allow ?? [])])
+  ) {
+    return no('wrong-language');
+  }
 
   const allow = options.allow ?? [];
   // What is left after the fact names are taken out is checked for numbers and forbidden words.
@@ -354,6 +403,7 @@ export function validateReplyReason(
   // A car park the facts call paid (`free: false`) may be called "ücretli": a yes/no, not an amount.
   if (priceViolation(clean, facts, allow, options.userText)) return no('price-word');
   if (RATING_WORDS.test(padded)) return no('rating-word');
+  if (CHARGING_WORDS.test(padded)) return no('charging-claim');
   const freeKnown = facts.freeOnly === true || (facts.items ?? []).some((i) => i.free === true);
   if (!freeKnown && FREE_WORDS.test(padded)) return no('free-without-fact');
   // A far result is never called near: the walk of a shown item (or the far flag) says it is not.
