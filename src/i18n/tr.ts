@@ -626,6 +626,9 @@ const tr = {
     showList: 'Listeyi göster',
   },
   chat: {
+    mascotA11y: 'Yerim',
+    mascotHint: 'Yazı kutusuna örnek bir soru yazar',
+    mascotLeft: '{{count}} hak',
     title: 'Yerim',
     placeholder: "Yerim'e yaz…",
     send: 'Gönder',

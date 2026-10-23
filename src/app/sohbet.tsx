@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BotBubble, TypingBubble, UserBubble, type ChatMessage } from '@/components/ChatBits';
 import { ChatHeader } from '@/components/chat/ChatHeader';
+import { ChatMascot } from '@/components/chat/ChatMascot';
 import { Composer } from '@/components/chat/Composer';
 import { ConsentCard } from '@/components/chat/ConsentCard';
 import { takeHandedOffQuestion } from '@/components/chat/handoff';
@@ -34,10 +35,11 @@ import {
   type ChatContext,
   type PlanData,
 } from '@/data/assistant';
-import { activeCity, isInCityArea } from '@/data/cities';
+import { activeCity, cityExamples, isInCityArea } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
 import { useParkings } from '@/data/useParkings';
+import { feel } from '@/lib/haptics';
 import { aiBaseUrl, createAiClient, type AiResult } from '@/lib/ai/client';
 import { MAX_MESSAGE_CHARS, type ChatTurn } from '@/lib/ai/protocol';
 import { noteAiActivity, refreshAiQuota } from '@/lib/ai/refresh';
@@ -210,6 +212,7 @@ function Chat({ first }: { first: boolean }) {
   const typingRef = useRef(false);
   const idRef = useRef(0);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const exampleTurn = useRef(0);
   const started = useRef(false);
 
   useEffect(() => {
@@ -370,6 +373,7 @@ function Chat({ first }: { first: boolean }) {
       ? suggestions(ctx, (key, opts) => t(key, opts))
       : [];
   const firstAt = messages[0]?.at;
+  const sends = messages.filter((m) => m.role === 'user').length;
 
   return (
     <KeyboardAvoidingView
@@ -408,7 +412,8 @@ function Chat({ first }: { first: boolean }) {
         data={messages}
         keyExtractor={(m) => m.id}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: 14, paddingBottom: 10, gap: 12 }}
+        // Room at the end for Yerim, who sits on the input's top edge.
+        contentContainerStyle={{ paddingTop: 14, paddingBottom: 56, gap: 12 }}
         ListHeaderComponent={
           <View style={{ gap: 12 }}>
             {firstAt != null && (
@@ -448,14 +453,29 @@ function Chat({ first }: { first: boolean }) {
         }
         ListFooterComponent={typing ? <TypingBubble thinking={thinking} /> : null}
       />
-      <Composer
-        value={input}
-        onChange={setInput}
-        onSubmit={submitInput}
-        suggestions={picks}
-        onPick={(text) => void send(text)}
-        bottom={keyboardUp ? 8 : Math.max(insets.bottom, 8)}
-      />
+      <View>
+        <ChatMascot
+          typing={typing}
+          typed={input.trim().length > 0}
+          sends={sends}
+          cheerKey={last?.role === 'bot' && (last.cards?.length ?? 0) > 0 ? last.id : null}
+          left={aiOn && left <= 2 ? left : null}
+          onTap={() => {
+            // A tap on Yerim fills in an example for the city, a different one each time.
+            const keys = ['home.example1', 'home.example2', 'home.example3'] as const;
+            setInput(t(keys[exampleTurn.current++ % keys.length]!, cityExamples()));
+            feel('tick');
+          }}
+        />
+        <Composer
+          value={input}
+          onChange={setInput}
+          onSubmit={submitInput}
+          suggestions={picks}
+          onPick={(text) => void send(text)}
+          bottom={keyboardUp ? 8 : Math.max(insets.bottom, 8)}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }

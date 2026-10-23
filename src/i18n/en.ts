@@ -643,6 +643,9 @@ const en = {
     showList: 'Show the list',
   },
   chat: {
+    mascotA11y: 'Yerim',
+    mascotHint: 'Puts an example question in the input',
+    mascotLeft: '{{count}} left',
     title: 'Yerim',
     placeholder: 'Message Yerim…',
     send: 'Send',
