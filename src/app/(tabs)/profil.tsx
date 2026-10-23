@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { MascotFace } from '@/components/mascot/Mascot';
 import { TabHint } from '@/components/mascot/TabHint';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SuggestionChip, Tile } from '@/components/search/SearchBits';
@@ -19,6 +20,7 @@ import { aiBaseUrl } from '@/lib/ai/client';
 import { REPO_URL } from '@/lib/report';
 import { useAi } from '@/store/ai';
 import { useCoach } from '@/store/coach';
+import { useNudge } from '@/store/nudge';
 import { useApp } from '@/store/app';
 import { brand, fonts, useColors, useTabBarSpace } from '@/theme';
 
@@ -29,11 +31,14 @@ const LANG_NAMES = { tr: 'Türkçe', en: 'English' } as const;
 /** Settings card in the home look: white block, peach edge, round icon tile and a title. */
 function Card({
   icon,
+  glyph,
   tint,
   title,
   children,
 }: {
-  icon: IconName;
+  icon?: IconName;
+  /** Drawn in the tile instead of an icon. */
+  glyph?: ReactNode;
   tint: string;
   title: string;
   children: ReactNode;
@@ -52,7 +57,7 @@ function Card({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Tile bg={tint}>
-          <Icon name={icon} size={20} color={brand.navy} strokeWidth={2.2} />
+          {glyph ?? (icon && <Icon name={icon} size={20} color={brand.navy} strokeWidth={2.2} />)}
         </Tile>
         <Txt
           accessibilityRole="header"
@@ -101,6 +106,7 @@ export default function ProfileScreen() {
   const consent = useAi((s) => s.consent);
   const setConsent = useAi((s) => s.setConsent);
   const left = useAi((s) => s.remaining());
+  const nudges = useNudge((s) => s.enabled);
 
   return (
     <ScrollView
@@ -132,6 +138,21 @@ export default function ProfileScreen() {
           ) : null}
         </Card>
       ) : null}
+      <Card glyph={<MascotFace size={24} />} tint={brand.orange} title={t('profile.yerim')}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt>{t('profile.nudges')}</Txt>
+            <Txt variant="caption" secondary>
+              {t('profile.nudgesBody')}
+            </Txt>
+          </View>
+          <Switch
+            value={nudges}
+            onValueChange={(on) => useNudge.getState().setEnabled(on)}
+            accessibilityLabel={t('profile.nudges')}
+          />
+        </View>
+      </Card>
       <Card icon="globe" tint={brand.mintSoft} title={t('profile.language')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {LANG_CHOICES.map((l) => (

@@ -27,12 +27,22 @@ describe('openState', () => {
     // The next noon, from the cache: the hours decide, not the old flag.
     expect(openState(cached, at(7, 12))).toBe('open');
     // Open at 22:00, still shown at 02:00 from the cache: the hours say closed.
-    const late = { isOpen: true, openingHoursText: '08:00-23:00', fetchedAt: at(6, 22).toISOString() };
+    const late = {
+      isOpen: true,
+      openingHoursText: '08:00-23:00',
+      fetchedAt: at(6, 22).toISOString(),
+    };
     expect(openState(late, at(7, 2))).toBe('closed');
     // No hours to fall back on: unknown, never the stale flag.
-    expect(openState({ isOpen: true, fetchedAt: at(6, 22).toISOString() }, at(7, 2))).toBe('unknown');
+    expect(openState({ isOpen: true, fetchedAt: at(6, 22).toISOString() }, at(7, 2))).toBe(
+      'unknown',
+    );
     // The measurement time counts when the source gives one.
-    const measured = { isOpen: false, fetchedAt: at(7, 12).toISOString(), updatedAt: at(7, 10).toISOString() };
+    const measured = {
+      isOpen: false,
+      fetchedAt: at(7, 12).toISOString(),
+      updatedAt: at(7, 10).toISOString(),
+    };
     expect(openState(measured, at(7, 12))).toBe('unknown');
   });
 

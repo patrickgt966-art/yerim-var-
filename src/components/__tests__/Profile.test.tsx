@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import Profile from '@/app/(tabs)/profil';
 import { useAi } from '@/store/ai';
 import { useApp } from '@/store/app';
+import { useNudge } from '@/store/nudge';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -25,12 +26,22 @@ beforeEach(() => {
 });
 
 describe('Profil', () => {
-  it('lists the sections in order: Yerim, Dil, Yol tarifi, Gizlilik, Veri kaynakları last', async () => {
+  it("turns Yerim's daily suggestion off and on", async () => {
+    useNudge.getState().reset();
+    await render(<Profile />);
+    const toggle = screen.getByLabelText('Yerim arada bir selam versin');
+    expect(toggle.props.value).toBe(true);
+    await fireEvent(toggle, 'valueChange', false);
+    expect(useNudge.getState().enabled).toBe(false);
+  });
+
+  it('lists the sections in order: Akıllı yardım, Yerim, Dil, Yol tarifi, Gizlilik, Veri kaynakları last', async () => {
     await render(<Profile />);
     const titles = screen.getAllByRole('header').map((h) => h.props.children);
     expect(titles).toEqual([
       'Profil',
       '✨ Akıllı yardım',
+      'Yerim',
       'Dil / Language',
       'Yol tarifi uygulaması',
       'Gizlilik',

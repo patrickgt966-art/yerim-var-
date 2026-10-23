@@ -23,20 +23,38 @@ export function isNearPier(p: LatLng, maxMeters = 400): boolean {
 }
 
 // Keyed by city id: switching city must never serve another city's stations.
-const railStations = new Map<string, LatLng[]>();
+const railStations = new Map<string, ({ name: string | null } & LatLng)[]>();
 
-/** Within maxMeters of an İZBAN / metro / tram station (places with k 'rail'). */
-export function isNearRail(p: LatLng, maxMeters = 500): boolean {
-  const id = activeCity().id;
+function stationsOf(id: string) {
   let stations = railStations.get(id);
   if (!stations) {
     stations = [
       ...(railFile(id).items ?? []),
       ...(placesFile(id).items ?? []).filter((x) => x.k === 'rail'),
-    ].map((x) => ({ lat: x.a, lng: x.o }));
+    ].map((x) => ({ name: x.n?.trim() || null, lat: x.a, lng: x.o }));
     railStations.set(id, stations);
   }
-  return stations.some((s) => distanceMeters(p, s) <= maxMeters);
+  return stations;
+}
+
+/** Within maxMeters of an İZBAN / metro / tram station (places with k 'rail'). */
+export function isNearRail(p: LatLng, maxMeters = 500): boolean {
+  return stationsOf(activeCity().id).some((s) => distanceMeters(p, s) <= maxMeters);
+}
+
+/** The nearest named rail, metro or tram station within maxMeters, or null. */
+export function nearestRailStation(
+  p: LatLng,
+  maxMeters = 700,
+): ({ name: string; distanceM: number } & LatLng) | null {
+  let best: ({ name: string; distanceM: number } & LatLng) | null = null;
+  for (const s of stationsOf(activeCity().id)) {
+    if (!s.name) continue;
+    const d = distanceMeters(p, s);
+    if (d <= maxMeters && (!best || d < best.distanceM))
+      best = { name: s.name, distanceM: d, lat: s.lat, lng: s.lng };
+  }
+  return best;
 }
 
 /** İzmir province outline (see isInCityArea); the active city's is `isInCityArea(p)`. */

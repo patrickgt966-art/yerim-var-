@@ -48,7 +48,9 @@ type Week = Range[][];
 
 const OSM_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const DAY = '(?:Mo|Tu|We|Th|Fr|Sa|Su|PH|SH)';
-const DAY_LIST = new RegExp(`^(${DAY}(?:\\s*-\\s*${DAY})?(?:\\s*,\\s*${DAY}(?:\\s*-\\s*${DAY})?)*)\\s+(.+)$`);
+const DAY_LIST = new RegExp(
+  `^(${DAY}(?:\\s*-\\s*${DAY})?(?:\\s*,\\s*${DAY}(?:\\s*-\\s*${DAY})?)*)\\s+(.+)$`,
+);
 const FULL_DAY: Range = [0, 0];
 
 /** "Mo-Fr,Su" -> [1..5, 0]; wrapping ranges ("Fr-Mo") go round the week. Holidays are skipped. */
@@ -127,7 +129,11 @@ function parseWeek(text: string): Week | null {
 /** Open at `minutes` of `day`: one of today's ranges, or yesterday's overnight one running on. */
 function weekOpen(week: Week, day: number, minutes: number): boolean {
   // Today's overnight range only counts from its start; its small hours belong to tomorrow.
-  if (week[day]!.some(([start, end]) => (end < start ? minutes >= start : inRange([start, end], minutes))))
+  if (
+    week[day]!.some(([start, end]) =>
+      end < start ? minutes >= start : inRange([start, end], minutes),
+    )
+  )
     return true;
   return week[(day + 6) % 7]!.some(([start, end]) => end < start && minutes < end);
 }

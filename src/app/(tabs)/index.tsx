@@ -11,6 +11,7 @@ import { NearbyCard } from '@/components/home/NearbyCard';
 import { QuickActions } from '@/components/home/QuickActions';
 import { ExampleQuestions, SearchCard } from '@/components/home/SearchCard';
 import { useNearbyHome } from '@/components/home/useNearbyHome';
+import { MascotNudge } from '@/components/mascot/MascotNudge';
 import { useColors, useTabBarSpace } from '@/theme';
 
 /** Home (design V5): one warm screen, search first, then the two main jobs. */
@@ -41,6 +42,7 @@ export default function HomeScreen() {
         <Cravings />
         <NearbyCard nearby={nearby} />
       </ScrollView>
+      <MascotNudge nearby={nearby} />
       <View
         pointerEvents="none"
         style={{
