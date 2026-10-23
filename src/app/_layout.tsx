@@ -25,6 +25,7 @@ import { watchParkActivity } from '@/lib/parkActivity';
 import { refreshHiddenPlaces } from '@/lib/placeReports';
 import { listenParkNotifications } from '@/lib/parkNotifications';
 import { cancelParkReminder, registerParkCategory, setUpReminders } from '@/lib/reminders';
+import { syncCostStep } from '@/lib/costStep';
 import { useApp } from '@/store/app';
 import { useReports } from '@/store/reports';
 import { useHydrated } from '@/store/useHydrated';
@@ -51,6 +52,7 @@ const refreshHidden = () => {
 const warmHydratedCity = () => {
   void warmUpParkings(queryClient, useApp.getState().city);
   refreshHidden();
+  void syncCostStep(useApp.getState().active);
 };
 if (useApp.persist.hasHydrated()) warmHydratedCity();
 else useApp.persist.onFinishHydration(warmHydratedCity);
@@ -62,6 +64,12 @@ listenParkNotifications();
 useApp.subscribe((s, prev) => {
   const old = prev.active?.reminder;
   if (old && old.id !== s.active?.reminder?.id) void cancelParkReminder(old);
+  // A new or ended park moves the "price goes up soon" notification with it.
+  if (
+    s.active?.startedAt !== prev.active?.startedAt ||
+    s.active?.parkingId !== prev.active?.parkingId
+  )
+    void syncCostStep(s.active);
   // The notification buttons are text, so they follow the language.
   if (s.lang !== prev.lang) void registerParkCategory();
   if (s.city !== prev.city) refreshHidden();
@@ -74,7 +82,11 @@ watchParkActivity();
 // Pause polling while the app is in the background.
 function onAppStateChange(status: AppStateStatus) {
   focusManager.setFocused(status === 'active');
-  if (status === 'active') refreshHidden();
+  if (status === 'active') {
+    refreshHidden();
+    // The last warning may have fired while away: line up the next price step.
+    void syncCostStep(useApp.getState().active);
+  }
 }
 
 export default function RootLayout() {

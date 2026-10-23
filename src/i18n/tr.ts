@@ -359,6 +359,8 @@ const tr = {
     notifExtend: '15 dk uzat',
     reminderSoonTitle: '10 dakika kaldı',
     reminderSoonBody: '{{name}} için süren dolmak üzere.',
+    costStepTitle: 'Ücret {{minutes}} dk sonra artıyor',
+    costStepBody: '{{name}}: şimdiye kadar ~{{from}} TL, {{minutes}} dk sonra ~{{to}} TL olacak.',
     undo: 'Yanlışlıkla mı? Geri al',
   },
   directions: {

@@ -369,6 +369,8 @@ const en = {
     notifExtend: 'Extend 15 min',
     reminderSoonTitle: '10 minutes left',
     reminderSoonBody: 'Your time at {{name}} is almost up.',
+    costStepTitle: 'The price goes up in {{minutes}} min',
+    costStepBody: '{{name}}: ~{{from}} TL so far, ~{{to}} TL in {{minutes}} min.',
     undo: 'By mistake? Undo',
   },
   directions: {

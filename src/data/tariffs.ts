@@ -162,3 +162,28 @@ export function hasRealTariffs(
   const ids = new Set(tariffs.map((t) => t.parkingId));
   return parkings.some((p) => p.source !== 'mock' && ids.has(p.id));
 }
+
+/**
+ * The next moment a stay at or after `fromMin` minutes gets dearer under this tariff: the band
+ * boundary, the price up to it and the price just after. Null when the price never rises again
+ * within two days or the bands cannot be read.
+ */
+export function nextPriceStep(
+  t: Tariff,
+  fromMin: number,
+): { atMin: number; from: number; to: number } | null {
+  const bands = carBands(t.bands)
+    .map((b) => bandMinutes(b.label))
+    .filter((m): m is number => m != null);
+  if (bands.length === 0) return null;
+  const DAY = 24 * 60;
+  const edges = [...new Set([t.freeMinutes ?? 0, ...bands, DAY, 2 * DAY])]
+    .filter((m) => m > 0 && m >= fromMin && m <= 2 * DAY)
+    .sort((a, b) => a - b);
+  for (const at of edges) {
+    const from = tariffCost(t, at);
+    const to = tariffCost(t, at + 1);
+    if (from != null && to != null && to > from) return { atMin: at, from, to };
+  }
+  return null;
+}
