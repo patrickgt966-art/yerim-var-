@@ -1,0 +1,178 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>13-oneri-ornekler</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<link rel="stylesheet" href="canli.css">
+<!--
+  12-oneriler'den dört örnek, art arda (her biri 8 sn, döngü): favori otopark doluyor, park uzadı,
+  yeni şehir, burada park zor (bunda "Sonra" denir: Yerim üstelemez, "tamam" deyip çekilir).
+  Hareket dili 11-oneri-sahne ile aynı. Üstte hangi örnek olduğunu söyleyen etiket. render(t); ?capture.
+-->
+<style>
+#bg img{position:absolute;left:0;top:0;width:390px}
+#bubble{position:absolute;width:264px;z-index:50;background:#fff;border:1px solid #F2E6D6;border-radius:20px;padding:10px 12px 10px;box-shadow:0 14px 30px -12px rgba(11,60,73,.5),0 2px 0 var(--peach-line)}
+#bTitle{font-weight:800;font-size:15px;line-height:20px;min-height:20px}
+#bBody{font-size:12.5px;line-height:17px;color:var(--sec);min-height:17px;margin-top:1px}
+.caret{display:inline-block;width:6px;height:13px;background:var(--orange);margin-left:2px;vertical-align:-2px;border-radius:2px}
+#cap{position:absolute;left:50%;top:9px;z-index:70;transform:translateX(-50%);white-space:nowrap;background:var(--navy);color:#fff;font-weight:800;font-size:12.5px;padding:7px 12px;border-radius:14px 14px 14px 5px;box-shadow:0 8px 18px -8px rgba(11,60,73,.6)}
+#cap b{color:var(--orange)}
+#toast{position:absolute;left:50%;top:104px;z-index:70;display:flex;align-items:center;gap:8px;white-space:nowrap;background:#fff;border:1px solid #F2E6D6;font-weight:800;font-size:13px;padding:8px 14px 8px 8px;border-radius:18px 18px 18px 6px;box-shadow:0 12px 24px -10px rgba(11,60,73,.45)}
+</style>
+<script src="maskot.js"></script>
+</head><body>
+<div class="screen" id="screen">
+  <div id="bg">
+    <img id="bg-home" src="4-anasayfa-canli.png" alt="">
+    <img id="bg-fav" src="8-favoriler-canli.png" alt="">
+    <img id="bg-harita" src="7-harita-canli.png" alt="">
+  </div>
+  <div id="tabbar"></div>
+  <div id="cap"></div>
+  <div id="toast"><span id="tFace"></span><span id="tText"></span></div>
+
+  <div id="mWrap" class="abs" style="z-index:40;left:0;top:0;transform-origin:50% 100%"><div id="mFlip" style="transform-origin:50% 100%"><div id="mSvg"></div></div></div>
+
+  <div id="bubble">
+    <div class="hand" id="bHello" style="font-size:19px;line-height:20px;color:var(--orange-strong)"></div>
+    <div id="bTitle"></div>
+    <div id="bBody"></div>
+    <div id="bCard" style="overflow:hidden;display:flex;align-items:center;gap:9px;border-radius:14px 14px 14px 5px;padding:0 9px"></div>
+    <div id="btns" style="overflow:visible;display:flex;align-items:center;gap:6px">
+      <span id="bGo" class="btn rel" style="min-height:34px;font-size:13px;background:var(--orange)"><span id="bGoT"></span>
+        <span id="fGo" class="abs" style="left:50%;top:50%;width:42px;height:42px;margin:-12px 0 0 -8px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></span>
+      </span>
+      <span id="bLater" class="rel" style="font-weight:700;font-size:13px;color:var(--sec);padding:8px 10px;border-radius:12px">Sonra
+        <span id="fLater" class="abs" style="left:50%;top:50%;width:42px;height:42px;margin:-18px 0 0 -16px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></span>
+      </span>
+    </div>
+    <svg id="tail" class="abs" width="22" height="13" viewBox="0 0 22 13" style="bottom:-12px" aria-hidden="true"><path d="M0 0h22c-6 2-9 6-10 13C10 6 6 2 0 0z" fill="#fff"/></svg>
+  </div>
+</div>
+<script src="canli.js"></script>
+<script>
+const P = (bg, fg, t) => `<span style="width:34px;height:34px;border-radius:10px 10px 10px 3px;background:${bg};color:${fg};font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center;flex:none">${t}</span>`;
+const card = (icon, name, sub, pill) => `${icon}<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;line-height:17px">${name}</div><div style="font-weight:700;font-size:11.5px;color:var(--sec)">${sub}</div></div>${pill}`;
+const SC = [
+  { bg: 'home', tab: 'index', cap: 'Favori otopark doluyor', cardBg: 'var(--mint-soft)', hello: 'Haber var!', title: 'Konak Pier doluyor',
+    body: 'Favori otoparkında 3 yer kaldı. 250 m ötede bol yer var:',
+    card: card(P('#fff', '#0E6B5A', 'P'), 'Alsancak Kültürpark', '250 m · 3 dk yürüme', '<span class="pill" style="background:#fff;color:var(--mint-text)"><span class="live"></span>41 boş</span>'),
+    go: 'Kültürpark\'a git', choice: 'go', toast: 'Kültürpark\'a yol tarifi açılıyor', talk: { eyes: 'side', prop: 'park', arm: 'hold' } },
+  { bg: 'fav', tab: 'favoriler', cap: 'Park uzadı', cardBg: 'var(--peach-soft)', hello: 'Saat kontrolü', title: '1 saati geçtin',
+    body: 'Şimdiye kadar ~60 TL; 8 dk sonra bir kademe artıyor.',
+    card: card(P('#fff', '#0E6B5A', 'P'), 'Konak Pier Otoparkı', 'Arabana 6 dk yürüme', '<span class="pill" style="background:#fff;color:var(--peach-text)">~60 TL</span>'),
+    go: 'Arabama yol tarifi', choice: 'go', toast: 'Arabana yol tarifi açılıyor', talk: { eyes: 'up', arm: 'point' } },
+  { bg: 'home', tab: 'index', cap: 'Yeni şehir', cardBg: '#FFF3C4', hello: 'Hoş geldin!', title: 'Ankara\'dasın',
+    body: 'Otoparkları haritadan gösteririm; canlı boş yer sayısı yok, baştan söyleyeyim.',
+    card: card(P('#fff', '#C2410C', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>'), 'Ankara', '2.500+ otopark · 800+ restoran', ''),
+    go: 'Şehri Ankara yap', choice: 'go', toast: 'Şehir artık Ankara', talk: { eyes: 'happy', arm: 'wave' } },
+  { bg: 'harita', tab: 'harita', cap: 'Burada park zor · "Sonra" denirse', cardBg: 'var(--chip)', hello: 'Bir fikir', title: 'Burada park zor',
+    body: 'Yakındaki otoparklar dolu görünüyor. Metro daha kolay olabilir:',
+    card: card(P('#fff', '#B91C1C', 'M'), 'Çankaya metrosu', '4 dk yürüme · M1', ''),
+    go: 'Durağı göster', choice: 'later', toast: 'Tamam, yolun açık olsun!', talk: { eyes: 'sad', arm: 'point' } },
+];
+const D = 8, T = SC.length * D;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const outBack = (k) => { const c = 1.7; return 1 + (c + 1) * Math.pow(k - 1, 3) + c * Math.pow(k - 1, 2); };
+const $ = (id) => document.getElementById(id);
+const MS = 108, VB = yerimMascotViewBox, K = MS / VB[2];
+const FOOT_X = (62 - VB[0]) * K, FOOT_Y = (112 - VB[1]) * K, HEAD = (112 - 12) * K;
+$('mSvg').innerHTML = yerimMascotLayers(MS, { eyes: ['open', 'blink', 'side', 'happy', 'up', 'sad'], mouth: ['smile', 'open', 'o', 'flat'], arm: ['rest', 'up', 'hold', 'point', 'wave', 'wave2'], prop: ['park'] });
+$('tFace').innerHTML = yerimMascot({ size: 30, eyes: 'happy', mouth: 'smile', tilt: 0 });
+const layers = [...document.querySelectorAll('#mSvg g[id]')];
+const show = (on) => layers.forEach((g) => g.setAttribute('opacity', on.includes(g.id) ? 1 : 0));
+
+let tabNow = null, yb = null, HOME, SPOT;
+const BAR_TOP = 844 - 22 - 76;
+function setTab(k) {
+  if (k === tabNow) return; tabNow = k; $('tabbar').innerHTML = canliTabBar(k);
+  yb = $('tabbar').querySelector('[style*="border-radius:22px 22px 22px 8px"]');
+  const scr = $('screen').getBoundingClientRect(), br = yb.getBoundingClientRect();
+  const BX = br.left + br.width / 2 - scr.left, BY = br.top + br.height / 2 - scr.top;
+  HOME = [BX, BY + 16]; SPOT = [BX + 78, BAR_TOP + 3];
+}
+const HOP = 0.8;
+function hop(from, to, k, height) {
+  if (k <= 0) return { x: from[0], y: from[1], sx: 1, sy: 1 };
+  if (k < 0.12) { const q = k / 0.12; return { x: from[0], y: from[1], sx: 1 + 0.12 * q, sy: 1 - 0.16 * q }; }
+  if (k < 0.5) { const q = (k - 0.12) / 0.38, e = ease(q); return { x: lerp(from[0], to[0], e), y: lerp(from[1], to[1], e) - height * Math.sin(Math.PI * q), sx: 0.92, sy: 1.1 }; }
+  if (k < 0.62) { const q = (k - 0.5) / 0.12; return { x: to[0], y: to[1], sx: lerp(1.16, 1.06, q), sy: lerp(0.8, 0.94, q) }; }
+  if (k < 0.8) { const q = (k - 0.62) / 0.18, b = outBack(q); return { x: to[0], y: to[1], sx: lerp(1.06, 1, b), sy: lerp(0.94, 1, b) }; }
+  return { x: to[0], y: to[1], sx: 1, sy: 1 };
+}
+let lastI = -1;
+const OUT = 0.6, TALK = 1.8, TAP = 5.75, BACK = 6.15;
+function render(tt) {
+  const tg = ((tt % T) + T) % T, i = Math.floor(tg / D), s = SC[i], t = tg - i * D, prev = SC[(i + SC.length - 1) % SC.length];
+  setTab(s.tab);
+  if (i !== lastI) { lastI = i; $('bHello').textContent = s.hello; $('bCard').innerHTML = s.card; $('bCard').style.background = s.cardBg; $('bGoT').textContent = s.go; $('tText').textContent = s.toast;
+    $('cap').innerHTML = `<b>${i + 1}/${SC.length}</b> · ${s.cap}`; }
+  // arka plan geçişi
+  const fade = clamp(t / 0.35, 0, 1);
+  for (const k of ['home', 'fav', 'harita']) { const el = $('bg-' + k); el.style.opacity = k === s.bg ? (prev.bg === s.bg ? 1 : fade) : k === prev.bg && prev.bg !== s.bg ? 1 - fade : 0; el.style.zIndex = k === s.bg ? 2 : 1; }
+  $('cap').style.opacity = clamp(t / 0.3, 0, 1) * (1 - clamp((t - (D - 0.3)) / 0.3, 0, 1));
+
+  // düğme esnemesi
+  const squash = (c) => { const q = clamp((t - c) / 0.3, 0, 1); return q <= 0 || q >= 1 ? [1, 1] : q < 0.5 ? [1 + 0.16 * (q / 0.5), 1 - 0.2 * (q / 0.5)] : [lerp(1.16, 1, outBack((q - 0.5) / 0.5)), lerp(0.8, 1, outBack((q - 0.5) / 0.5))]; };
+  const [a, b] = squash(OUT - 0.15), [c, d] = squash(BACK + HOP * 0.5);
+  yb.style.transform = `rotate(-4deg) scale(${a * c},${b * d})`;
+
+  // maskot
+  let pos, scale = 1, op = 1;
+  if (t < BACK) { const k = clamp((t - OUT) / HOP, 0, 1); pos = hop(HOME, SPOT, k, 110); scale = lerp(0.25, 1, ease(clamp((t - OUT) / 0.25, 0, 1))); op = t < OUT ? 0 : 1; }
+  else { const k = clamp((t - BACK) / HOP, 0, 1); pos = hop(SPOT, HOME, k, 70); scale = 1 - 0.75 * ease(clamp((k - 0.35) / 0.4, 0, 1)); op = k > 0.75 ? 0 : 1; }
+  const landed = t > OUT + HOP * 0.62 && t < BACK;
+  const n = Math.floor(clamp(t - TALK, 0, 99) * 46);
+  const typing = t > TALK && n < s.title.length + s.body.length;
+  let bob = 0, sx = 1, sy = 1;
+  if (landed && typing) { const ph = (t * 5.5) % 1; bob = -Math.abs(Math.sin(ph * Math.PI)) * 4; sy = 1 + Math.sin(ph * Math.PI * 2) * 0.025; sx = 2 - sy; }
+  else if (landed) { sy = 1 + Math.sin(t * 3.2) * 0.018; sx = 2 - sy; }
+  const w = $('mWrap');
+  w.style.left = pos.x - FOOT_X + 'px'; w.style.top = pos.y - FOOT_Y + bob + 'px';
+  w.style.transform = `scale(${pos.sx * sx * scale},${pos.sy * sy * scale})`; w.style.opacity = op;
+  const lookL = landed && t > 1.45 && t < 1.65, lookR = landed && t > 1.65 && t < 1.8;
+  $('mFlip').style.transform = `scaleX(${lookR ? -1 : 1})`;
+  const after = t > TAP, later = s.choice === 'later';
+  const on = [];
+  if (!landed) on.push('eyes-happy', 'mouth-o', 'arm-up');
+  else {
+    const blink = t % 2.7 > 2.55;
+    on.push(blink ? 'eyes-blink' : lookL || lookR ? 'eyes-side' : after ? 'eyes-happy' : t > TALK - 0.1 ? 'eyes-' + s.talk.eyes : 'eyes-open');
+    on.push(typing ? (Math.floor(t * 9) % 2 ? 'mouth-open' : 'mouth-smile') : after ? (later ? 'mouth-smile' : 'mouth-open') : s.talk.eyes === 'sad' ? 'mouth-flat' : 'mouth-smile');
+    if (after) on.push(later ? 'arm-rest' : 'arm-up');
+    else if (t > TALK - 0.1) { if (s.talk.arm === 'wave') on.push(Math.floor(t * 5) % 2 ? 'arm-wave' : 'arm-wave2'); else on.push('arm-' + s.talk.arm); if (s.talk.prop) on.push('prop-' + s.talk.prop); }
+    else on.push('arm-rest');
+  }
+  show(on);
+
+  // balon
+  const bb = $('bubble');
+  const bin = clamp((t - (TALK - 0.25)) / 0.22, 0, 1), bout = clamp((t - (TAP + 0.2)) / 0.2, 0, 1), bs = bin * (1 - bout);
+  const left = clamp(SPOT[0] - 175, 16, 390 - 16 - 264);
+  bb.style.left = left + 'px'; bb.style.opacity = bs;
+  bb.style.transformOrigin = `${SPOT[0] - left}px 100%`; bb.style.transform = `scale(${lerp(0.6, 1, outBack(bs))})`;
+  $('tail').style.left = SPOT[0] - left - 11 + 'px';
+  const caret = typing && Math.floor(t * 4) % 2 === 0 ? '<span class="caret"></span>' : '';
+  $('bTitle').innerHTML = s.title.slice(0, n) + (n <= s.title.length ? caret : '');
+  $('bBody').innerHTML = s.body.slice(0, Math.max(0, n - s.title.length)) + (n > s.title.length ? caret : '');
+  const tEnd = TALK + (s.title.length + s.body.length) / 46;
+  const ck = clamp((t - tEnd - 0.1) / 0.3, 0, 1), bk = clamp((t - tEnd - 0.45) / 0.3, 0, 1);
+  const cEl = $('bCard'); cEl.style.opacity = ck; cEl.style.maxHeight = ease(ck) * 64 + 'px'; cEl.style.marginTop = ck * 8 + 'px'; cEl.style.paddingTop = cEl.style.paddingBottom = ck * 8 + 'px';
+  const bEl = $('btns'); bEl.style.opacity = bk; bEl.style.maxHeight = ease(bk) * 44 + 'px'; bEl.style.marginTop = bk * 9 + 'px';
+  bb.style.top = SPOT[1] - HEAD - 18 - bb.offsetHeight + 'px';
+  // parmak
+  const f = $(later ? 'fLater' : 'fGo'), fo = $(later ? 'fGo' : 'fLater');
+  const fk = clamp((t - (TAP - 0.85)) / 0.5, 0, 1), press = t > TAP - 0.25 && t < TAP - 0.05;
+  fo.style.opacity = 0;
+  f.style.opacity = t < TAP - 0.85 ? 0 : t < TAP + 0.1 ? 1 : 1 - clamp((t - TAP - 0.1) / 0.2, 0, 1);
+  f.style.transform = `translate(${(1 - ease(fk)) * 70}px,${(1 - ease(fk)) * 90}px) scale(${press ? 0.8 : 1})`;
+  $('bGo').style.transform = `scale(${press && !later ? 0.95 : 1})`; $('bGo').style.background = press && !later ? '#E8761A' : 'var(--orange)';
+  $('bLater').style.background = press && later ? 'var(--chip)' : 'transparent';
+  // sonuç bildirimi
+  const tk = clamp((t - (BACK + 0.3)) / 0.3, 0, 1) * (1 - clamp((t - (D - 0.45)) / 0.3, 0, 1));
+  $('toast').style.opacity = tk; $('toast').style.transform = `translateX(-50%) translateY(${(1 - outBack(clamp((t - (BACK + 0.3)) / 0.3, 0, 1))) * -14}px)`;
+}
+window.seek = render; window.TOTAL = T;
+if (!location.search.includes('capture')) { const st = performance.now(); const loop = (now) => { render((now - st) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+else render(0);
+</script>
+</body></html>
