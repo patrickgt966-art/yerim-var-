@@ -1,0 +1,202 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>5-maskot-sahne</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<!--
+  Maskot sahnesi (11 sn, döngü): ana sayfada Yerim sekme çubuğunun arkasından kafasını uzatır,
+  el sallar, "Aklında bir şey var mı?" der, Yerim düğmesini gösterir; "Sor bakalım"a dokunulunca
+  sevinip geri çekilir ve sohbet açılır. Arka plan: 4-anasayfa-canli.png.
+  ?capture eklenirse oynamaz; kare kare kayıt için window.seek(saniye) kullanılır.
+-->
+<style>
+:root{--navy:#0B3C49;--orange:#FF8A1F;--orange-strong:#C2410C;--paper:#FBF7F1;--card:#fff;--sec:#4F6A75;
+  --mint-soft:#E2F1EA;--mint-text:#0E6B5A;--peach-soft:#FCE8D5;--peach-line:#F2D6BC;--peach-text:#8A4513;--yellow:#FFE08A}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E2D8}
+.disp{font-family:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif}
+.hand{font-family:'Caveat',cursive;font-weight:700}
+.screen{position:relative;width:390px;height:844px;margin:0 auto;overflow:hidden;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy)}
+.abs{position:absolute}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--sec);display:inline-block}
+.chip{padding:9px 13px;border-radius:18px;font-weight:800;font-size:13px;border:1.5px solid var(--peach-line);background:var(--card)}
+</style></head><body>
+<div class="screen" id="screen">
+
+  <!-- Arka plan: canlı ana sayfa taslağı -->
+  <img src="4-anasayfa-canli.png" alt="" class="abs" style="left:0;top:0;width:390px">
+
+  <!-- Maskot: sekme çubuğunun arkasından yükselir (kırpılan alan) -->
+  <div class="abs" style="left:120px;width:270px;bottom:98px;height:240px;overflow:hidden;pointer-events:none">
+    <div aria-hidden="true" class="abs" style="right:-30px;bottom:-60px;width:220px;height:200px;border-radius:50%;background:radial-gradient(closest-side,rgba(251,247,241,.95),rgba(251,247,241,.7) 55%,rgba(251,247,241,0))" id="glow"></div>
+    <div id="mWrap" class="abs" style="right:14px;bottom:0;width:124px;height:96px">
+      <div id="mBob" style="width:124px;height:96px">
+        <svg width="124" height="96" viewBox="-24 -8 168 130" style="overflow:visible" aria-hidden="true">
+          <g id="mTilt" style="transform-box:view-box;transform-origin:84px 116px">
+            <!-- kol: gövdenin arkasında, omuz (14,70) -->
+            <g id="arm" style="transform-box:view-box;transform-origin:38px 78px">
+              <path d="M16 70h-34" stroke="#0B3C49" stroke-width="14" stroke-linecap="round"/>
+              <path d="M16 70h-34" stroke="#FF8A1F" stroke-width="9" stroke-linecap="round"/>
+              <circle cx="-22" cy="70" r="9" fill="#FF8A1F" stroke="#0B3C49" stroke-width="2.8"/>
+            </g>
+            <ellipse cx="60" cy="112" rx="42" ry="5" fill="rgba(11,60,73,.14)"/>
+            <rect x="18" y="90" width="20" height="18" rx="6" fill="#0B3C49"/><rect x="82" y="90" width="20" height="18" rx="6" fill="#0B3C49"/>
+            <g id="ant" style="transform-box:view-box;transform-origin:108px 24px">
+              <path d="M84 16l8-12" stroke="#0B3C49" stroke-width="3" stroke-linecap="round"/><circle cx="93" cy="3" r="5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.5"/>
+            </g>
+            <path d="M30 56L37 20Q39 11 48 11H72Q81 11 83 20L90 56Z" fill="#FF8A1F" stroke="#FF8A1F" stroke-width="6" stroke-linejoin="round"/>
+            <rect x="6" y="50" width="108" height="50" rx="24" fill="#FF8A1F"/>
+            <path d="M39 50L44 24Q45 19 51 19H69Q75 19 76 24L81 50Z" fill="#0B3C49" stroke="#0B3C49" stroke-width="3" stroke-linejoin="round"/>
+            <g id="eOpen"><ellipse cx="52" cy="36" rx="6.2" ry="7.2" fill="#fff"/><ellipse cx="68" cy="36" rx="6.2" ry="7.2" fill="#fff"/><circle cx="53" cy="37" r="3.3" fill="#0B3C49"/><circle cx="69" cy="37" r="3.3" fill="#0B3C49"/><circle cx="54.3" cy="35.6" r="1.1" fill="#fff"/><circle cx="70.3" cy="35.6" r="1.1" fill="#fff"/></g>
+            <g id="eDown"><ellipse cx="52" cy="37" rx="6.2" ry="6.4" fill="#fff"/><ellipse cx="68" cy="37" rx="6.2" ry="6.4" fill="#fff"/><circle cx="49.5" cy="40" r="3.3" fill="#0B3C49"/><circle cx="65.5" cy="40" r="3.3" fill="#0B3C49"/></g>
+            <g id="eClosed"><path d="M46 37h12M62 37h12" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/></g>
+            <g id="eHappy"><path d="M46 38q6-8 12 0M62 38q6-8 12 0" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/></g>
+            <circle cx="25" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.6"/><circle cx="95" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="2.6"/>
+            <circle cx="22.5" cy="65.5" r="2.2" fill="#fff"/><circle cx="92.5" cy="65.5" r="2.2" fill="#fff"/>
+            <g id="mSmile"><path d="M47 77q13 11 26 0" fill="none" stroke="#0B3C49" stroke-width="4" stroke-linecap="round"/></g>
+            <g id="mOpen"><path d="M46 75q14 16 28 0z" fill="#0B3C49" stroke="#0B3C49" stroke-width="2.5" stroke-linejoin="round"/><path d="M53 82q7 4 14 0" fill="none" stroke="#E8604C" stroke-width="3" stroke-linecap="round"/></g>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Konuşma balonu -->
+  <div id="bubble" class="abs" style="right:16px;bottom:200px;width:246px;transform-origin:85% 100%">
+    <div style="position:relative;background:var(--card);border:1.5px solid var(--navy);border-radius:20px 20px 6px 20px;padding:12px 14px 12px;box-shadow:3px 4px 0 var(--peach-line);min-height:118px">
+      <div id="bTyping" class="abs" style="left:16px;top:18px;display:flex;gap:5px"><span class="dot" id="d1"></span><span class="dot" id="d2"></span><span class="dot" id="d3"></span></div>
+      <div id="bText">
+        <div class="hand" style="font-size:22px;line-height:24px;color:var(--orange-strong)">Selam!</div>
+        <div style="font-weight:800;font-size:15px;line-height:20px">Aklında bir şey var mı?</div>
+        <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:2px">Bana sor, birlikte bakalım. Ben hep
+          <span style="position:relative;white-space:nowrap;font-weight:800;color:var(--navy)"><span id="hl" class="abs" style="left:-3px;right:-3px;top:1px;bottom:0;background:var(--yellow);border-radius:4px;z-index:0;transform-origin:left"></span><span style="position:relative">Yerim</span></span> düğmesindeyim.</div>
+        <div id="btns" style="display:flex;gap:8px;margin-top:10px">
+          <div id="bAsk" style="position:relative;flex:1;min-height:40px;border-radius:14px 14px 14px 5px;background:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">Sor bakalım
+            <div id="finger" class="abs" style="left:50%;top:50%;width:46px;height:46px;margin:-14px 0 0 -10px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></div>
+          </div>
+          <div style="min-height:40px;padding:0 14px;border-radius:14px;background:var(--peach-soft);display:flex;align-items:center;font-weight:800;font-size:14px;color:var(--peach-text)">Sonra</div>
+        </div>
+      </div>
+      <!-- kuyruk: maskota doğru -->
+      <svg class="abs" width="22" height="16" viewBox="0 0 22 16" style="right:44px;bottom:-14px" aria-hidden="true"><path d="M1 0l10 14L19 0" fill="#fff" stroke="#0B3C49" stroke-width="1.5" stroke-linejoin="round"/><path d="M0 0h21" stroke="#fff" stroke-width="3"/></svg>
+    </div>
+  </div>
+
+  <!-- Yüzen sekme çubuğu (4-anasayfa-canli ile aynı) -->
+  <div class="abs" style="left:12px;right:12px;bottom:22px;height:76px;border-radius:26px;background:var(--navy);display:flex;align-items:center;justify-content:space-around;padding:0 6px;box-shadow:0 10px 24px -10px rgba(11,60,73,.6)">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-weight:800;font-size:11px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF8A1F" stroke-width="2.3" stroke-linejoin="round"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Ana sayfa</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2" stroke-linejoin="round"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Harita</div>
+    <div style="position:relative;margin-top:-34px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-weight:800;font-size:11px">
+      <div id="ring" class="abs" style="left:50%;top:31px;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;border:4px solid var(--orange)"></div>
+      <div id="yerimBtn" style="width:62px;height:62px;border-radius:22px 22px 22px 8px;background:var(--orange);border:4px solid var(--paper);display:flex;align-items:center;justify-content:center;transform:rotate(-4deg)">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="8" y="4" width="14" height="22" rx="6" fill="#0B3C49"/><rect x="10.5" y="8" width="9" height="5" rx="2" fill="#FF8A1F"/><rect x="10.5" y="18" width="9" height="3.5" rx="1.5" fill="#FF8A1F"/></svg>
+      </div>Yerim</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2" stroke-linejoin="round"><path d="M12 20s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8 2.6C20 15.2 12 20 12 20z"/></svg>Favoriler</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#A9BEC5;font-weight:700;font-size:11px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9BEC5" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Profil</div>
+  </div>
+
+  <!-- Sohbet: maskot çekilince alttan açılır -->
+  <div id="dim" class="abs" style="inset:0;background:rgba(11,60,73,.38)"></div>
+  <div id="sheet" class="abs" style="left:0;right:0;bottom:0;height:640px;background:var(--paper);border-radius:28px 28px 0 0;box-shadow:0 -10px 30px rgba(11,60,73,.25);padding:10px 16px 0">
+    <div style="width:42px;height:5px;border-radius:3px;background:#D9CFBF;margin:0 auto 12px"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px dashed var(--peach-line)">
+      <svg width="44" height="36" viewBox="-6 2 132 108" aria-hidden="true"><rect x="18" y="90" width="20" height="16" rx="6" fill="#0B3C49"/><rect x="82" y="90" width="20" height="16" rx="6" fill="#0B3C49"/><path d="M30 56L37 20Q39 11 48 11H72Q81 11 83 20L90 56Z" fill="#FF8A1F" stroke="#FF8A1F" stroke-width="6" stroke-linejoin="round"/><rect x="6" y="50" width="108" height="50" rx="24" fill="#FF8A1F"/><path d="M39 50L44 24Q45 19 51 19H69Q75 19 76 24L81 50Z" fill="#0B3C49"/><path d="M46 38q6-8 12 0M62 38q6-8 12 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><circle cx="25" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="3"/><circle cx="95" cy="68" r="8.5" fill="#FFE08A" stroke="#0B3C49" stroke-width="3"/><path d="M46 75q14 16 28 0z" fill="#0B3C49"/></svg>
+      <div style="flex:1"><div class="disp" style="font-weight:800;font-size:20px;line-height:22px">Yerim</div><div style="font-size:12px;font-weight:700;color:var(--mint-text)">● burada · bugün 8 soru hakkın var</div></div>
+      <div style="width:36px;height:36px;border-radius:18px;background:var(--chip,#EFE8DD);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+    </div>
+    <div style="padding-top:18px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px" id="uMsg">
+        <div style="background:var(--navy);color:#fff;border-radius:18px 18px 6px 18px;padding:9px 13px;font-weight:700;font-size:14px">Sor bakalım 👋</div>
+      </div>
+      <div style="position:relative">
+      <div id="cTyping" class="abs" style="left:0;top:0;display:flex;gap:5px;padding:14px 16px;background:var(--card);border:1px solid #EFE6D8;border-radius:18px 18px 18px 6px;width:66px"><span class="dot" id="c1"></span><span class="dot" id="c2"></span><span class="dot" id="c3"></span></div>
+      <div id="cMsg" style="background:var(--card);border:1px solid #EFE6D8;border-radius:18px 18px 18px 6px;padding:11px 14px;font-size:14px;line-height:20px;max-width:290px">
+        <b>Harika!</b> Bu akşam neye bakıyoruz? Bir yemek, bir semt ya da "Kordon'a yakın, park kolay" gibi bir şey yazabilirsin.
+      </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <div class="chip" id="ch1">Akşam yemeği</div><div class="chip" id="ch2">Otopark</div><div class="chip" id="ch3">Balık + kolay park</div>
+      </div>
+    </div>
+    <div class="abs" style="left:16px;right:16px;bottom:34px;display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--navy);border-radius:20px;padding:6px 6px 6px 14px;box-shadow:3px 4px 0 var(--peach-line)">
+      <div style="flex:1;color:var(--sec);font-size:15px">Bir şey yaz…</div>
+      <div style="width:42px;height:42px;border-radius:14px 14px 14px 5px;background:var(--orange);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B3C49" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const T = 11; // saniye
+const $ = (id) => document.getElementById(id);
+const anims = [];
+/* frames: [[saniye, {css}, easing?], ...] -> tüm sahne boyunca tek WAAPI animasyonu */
+function tl(el, frames) {
+  const kf = frames.map(([t, css, easing]) => ({ ...css, offset: t / T, easing: easing || 'ease-in-out' }));
+  if (kf[0].offset > 0) kf.unshift({ ...kf[0], offset: 0 });
+  if (kf[kf.length - 1].offset < 1) kf.push({ ...kf[kf.length - 1], offset: 1 });
+  anims.push(el.animate(kf, { duration: T * 1000, iterations: Infinity, fill: 'both' }));
+}
+/* Görünür olduğu aralıklar: anlık aç/kapa */
+function vis(el, spans) {
+  const f = [[0, { opacity: 0 }]];
+  for (const [a, b] of spans) { f.push([a, { opacity: 0 }], [a + 0.001, { opacity: 1 }], [b, { opacity: 1 }], [Math.min(b + 0.001, T), { opacity: 0 }]); }
+  tl(el, f.sort((x, y) => x[0] - y[0]));
+}
+const tr = (v) => ({ transform: v });
+const spring = 'cubic-bezier(.3,1.5,.5,1)';
+
+// Maskot yükselir, zıplar, sevinip iner
+tl($('mWrap'), [[0, tr('translateY(130px)')], [0.8, tr('translateY(130px)'), spring], [1.4, tr('translateY(0)')],
+  [6.3, tr('translateY(0)'), 'ease-out'], [6.45, tr('translateY(-14px)'), 'ease-in'], [6.6, tr('translateY(0)'), 'ease-in'], [7.0, tr('translateY(130px)')]]);
+const bob = [[0, tr('translateY(0)')], [1.6, tr('translateY(0)')]];
+for (let t = 2.2, up = true; t < 6.2; t += 0.6, up = !up) bob.push([t, tr(up ? 'translateY(-3px)' : 'translateY(0)')]);
+bob.push([6.25, tr('translateY(0)')]);
+tl($('mBob'), bob);
+tl($('ant'), [[0, tr('rotate(0)')], [1.5, tr('rotate(0)')], [1.7, tr('rotate(-16deg)')], [1.9, tr('rotate(12deg)')], [2.1, tr('rotate(-6deg)')], [2.3, tr('rotate(0)')],
+  [3.3, tr('rotate(0)')], [3.45, tr('rotate(-14deg)')], [3.6, tr('rotate(10deg)')], [3.8, tr('rotate(0)')], [6.25, tr('rotate(0)')], [6.4, tr('rotate(-18deg)')], [6.6, tr('rotate(14deg)')], [6.8, tr('rotate(0)')]]);
+tl($('mTilt'), [[0, tr('rotate(0)')], [3.0, tr('rotate(0)')], [3.3, tr('rotate(-7deg)')], [3.8, tr('rotate(-7deg)')], [4.05, tr('rotate(0)')]]);
+tl($('glow'), [[0, { opacity: 0 }], [0.8, { opacity: 0 }], [1.3, { opacity: 1 }], [6.6, { opacity: 1 }], [7.0, { opacity: 0 }]]);
+// Gözler ve ağız
+vis($('eOpen'), [[0, 1.9], [2.05, 4.0], [5.0, 5.2], [5.35, 6.25]]);
+vis($('eClosed'), [[1.9, 2.05], [5.2, 5.35]]);
+vis($('eDown'), [[4.0, 5.0]]);
+vis($('eHappy'), [[6.25, T]]);
+vis($('mSmile'), [[0, 2.6], [4.0, 6.25]]);
+vis($('mOpen'), [[2.6, 4.0], [6.25, T]]);
+// Kol: el sallar, sonra Yerim düğmesini gösterir
+vis($('arm'), [[2.0, 6.3]]);
+tl($('arm'), [[0, tr('rotate(40deg)')], [2.0, tr('rotate(40deg)')], [2.2, tr('rotate(62deg)')], [2.4, tr('rotate(30deg)')], [2.6, tr('rotate(62deg)')], [2.8, tr('rotate(30deg)')],
+  [3.0, tr('rotate(45deg)')], [3.7, tr('rotate(45deg)'), spring], [4.05, tr('rotate(-28deg)')], [5.3, tr('rotate(-28deg)')], [5.45, tr('rotate(-20deg)')], [5.6, tr('rotate(-28deg)')]]);
+// Balon
+tl($('bubble'), [[0, { opacity: 0, transform: 'scale(.5)' }], [2.55, { opacity: 0, transform: 'scale(.5)' }, spring], [2.85, { opacity: 1, transform: 'scale(1)' }],
+  [6.3, { opacity: 1, transform: 'scale(1)' }, 'ease-in'], [6.55, { opacity: 0, transform: 'scale(.7)' }]]);
+vis($('bTyping'), [[2.6, 3.3]]);
+['d1', 'd2', 'd3'].forEach((d, i) => tl($(d), [[0, tr('translateY(0)')], [2.6 + i * 0.12, tr('translateY(0)')], [2.75 + i * 0.12, tr('translateY(-4px)')], [2.9 + i * 0.12, tr('translateY(0)')],
+  [3.0 + i * 0.12, tr('translateY(0)')], [3.12 + i * 0.12, tr('translateY(-4px)')], [3.45, tr('translateY(0)')]]));
+tl($('bText'), [[0, { opacity: 0 }], [3.3, { opacity: 0 }], [3.5, { opacity: 1 }]]);
+tl($('hl'), [[0, tr('scaleX(0)')], [4.0, tr('scaleX(0)')], [4.4, tr('scaleX(1)')]]);
+tl($('btns'), [[0, { opacity: 0, transform: 'translateY(6px)' }], [4.6, { opacity: 0, transform: 'translateY(6px)' }], [4.9, { opacity: 1, transform: 'translateY(0)' }]]);
+// Yerim düğmesi nabız
+tl($('ring'), [[0, { opacity: 0, transform: 'scale(.8)' }], [4.0, { opacity: 0.9, transform: 'scale(.8)' }, 'ease-out'], [4.8, { opacity: 0, transform: 'scale(1.6)' }],
+  [4.81, { opacity: 0.9, transform: 'scale(.8)' }, 'ease-out'], [5.6, { opacity: 0, transform: 'scale(1.6)' }]]);
+tl($('yerimBtn'), [[0, tr('rotate(-4deg) scale(1)')], [4.0, tr('rotate(-4deg) scale(1)'), spring], [4.25, tr('rotate(-4deg) scale(1.1)')], [5.4, tr('rotate(-4deg) scale(1.1)')], [5.7, tr('rotate(-4deg) scale(1)')]]);
+// Parmak dokunuşu
+tl($('finger'), [[0, { opacity: 0, transform: 'translate(60px,80px) scale(1)' }], [5.4, { opacity: 0, transform: 'translate(60px,80px) scale(1)' }, 'ease-out'],
+  [5.95, { opacity: 1, transform: 'translate(0,0) scale(1)' }], [6.05, { opacity: 1, transform: 'translate(0,0) scale(.78)' }], [6.2, { opacity: 1, transform: 'translate(0,0) scale(1)' }], [6.4, { opacity: 0, transform: 'translate(0,0) scale(1)' }]]);
+tl($('bAsk'), [[0, { transform: 'scale(1)', background: '#FF8A1F' }], [6.05, { transform: 'scale(1)', background: '#FF8A1F' }], [6.12, { transform: 'scale(.94)', background: '#E8761A' }], [6.3, { transform: 'scale(1)', background: '#FF8A1F' }]]);
+// Sohbet açılır
+tl($('dim'), [[0, { opacity: 0 }], [6.8, { opacity: 0 }], [7.3, { opacity: 1 }]]);
+tl($('sheet'), [[0, tr('translateY(660px)')], [6.85, tr('translateY(660px)'), 'cubic-bezier(.2,.9,.2,1)'], [7.45, tr('translateY(0)')]]);
+tl($('uMsg'), [[0, { opacity: 0, transform: 'translateY(8px)' }], [7.4, { opacity: 0, transform: 'translateY(8px)' }], [7.65, { opacity: 1, transform: 'translateY(0)' }]]);
+vis($('cTyping'), [[7.8, 8.7]]);
+['c1', 'c2', 'c3'].forEach((d, i) => tl($(d), [[0, tr('translateY(0)')], [7.85 + i * 0.12, tr('translateY(0)')], [8.0 + i * 0.12, tr('translateY(-4px)')], [8.15 + i * 0.12, tr('translateY(0)')],
+  [8.25 + i * 0.12, tr('translateY(0)')], [8.4 + i * 0.12, tr('translateY(-4px)')], [8.75, tr('translateY(0)')]]));
+tl($('cMsg'), [[0, { opacity: 0, transform: 'translateY(8px)' }], [8.7, { opacity: 0, transform: 'translateY(8px)' }], [8.95, { opacity: 1, transform: 'translateY(0)' }]]);
+['ch1', 'ch2', 'ch3'].forEach((c, i) => tl($(c), [[0, { opacity: 0, transform: 'scale(.6)' }], [9.1 + i * 0.15, { opacity: 0, transform: 'scale(.6)' }, spring], [9.4 + i * 0.15, { opacity: 1, transform: 'scale(1)' }]]));
+
+// Kayıt modu: oynatma yok, window.seek(s) ile kare seçilir
+window.seek = (s) => anims.forEach((a) => { a.currentTime = s * 1000; });
+if (location.search.includes('capture')) { anims.forEach((a) => a.pause()); window.seek(0); }
+</script>
+</body></html>

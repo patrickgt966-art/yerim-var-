@@ -1,0 +1,112 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><title>5-maskot</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<!--
+  Maskot taslağı: "Yerim", küçük turuncu araba. Ön cepheden; ön cam alın, gözler camda,
+  farlar yanak, tampon gülümseme, antenin ucunda sarı top (dikkat işareti / "aklımda bir şey var").
+  Az ifade, basit hareket: göz kırpma, zıplama, anten sallama, kolla gösterme.
+-->
+<style>
+:root{--navy:#0B3C49;--orange:#FF8A1F;--orange-strong:#C2410C;--paper:#FBF7F1;--card:#fff;--sec:#4F6A75;
+  --mint-soft:#E2F1EA;--mint-text:#0E6B5A;--peach-soft:#FCE8D5;--peach-line:#F2D6BC;--peach-text:#8A4513;--yellow:#FFE08A}
+*{box-sizing:border-box}
+body{margin:0;background:#E9E2D8}
+.disp{font-family:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif}
+.hand{font-family:'Caveat',cursive;font-weight:700}
+.page{position:relative;width:390px;margin:0 auto;background:var(--paper);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--navy);padding:44px 16px 40px;overflow:hidden}
+.page:before{content:"";position:absolute;inset:0;opacity:.5;background-image:radial-gradient(rgba(11,60,73,.07) 1px,transparent 1.2px);background-size:14px 14px;pointer-events:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cell{position:relative;background:var(--card);border:1px solid #EFE6D8;border-radius:20px 20px 20px 6px;padding:12px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.cell .name{font-weight:800;font-size:14px}
+.cell .when{font-size:12px;line-height:16px;color:var(--sec);text-align:center}
+.bubble{background:var(--card);border:1.5px solid var(--navy);border-radius:18px 18px 18px 6px;padding:10px 12px;font-size:13px;line-height:18px;box-shadow:3px 4px 0 var(--peach-line)}
+h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.4px;margin:26px 0 10px}
+.rule{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:18px;padding:9px 0;border-bottom:1px dashed #E6DCCD}
+.rule:last-child{border-bottom:0}
+.rule b{display:block;font-size:14px}
+.num{flex:none;width:24px;height:24px;border-radius:8px;background:var(--peach-soft);color:var(--peach-text);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+</style></head><body>
+<div class="page">
+  <div style="position:relative">
+    <div class="hand" style="font-size:24px;color:var(--orange-strong);transform:rotate(-2deg);transform-origin:left">Tanışın:</div>
+    <div class="disp" style="font-weight:800;font-size:34px;line-height:38px;letter-spacing:-1px">Yerim</div>
+    <div style="font-size:14px;line-height:20px;color:var(--sec);margin-top:4px;max-width:300px">Uygulamanın küçük turuncu arabası. Arada bir kenardan kafasını uzatır, Yerim düğmesini gösterir: "Aklında bir şey var mı?"</div>
+
+    <!-- Büyük portre -->
+    <div style="display:flex;justify-content:center;margin:18px 0 4px;position:relative">
+      <div style="position:absolute;top:30px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(255,138,31,.22),rgba(255,138,31,0) 70%)"></div>
+      <div id="hero" style="position:relative"></div>
+      <div class="hand" style="position:absolute;right:12px;top:16px;font-size:16px;color:var(--sec);transform:rotate(6deg);text-align:center;line-height:17px">anten: aklında<br>bir şey var<svg width="40" height="22" viewBox="0 0 40 22" style="display:block;margin:2px auto 0" fill="none" stroke="#4F6A75" stroke-width="2" stroke-linecap="round"><path d="M34 2C26 12 16 17 4 18M9 13l-5 5 6 3"/></svg></div>
+      <div class="hand" style="position:absolute;left:10px;top:118px;font-size:16px;color:var(--sec);transform:rotate(-5deg);text-align:center;line-height:17px">farlar<br>yanak<svg width="34" height="20" viewBox="0 0 34 20" style="display:block;margin:2px auto 0" fill="none" stroke="#4F6A75" stroke-width="2" stroke-linecap="round"><path d="M4 2c6 10 14 14 26 15M25 12l5 5-6 2"/></svg></div>
+    </div>
+
+    <h2>Yüz ifadeleri</h2>
+    <div class="grid" id="faces"></div>
+
+    <h2>Nerede, ne der?</h2>
+    <div style="display:flex;flex-direction:column;gap:14px" id="lines"></div>
+
+    <h2>Can sıkmaması için</h2>
+    <div style="background:var(--card);border:1px solid #EFE6D8;border-radius:20px 20px 20px 6px;padding:4px 14px">
+      <div class="rule"><span class="num">1</span><div><b>Günde en fazla bir kez</b>Aynı cümle haftada bir kez. İki kez "Sonra" denirse bir hafta görünmez.</div></div>
+      <div class="rule"><span class="num">2</span><div><b>Araya girmez</b>Yazarken, harita kaydırırken, park süresi işlerken çıkmaz.</div></div>
+      <div class="rule"><span class="num">3</span><div><b>Hakkı yoksa davet etmez</b>Yapay zekâ onayı yoksa ya da günlük soru bitmişse yalnızca selam verir.</div></div>
+      <div class="rule"><span class="num">4</span><div><b>Kapatılabilir</b>Profil'de "Yerim arada bir selam versin" anahtarı. Hareketi azalt açıksa animasyonsuz gelir.</div></div>
+    </div>
+    <div class="hand" style="text-align:center;font-size:19px;color:var(--sec);margin-top:18px;transform:rotate(-1deg)">hareketli hali: 5-maskot-sahne.html ✌︎</div>
+  </div>
+</div>
+
+<script>
+/* Maskot SVG'si. eyes: open | happy | closed | up | down | curious; mouth: smile | open | o | flat | sorry;
+   arm: none | wave | point; tilt: derece. */
+function mascot({size=120,eyes='open',mouth='smile',arm='none',tilt=0,extra=''}={}){
+  const N='#0B3C49',O='#FF8A1F',Y='#FFE08A';
+  const eye=(cx)=>{
+    if(eyes==='happy')return `<path d="M${cx-6} ${38}q6-8 12 0" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>`;
+    if(eyes==='closed')return `<path d="M${cx-6} 37h12" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>`;
+    const big=eyes==='curious'&&cx>60;const rx=big?7.5:6.2,ry=big?8.5:7.2;
+    const dx=eyes==='up'?1:eyes==='down'?0:1,dy=eyes==='up'?-3:eyes==='down'?3:1;
+    const lid=eyes==='down'?`<path d="M${cx-rx-1} ${36-ry+3}h${2*rx+2}" stroke="${N}" stroke-width="5"/>`:'';
+    return `<ellipse cx="${cx}" cy="36" rx="${rx}" ry="${ry}" fill="#fff"/><circle cx="${cx+dx}" cy="${36+dy}" r="${big?3.8:3.3}" fill="${N}"/><circle cx="${cx+dx+1.3}" cy="${36+dy-1.4}" r="1.1" fill="#fff"/>${lid}`;
+  };
+  const m={smile:`<path d="M47 77q13 11 26 0" fill="none" stroke="${N}" stroke-width="4" stroke-linecap="round"/>`,
+    open:`<path d="M46 75q14 16 28 0z" fill="${N}" stroke="${N}" stroke-width="2.5" stroke-linejoin="round"/><path d="M53 82q7 4 14 0" fill="none" stroke="#E8604C" stroke-width="3" stroke-linecap="round"/>`,
+    o:`<ellipse cx="60" cy="79" rx="5" ry="6" fill="${N}"/>`,
+    flat:`<path d="M51 79h18" stroke="${N}" stroke-width="4" stroke-linecap="round"/>`,
+    sorry:`<path d="M48 82q4-4 8 0t8 0t8 0" fill="none" stroke="${N}" stroke-width="3.6" stroke-linecap="round"/>`}[mouth];
+  const arms={none:'',
+    wave:`<g transform="rotate(-35 112 64)"><path d="M112 64l16-7" stroke="${O}" stroke-width="8" stroke-linecap="round"/><circle cx="130" cy="56" r="7" fill="${O}" stroke="${N}" stroke-width="2.5"/></g>`,
+    point:`<path d="M14 70l-20 12" stroke="${O}" stroke-width="8" stroke-linecap="round"/><circle cx="-9" cy="84" r="7" fill="${O}" stroke="${N}" stroke-width="2.5"/><path d="M-12 86l-8 5" stroke="${N}" stroke-width="3" stroke-linecap="round"/>`};
+  return `<svg width="${size}" height="${size}" viewBox="-24 -8 168 128" style="overflow:visible" aria-hidden="true">
+  <g transform="rotate(${tilt} 60 100)">
+  <ellipse cx="60" cy="112" rx="42" ry="5" fill="rgba(11,60,73,.14)"/>
+  <rect x="18" y="90" width="20" height="18" rx="6" fill="${N}"/><rect x="82" y="90" width="20" height="18" rx="6" fill="${N}"/>
+  <path d="M84 16l8-12" stroke="${N}" stroke-width="3" stroke-linecap="round"/><circle cx="93" cy="3" r="5" fill="${Y}" stroke="${N}" stroke-width="2.5"/>
+  <path d="M30 56L37 20Q39 11 48 11H72Q81 11 83 20L90 56Z" fill="${O}" stroke="${O}" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="6" y="50" width="108" height="50" rx="24" fill="${O}"/>
+  <path d="M39 50L44 24Q45 19 51 19H69Q75 19 76 24L81 50Z" fill="${N}" stroke="${N}" stroke-width="3" stroke-linejoin="round"/>
+  ${eye(52)}${eye(68)}
+  <circle cx="25" cy="68" r="8.5" fill="${Y}" stroke="${N}" stroke-width="2.6"/><circle cx="95" cy="68" r="8.5" fill="${Y}" stroke="${N}" stroke-width="2.6"/>
+  <circle cx="22.5" cy="65.5" r="2.2" fill="#fff"/><circle cx="92.5" cy="65.5" r="2.2" fill="#fff"/>
+  ${m}${arms[arm]}${extra}
+  </g></svg>`;
+}
+document.getElementById('hero').innerHTML=mascot({size:200,eyes:'open',mouth:'open',arm:'wave'});
+const faces=[
+  ['Selam','Ana sayfaya girerken',{eyes:'open',mouth:'open',arm:'wave'}],
+  ['Meraklı','"Aklında bir şey var mı?"',{eyes:'curious',mouth:'smile',tilt:-8,extra:'<text x="100" y="-2" font-family="Bricolage Grotesque" font-weight="800" font-size="26" fill="#C2410C">?</text>'}],
+  ['Gösteriyor','Yerim düğmesini işaret eder',{eyes:'down',mouth:'smile',arm:'point'}],
+  ['Mutlu','Soru gelince, yer bulununca',{eyes:'happy',mouth:'open'}],
+  ['Düşünüyor','Cevap hazırlanırken',{eyes:'up',mouth:'o',extra:'<g fill="#4F6A75"><circle cx="104" cy="14" r="3"/><circle cx="114" cy="4" r="4"/><circle cx="127" cy="-8" r="5"/></g>'}],
+  ['Üzgün','Otopark dolu, sonuç yok',{eyes:'down',mouth:'sorry',tilt:5}],
+];
+document.getElementById('faces').innerHTML=faces.map(([n,w,o])=>`<div class="cell">${mascot({size:110,...o})}<div class="name">${n}</div><div class="when">${w}</div></div>`).join('');
+const lines=[
+  ['Arama boş çıkınca',{eyes:'curious',mouth:'smile',tilt:-6},'Bulamadın mı? Bana tarif et, ben bakayım.'],
+  ['Listede gezip seçmeyince',{eyes:'open',mouth:'smile',arm:'wave'},'Aklında bir şey var mı? Sor bana, birlikte bakalım.'],
+  ['Öğün saatinde, ana sayfada',{eyes:'happy',mouth:'open'},'Akşam yemeği için bir fikir ister misin?'],
+  ['Otopark doluyken',{eyes:'down',mouth:'sorry',tilt:5},'Burası dolu görünüyor. Yakında başka yer bulayım mı?'],
+];
+document.getElementById('lines').innerHTML=lines.map(([w,o,t])=>`<div style="display:flex;align-items:flex-end;gap:6px">${mascot({size:78,...o})}<div style="flex:1"><div style="font-weight:800;font-size:12px;color:var(--peach-text);margin:0 0 5px 4px">${w}</div><div class="bubble">${t}</div></div></div>`).join('');
+</script>
+</body></html>
