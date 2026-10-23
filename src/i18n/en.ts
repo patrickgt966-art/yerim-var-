@@ -1129,6 +1129,19 @@ const en = {
     empty: "We couldn't find anything to show near you.",
   },
   liveActivity: { parked: 'Parked', nextCost: '{{cost}} after {{time}}' },
+  widget: {
+    app: 'Yerim Var',
+    parked: 'Parked',
+    parkedShort: 'Parked',
+    nearest: 'Nearest car park',
+    walkShort: '~{{count}} min',
+    walk: '~{{count}} min walk',
+    free: '{{count}} free',
+    asOf: 'as of {{time}}',
+    findPark: 'Find parking',
+    findFood: 'Find food',
+    min: 'min',
+  },
   activePark: { duration: '{{h}} h {{m}} min', durationMin: '{{m}} min' },
 };
 

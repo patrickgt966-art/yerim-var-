@@ -1022,6 +1022,19 @@ const tr = {
     empty: 'Yakınında gösterecek yer bulamadık.',
   },
   liveActivity: { parked: 'Park hâlinde', nextCost: '{{time}} sonrası {{cost}}' },
+  widget: {
+    app: 'Yerim Var',
+    parked: 'Park edildi',
+    parkedShort: 'Park',
+    nearest: 'En yakın otopark',
+    walkShort: '~{{count}} dk',
+    walk: '~{{count}} dk yürüme',
+    free: '{{count}} boş yer',
+    asOf: '{{time}} itibarıyla',
+    findPark: 'Otopark bul',
+    findFood: 'Yemek bul',
+    min: 'dk',
+  },
   activePark: { duration: '{{h}} sa {{m}} dk', durationMin: '{{m}} dk' },
 };
 

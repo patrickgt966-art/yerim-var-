@@ -14,6 +14,7 @@ import {
   updateLiveActivity,
   type ParkActivityProps,
 } from './liveActivity';
+import { setWidgetParked } from './parkWidget';
 
 /** The Live Activity goes away this long after the park started (the park itself stays). */
 export const LIVE_ACTIVITY_MAX_MS = 24 * 60 * 60 * 1000;
@@ -78,6 +79,12 @@ export function parkActivityProps(
 
 const parkKey = (a: ActivePark | null | undefined) => (a ? `${a.parkingId}|${a.startedAt}` : null);
 
+/** Mirrors the park on the home screen / lock screen widget. */
+function syncWidget(active: ActivePark | null) {
+  const startedAt = active ? new Date(active.startedAt).getTime() : NaN;
+  setWidgetParked(active && !Number.isNaN(startedAt) ? { name: active.name, startedAt } : null);
+}
+
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 function clearTimer() {
@@ -125,6 +132,7 @@ export async function onParkChange(
   prev: ActivePark | null,
   now: number = Date.now(),
 ): Promise<void> {
+  syncWidget(next);
   if (!next) {
     clearTimer();
     await endLiveActivity();
@@ -141,6 +149,7 @@ export async function refreshParkActivity(
   active: ActivePark | null,
   now: number = Date.now(),
 ): Promise<void> {
+  syncWidget(active);
   if (!active) {
     clearTimer();
     await endLiveActivity();

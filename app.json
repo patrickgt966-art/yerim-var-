@@ -118,7 +118,21 @@
           "groupIdentifier": "group.com.yerimvar.app",
           "enablePushNotifications": false,
           "frequentUpdates": false,
-          "widgets": []
+          "widgets": [
+            {
+              "name": "ParkWidget",
+              "displayName": "Yerim Var",
+              "description": "Parkın süresini ve en yakın otoparkı ana ekranda ve kilit ekranında gör.",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium",
+                "accessoryRectangular",
+                "accessoryCircular",
+                "accessoryInline"
+              ],
+              "contentMarginsDisabled": false
+            }
+          ]
         }
       ]
     ],
