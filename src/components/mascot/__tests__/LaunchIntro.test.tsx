@@ -6,12 +6,16 @@ import { LAUNCH_MS, LaunchIntro } from '../LaunchIntro';
 
 let mockReduce = false;
 // Reanimated needs the native worklets runtime: static stand-ins are enough here.
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 47, right: 0, bottom: 34, left: 0 }),
+}));
 jest.mock('react-native-reanimated', () => {
   const { View } = jest.requireActual('react-native');
   return {
     __esModule: true,
     default: { View },
-    Easing: { in: () => 0, quad: 0 },
+    Easing: { inOut: () => 0, cubic: 0 },
+    interpolate: () => 1,
     useReducedMotion: () => mockReduce,
     // Stable like the real one, so effects that list it do not re-run.
     useSharedValue: (v: number) => jest.requireActual('react').useRef({ value: v }).current,
@@ -33,7 +37,7 @@ describe('LaunchIntro', () => {
   });
   afterEach(() => jest.useRealTimers());
 
-  it('plays for about a second on a normal launch, then gets out of the way', async () => {
+  it('plays for well under a second on a normal launch, then gets out of the way', async () => {
     await render(<LaunchIntro />);
     expect(logo()).toBeTruthy();
     await act(() => jest.advanceTimersByTime(LAUNCH_MS - 100));

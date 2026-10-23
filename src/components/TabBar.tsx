@@ -11,6 +11,7 @@ import {
   TAB_BAR_GAP,
   TAB_BAR_HEIGHT,
   TAB_BAR_OVERHANG,
+  TAB_CENTER_SIZE,
   useColors,
 } from '@/theme';
 
@@ -33,7 +34,7 @@ const LABELS: Record<string, string> = {
   profil: 'tabs.profile',
 };
 
-const CENTER_SIZE = 66;
+const CENTER_SIZE = TAB_CENTER_SIZE;
 
 /**
  * Floating tab bar (home design B3): a rounded card 12 pt from the sides and

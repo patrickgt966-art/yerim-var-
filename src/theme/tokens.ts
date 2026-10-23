@@ -169,3 +169,5 @@ export const HIT = 44;
 export const TAB_BAR_HEIGHT = 76;
 export const TAB_BAR_OVERHANG = 12;
 export const TAB_BAR_GAP = 8;
+/** The raised Yerim button in the middle of the tab bar. */
+export const TAB_CENTER_SIZE = 66;
