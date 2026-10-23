@@ -19,6 +19,7 @@ import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
 import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
+import { AskYerim } from '@/components/mascot/AskYerim';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
 import { RestaurantRowCard } from '@/components/RestaurantRowCard';
@@ -553,8 +554,16 @@ function Results() {
               </View>
             )}
             ListEmptyComponent={
-              <View style={{ padding: 20 }}>
+              <View style={{ padding: 20, gap: 12 }}>
                 <Txt secondary>{t('food.empty')}</Txt>
+                {target && !isPlaceholderData ? (
+                  <AskYerim
+                    question={t('mascot.askFood', {
+                      what: t('mascot.food'),
+                      place: label || city.name,
+                    })}
+                  />
+                ) : null}
               </View>
             }
             ListFooterComponent={
@@ -612,7 +621,10 @@ function Results() {
                     <Button label={t('common.retry')} onPress={() => void refetch()} />
                   </>
                 ) : (
-                  <Txt secondary>{t('results.empty')}</Txt>
+                  <>
+                    <Txt secondary>{t('results.empty')}</Txt>
+                    <AskYerim question={t('mascot.askPark', { place: label || city.name })} />
+                  </>
                 )}
               </View>
             }

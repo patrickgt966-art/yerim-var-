@@ -362,7 +362,7 @@ export function MascotFace({
 }: {
   size?: number;
   color?: string;
-  eyes?: 'open' | 'happy' | 'blink';
+  eyes?: 'open' | 'happy' | 'blink' | 'up';
 }) {
   return (
     <Svg
@@ -388,6 +388,13 @@ export function MascotFace({
           strokeWidth={2.8}
           strokeLinecap="round"
         />
+      ) : eyes === 'up' ? (
+        <>
+          <Ellipse cx={10.6} cy={7.6} rx={3.6} ry={4.8} fill={color} />
+          <Ellipse cx={24.6} cy={7.6} rx={3.6} ry={4.8} fill={color} />
+          <Circle cx={11.8} cy={5.4} r={1.3} fill="#FFFFFF" />
+          <Circle cx={25.8} cy={5.4} r={1.3} fill="#FFFFFF" />
+        </>
       ) : (
         <>
           <Ellipse cx={10} cy={10} rx={3.6} ry={4.8} fill={color} />

@@ -242,7 +242,7 @@ export function BotBubble({
       <View
         style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16 }}
       >
-        <YAvatar />
+        <YAvatar happy={cards.length > 0} />
         <View style={{ flexShrink: 1, gap: 6, minWidth: 0 }}>
           <View
             style={[

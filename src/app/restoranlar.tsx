@@ -15,6 +15,7 @@ import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { AskYerim } from '@/components/mascot/AskYerim';
 import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
 import { ParkingMap } from '@/components/ParkingMap';
@@ -567,11 +568,19 @@ function Restaurants() {
                 </View>
               </View>
             ) : (
-              <Txt secondary>
-                {active === 'all'
-                  ? t('food.empty')
-                  : t('food.emptyCat', { cat: t(`food.cats.${active}`) })}
-              </Txt>
+              <View style={{ gap: 12 }}>
+                <Txt secondary>
+                  {active === 'all'
+                    ? t('food.empty')
+                    : t('food.emptyCat', { cat: t(`food.cats.${active}`) })}
+                </Txt>
+                <AskYerim
+                  question={t('mascot.askFood', {
+                    what: dish ?? (active === 'all' ? t('mascot.food') : t(`food.cats.${active}`)),
+                    place,
+                  })}
+                />
+              </View>
             )
           }
           renderItem={({ item, index }: { item: RestaurantRow; index: number }) => (
