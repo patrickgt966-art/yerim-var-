@@ -24,24 +24,23 @@ body{margin:0;background:#E9E2D8}
   <!-- Arka plan: canlı ana sayfa taslağı -->
   <img src="4-anasayfa-canli.png" alt="" class="abs" style="left:0;top:0;width:390px">
 
-  <!-- Konuşma balonu -->
-  <div id="bubble" class="abs" style="right:16px;bottom:186px;width:250px">
-    <div style="position:relative;background:var(--card);border:1.5px solid var(--navy);border-radius:20px;padding:12px 14px 12px;box-shadow:3px 4px 0 var(--peach-line);min-height:118px">
-      <div id="bTyping" class="abs" style="left:16px;top:18px;display:flex;gap:5px"><span class="dot" id="d1"></span><span class="dot" id="d2"></span><span class="dot" id="d3"></span></div>
+  <!-- Konuşma balonu: küçük, yumuşak gölgeli, konturu yok; kuyruk maskota -->
+  <div id="bubble" class="abs" style="left:120px;bottom:186px;width:206px">
+    <div style="position:relative;background:var(--card);border:1px solid #F2E6D6;border-radius:22px;padding:10px 12px 11px;box-shadow:0 12px 26px -12px rgba(11,60,73,.45),0 2px 0 var(--peach-line)">
+      <div id="bTyping" class="abs" style="left:16px;top:20px;display:flex;gap:4px"><span class="dot" id="d1"></span><span class="dot" id="d2"></span><span class="dot" id="d3"></span></div>
       <div id="bText">
-        <div class="hand" style="font-size:22px;line-height:24px;color:var(--orange-strong)">Selam!</div>
-        <div style="font-weight:800;font-size:15px;line-height:20px">Aklında bir şey var mı?</div>
-        <div style="font-size:13px;line-height:18px;color:var(--sec);margin-top:2px">Bana sor, birlikte bakalım. Ben hep şu
-          <span style="position:relative;white-space:nowrap;font-weight:800;color:var(--navy)"><span id="hl" class="abs" style="left:-3px;right:-3px;top:1px;bottom:0;background:var(--yellow);border-radius:4px;z-index:0;transform-origin:left"></span><span style="position:relative">Yerim</span></span> düğmesindeyim.</div>
-        <div id="btns" style="display:flex;gap:8px;margin-top:10px">
-          <div id="bAsk" style="position:relative;flex:1;min-height:40px;border-radius:14px 14px 14px 5px;background:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">Sor bakalım
-            <div id="finger" class="abs" style="left:50%;top:50%;width:46px;height:46px;margin:-14px 0 0 -10px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></div>
+        <div class="hand" style="font-size:20px;line-height:20px;color:var(--orange-strong)">Selam!</div>
+        <div style="font-weight:800;font-size:14px;line-height:19px;white-space:nowrap">Aklında bir şey var mı?</div>
+        <div style="font-size:12.5px;line-height:17px;color:var(--sec);margin-top:2px">Sor bana, birlikte bakalım.</div>
+        <div id="btns" style="display:flex;align-items:center;gap:6px;overflow:visible">
+          <div id="bAsk" style="position:relative;height:34px;padding:0 14px;border-radius:13px 13px 13px 4px;background:var(--orange);display:flex;align-items:center;font-weight:800;font-size:13px">Sor bakalım
+            <div id="finger" class="abs" style="left:50%;top:50%;width:42px;height:42px;margin:-12px 0 0 -8px;border-radius:50%;background:rgba(11,60,73,.28);border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 12px rgba(11,60,73,.3)"></div>
           </div>
-          <div style="min-height:40px;padding:0 14px;border-radius:14px;background:var(--peach-soft);display:flex;align-items:center;font-weight:800;font-size:14px;color:var(--peach-text)">Sonra</div>
+          <div style="height:34px;padding:0 10px;display:flex;align-items:center;font-weight:700;font-size:13px;color:var(--sec)">Sonra</div>
         </div>
       </div>
-      <!-- kuyruk: maskota doğru -->
-      <svg id="tail" class="abs" width="22" height="16" viewBox="0 0 22 16" style="left:120px;bottom:-14px" aria-hidden="true"><path d="M1 0l10 14L19 0" fill="#fff" stroke="#0B3C49" stroke-width="1.5" stroke-linejoin="round"/><path d="M0 0h21" stroke="#fff" stroke-width="3"/></svg>
+      <!-- kuyruk: maskota doğru, yumuşak -->
+      <svg id="tail" class="abs" width="22" height="14" viewBox="0 0 22 14" style="left:100px;bottom:-12px" aria-hidden="true"><path d="M0 0h22c-6 2-9 6-10 13C10 6 6 2 0 0z" fill="#fff"/></svg>
     </div>
   </div>
 
@@ -112,9 +111,12 @@ wrap.style.left = mx - (62 - VB[0]) * k + 'px';
 wrap.style.top = BAR_TOP + 2 - (112 - VB[1]) * k + 'px';
 const DX = bx - mx; // düğmeye olan yatay uzaklık
 const headTop = BAR_TOP + 2 - (112 - 12) * k;
-document.getElementById('bubble').style.bottom = 844 - headTop + 14 + 'px';
-document.getElementById('tail').style.left = mx - (390 - 16 - 250) - 11 + 'px';
-document.getElementById('bubble').style.transformOrigin = `${mx - (390 - 16 - 250)}px 110%`;
+const BW = 206, bl = Math.min(Math.max(mx - 130, 16), 390 - 16 - BW);
+const bub = document.getElementById('bubble');
+bub.style.left = bl + 'px';
+bub.style.bottom = 844 - headTop + 14 + 'px';
+document.getElementById('tail').style.left = mx - bl - 11 + 'px';
+bub.style.transformOrigin = `${mx - bl}px 110%`;
 const T = 11; // saniye
 const $ = (id) => document.getElementById(id);
 const anims = [];
@@ -167,8 +169,7 @@ vis($('bTyping'), [[2.6, 3.3]]);
 ['d1', 'd2', 'd3'].forEach((d, i) => tl($(d), [[0, tr('translateY(0)')], [2.6 + i * 0.12, tr('translateY(0)')], [2.75 + i * 0.12, tr('translateY(-4px)')], [2.9 + i * 0.12, tr('translateY(0)')],
   [3.0 + i * 0.12, tr('translateY(0)')], [3.12 + i * 0.12, tr('translateY(-4px)')], [3.45, tr('translateY(0)')]]));
 tl($('bText'), [[0, { opacity: 0 }], [3.3, { opacity: 0 }], [3.5, { opacity: 1 }]]);
-tl($('hl'), [[0, tr('scaleX(0)')], [4.0, tr('scaleX(0)')], [4.4, tr('scaleX(1)')]]);
-tl($('btns'), [[0, { opacity: 0, transform: 'translateY(6px)' }], [4.6, { opacity: 0, transform: 'translateY(6px)' }], [4.9, { opacity: 1, transform: 'translateY(0)' }]]);
+tl($('btns'), [[0, { opacity: 0, height: '0px', marginTop: '0px' }], [4.5, { opacity: 0, height: '0px', marginTop: '0px' }, 'ease-out'], [4.8, { opacity: 1, height: '34px', marginTop: '9px' }]]);
 // Yerim düğmesi nabız
 tl($('ring'), [[0, { opacity: 0, transform: 'scale(.8)' }], [4.0, { opacity: 0.9, transform: 'scale(.8)' }, 'ease-out'], [4.8, { opacity: 0, transform: 'scale(1.6)' }],
   [4.81, { opacity: 0.9, transform: 'scale(.8)' }, 'ease-out'], [5.6, { opacity: 0, transform: 'scale(1.6)' }]]);

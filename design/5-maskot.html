@@ -18,7 +18,7 @@ body{margin:0;background:#E9E2D8}
 .cell{position:relative;background:var(--card);border:1px solid #EFE6D8;border-radius:20px 20px 20px 6px;padding:12px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:4px}
 .cell .name{font-weight:800;font-size:14px}
 .cell .when{font-size:12px;line-height:16px;color:var(--sec);text-align:center}
-.bubble{background:var(--card);border:1.5px solid var(--navy);border-radius:18px 18px 18px 6px;padding:10px 12px;font-size:13px;line-height:18px;box-shadow:3px 4px 0 var(--peach-line)}
+.bubble{background:var(--card);border:1px solid #F2E6D6;border-radius:20px 20px 20px 6px;padding:9px 12px;font-size:13px;line-height:18px;box-shadow:0 10px 22px -12px rgba(11,60,73,.4),0 2px 0 var(--peach-line)}
 h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.4px;margin:26px 0 10px}
 .rule{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:18px;padding:9px 0;border-bottom:1px dashed #E6DCCD}
 .rule:last-child{border-bottom:0}
@@ -106,7 +106,7 @@ document.getElementById('props').innerHTML = [
   ['Sor bana', '#FFF3C4', { eyes: 'up', mouth: 'o', prop: 'ask' }],
 ].map(([t, bg, o]) => `<div style="flex:1;background:${bg};border-radius:16px 16px 16px 5px;padding:8px 2px;display:flex;flex-direction:column;align-items:center;font-weight:800;font-size:12px">${M({ size: 100, ...o })}${t}</div>`).join('');
 
-const bubble = (t, extra = '') => `<div style="background:#fff;border:1.5px solid #0B3C49;border-radius:12px 12px 4px 12px;padding:6px 8px;font-size:10.5px;line-height:13px;font-weight:700;${extra}">${t}</div>`;
+const bubble = (t, extra = '') => `<div style="background:#fff;border:1px solid #F2E6D6;border-radius:12px 12px 4px 12px;padding:6px 8px;box-shadow:0 8px 16px -10px rgba(11,60,73,.5);font-size:10.5px;line-height:13px;font-weight:700;${extra}">${t}</div>`;
 // Tanıtım mini ekranı: arama kutusu vurgulu, maskot gösteriyor
 document.getElementById('tour').innerHTML = `
   <div style="position:absolute;inset:0;padding:22px 10px">
