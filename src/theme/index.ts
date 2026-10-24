@@ -17,7 +17,7 @@ export * from './tokens';
 
 /**
  * The palette for the look the user picked in Profil (Açık / Koyu / Telefonun ayarı). Light is the
- * warm paper page with navy ink and the orange accent; dark makes navy the canvas and keeps orange.
+ * warm paper page with navy ink and the orange accent; dark is the same paper at night (warm espresso) and keeps orange.
  */
 export function useColors(): Palette {
   return useIsDark() ? darkPalette : lightPalette;

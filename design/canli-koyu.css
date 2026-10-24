@@ -1,33 +1,42 @@
 /* Karanlık önizleme: uygulamanın darkPalette'i (src/theme/tokens.ts). */
 html.koyu{
-  --paper:#061F26;--card:#0F3540;--navy:#F4F7F8;--sec:#A9BEC5;--chip:#16424E;
-  --mint-soft:#0E3B36;--mint-text:#8FE0CC;--peach-soft:#3A2416;--peach-line:#5A3A24;--peach-text:#FFC48F;
-  --orange-strong:#FF8A1F;--few:#F5A04A;--full:#F27474;--edge:#5A3A24;--yellow:#FFE08A;
+  --paper:#1B1815;--card:#26221E;--navy:#F4EEE5;--sec:#B8AD9F;--chip:#302A24;
+  --mint-soft:#262A20;--mint-text:#C8DCA6;--peach-soft:#35261A;--peach-line:#56402C;--peach-text:#FFC48F;
+  --orange-strong:#FF8A1F;--few:#F5A04A;--full:#F27474;--edge:#56402C;--yellow:#FFE08A;
 }
-html.koyu body{background:#020F13}
+html.koyu body{background:#100E0C}
 html.koyu .paper:before,html.koyu .screen:before{opacity:.18}
 /* Elle yazılmış açık renkler */
 html.koyu [style*="background:#fff"],html.koyu [style*="background:#FFFFFF"],html.koyu [style*="background: #fff"]{background:var(--card)!important}
-html.koyu [style*="background:#FFF3C4"]{background:#3D3517!important}
-html.koyu [style*="background:#EFE8DC"],html.koyu [style*="background:#E6DED0"]{background:#0B2C35!important}
+html.koyu [style*="background:#FFF3C4"]{background:#3A3220!important}
+html.koyu [style*="background:#EFE8DC"],html.koyu [style*="background:#E6DED0"]{background:#211D19!important}
 html.koyu [style*="color:#0B3C49"]{color:var(--navy)!important}
-html.koyu [style*="border:1px solid #EFE6D8"],html.koyu [style*="border: 1px solid #EFE6D8"],html.koyu .card{border-color:#24505C!important}
-html.koyu [style*="border-bottom:1px dashed #E6DCCD"],html.koyu .row{border-color:#24505C!important}
+html.koyu [style*="border:1px solid #EFE6D8"],html.koyu [style*="border: 1px solid #EFE6D8"],html.koyu .card{border-color:#3D362F!important}
+html.koyu [style*="border-bottom:1px dashed #E6DCCD"],html.koyu .row{border-color:#3D362F!important}
 /* Lacivert dolgu (seçili hap, düğme): koyuda turuncu, üstündeki yazı koyu */
-html.koyu [style*="background:var(--navy)"]{background:var(--orange)!important;color:#061F26!important}
-html.koyu [style*="background:var(--navy)"] *{color:#061F26!important}
+html.koyu [style*="background:var(--navy)"]{background:var(--orange)!important;color:#1B1815!important}
+html.koyu [style*="background:var(--navy)"] *{color:#1B1815!important}
 /* Turuncu düğmelerin üstündeki lacivert yazı ve ikonlar lacivert kalır */
 html.koyu [style*="background:var(--orange)"],html.koyu [style*="background:#FF8A1F"]{color:#0B3C49!important}
 html.koyu [style*="background:var(--orange)"] svg [stroke="#0B3C49"],html.koyu [style*="background:#FF8A1F"] svg [stroke="#0B3C49"]{stroke:#0B3C49}
 /* Diğer lacivert çizgili ikonlar açık renk */
-html.koyu svg [stroke="#0B3C49"]{stroke:#F4F7F8}
-html.koyu svg [stroke="#4F6A75"],html.koyu svg [stroke="#A9BEC5"]{stroke:#A9BEC5}
+html.koyu svg [stroke="#0B3C49"]{stroke:#F4EEE5}
+html.koyu svg [stroke="#4F6A75"],html.koyu svg [stroke="#B8AD9F"]{stroke:#B8AD9F}
 /* ...ama maskotun ve turuncu kutuların içindekiler lacivert kalır */
 html.koyu [style*="background:var(--orange)"] svg [stroke="#0B3C49"],html.koyu [style*="background:#FF8A1F"] svg [stroke="#0B3C49"],html.koyu svg g[transform^="rotate"] [stroke="#0B3C49"]{stroke:#0B3C49!important}
 /* Sekme çubuğu */
-html.koyu [style*="border-radius:26px;background:#fff"]{background:#0F3540!important}
-html.koyu [style*="border:4px solid #fff"]{border-color:#0F3540!important}
+html.koyu [style*="border-radius:26px;background:#fff"]{background:#26221E!important}
+html.koyu [style*="border:4px solid #fff"]{border-color:#26221E!important}
 html.koyu [style*="background:#E2F1EA"]{background:var(--mint-soft)!important}
 /* Harita: açık kalır (uygulamadaki gibi), sadece kenarlar */
 html.koyu svg rect[fill="#EFE8DC"]{fill:#EFE8DC}
-html.koyu [style*="linear-gradient(120deg,#FFF6EC"]{background:linear-gradient(120deg,#2A1E14,#0F3540 70%)!important}
+html.koyu [style*="linear-gradient(120deg,#FFF6EC"]{background:linear-gradient(120deg,#2E2219,#26221E 70%)!important}
+
+/* Sıcak koyu: soğuk tonları ısıt */
+html.koyu svg [fill="#0B3C49"]{fill:#F4EEE5}
+html.koyu svg g[transform^="rotate"] [fill="#0B3C49"],html.koyu [style*="background:var(--orange)"] svg [fill="#0B3C49"]{fill:#0B3C49!important}
+html.koyu [style*="background:#0E6B5A"],html.koyu [style*="background: #0E6B5A"]{background:#7E9A5C!important}
+html.koyu [style*="color:#0E6B5A"]{color:var(--mint-text)!important}
+html.koyu [style*="background:#D7EBDD"],html.koyu [style*="background:#E2F1EA"]{background:var(--mint-soft)!important}
+html.koyu .toggle{background:#4A4038}
+html.koyu .paper:before,html.koyu .screen:before{background-image:radial-gradient(rgba(244,238,229,.06) 1px,transparent 1.2px)}

@@ -13,6 +13,7 @@ import {
   TAB_BAR_OVERHANG,
   TAB_CENTER_SIZE,
   useColors,
+  useIsDark,
 } from '@/theme';
 
 import { YerimWord } from './BrandWordmark';
@@ -44,12 +45,14 @@ const CENTER_SIZE = TAB_CENTER_SIZE;
  */
 export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   const c = useColors();
+  const dark = useIsDark();
   const { t } = useTranslation();
   const coachYerim = useCoachTarget('yerim');
 
   const items = state.routes.map((route, index) => {
     const focused = state.index === index;
-    const color = focused ? c.text : c.textSecondary;
+    // Dark: inactive tabs clearly readable, the active one white on a warm surface pill.
+    const color = dark ? (focused ? '#FFFFFF' : '#D9CFC2') : focused ? c.text : c.textSecondary;
     const label = t(LABELS[route.name] ?? route.name);
     return (
       <Pressable
@@ -81,7 +84,7 @@ export function TabBar({ state, navigation, insets }: BottomTabBarProps) {
             borderRadius: 17,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: focused ? c.mintSoft : 'transparent',
+            backgroundColor: focused ? (dark ? '#3A332C' : c.mintSoft) : 'transparent',
           }}
         >
           <TabGlyph
