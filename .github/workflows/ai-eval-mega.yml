@@ -82,6 +82,9 @@ jobs:
           cache: npm
       - if: env.ANTHROPIC_API_KEY != ''
         run: npm ci
+      # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-convo.ts imports them from here.
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
       # The carry artifact of the latest completed run on the default branch that has one; without
       # any, the shard files of the latest run that has them (the failures are derived from those).
       - name: Fetch the carry of the last run
@@ -106,6 +109,7 @@ jobs:
       - name: Compose the exam
         if: env.ANTHROPIC_API_KEY != ''
         run: |
+          set -o pipefail
           args=""
           [ -f plan-in/carry/ai-eval-mega-carry.json ] && args="--carry plan-in/carry/ai-eval-mega-carry.json"
           [ -d plan-in/last ] && args="$args --bootstrap plan-in/last"
@@ -184,6 +188,8 @@ jobs:
           cache: npm
       - if: env.ANTHROPIC_API_KEY != ''
         run: npm ci
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci --prefix server/yerim-ai
       - uses: actions/download-artifact@v4
         if: env.ANTHROPIC_API_KEY != ''
         with:
