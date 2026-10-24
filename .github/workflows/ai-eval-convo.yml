@@ -6,6 +6,11 @@ name: AI eval (convo)
 # prints a cost estimate first. Without the ANTHROPIC_API_KEY secret it skips. The job fails when
 # fewer than the script's CONVO_PASS (85%) of the conversations pass. The report goes to the job
 # summary. The optional `limit` input plays only the first N conversations.
+#
+# Adaptive exam (`mode`), as in ai-eval-mega.yml: the failures of the last run (the carry artifact
+# ai-eval-convo-carry of the latest completed run on the default branch) come back, `guard` percent
+# are old passes asked again, the rest are new and harder; the size stays `size`. The merge step
+# writes the next carry file and prints one EVAL_SUMMARY {json} line to the log.
 on:
   workflow_dispatch:
     inputs:
@@ -13,9 +18,28 @@ on:
         description: 'Play only the first N conversations (empty = all)'
         required: false
         default: ''
+      mode:
+        description: 'adaptive (failures come back, new harder ones replace passes), fixed (same questions as always) or fresh (all new)'
+        required: false
+        default: 'adaptive'
+        type: choice
+        options:
+          - adaptive
+          - fixed
+          - fresh
+      size:
+        description: 'Number of questions in the exam (empty = the size of the fixed set, 629)'
+        required: false
+        default: ''
+      guard:
+        description: 'Percent of the exam asked again from old passes (regression guard)'
+        required: false
+        default: '5'
 
 permissions:
   contents: read
+  # gh run list / gh run download: the carry artifact of the last run.
+  actions: read
 
 # The live evals share the org's per-minute token limit: one at a time, the next one waits.
 concurrency:
@@ -29,6 +53,11 @@ jobs:
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       LIMIT: ${{ inputs.limit }}
+      MODE: ${{ inputs.mode }}
+      SIZE: ${{ inputs.size }}
+      GUARD: ${{ inputs.guard }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - name: Skip without the API key
         if: env.ANTHROPIC_API_KEY == ''
@@ -45,15 +74,58 @@ jobs:
       # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-convo.ts imports them from here.
       - if: env.ANTHROPIC_API_KEY != ''
         run: npm ci --prefix server/yerim-ai
+      # The carry artifact of the latest completed run on the default branch that has one; without
+      # any, the result file of the latest run that has it (the failures are derived from that).
+      - name: Fetch the carry of the last run
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          mkdir -p plan-in
+          ids="$(gh run list --workflow ai-eval-convo.yml --branch "$DEFAULT_BRANCH" --status completed --limit 20 --json databaseId --jq '.[].databaseId' || true)"
+          found=""
+          for id in $ids; do
+            if gh run download "$id" --name ai-eval-convo-carry --dir plan-in/carry 2>/dev/null; then
+              echo "Carry file of run $id"; found=1; break
+            fi
+          done
+          if [ -z "$found" ]; then
+            for id in $ids; do
+              if gh run download "$id" --name ai-eval-convo --dir plan-in/last 2>/dev/null; then
+                echo "No carry file; result files of run $id"; break
+              fi
+            done
+          fi
+          ls -R plan-in || true
+      - name: Compose the exam
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          args=""
+          [ -f plan-in/carry/ai-eval-convo-carry.json ] && args="--carry plan-in/carry/ai-eval-convo-carry.json"
+          [ -d plan-in/last ] && args="$args --bootstrap plan-in/last"
+          npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --set convo --mode "${MODE:-adaptive}" ${SIZE:+--size "$SIZE"} --guard "${GUARD:-5}" --run "$GITHUB_RUN_NUMBER" $args --plan-out plan/exam.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Run convo AI eval
         if: env.ANTHROPIC_API_KEY != ''
-        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts ${LIMIT:+--limit "$LIMIT"}
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --exam plan/exam.json ${LIMIT:+--limit "$LIMIT"}
+      # The adaptive report (replaces the plain one), docs/ai-eval-convo-carry.json and the EVAL_SUMMARY line.
+      - name: Merge the result into the adaptive report
+        if: always() && env.ANTHROPIC_API_KEY != '' && hashFiles('docs/ai-eval-convo-all.json') != ''
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-merge.ts --set convo --dir docs --exam plan/exam.json --out docs/ai-eval-convo.md
       - name: Publish summary
         if: always() && env.ANTHROPIC_API_KEY != ''
         run: '[ -f docs/ai-eval-convo.md ] && cat docs/ai-eval-convo.md >> "$GITHUB_STEP_SUMMARY" || true'
+      # The report and the result file (the next run derives the failures from it when it finds no carry file).
       - uses: actions/upload-artifact@v4
         if: always() && env.ANTHROPIC_API_KEY != ''
         with:
           name: ai-eval-convo
-          path: docs/ai-eval-convo.md
+          path: |
+            docs/ai-eval-convo.md
+            docs/ai-eval-convo-all.json
+          if-no-files-found: ignore
+      # The failures with their full definitions, the passes for the guard, the asked hashes.
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-convo-carry
+          path: docs/ai-eval-convo-carry.json
+          retention-days: 90
           if-no-files-found: ignore
