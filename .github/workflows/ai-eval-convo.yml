@@ -98,6 +98,7 @@ jobs:
       - name: Compose the exam
         if: env.ANTHROPIC_API_KEY != ''
         run: |
+          set -o pipefail
           args=""
           [ -f plan-in/carry/ai-eval-convo-carry.json ] && args="--carry plan-in/carry/ai-eval-convo-carry.json"
           [ -d plan-in/last ] && args="$args --bootstrap plan-in/last"
