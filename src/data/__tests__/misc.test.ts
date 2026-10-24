@@ -96,6 +96,26 @@ describe('loadParkings', () => {
     });
   });
 
+  it('keeps the reason of a failed load with the saved result, and a good load clears it', async () => {
+    const saved: ParkingResult = {
+      parkings: [real],
+      source: 'izmir-open-data',
+      fetchedAt: '2026-10-07T10:00:00.000Z',
+    };
+    const cache = memoryCache(saved);
+    const res = await loadParkings(provider([new Error('Zaman aşımı (45 sn)')]), undefined, {
+      ...fast,
+      cache,
+    });
+    expect(res.lastFailure).toMatchObject({ reason: 'Zaman aşımı (45 sn)' });
+    expect(new Date(res.lastFailure!.at).getTime()).not.toBeNaN();
+    expect(cache.saved?.lastFailure).toEqual(res.lastFailure);
+    // The saved data itself is untouched.
+    expect(cache.saved?.fetchedAt).toBe('2026-10-07T10:00:00.000Z');
+    await loadParkings(provider([[real]]), undefined, { ...fast, cache });
+    expect(cache.saved?.lastFailure).toBeUndefined();
+  });
+
   it('falls back to sample data only when nothing was ever saved', async () => {
     const cache = memoryCache();
     const res = await loadParkings(provider([new Error('HTTP 403')]), undefined, {

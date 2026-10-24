@@ -467,7 +467,8 @@ function Results() {
           )}
         </View>
       )}
-      <SampleBanner result={data} />
+      {/* Food lists lead with food: the parking banner is a muted line unless Otoparklı is on. */}
+      <SampleBanner result={data} updating={false} muted={filter === 'food' && !parkOn} />
       {fontScale > 1.2 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {filter === 'food' ? foodChips : chips}

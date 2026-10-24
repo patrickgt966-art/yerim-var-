@@ -69,6 +69,13 @@ describe('normalizeIzmir', () => {
     expect(() => normalizeIzmir([...broken, sample], at)).toThrow('Kayıtların çoğu geçersiz');
   });
 
+  it('takes whatever number of records the source sends (no fixed count)', () => {
+    // 2026-10-24: the live list shrank to 5 records; the app must not care.
+    for (const n of [1, 3, 5, live.length]) {
+      expect(normalizeIzmir(live.slice(0, n), at)).toHaveLength(n);
+    }
+  });
+
   it('parses a real API response (2026-10-07)', () => {
     const out = normalizeIzmir(live, at);
     expect(out).toHaveLength(live.length);

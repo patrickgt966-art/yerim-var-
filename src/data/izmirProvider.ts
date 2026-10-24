@@ -13,6 +13,9 @@ export const IZMIR_PARKING_URL = 'https://openapi.izmir.bel.tr/api/ibb/izum/otop
 
 const count = z.number().finite().nonnegative();
 
+/** How long one attempt may take, for every live provider: the city sources are slow, not dead. */
+export const PROVIDER_TIMEOUT_MS = 45_000;
+
 const RecordSchema = z.object({
   ufid: z.string().min(1),
   // Trim first: a blank name is no name and the record is dropped.
@@ -130,11 +133,10 @@ export class IzmirOpenDataProvider implements ParkingProvider {
 
   constructor(
     private readonly url = IZMIR_PARKING_URL,
-    // The API took ~15 s on a phone (2026-10-07); the brief's 10 s was too short.
-    // Retries get this long; the first attempt is shorter so a hung request
-    // gives up sooner (see `firstTimeoutMs`).
-    private readonly timeoutMs = 30_000,
-    private readonly firstTimeoutMs = Math.min(20_000, timeoutMs),
+    // The API answered in 20-30 s on a PC in İzmir (2026-10-24): slow, not dead.
+    // Every attempt, the first included, waits this long.
+    private readonly timeoutMs = PROVIDER_TIMEOUT_MS,
+    private readonly firstTimeoutMs = timeoutMs,
   ) {}
 
   async list(signal?: AbortSignal, attempt = 0): Promise<Parking[]> {

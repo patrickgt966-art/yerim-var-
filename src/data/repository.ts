@@ -9,10 +9,11 @@ import type { ParkingProvider, ParkingResult } from './types';
 export const RETRY_DELAYS_MS = [1000, 3000];
 
 /**
- * No new attempt starts once this much time has passed, so a slow API costs
- * at most ~20 s + 1 s + 30 s before the cache fallback (not ~94 s).
+ * No new attempt starts once this much time has passed. It is longer than a first attempt that
+ * ran into its timeout plus the first wait (45 s + 1 s), so a second attempt still starts; a
+ * third never does, so a dead API costs at most ~45 s + 1 s + 45 s before the cache fallback.
  */
-export const RETRY_START_LIMIT_MS = 30_000;
+export const RETRY_START_LIMIT_MS = 50_000;
 
 export type LoadOptions = {
   signal?: AbortSignal;
@@ -109,7 +110,12 @@ export async function loadParkings(
   // Shows up in the `expo start` terminal during development only.
   if (__DEV__) console.warn(`[yerim-var] ${city.name} verisi alınamadı: ${reason}`);
   const cached = await cache.load(city.id);
-  if (cached) return { ...cached, offline: true, fallbackReason: reason };
+  if (cached) {
+    // Keep the record of why: Profil shows it. The next good download clears it.
+    const lastFailure = { reason, at: new Date().toISOString() };
+    await cache.save({ ...cached, lastFailure }, city.id);
+    return { ...cached, offline: true, fallbackReason: reason, lastFailure };
+  }
 
   if (!sample) {
     return {

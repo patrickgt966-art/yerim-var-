@@ -62,6 +62,16 @@ export type ParkingResult = {
   fallbackReason?: string;
   /** True when this is the last good result from the device cache, not a fresh download. */
   offline?: boolean;
+  /**
+   * True while this saved result is only shown until the live load answers (set when it is taken
+   * from the device cache for display, never stored). The live result replaces it.
+   */
+  fromCache?: boolean;
+  /**
+   * Why the last live load failed and when (ISO). Stored with the cached result so Profil can say
+   * what happened; cleared by the next good download.
+   */
+  lastFailure?: { reason: string; at: string };
 };
 
 export interface ParkingProvider {

@@ -11,6 +11,7 @@ import { HomeHeader } from '@/components/home/HomeHeader';
 import { NearbyCard } from '@/components/home/NearbyCard';
 import { QuickActions } from '@/components/home/QuickActions';
 import { ExampleQuestions, SearchCard } from '@/components/home/SearchCard';
+import { SuggestionNote } from '@/components/home/SuggestionNote';
 import { useNearbyHome } from '@/components/home/useNearbyHome';
 import { HandNote } from '@/components/lively/Hand';
 import { Paper } from '@/components/lively/Paper';
@@ -44,6 +45,7 @@ export default function HomeScreen() {
         <QuickActions nearby={nearby} />
         <ExampleQuestions />
         <ActiveStrip />
+        <SuggestionNote nearby={nearby} />
         <Cravings />
         <NearbyCard nearby={nearby} />
         <View style={{ alignItems: 'center', paddingTop: 22, paddingBottom: 4 }}>

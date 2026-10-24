@@ -5,13 +5,20 @@ import { Linking } from 'react-native';
 
 import { getFreshness } from '@/data/freshness';
 import type { LatLng } from '@/data/geo';
-import { rankRestaurants, restaurantsNear, type RestaurantRow } from '@/data/restaurants';
+import {
+  allRestaurants,
+  rankRestaurants,
+  restaurantsNear,
+  type RestaurantRow,
+} from '@/data/restaurants';
 import { preferLive, rankByDistance, useParkings, type RankedParking } from '@/data/useParkings';
 import { currentLocation } from '@/lib/location';
 import { isClosedNow } from '@/lib/openNow';
 import { setWidgetNearest } from '@/lib/parkWidget';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
 import { useHiddenPlaceIds } from '@/store/reports';
+
+import { ticketFacts, TICKET_MEAL_RADIUS_M, type TicketFacts } from './ticketFacts';
 
 const PARK_RADIUS_M = 2000;
 const FOOD_RADIUS_M = 1500;
@@ -35,6 +42,8 @@ export type NearbyHome = {
   nearestFree: RankedParking | null;
   /** Walking minutes to the nearest car park of any kind, if known. */
   nearestWalk: number | null;
+  /** What the two tickets on Home may say besides a live count (counts and names, or null). */
+  tickets: TicketFacts;
 };
 
 /**
@@ -103,6 +112,18 @@ export function useNearbyHome(): NearbyHome {
     };
   }, [here, result, hidden]);
 
+  const tickets = useMemo(
+    () =>
+      ticketFacts({
+        here,
+        parkings: result?.parkings,
+        around: here && hidden ? restaurantsNear(here, TICKET_MEAL_RADIUS_M, 5000) : [],
+        cityFood: allRestaurants().length,
+        now: new Date(),
+      }),
+    [here, result, hidden],
+  );
+
   const nearestFree = useMemo(
     () =>
       ranked.find((p) => {
@@ -161,5 +182,6 @@ export function useNearbyHome(): NearbyHome {
     foodCount,
     nearestFree,
     nearestWalk,
+    tickets,
   };
 }

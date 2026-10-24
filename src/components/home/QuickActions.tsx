@@ -10,6 +10,9 @@ import { Txt } from '@/components/Txt';
 import { LivePulse, TicketCut } from '@/components/lively/Ticket';
 import { asym, fonts, useColors } from '@/theme';
 
+import { roundedCount } from '@/lib/nudge';
+
+import { NO_TICKET_FACTS } from './ticketFacts';
 import type { NearbyHome } from './useNearbyHome';
 
 /**
@@ -20,7 +23,8 @@ import type { NearbyHome } from './useNearbyHome';
 export function QuickActions({
   nearby,
 }: {
-  nearby: Pick<NearbyHome, 'nearestFree' | 'nearestWalk' | 'foodCount'>;
+  nearby: Pick<NearbyHome, 'nearestFree' | 'nearestWalk' | 'foodCount'> &
+    Partial<Pick<NearbyHome, 'tickets'>>;
 }) {
   const c = useColors();
   const { t } = useTranslation();
@@ -36,11 +40,58 @@ export function QuickActions({
       ? t('home.nearestWalk', { walk: nearby.nearestWalk })
       : null;
 
-  // Never about parking: the food job stands on its own.
-  const foodSub =
-    nearby.foodCount != null
+  // The middle of each ticket always carries the best fact we have, never an invented one.
+  const f = nearby.tickets ?? NO_TICKET_FACTS;
+  const park = nearby.nearestFree;
+  let parkBig: Big | null = null;
+  let parkSub: string | null = live;
+  if (park?.free != null) {
+    parkBig = { n: park.free, unit: t('home.ticketFree'), live: true };
+    parkSub = t('home.ticketWhere', { name: park.name, walk: park.walk });
+  } else if (f.parkWithin != null) {
+    parkBig = { n: f.parkWithin, unit: t('home.ticketPark', { count: f.parkWithin }) };
+    parkSub = f.nearestPark
+      ? t('home.ticketNearest', { name: f.nearestPark.name, walk: f.nearestPark.walk })
+      : t('home.foodRadius');
+  } else if (f.nearestPark) {
+    parkBig = { n: f.nearestPark.name, unit: '', name: true };
+    parkSub = t('home.ticketWalk', { walk: f.nearestPark.walk });
+  } else if (f.cityParks != null) {
+    parkBig = { n: f.cityParks, unit: t('home.ticketPark', { count: f.cityParks }) };
+    parkSub = t('home.ticketInCity');
+  }
+
+  let foodBig: Big | null = null;
+  let foodSub: string | null = null;
+  if (f.foodOpenNow != null) {
+    foodBig = { n: f.foodOpenNow, unit: t('home.ticketOpen', { count: f.foodOpenNow }) };
+    foodSub = t('home.foodRadius');
+  } else if (f.foodWithin != null) {
+    foodBig = { n: f.foodWithin, unit: t('home.ticketRestaurant', { count: f.foodWithin }) };
+    foodSub = t('home.ticketNearby');
+  } else if (f.mealNear) {
+    const r = roundedCount(f.mealNear.count);
+    foodBig = {
+      n: r.key === 'few' ? r.count : `${r.count}+`,
+      unit: t(`nudge.cats.${f.mealNear.cat}`),
+    };
+    foodSub = t('home.ticketNearby');
+  } else if (nearby.foodCount != null) {
+    foodBig = { n: nearby.foodCount, unit: t('home.ticketFood', { count: nearby.foodCount }) };
+    foodSub = t('home.foodRadius');
+  } else if (f.cityFood != null) {
+    foodBig = { n: f.cityFood, unit: t('home.ticketRestaurant', { count: f.cityFood }) };
+    foodSub = t('home.ticketInCity');
+  }
+  // Read aloud: the same fact as on the ticket, with no mention of parking on the food one.
+  const foodSpoken =
+    nearby.foodCount != null && f.foodOpenNow == null && f.foodWithin == null && !f.mealNear
       ? t('home.foodPlacesCount', { count: nearby.foodCount })
-      : t('home.foodPlaces');
+      : foodBig
+        ? `${foodBig.n} ${foodBig.unit}, ${foodSub}`
+        : t('home.foodPlaces');
+  const parkSpoken =
+    live && park ? live : parkBig ? `${parkBig.n} ${parkBig.unit}, ${parkSub}` : live;
 
   const openFood = async () => {
     if (busy) return;
@@ -52,7 +103,6 @@ export function QuickActions({
     }
   };
 
-  const park = nearby.nearestFree;
   return (
     <View
       style={{
@@ -76,9 +126,9 @@ export function QuickActions({
           </Txt>
         }
         title={t('home.parkNearMe')}
-        big={park?.free != null ? { n: park.free, unit: t('home.ticketFree'), live: true } : null}
-        sub={park ? t('home.ticketWhere', { name: park.name, walk: park.walk }) : live}
-        label={live ? `${t('home.a11yParkNearMe')}, ${live}` : t('home.a11yParkNearMe')}
+        big={parkBig}
+        sub={parkSub}
+        label={parkSpoken ? `${t('home.a11yParkNearMe')}, ${parkSpoken}` : t('home.a11yParkNearMe')}
         stacked={stacked}
         onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
       />
@@ -94,13 +144,9 @@ export function QuickActions({
           )
         }
         title={t('home.foodNearMe')}
-        big={
-          nearby.foodCount != null
-            ? { n: nearby.foodCount, unit: t('home.ticketFood', { count: nearby.foodCount }) }
-            : null
-        }
-        sub={nearby.foodCount != null ? t('home.foodRadius') : foodSub}
-        label={`${t('home.a11yFoodNearMe')}, ${foodSub}`}
+        big={foodBig}
+        sub={foodSub ?? t('home.foodPlaces')}
+        label={`${t('home.a11yFoodNearMe')}, ${foodSpoken}`}
         busy={busy}
         stacked={stacked}
         onPress={() => void openFood()}
@@ -108,6 +154,9 @@ export function QuickActions({
     </View>
   );
 }
+
+/** The big fact in the middle of a ticket; `name` is a car park name (smaller type, no unit). */
+type Big = { n: number | string; unit: string; live?: boolean; name?: boolean };
 
 /**
  * One job card as a paper ticket (lively design): mark and title above the tear line, a big
@@ -132,7 +181,7 @@ function ActionCard({
   fg: string;
   mark: React.ReactNode;
   title: string;
-  big: { n: number; unit: string; live?: boolean } | null;
+  big: Big | null;
   sub: string | null;
   label: string;
   busy?: boolean;
@@ -197,15 +246,25 @@ function ActionCard({
                   <LivePulse color={fg} />
                 </View>
               )}
-              <Txt style={{ fontFamily: fonts.display, fontSize: 28, lineHeight: 32 }} color={fg}>
-                {big.n}
-              </Txt>
               <Txt
-                style={{ flexShrink: 1, fontFamily: fonts.bodyExtraBold, fontSize: 13 }}
+                numberOfLines={big.name ? 2 : undefined}
+                style={
+                  big.name
+                    ? { flexShrink: 1, fontFamily: fonts.display, fontSize: 18, lineHeight: 22 }
+                    : { fontFamily: fonts.display, fontSize: 28, lineHeight: 32 }
+                }
                 color={fg}
               >
-                {big.unit}
+                {big.n}
               </Txt>
+              {big.unit ? (
+                <Txt
+                  style={{ flexShrink: 1, fontFamily: fonts.bodyExtraBold, fontSize: 13 }}
+                  color={fg}
+                >
+                  {big.unit}
+                </Txt>
+              ) : null}
             </View>
           )}
           {sub ? (

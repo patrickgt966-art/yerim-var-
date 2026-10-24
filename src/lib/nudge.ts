@@ -1,6 +1,6 @@
 import { getFreshness, occupancyLevel, visibleFree } from '@/data/freshness';
 import { distanceMeters, walkMinutes, type LatLng } from '@/data/geo';
-import type { FoodCategory } from '@/data/restaurants';
+import { rankRestaurants, type FoodCategory, type RestaurantRow } from '@/data/restaurants';
 import type { Parking } from '@/data/types';
 import { mealSlot, type MealSlot } from '@/components/home/cravingOrder';
 
@@ -64,6 +64,44 @@ export function chooseNudge(
     (a, b) => NUDGE_ORDER.indexOf(a.kind) - NUDGE_ORDER.indexOf(b.kind),
   );
   return byOrder.find((n) => n.kind !== memory.lastKind || URGENT.includes(n.kind)) ?? null;
+}
+
+const byOrder = (a: Nudge, b: Nudge) => NUDGE_ORDER.indexOf(a.kind) - NUDGE_ORDER.indexOf(b.kind);
+
+/**
+ * The suggestion the Home card shows: the most urgent one that fits (same order as the nudge),
+ * else null, and the card falls back to the meal-time line. No memory: the card is always there.
+ */
+export function cardNudge(candidates: readonly Nudge[]): Nudge | null {
+  return [...candidates].sort(byOrder)[0] ?? null;
+}
+
+/** The kind the Home card shows; the meal-time line when nothing special fits. */
+export function cardKind(candidates: readonly Nudge[]): NudgeKind {
+  return cardNudge(candidates)?.kind ?? 'meal';
+}
+
+/**
+ * The candidates the nudge may pick from: never the kind the card on Home already shows, so the
+ * peek does not repeat the card (it takes the next kind, or stays away that day).
+ */
+export function withoutCard(candidates: readonly Nudge[]): Nudge[] {
+  const kind = cardKind(candidates);
+  return candidates.filter((n) => n.kind !== kind);
+}
+
+/**
+ * Among restaurants of one kind (rows with their nearest car park), the one with the easiest
+ * parking, or null when its car park is unknown or has no free space (then nothing is said).
+ */
+export function easiestParking(
+  rows: RestaurantRow[],
+  cat: FoodCategory,
+): { name: string; distanceM: number } | null {
+  const top = rankRestaurants(rows, 'parkEase', cat)[0];
+  const parking = top?.parking;
+  if (!top || !parking || parking.free === 0) return null;
+  return { name: top.r.name, distanceM: parking.distanceM };
 }
 
 const LIVE = (p: Parking, now: Date) => {

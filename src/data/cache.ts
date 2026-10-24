@@ -47,6 +47,15 @@ function isParking(v: unknown): v is Parking {
   );
 }
 
+/** The stored record of the last failed load; anything else is dropped. */
+function isFailure(v: unknown): v is NonNullable<ParkingResult['lastFailure']> {
+  if (!v || typeof v !== 'object') return false;
+  const f = v as Record<string, unknown>;
+  return (
+    typeof f.reason === 'string' && typeof f.at === 'string' && !Number.isNaN(Date.parse(f.at))
+  );
+}
+
 /** Returns the cache with unusable records dropped, or null if nothing usable is left. */
 function validResult(v: unknown): ParkingResult | null {
   if (!v || typeof v !== 'object') return null;
@@ -62,7 +71,9 @@ function validResult(v: unknown): ParkingResult | null {
     return null;
   const parkings = r.parkings.filter(isParking);
   if (parkings.length === 0) return null;
-  return { ...(r as ParkingResult), parkings };
+  const { lastFailure: failure, ...rest } = r as ParkingResult;
+  const lastFailure = isFailure(failure) ? { lastFailure: failure } : {};
+  return { ...rest, parkings, ...lastFailure };
 }
 
 export const deviceCache: ParkingCache = {

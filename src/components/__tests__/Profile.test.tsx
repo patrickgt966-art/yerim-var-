@@ -12,9 +12,15 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
+const mockParkings: { extra: Record<string, unknown> } = { extra: {} };
 jest.mock('@/data/useParkings', () => ({
   useParkings: () => ({
-    data: { parkings: [], source: 'izmir-open-data', fetchedAt: '2026-10-23T09:05:00Z' },
+    data: {
+      parkings: [],
+      source: 'izmir-open-data',
+      fetchedAt: '2026-10-23T09:05:00Z',
+      ...mockParkings.extra,
+    },
   }),
 }));
 jest.mock('@/lib/ai/client', () => ({ aiBaseUrl: () => 'https://ai.example' }));
@@ -22,6 +28,7 @@ jest.mock('@/lib/ai/client', () => ({ aiBaseUrl: () => 'https://ai.example' }));
 jest.mock('@/components/mascot/TabHint', () => ({ TabHint: () => null }));
 
 beforeEach(() => {
+  mockParkings.extra = {};
   useApp.setState({ lang: 'auto', mapApp: null });
   useAi.setState({ consent: 'yes' });
 });
@@ -69,6 +76,23 @@ describe('Profil', () => {
       expect(text).toContain(name);
     expect(text).not.toMatch(/^Boş yer sayıları/);
     expect(screen.getByText(/^Son veri alma: \d\d:\d\d/)).toBeTruthy();
+  });
+
+  it('says saved data, never "no internet", and keeps the reason of the last failed load', async () => {
+    mockParkings.extra = {
+      offline: true,
+      fallbackReason: 'Zaman aşımı (45 sn)',
+      lastFailure: { reason: 'Zaman aşımı (45 sn)', at: '2026-10-24T07:12:00.000Z' },
+    };
+    await render(<Profile />);
+    expect(screen.getByText(/^Son veri alma: \d\d:\d\d · Kayıtlı veri$/)).toBeTruthy();
+    expect(screen.queryByText(/nternet/)).toBeNull();
+    expect(screen.getByText(/^son deneme: zaman aşımı 45 sn, \d\d:\d\d$/)).toBeTruthy();
+  });
+
+  it('shows no last-attempt line when the last load worked', async () => {
+    await render(<Profile />);
+    expect(screen.queryByText(/son deneme/)).toBeNull();
   });
 
   it('changes the directions app in the store', async () => {

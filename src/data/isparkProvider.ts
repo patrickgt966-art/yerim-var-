@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SchemaDriftError } from './izmirProvider';
+import { PROVIDER_TIMEOUT_MS, SchemaDriftError } from './izmirProvider';
 import { heavyVehicleTariff, isHeavyVehicleName } from './tariffs';
 import type { Parking, ParkingProvider } from './types';
 
@@ -140,9 +140,9 @@ export class IsparkProvider implements ParkingProvider {
 
   constructor(
     private readonly url = ISPARK_PARKING_URL,
-    // Unmeasured: same limits as the İzmir provider until a device run shows otherwise.
-    private readonly timeoutMs = 30_000,
-    private readonly firstTimeoutMs = Math.min(20_000, timeoutMs),
+    // Same limit as the İzmir provider for every attempt, the first included.
+    private readonly timeoutMs = PROVIDER_TIMEOUT_MS,
+    private readonly firstTimeoutMs = timeoutMs,
   ) {}
 
   async list(signal?: AbortSignal, attempt = 0): Promise<Parking[]> {

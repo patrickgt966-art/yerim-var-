@@ -1,5 +1,5 @@
-import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { queryOptions, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { isClosedNow } from '@/lib/openNow';
 import { useNow } from '@/lib/useNow';
@@ -95,6 +95,11 @@ export function useParkings({ withHidden = false }: { withHidden?: boolean } = {
   const hidden = useHiddenPlaceIds();
   const keep = withHidden ? NONE : hidden;
   const select = useCallback((r: ParkingResult) => addStatic(r, keep), [keep]);
+  // The saved result for this city shows at once while the slow live load runs.
+  const client = useQueryClient();
+  useEffect(() => {
+    void primeOnce(client, city);
+  }, [client, city]);
   return useQuery({
     ...parkingsQuery(city),
     select,
@@ -113,7 +118,19 @@ export async function primeParkingsFromCache(client: QueryClient, cityId = activ
   const cached = await deviceCache.load(cityId);
   const key = parkingsQueryKey(cityId);
   if (!cached || client.getQueryData(key)) return;
-  client.setQueryData(key, cached, { updatedAt: 0 });
+  // `fromCache` marks it as "saved, live data on its way"; the live result replaces it.
+  client.setQueryData(key, { ...cached, fromCache: true }, { updatedAt: 0 });
+}
+
+// One cache read per client and city, however many screens use the hook.
+const primedCities = new WeakMap<QueryClient, Set<string>>();
+
+function primeOnce(client: QueryClient, cityId: string) {
+  let done = primedCities.get(client);
+  if (!done) primedCities.set(client, (done = new Set()));
+  if (done.has(cityId)) return Promise.resolve();
+  done.add(cityId);
+  return primeParkingsFromCache(client, cityId);
 }
 
 /**
