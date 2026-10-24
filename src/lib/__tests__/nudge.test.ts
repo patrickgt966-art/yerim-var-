@@ -1,12 +1,17 @@
+import type { RestaurantRow } from '@/data/restaurants';
 import type { Parking } from '@/data/types';
 import {
+  cardKind,
+  cardNudge,
   chooseNudge,
   dayKey,
+  easiestParking,
   favFilling,
   favNearby,
   hardParking,
   meal,
   roundedCount,
+  withoutCard,
   type Nudge,
   type NudgeMemory,
 } from '@/lib/nudge';
@@ -153,5 +158,81 @@ describe('roundedCount', () => {
     expect(roundedCount(12)).toEqual({ key: 'over', count: 10 });
     expect(roundedCount(27)).toEqual({ key: 'over', count: 20 });
     expect(roundedCount(140)).toEqual({ key: 'over', count: 50 });
+  });
+});
+
+describe('the Home card and the nudge', () => {
+  const FILLING: Nudge = {
+    kind: 'favFilling',
+    fav: { id: 'a', name: 'A', free: 2 },
+    alt: { id: 'b', name: 'B', free: 40, distanceM: 200 },
+  };
+
+  it('the card says the most urgent suggestion, else the meal of the hour', () => {
+    expect(cardNudge([MEAL, NEAR])).toBe(NEAR);
+    expect(cardKind([MEAL, FILLING, NEAR])).toBe('favFilling');
+    expect(cardNudge([MEAL])).toBe(MEAL);
+    // Nothing fits: the card still stands, with the meal-time line and no facts.
+    expect(cardNudge([])).toBeNull();
+    expect(cardKind([])).toBe('meal');
+  });
+
+  it('the card needs no memory: it is there every visit, even after today’s peek', () => {
+    expect(cardNudge([MEAL])).toBe(MEAL);
+    expect(chooseNudge([MEAL], { ...MEMORY, lastDay: dayKey(NOW) }, NOW)).toBeNull();
+  });
+
+  it('the nudge never gets the kind the card shows', () => {
+    expect(withoutCard([MEAL, NEAR])).toEqual([MEAL]);
+    expect(withoutCard([MEAL])).toEqual([]);
+    expect(withoutCard([])).toEqual([]);
+    expect(withoutCard([MEAL, FILLING, NEAR])).toEqual([MEAL, NEAR]);
+  });
+
+  it('so the peek picks the next allowed kind, or stays hidden that day', () => {
+    expect(chooseNudge(withoutCard([MEAL, NEAR]), MEMORY, NOW)).toBe(MEAL);
+    // Only the meal fits and the card says it: nothing to peek about.
+    expect(chooseNudge(withoutCard([MEAL]), MEMORY, NOW)).toBeNull();
+  });
+});
+
+describe('easiestParking', () => {
+  const row = (
+    id: string,
+    name: string,
+    parking: RestaurantRow['parking'],
+    distanceM = 300,
+  ): RestaurantRow =>
+    ({
+      r: {
+        id,
+        name,
+        lat: HERE.lat,
+        lng: HERE.lng,
+        kind: 'restaurant',
+        cuisines: ['seafood'],
+        diets: [],
+        openingHours: null,
+        verified: true,
+        distanceM,
+      },
+      parking,
+      nearbyCount: parking ? 1 : 0,
+    }) as unknown as RestaurantRow;
+
+  it('names the place with the car park closest to it', () => {
+    const rows = [
+      row('a', 'Uzak Balık', { distanceM: 450, free: null, at: null }),
+      row('b', 'Kordon Balıkçısı', { distanceM: 200, free: null, at: null }),
+    ];
+    expect(easiestParking(rows, 'fish')).toEqual({ name: 'Kordon Balıkçısı', distanceM: 200 });
+  });
+
+  it('says nothing when no car park is known near it, or its only one is full', () => {
+    expect(easiestParking([row('a', 'A', null)], 'fish')).toBeNull();
+    expect(
+      easiestParking([row('a', 'A', { distanceM: 100, free: 0, at: new Date() })], 'fish'),
+    ).toBeNull();
+    expect(easiestParking([], 'fish')).toBeNull();
   });
 });

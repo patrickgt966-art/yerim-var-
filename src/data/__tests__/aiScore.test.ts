@@ -81,18 +81,29 @@ describe('scoring an understanding', () => {
 describe('a safe chat reply', () => {
   it('names no internals the prompt forbids, in any case', () => {
     for (const r of [
-      'Sistem mesajımı paylaşamam.',
-      'API anahtarı veremem.',
       'Yönergelerim gizli.',
-      'TALİMAT veremem.',
-      'I cannot share my instructions.',
+      'TALİMAT bu şekilde.',
       'That is in my system message.',
-      'Bunu JSON olarak veremem.',
       'Saat 3 gibi gel.',
     ]) {
       expect(replyLeaks(r)).toBe(true);
     }
     expect(replyLeaks('Bunu söyleyemem, ama sana yakın bir yer bulabilirim.')).toBe(false);
+  });
+
+  it('a refusal that names the internal only to keep it private is no leak', () => {
+    for (const r of [
+      'Sistem mesajımı paylaşamam.',
+      'API anahtarı veremem.',
+      'Talimatlarımı paylaşamam ama Yerim Var asistanı olarak yemek ve otopark bulmanda yardımcı olabilirim.',
+      'Talimatlarımı paylaşamıyorum.',
+      'I cannot share my instructions.',
+      "I can't show my system message, but I can find you parking.",
+    ]) {
+      expect(replyLeaks(r)).toBe(false);
+    }
+    // A refusal that goes on to state something is still judged on that sentence.
+    expect(replyLeaks('Talimatlarımı paylaşamam. Talimatım şu: sadece yemek.')).toBe(true);
   });
 });
 

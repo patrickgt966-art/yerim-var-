@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { useCoachRegistry } from '@/components/coach/registry';
 import { setActiveCity } from '@/data/cities';
+import { restaurantsNear } from '@/data/restaurants';
 import { useApp } from '@/store/app';
 import { useCoach } from '@/store/coach';
 import { useNudge } from '@/store/nudge';
@@ -46,7 +47,12 @@ describe('MascotNudge', () => {
   });
   afterEach(() => jest.useRealTimers());
 
+  // A saved restaurant a few steps away: the Home card says that one, so the peek says the meal.
+  const saveNearbyRestaurant = () =>
+    useApp.setState({ favoriteRestaurants: [restaurantsNear(HERE, 300, 1)[0]!.id] });
+
   it('peeks with a teaser at dinner time, opens on a tap and remembers the day', async () => {
+    saveNearbyRestaurant();
     await render(<MascotNudge nearby={{ here: HERE }} />);
     expect(screen.queryByText('Bir fikrim var')).toBeNull();
     await act(() => jest.advanceTimersByTime(2600));
@@ -59,6 +65,24 @@ describe('MascotNudge', () => {
 
     await fireEvent.press(screen.getByLabelText('Sonra'));
     expect(useNudge.getState().laters).toBe(1);
+  });
+
+  it('does not repeat the Home card: with only the meal of the hour to say, it stays away', async () => {
+    // Nothing special fits, so the card says the dinner suggestion; the peek must not say it again.
+    await render(<MascotNudge nearby={{ here: HERE }} />);
+    await act(() => jest.advanceTimersByTime(5000));
+    expect(screen.queryByText('Bir fikrim var')).toBeNull();
+    // It did not use up today's suggestion either.
+    expect(useNudge.getState().lastDay).toBeNull();
+  });
+
+  it('does not repeat the Home card: it takes the next kind instead', async () => {
+    saveNearbyRestaurant();
+    await render(<MascotNudge nearby={{ here: HERE }} />);
+    await act(() => jest.advanceTimersByTime(2600));
+    // The card says "Favorin yakında"; the peek is about dinner.
+    expect(useNudge.getState().lastKind).toBe('meal');
+    expect(screen.getByLabelText(/^Bir fikrim var: Akşam yemeği vakti!/)).toBeTruthy();
   });
 
   it('looks around once, when it decides, not on every car park refresh', async () => {
@@ -85,6 +109,7 @@ describe('MascotNudge', () => {
   });
 
   it('with a screen reader it says it is there and waits to be found', async () => {
+    saveNearbyRestaurant();
     const { AccessibilityInfo } = jest.requireActual('react-native');
     jest.spyOn(AccessibilityInfo, 'isScreenReaderEnabled').mockResolvedValueOnce(true);
     const say = jest
@@ -100,6 +125,7 @@ describe('MascotNudge', () => {
   });
 
   it('goes back by itself when nobody taps it', async () => {
+    saveNearbyRestaurant();
     await render(<MascotNudge nearby={{ here: HERE }} />);
     await act(() => jest.advanceTimersByTime(2600));
     expect(screen.getByText('Bir fikrim var')).toBeTruthy();

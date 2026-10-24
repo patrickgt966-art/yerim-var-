@@ -15,7 +15,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { SuggestionChip, Tile } from '@/components/search/SearchBits';
 import { Txt } from '@/components/Txt';
 import { activeCity, hasLiveParking } from '@/data/cities';
-import { formatClock } from '@/data/freshness';
+import { describeFailure, formatClock } from '@/data/freshness';
 import { MAP_APPS } from '@/data/mapApps';
 import { useParkings } from '@/data/useParkings';
 import type { LangPref } from '@/i18n';
@@ -297,7 +297,16 @@ export default function ProfileScreen() {
           ) : data ? (
             <Txt variant="caption" secondary>
               {t('profile.lastFetch', { time: formatClock(new Date(data.fetchedAt)) })}
-              {data.offline ? ` · ${t('freshness.offline')}` : ''}
+              {data.offline ? ` · ${t('freshness.savedData')}` : ''}
+            </Txt>
+          ) : null}
+          {data?.lastFailure ? (
+            // Why the last live load failed, kept with the saved data.
+            <Txt variant="caption" secondary>
+              {t('profile.lastAttempt', {
+                reason: describeFailure(data.lastFailure.reason),
+                time: formatClock(new Date(data.lastFailure.at)),
+              })}
             </Txt>
           ) : null}
           <Txt variant="caption" secondary>

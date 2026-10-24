@@ -18,6 +18,13 @@ const staticOnly = (fallbackReason?: string): ParkingResult => ({
   ...(fallbackReason ? { fallbackReason } : {}),
 });
 
+const cached = (over: Partial<ParkingResult> = {}): ParkingResult => ({
+  parkings: [],
+  source: 'izmir-open-data',
+  fetchedAt: '2026-10-24T08:30:00.000Z',
+  ...over,
+});
+
 afterEach(() => {
   setActiveCity('izmir');
   useApp.setState({ city: 'izmir' });
@@ -63,5 +70,55 @@ describe('SampleBanner in a city without a live parking API', () => {
     expect(screen.queryByText(/canlı boş yer sayısı yok/)).toBeNull();
     await rerender(<SampleBanner result={staticOnly('HTTP 503')} />);
     expect(screen.getByText(/Belediye verisine ulaşamadım/)).toBeTruthy();
+  });
+});
+
+describe('SampleBanner when the city source does not answer', () => {
+  it('names the source and never says there is no internet (İzmir)', async () => {
+    useApp.getState().setCity('izmir');
+    await render(
+      <SampleBanner result={cached({ offline: true, fallbackReason: 'Zaman aşımı (45 sn)' })} />,
+    );
+    expect(
+      screen.getByText(
+        /^İzmir Büyükşehir verisi şu an gelmiyor; son bilgi \d\d:\d\d \(.+ önce\)\. Eski sayıları gizledim\.$/,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/nternet/)).toBeNull();
+  });
+
+  it('names İSPARK for İstanbul', async () => {
+    useApp.getState().setCity('istanbul');
+    await render(
+      <SampleBanner
+        result={cached({ source: 'ispark', offline: true, fallbackReason: 'HTTP 503' })}
+      />,
+    );
+    expect(screen.getByText(/^İSPARK verisi şu an gelmiyor/)).toBeTruthy();
+  });
+
+  it('shows the same text as a small muted line, not a warning card, when asked to', async () => {
+    await render(
+      <SampleBanner muted result={cached({ offline: true, fallbackReason: 'HTTP 503' })} />,
+    );
+    expect(screen.getByText(/verisi şu an gelmiyor/)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('SampleBanner while saved data waits for the live load', () => {
+  it('shows a calm Güncelleniyor… line, not an alert', async () => {
+    await render(<SampleBanner result={cached({ fromCache: true })} />);
+    expect(screen.getByText('Güncelleniyor…')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/gelmiyor|nternet/)).toBeNull();
+  });
+
+  it('is gone for the live result, and a screen with its own line can switch it off', async () => {
+    const { rerender } = await render(<SampleBanner result={cached({ fromCache: true })} />);
+    await rerender(<SampleBanner result={cached()} />);
+    expect(screen.queryByText('Güncelleniyor…')).toBeNull();
+    await rerender(<SampleBanner updating={false} result={cached({ fromCache: true })} />);
+    expect(screen.queryByText('Güncelleniyor…')).toBeNull();
   });
 });

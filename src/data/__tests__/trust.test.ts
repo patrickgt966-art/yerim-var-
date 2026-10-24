@@ -2,8 +2,9 @@ import '@/i18n';
 import { changeLanguage } from 'i18next';
 
 import { formatAge, lacksFreshCounts } from '../freshness';
-import { IzmirOpenDataProvider } from '../izmirProvider';
-import { loadParkings } from '../repository';
+import { IsparkProvider } from '../isparkProvider';
+import { IzmirOpenDataProvider, PROVIDER_TIMEOUT_MS } from '../izmirProvider';
+import { loadParkings, RETRY_DELAYS_MS, RETRY_START_LIMIT_MS } from '../repository';
 import { hasRealTariffs } from '../tariffs';
 import type { ParkingCache } from '../cache';
 import type { Parking, ParkingProvider } from '../types';
@@ -76,33 +77,46 @@ describe('tariffs and freshness helpers', () => {
   });
 });
 
-describe('IzmirOpenDataProvider timeout by attempt', () => {
+describe('provider timeout by attempt', () => {
   const realFetch = globalThis.fetch;
   afterEach(() => {
     globalThis.fetch = realFetch;
     jest.useRealTimers();
   });
 
-  it('uses 20 s for the first attempt and 30 s for retries', async () => {
-    jest.useFakeTimers();
-    globalThis.fetch = jest.fn(
+  const hanging = () =>
+    jest.fn(
       (_url: unknown, init?: { signal?: AbortSignal }) =>
         new Promise((_resolve, reject) => {
           init?.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
         }),
     ) as unknown as typeof fetch;
-    const provider = new IzmirOpenDataProvider('https://example.test');
-    const first = expect(provider.list(undefined, 0)).rejects.toThrow('Zaman aşımı (20 sn)');
-    await jest.advanceTimersByTimeAsync(20_000);
-    await first;
-    const retry = expect(provider.list(undefined, 1)).rejects.toThrow('Zaman aşımı (30 sn)');
-    await jest.advanceTimersByTimeAsync(29_000);
-    let settled = false;
-    void retry.then(() => (settled = true));
-    await jest.advanceTimersByTimeAsync(0);
-    expect(settled).toBe(false);
-    await jest.advanceTimersByTimeAsync(1_000);
-    await retry;
+
+  it.each([
+    ['İzmir', () => new IzmirOpenDataProvider('https://example.test')],
+    ['İSPARK', () => new IsparkProvider('https://example.test')],
+  ])('%s waits 45 s on the first attempt and on retries', async (_name, make) => {
+    jest.useFakeTimers();
+    globalThis.fetch = hanging();
+    const provider = make();
+    for (const attempt of [0, 1]) {
+      const run = expect(provider.list(undefined, attempt)).rejects.toThrow('Zaman aşımı (45 sn)');
+      await jest.advanceTimersByTimeAsync(44_000);
+      let settled = false;
+      void run.then(() => (settled = true));
+      await jest.advanceTimersByTimeAsync(0);
+      expect(settled).toBe(false);
+      await jest.advanceTimersByTimeAsync(1_000);
+      await run;
+    }
+  });
+
+  it('still stops when the screen is closed, not as a timeout', async () => {
+    globalThis.fetch = hanging();
+    const controller = new AbortController();
+    const run = new IzmirOpenDataProvider('https://example.test').list(controller.signal, 0);
+    controller.abort();
+    await expect(run).rejects.toThrow('Aborted');
   });
 });
 
@@ -122,19 +136,30 @@ describe('loadParkings retry limit', () => {
     expect(attempts).toEqual([0, 1, 2]);
   });
 
-  it('passes the attempt number and stops retrying after a slow first attempts', async () => {
-    jest.useFakeTimers({ now: 0 });
+  it('passes the attempt number and stops retrying after two slow attempts', async () => {
+    let clock = 0;
+    const spy = jest.spyOn(Date, 'now').mockImplementation(() => clock);
     const attempts: number[] = [];
     const primary: ParkingProvider = {
       source: 'izmir-open-data',
       list: async (_s, attempt) => {
         attempts.push(attempt ?? -1);
-        jest.setSystemTime(Date.now() + 31_000);
+        // A full timeout (45 s) plus the first wait still leaves room for a second attempt.
+        clock += 46_000;
         throw new Error('timeout');
       },
     };
-    await loadParkings(primary, undefined, { cache, retryDelaysMs: [0, 0] });
-    jest.useRealTimers();
-    expect(attempts).toEqual([0]);
+    try {
+      await loadParkings(primary, undefined, { cache, retryDelaysMs: [0, 0] });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(attempts).toEqual([0, 1]);
+  });
+
+  it('lets a second attempt start after a first one that ran into its timeout', () => {
+    expect(RETRY_START_LIMIT_MS).toBeGreaterThan(PROVIDER_TIMEOUT_MS + RETRY_DELAYS_MS[0]!);
+    // ...but a third one cannot start after two full timeouts.
+    expect(RETRY_START_LIMIT_MS).toBeLessThan(2 * PROVIDER_TIMEOUT_MS + RETRY_DELAYS_MS[0]!);
   });
 });

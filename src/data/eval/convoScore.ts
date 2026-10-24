@@ -11,6 +11,7 @@
 // wording is a rate that is reported, not a check: a rejected text falls back to the template.
 import { KINDS, memberLabel, type Member } from '../choices';
 import { replyLeaks } from './aiScore';
+import { dishFits } from './dishFit';
 import { CONVO_CATEGORIES, HEPSI } from './convoCases';
 import type { ClaimKind, ConvoCase, ConvoTurn, TurnExpect } from './convoCases';
 import en from '@/i18n/en';
@@ -60,6 +61,10 @@ export type ObservedTurn = {
   skipped?: boolean;
   /** The tapped kind was not offered (the router picked other kinds): the first offered kind was tapped. */
   kindSwapped?: boolean;
+  /** A kind or "Hepsi" was not offered at all: the user typed the label as text instead of tapping it. */
+  typedInstead?: boolean;
+  /** A question about kinds was waiting for an answer when the turn began. */
+  askedBefore?: boolean;
   routerCalls: number;
   /** The router's reading, or null (no call, or it failed). */
   understood: Understanding | null;
@@ -75,6 +80,8 @@ export type ObservedTurn = {
     freeParking: boolean;
     ask: string | null;
     choice: { id: string; member: string } | null;
+    /** The wishes the app applied (the rules' and the router's together); absent in older records. */
+    wishes?: string[];
   };
   wordings: ObservedWording[];
   /** The map app was handed this destination in the turn (a "no" to the parking offer, a direct tap). */
@@ -108,14 +115,19 @@ export function sentenceCount(text: string): number {
     .filter((s) => s.trim() !== '').length;
 }
 
-/** A leftover of a broken template or of code. */
-const BROKEN = /undefined|\{\{|\}\}|\[object|\bNaN\b|\bnull\b/i;
+/**
+ * A leftover of a broken template or of code. "NaN" and "null" are whole words in the letters of any
+ * language: a plain \b would find "nan" inside "İnanç" (\b sees the ç as a non-letter), a place of
+ * Bursa that was reported as a broken template.
+ */
+export const BROKEN =
+  /undefined|\{\{|\}\}|\[object|(?<![\p{L}\p{N}_])(?:NaN|null)(?![\p{L}\p{N}_])/u;
 /** The honest "we have no data" note of the app (chat.noInfo*, chat.choice.note.*), folded. */
 const NOTE =
-  /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor|(we|i) (don t|do not) have [a-z ]{0,30}(info|data|ratings?)|we have no [a-z ]{0,30}(info|data)/;
+  /(bilgimiz|verimiz) yok|bilgimiz bulunmuyor|(we|i) (don t|do not) have [a-z ]{0,30}(info|data|ratings?)|we have no [a-z ]{0,30}(info|data)|(bilgi\w*|numara\w*|ucret\w*|puan\w*|telefon\w*)( \w+){0,3} (veremem|veremiyorum|bilemem|bilemiyorum|bilemiyoruz|paylasamam|paylasamiyorum)|(can t|cannot|can not|am not able to|m not able to|unable to) (give|share|tell|provide|say|check|confirm)( \w+){0,3} (info|information|data|number|numbers|phone|price|prices|rating|ratings|fee)/;
 /** A sentence that says we lack the data is honest, whatever word it names. */
 const LACKS =
-  /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)|(^| )(we don t have|i don t have|we have no|i have no|no data|no info|not available)( |$)/;
+  /(^| )(yok|bilgimiz|verimiz|bilmiyoruz|bilmiyorum|elimizde)( |$)|(^| )(we don t have|i don t have|we have no|i have no|no data|no info|not available)( |$)|(^| )(veremem|veremiyorum|bilemem|bilemiyorum|bilemiyoruz|paylasamam|paylasamiyorum|gosteremem|soyleyemem|soyleyemiyorum)( |$)|(^| )(i can t|i cannot|i can not|i am not able to|i m not able to|i won t|i will not) (give|share|tell|provide|say|show|reveal|decide|judge|confirm)( |$)/;
 const PRICE =
   /\d ?(tl|lira)( |$)|(^| )(fiyat|ucuz|pahali|ucret(?!siz)|butce|indirim|kampanya|ekonomik|uygun fiyat|price|prices|priced|cheap|cheaper|expensive|discount|budget)/;
 const PAID_WORDS = /(^| )(ucretli|paid)( |$)/;
@@ -128,7 +140,7 @@ const MENU = /(^| )(menu|menusu|menuler|porsiyon)/;
  * one ("menüsünde köfte var") still does.
  */
 const MENU_HEDGE =
-  /(buyuk ihtimalle|olabilir|kontrol et|emin degil|adlarindan|may not|might not|not every|not on every|by name|from (the )?(place|restaurant) names|check the menu|probably|likely)/;
+  /(buyuk ihtimalle|olabilir|olmayabilir|kontrol et|emin degil|adlarindan|adindan yola|adlarindan yola|teyit|dogrulanmis degil|dogrulanmadi|dogrulamad|kesin degil|may not|might not|not every|not on every|by name|from (the )?(place|restaurant) names|check the menu|worth a (quick )?look|probably|likely|not confirmed|unconfirmed|isn t confirmed|aren t confirmed|not verified|can t confirm|cannot confirm)/;
 /**
  * The AI says there is room in a car park: only a live free-spot count may say so. "yer var" is a
  * claim only right after car park words ("otoparkta 5 yer var"); "baklava için 18 yer var" counts
@@ -152,6 +164,7 @@ export function claimsIn(
   // A question that repeats the user's own word "menü" ("Fit menüde hangi tarzı arıyorsun?") asks
   // for a kind; it claims nothing about a menu.
   const userMenu = MENU.test(` ${fold(userText)}`);
+  const userTokens = new Set(fold(userText).split(' '));
   const userPrice = PRICE.test(` ${fold(userText)}`);
   for (const part of text.match(/[^.!?\n;]+[.!?\n;]*/g) ?? []) {
     const sentence = part.replace(/[.!?\n;]+$/, '');
@@ -167,7 +180,14 @@ export function claimsIn(
     const toCards = /(^| )(kart|card)/.test(f) && /(bak|gor|incele|kontrol|check|see|look)/.test(f);
     const priced = toCards ? f.replace(/(^| )ucret\w*/g, ' ') : f;
     if (PRICE.test(priced) && !echoed) out.push(`price: "${sentence.trim()}"`);
-    if (RATING.test(f)) out.push(`rating: "${sentence.trim()}"`);
+    // The user's own word ("yıldız" in the made-up "yıldız tozu çorbası") quoted back, with no number
+    // beside it, is an echo, not a rating.
+    const ratingWords = f.split(' ').filter((w) => RATING.test(` ${w}`));
+    const echoRating =
+      ratingWords.length > 0 &&
+      !/\d\S* ?(puan|yildiz|star)|(puan|yildiz|star)\w* ?\d/.test(f) &&
+      ratingWords.every((w) => userTokens.has(w));
+    if (RATING.test(f) && !echoRating) out.push(`rating: "${sentence.trim()}"`);
     if (MENU.test(f) && !MENU_HEDGE.test(f) && !(userMenu && part.includes('?'))) {
       out.push(`menu: "${sentence.trim()}"`);
     }
@@ -224,7 +244,7 @@ export function forbiddenClaims(
 
 /** The ask is hedged: nothing found, or the text says the dish is not sure to be made ("emin olduğum yer yok", "benzer"). */
 const HEDGE =
-  /(emin ol|bulamad|buyuk ihtimalle|genelde olur|tam cikaramad|benzer|adinda .{0,40}(yer|gec)|bilgimiz|not sure|similar|couldn t find|could not find|probably|usually|might|no place)/;
+  /(emin ol|bulamad|buyuk ihtimalle|genelde olur|tam cikaramad|benzer|adinda .{0,40}(yer|gec)|adindan yola|adlarindan yola|teyit|dogrulanmis degil|bilmiyorum|bilgimiz|not sure|similar|couldn t find|could not find|didn t come up|did not come up|isn t listed|is not listed|not listed|probably|usually|might|no place|going by (the )?(name|its name)|from the name|not confirmed|unconfirmed|don t know)/;
 
 /** A walk longer than this is not near, and a list that starts there must say it is far. */
 export const FAR_WALK_MIN = 20;
@@ -237,7 +257,12 @@ const NEAR = /(^| )(en yakin|yakinda( |$)|hemen yaninda|nearby|closest|nearest|c
 const CARPARK_NEAR =
   /(car ?parks?|parking|otopark\w*) (is |are )?(nearby|close by|yakin\w*)|(nearby|close by) (car ?parks?|parking)/g;
 /** What tells the user the results are far or the search was widened (folded). */
-const FAR = /(genis|uzak|az yer var|wider|far away|farther|\bkm\b)/;
+const FAR =
+  /(genis|uzak|az yer var|wider|far away|farther|\bkm\b|\btrek\b|long walk|long way|bit of a walk|fair walk|quite a walk|too far|bit far|pretty far|rather far)/;
+
+/** The message says in plain words that the place is far (a widened search alone does not say it). */
+const FAR_SAID =
+  /(uzak|far away|farther|\bkm\b|\btrek\b|long walk|long way|bit of a walk|fair walk|quite a walk|too far|bit far|pretty far|rather far)/;
 
 /** "~48 dk yürüme", "20 minutes": the minutes a sentence names. */
 const minutesIn = (folded: string): number[] =>
@@ -273,6 +298,10 @@ function namesFarCard(folded: string, cards: readonly ObservedCard[], mins: read
  * minutes, and when the top card is that far the message must say so (a widened search, "uzak",
  * a walk of more than FAR_WALK_MIN minutes stated). `byName`: a name search is exempt from the
  * far signal (the user asked for that place), not from the near claims.
+ *
+ * "En yakını Nur Pastaneleri, yaklaşık 27 dakika" is no near claim when the message also says the
+ * results are far and the walk it states is the real walk of a shown card: "closest" is then a
+ * superlative that is true of a far place too, and the user is told how far it is.
  */
 export function distanceClaims(
   text: string,
@@ -284,20 +313,35 @@ export function distanceClaims(
   const topMin = top ? cardWalkMin(top) : 0;
   // A place searched by its name is wanted wherever it is: its distance needs no warning.
   const topFar = !byName && topMin > FAR_WALK_MIN;
-  let signal = false;
-  for (const sentence of text.split(/[.!?\n;]+/)) {
-    const f = ` ${fold(sentence)} `.replace(/\s+/g, ' ').trim();
-    if (f === '') continue;
+  const real = new Set(cards.map((c) => cardWalkMin(c)));
+  const isReal = (m: number) => [m - 1, m, m + 1].some((x) => real.has(x));
+  const sentences = text
+    .split(/[.!?\n;]+/)
+    .map((sentence) => ({ sentence, f: ` ${fold(sentence)} `.replace(/\s+/g, ' ').trim() }))
+    .filter(({ f }) => f !== '');
+  // The message says the results are far (or the search was widened) somewhere; `said`: in plain words.
+  const farIn = (f: string, pattern: RegExp) => {
+    const far = minutesIn(f).some((m) => m > FAR_WALK_MIN);
+    const near = NEAR.test(f.replace(CARPARK_NEAR, ' '));
+    return pattern.test(f) || (far && !near);
+  };
+  const signal = sentences.some(({ f }) => farIn(f, FAR));
+  const said = sentences.some(({ f }) => farIn(f, FAR_SAID));
+  for (const { sentence, f } of sentences) {
     const mins = minutesIn(f);
     const far = mins.some((m) => m > FAR_WALK_MIN);
     const near = NEAR.test(f.replace(CARPARK_NEAR, ' '));
-    if (FAR.test(f) || (far && !near)) signal = true;
     // A sentence that says it looked wider is the signal itself, however it words it.
     if (!near || FAR.test(f)) continue;
     const q = sentence.trim();
-    if (far) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
-    else if (namesFarCard(f, cards, mins)) {
-      out.push(`calls a place over ${FAR_WALK_MIN} min away near: "${q}"`);
+    // Said far elsewhere in the message, and the walk stated is a real one: honest.
+    const toldFar = said && mins.every((m) => m <= FAR_WALK_MIN || isReal(m));
+    if (far) {
+      if (!toldFar) out.push(`calls a ${Math.max(...mins)} min walk near: "${q}"`);
+    } else if (namesFarCard(f, cards, mins)) {
+      if (!(said && mins.length > 0)) {
+        out.push(`calls a place over ${FAR_WALK_MIN} min away near: "${q}"`);
+      }
     } else if (topFar && mins.length === 0) {
       out.push(`calls the list near, but its top place is ${topMin} min away: "${q}"`);
     }
@@ -389,6 +433,25 @@ function parkOffer(want: NonNullable<TurnExpect['parkAsk']>, obs: ObservedTurn):
   return m;
 }
 
+/** The folded words of a category's noun ("balık restoranı"): a dish that is the category itself is named by it. */
+function categoryWord(cat: string | null): string | null {
+  return cat ? ((tr.chat.noun as Record<string, string>)[cat] ?? null) : null;
+}
+
+/**
+ * True when one of the texts holds the place name, or a shown place is that name (folded, either
+ * way round): the whole name, never a few letters of it.
+ */
+function namesPlace(name: string, texts: readonly string[], shown: readonly string[]): boolean {
+  const n = fold(name);
+  if (n === '') return false;
+  const holds = (t: string) => {
+    const f = fold(t);
+    return f.includes(n) || (f.length >= 4 && n.includes(f));
+  };
+  return texts.some((t) => fold(t).includes(n)) || shown.some(holds);
+}
+
 function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
   const e = turn.expect;
   const m: string[] = [];
@@ -406,19 +469,38 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
       // An out-of-scope ask may be read as a search the app cannot run: it must still show nothing.
       if (u.kind === 'search' && !e.scope) m.push('kind: want chat or unknown, got search');
     } else if (u.kind !== 'search') {
-      m.push(`kind: want search (${e.kind}), got ${u.kind}`);
+      // The router read a search as chat or unknown, but the app searched it itself and the user
+      // got the results they asked for: the reading is the router's flaw, not the user's.
+      const served = obs.cards.length > 0 && e.kind !== 'choice';
+      if (!served) m.push(`kind: want search (${e.kind}), got ${u.kind}`);
     }
   }
   if (u?.kind === 'search') {
     const food = u.food || u.cat !== null || !!u.dish;
     if ((e.kind === 'food' || e.kind === 'choice') && !food) m.push('food: want true, got false');
-    if (e.kind === 'park' && food) m.push('food: want false (car park), got true');
-    if (e.wishes && !e.wishes.some((w) => u.wishes?.includes(w))) {
+    // The router took a car park ask for food (a dish it guessed from a typo), but the app served
+    // car parks only: the user got what they asked for.
+    const parkingOnly = obs.cards.length > 0 && obs.cards.every((c) => c.kind === 'parking');
+    if (e.kind === 'park' && food && !parkingOnly) {
+      m.push('food: want false (car park), got true');
+    }
+    // A wish the router missed but the app read in the words and applied counts: the user got it.
+    if (e.wishes && !e.wishes.some((w) => u.wishes?.includes(w) || obs.ctx.wishes?.includes(w))) {
       m.push(`wishes: want one of ${e.wishes.join('|')}, got ${u.wishes?.join(',') ?? '-'}`);
     }
     if (e.placeHas) {
       const all = [u.place, u.appleQuery, u.district].map((v) => v ?? '').join(' ');
-      if (![...e.placeHas, ...(e.placeAlso ?? [])].some((w) => hasWordStart(all, w))) {
+      const words = [...e.placeHas, ...(e.placeAlso ?? [])].some((w) => hasWordStart(all, w));
+      // A name ask: the reading (the place, or the dish field it was put in) holds the whole name,
+      // or the app found the place itself and shows it.
+      const named =
+        !!e.placeName &&
+        namesPlace(
+          e.placeName,
+          [all, u.dish ?? ''],
+          obs.cards.map((c) => c.name),
+        );
+      if (!words && !named) {
         m.push(`place: want ${e.placeHas.join('|')}, got ${u.place} / ${u.appleQuery}`);
       }
     }
@@ -431,10 +513,16 @@ function understanding(turn: ConvoTurn, obs: ObservedTurn): Check {
     }
   }
   if (e.dishHas && (u === null || u.kind === 'search')) {
-    const dish = fold((u ? u.dish : obs.ctx.dish) ?? '');
-    if (!(e.dishOptional && dish === '') && !e.dishHas.some((w) => dish.includes(fold(w)))) {
-      m.push(`dish: want ${e.dishHas.join('|')}, got ${u ? u.dish : obs.ctx.dish}`);
-    }
+    const read = (u ? u.dish : obs.ctx.dish) ?? '';
+    // The dish may be spelled another way ("karbonara", "kesadilya"): it is the same dish when the
+    // app's resolvers and a sound fold agree. The router left it empty: what the app searched for
+    // is what the user sees, and a category that is the dish itself ("balık") says it too.
+    const fits =
+      (e.dishOptional && fold(read) === '') ||
+      dishFits(read, e.dishHas) ||
+      (fold(read) === '' &&
+        (dishFits(obs.ctx.dish, e.dishHas) || dishFits(categoryWord(obs.ctx.cat), e.dishHas)));
+    if (!fits) m.push(`dish: want ${e.dishHas.join('|')}, got ${read === '' ? null : read}`);
   }
   // What the user sees: where it searched, parking, results.
   if (e.place) {
@@ -552,8 +640,13 @@ function choices(turn: ConvoTurn, obs: ObservedTurn): Check {
   if (e.ask && !e.ask.includes(obs.ctx.ask ?? '')) {
     m.push(`question: want ${e.ask.join('|')}, got ${obs.ctx.ask ?? 'none'}`);
   }
+  // A kind picked is judged only when a question was there to answer: a typed "hepsi" after plain
+  // results is a new ask, and a kind or "Hepsi" the user had to type is not a tap.
+  const answersQuestion =
+    !obs.typedInstead && !(turn.input.type === 'answer' && obs.askedBefore === false);
   if (
     e.member &&
+    answersQuestion &&
     !obs.kindSwapped &&
     !sameKind(e.member, obs.ctx.choice?.member) &&
     !(turn.input.type === 'answer' && searchedKind(e.member, obs))

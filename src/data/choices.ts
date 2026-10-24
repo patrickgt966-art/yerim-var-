@@ -542,7 +542,8 @@ export function entryForCat(cat: FoodCategory): ChoiceEntry | undefined {
 
 /** "tatlı bir şey", "canım tatlı çekti": a mood, not a request for the category itself. */
 export function isVague(folded: string): boolean {
-  return /\bbir sey(ler)?\b|\bcek(ti|iyor|mis)\b|\bcanim\b|\bbisey\b/.test(folded);
+  // "bir şey", "bi şey", "bişey", "bir şeyler" (and a slip in it: "bir şeylre").
+  return /\b(bir|bi) ?sey\w*|\bbisey\w*|\bcek(ti|iyor|mis)\b|\bcanim\b/.test(folded);
 }
 
 /** The member a typed answer names (the first member whose word is in it), or null. */

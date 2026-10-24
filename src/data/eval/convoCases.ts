@@ -93,6 +93,11 @@ export type TurnExpect = {
   placeHas?: string[];
   /** Also right for `placeHas`: other words of the same place (a landmark's own name). */
   placeAlso?: string[];
+  /**
+   * A name ask: the whole name of the place (folded). The reading holding it, or a shown card being
+   * it, is as good as a word of `placeHas` (the model may put a name in the dish field).
+   */
+  placeName?: string;
   /** Around the user: no place was set. */
   nearMe?: boolean;
   requireParking?: boolean;
@@ -454,6 +459,12 @@ export const ASK_SPECS: AskSpec[] = [
 /** The wishes a right reading of the text holds: "karnım çok aç" is hunger, hearty or quick are both fine. */
 export const wishesFor = (spec: AskSpec, text: string): Wish[] =>
   text.includes('karnım çok aç') ? [...spec.wishes, 'quick'] : spec.wishes;
+/**
+ * The questions that fit a text: the entry's own (and its neighbour's), and for "bulk" (a gain in
+ * muscle as much as in weight) the protein question or the hearty one are both right.
+ */
+export const asksFor = (spec: AskSpec, text: string): string[] =>
+  /bulk/i.test(text) ? [...new Set([...spec.asks, 'protein', 'hearty'])] : spec.asks;
 export const ALL_ANSWERS = [
   'hepsi',
   'hepsini göster',
@@ -1488,7 +1499,8 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
       add('name', city, 'food', () => {
         const kind = Math.floor(k / 3);
         const typed = r.chance(0.5) ? low(name) : name;
-        const first = low(asciiFold(name.split(' ')[0] ?? name)).slice(0, 3);
+        const tokens = name.split(' ').map((w) => low(asciiFold(w)));
+        const placeName = low(asciiFold(name));
         if (kind === 0) {
           // The name as it is written: the app finds the place itself.
           return [
@@ -1501,12 +1513,19 @@ export function buildConvoCases(seed: number = CONVO_SEED): ConvoCase[] {
         }
         if (kind === 1) {
           const filler = at(['nerede', 'var mı yakınlarda', 'adresi ne', 'nerde'], k + ci);
-          return [say(`${typed} ${filler}`, { kind: 'name', placeHas: [first] })];
+          return [say(`${typed} ${filler}`, { kind: 'name', placeHas: tokens, placeName })];
         }
         const words = name.split(' ');
         const last = words.length - 1;
         words[last] = typo(r, words[last] as string);
-        return [say(low(words.join(' ')), { kind: 'name', placeHas: [first] })];
+        const typedTokens = words.map((w) => low(asciiFold(w)));
+        return [
+          say(low(words.join(' ')), {
+            kind: 'name',
+            placeHas: [...new Set([...tokens, ...typedTokens])],
+            placeName,
+          }),
+        ];
       });
     }
   }

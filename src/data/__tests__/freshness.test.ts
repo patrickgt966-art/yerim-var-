@@ -1,4 +1,13 @@
-import { getFreshness, liveFlagFresh, occupancyLevel, visibleFree } from '../freshness';
+import '@/i18n';
+
+import {
+  describeFailure,
+  getFreshness,
+  liveFlagFresh,
+  occupancyLevel,
+  sourceName,
+  visibleFree,
+} from '../freshness';
 import type { Parking } from '../types';
 
 const now = new Date('2026-10-07T12:00:00Z');
@@ -81,5 +90,22 @@ describe('liveFlagFresh', () => {
     expect(liveFlagFresh({ fetchedAt: minsAgo(1), updatedAt: minsAgo(30) }, now)).toBe(false);
     expect(liveFlagFresh({ fetchedAt: 'bozuk' }, now)).toBe(false);
     expect(liveFlagFresh({}, now)).toBe(true);
+  });
+});
+
+describe('honest wording for a failed load', () => {
+  it('names the city source in the UI language', () => {
+    expect(sourceName('izmir-open-data')).toBe('İzmir Büyükşehir');
+    expect(sourceName('ispark')).toBe('İSPARK');
+    expect(sourceName('mock')).toBe('');
+  });
+
+  it('describes a failure without ever mentioning the internet', () => {
+    expect(describeFailure('Zaman aşımı (45 sn)')).toBe('zaman aşımı 45 sn');
+    expect(describeFailure('HTTP 503')).toBe('HTTP 503');
+    expect(describeFailure('Network request failed')).toBe('bağlantı hatası');
+    expect(describeFailure('Boş yanıt')).toBe('yanıt alınamadı');
+    for (const r of ['Zaman aşımı (45 sn)', 'HTTP 503', 'Network request failed', 'x'])
+      expect(describeFailure(r)).not.toMatch(/nternet/);
   });
 });

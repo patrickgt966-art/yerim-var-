@@ -42,10 +42,17 @@ const en = {
     // Calm note for a city without a live parking API (Ankara); not an outage.
     noLiveBanner:
       'There are no live free-space counts in {{city}}, just so you know; I show car parks with their capacity.',
-    offline: 'No internet',
-    offlineBanner:
-      "No internet; I'm showing what I knew last ({{time}}, {{age}} ago). I've hidden the old numbers.",
-    // Age in offlineBanner's {{age}}.
+    savedData: 'Saved data',
+    sourceDownBanner:
+      "{{source}} data isn't coming through right now; last info {{time}} ({{age}} ago). I've hidden the old numbers.",
+    updating: 'Updating…',
+    sourceIzmir: 'İzmir Metropolitan Municipality',
+    sourceIspark: 'İSPARK',
+    failTimeout: 'timeout {{sec}} s',
+    failHttp: 'HTTP {{code}}',
+    failNetwork: 'connection error',
+    failOther: 'no answer',
+    // Age in sourceDownBanner's {{age}}.
     ageMinutes: '{{count}} min',
     ageHours: '{{count}} h',
     ageDays_one: '{{count}} day',
@@ -406,6 +413,7 @@ const en = {
     dataBody:
       'Restaurants: © OpenStreetMap contributors (ODbL) and Overture Maps (CDLA-Permissive-2.0). Car parks: İzmir Metropolitan Municipality Open Data Portal (İzmir Metropolitan Municipality Open Data License) for İzmir, İBB Open Data / İSPARK for İstanbul, and © OpenStreetMap contributors (ODbL) elsewhere. Live free-space info is only available in İzmir and İstanbul. Yerim Var is not an official municipal app.',
     lastFetch: 'Last data fetch: {{time}}',
+    lastAttempt: 'last try: {{reason}}, {{time}}',
     privacy: 'Privacy',
     privacyBody:
       "No analytics, ads, tracking or accounts. Your favourites and active parking stay on this device only. Your location is never sent to our server. When you search, the text you type is sent to Apple Maps, and for car park search and address lookup so is a rounded location (about 100 m). The only request sent to the municipality is for free-space info. When ✨ Smart help is on, the messages you type in the chat are sent to Anthropic's Claude AI to get a reply, together with the names of nearby places and walking times, so your approximate area can be inferred. Your coordinates are never sent. A random device ID is kept for the daily usage counter and deleted within 2 days. If you report a place as closed or wrong, our server receives the place's ID, the reason and the city; your device ID and network are stored only as one-way hashes tied to that place and deleted after 180 days. A link you share opens a page on yerimvar.app that only shows what the link itself carries (name, address, location); the page stores nothing and uses no cookies or analytics.",
@@ -918,6 +926,9 @@ const en = {
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
     dishNamedShort: 'Put the places with "{{dish}}" in their name at the top.',
     // {{label}} and {{shop}} are Turkish shop types, so the English texts leave them out or quote them.
+    dishMadeUpWords:
+      'I don\'t know a dish or a place called "{{q}}"; showing similar places nearby.',
+    dishMadeUp: 'I don\'t know a dish called "{{dish}}"; showing places of that kind instead.',
     dishLikelyShort: 'No place is named "{{dish}}", but places of this kind very likely have it.',
     dishCommonShort:
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places.',
@@ -1060,6 +1071,9 @@ const en = {
     noInfo_reviews: 'review and taste',
     noInfo_menu: 'menu',
     noInfo_kids: 'kids’ facilities',
+    noInfo_allergen: 'allergen and ingredient',
+    noInfo_space: 'guaranteed free space',
+    noPhone: 'We have no phone number info; the card has the location and directions.',
     noInfoRule: "We don't have {{what}} info; I sorted by distance and parking.",
     noInfoAi: "We don't have {{what}} info; I picked by distance, opening hours and parking.",
     noInfoPlainRule: "We don't have {{what}} info; I sorted by distance.",
@@ -1218,6 +1232,16 @@ const en = {
     ticketFood_other: 'places nearby',
     ticketWhere: '{{name}} · {{walk}} min',
     foodRadius: 'within walking distance',
+    ticketPark_one: 'car park',
+    ticketPark_other: 'car parks',
+    ticketNearest: 'closest: {{name}} · {{walk}} min',
+    ticketWalk: '{{walk}} min on foot',
+    ticketInCity: 'in the city',
+    ticketNearby: 'nearby',
+    ticketOpen_one: 'place open',
+    ticketOpen_other: 'places open',
+    ticketRestaurant_one: 'restaurant',
+    ticketRestaurant_other: 'restaurants',
     greeting: {
       morning: 'Good morning!',
       day: 'Good afternoon!',
@@ -1226,6 +1250,49 @@ const en = {
     },
     swipe: 'swipe',
     footerNote: 'enjoy your meal, easy parking ✌︎',
+    // The taped suggestion note in the middle of Home.
+    note: {
+      title: {
+        morning: 'How about {{dish}} this morning?',
+        noon: 'How about {{dish}} for lunch?',
+        evening: 'How about {{dish}} for dinner?',
+        night: 'How about {{dish}} tonight?',
+      },
+      dish: {
+        breakfast: 'breakfast',
+        soup: 'soup',
+        meat: 'a grill',
+        lokanta: 'home cooking',
+        fish: 'fish',
+        cafe: 'a coffee',
+        meyhane: 'a meyhane',
+        fast: 'a quick bite',
+        world: 'world cuisine',
+        dessert: 'dessert',
+      },
+      parkEasy: 'Easiest parking: {{name}}, car park {{distance}} away.',
+      show: {
+        breakfast: 'Show the breakfast places',
+        soup: 'Show the soup places',
+        meat: 'Show the grill houses',
+        lokanta: 'Show the restaurants',
+        fish: 'Show the fish restaurants',
+        cafe: 'Show the cafés',
+        meyhane: 'Show the meyhanes',
+        fast: 'Show the fast food places',
+        world: 'Show the world kitchens',
+        dessert: 'Show the dessert shops',
+      },
+      // No count or place known: only the hour speaks.
+      generic: {
+        morning: 'Breakfast time!',
+        noon: 'Lunch break!',
+        evening: 'Dinner time!',
+        night: 'Hungry tonight?',
+      },
+      bodyNone: "Let's look at the places near you together.",
+      actionNone: 'Show places',
+    },
     cravingTitle: 'What are you craving?',
     a11yCraving: 'Search {{name}}',
     cravingSlot: {

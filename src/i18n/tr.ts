@@ -41,10 +41,17 @@ const tr = {
     // Calm note for a city without a live parking API (Ankara); not an outage.
     noLiveBanner:
       '{{place}} canlı boş yer sayısı yok, baştan söyleyeyim; otoparkları kapasiteleriyle gösteriyorum.',
-    offline: 'İnternet yok',
-    offlineBanner:
-      'İnternet yok; son bildiklerimi gösteriyorum ({{time}}, {{age}} önce). Eski sayıları gizledim.',
-    // Age in offlineBanner's {{age}}.
+    savedData: 'Kayıtlı veri',
+    sourceDownBanner:
+      '{{source}} verisi şu an gelmiyor; son bilgi {{time}} ({{age}} önce). Eski sayıları gizledim.',
+    updating: 'Güncelleniyor…',
+    sourceIzmir: 'İzmir Büyükşehir',
+    sourceIspark: 'İSPARK',
+    failTimeout: 'zaman aşımı {{sec}} sn',
+    failHttp: 'HTTP {{code}}',
+    failNetwork: 'bağlantı hatası',
+    failOther: 'yanıt alınamadı',
+    // Age in sourceDownBanner's {{age}}.
     ageMinutes: '{{count}} dk',
     ageHours: '{{count}} sa',
     ageDays: '{{count}} gün',
@@ -396,6 +403,7 @@ const tr = {
     dataBody:
       "Restoranlar: © OpenStreetMap katkıcıları (ODbL) ve Overture Maps (CDLA-Permissive-2.0). Otoparklar: İzmir için İzmir Büyükşehir Belediyesi Açık Veri Portalı (İzmir Büyükşehir Belediyesi Açık Veri Lisansı), İstanbul için İBB Açık Veri / İSPARK, diğer yerler için © OpenStreetMap katkıcıları (ODbL). Canlı boş yer bilgisi yalnızca İzmir ve İstanbul'da var. Yerim Var resmî bir belediye uygulaması değildir.",
     lastFetch: 'Son veri alma: {{time}}',
+    lastAttempt: 'son deneme: {{reason}}, {{time}}',
     privacy: 'Gizlilik',
     privacyBody:
       'Analitik, reklam, takip ya da hesap yok. Favorilerin ve aktif parkın sadece bu cihazda kalır. Konumun sunucumuza hiç gönderilmez. Arama yaparken yazdığın metin, otopark araması ve adres bulma için de yuvarlanmış konumun (yaklaşık 100 m) Apple Haritalar\'a gider. Belediyeye giden tek istek boş yer bilgisidir. ✨ Akıllı yardım açıksa sohbete yazdığın mesaj, cevap için Anthropic\'in Claude yapay zekâsına gönderilir; yanında yakındaki yerlerin adları ve yürüme süreleri de gider, bu yüzden yaklaşık bölgen anlaşılabilir. Koordinatların gönderilmez. Günlük hak sayacı için rastgele bir cihaz numarası tutulur, 2 gün içinde silinir. Bir yeri "kapanmış" ya da "bilgisi yanlış" diye bildirirsen sunucumuza yerin kimliği, sebep ve şehir gider; cihaz numaran ve ağın yalnızca o yere özel karıştırılmış (geri çözülemez) hâliyle saklanır, 180 gün sonra silinir. Paylaştığın bağlantı yerimvar.app\'te bir sayfa açar; sayfa yalnızca bağlantının taşıdığını (ad, adres, konum) gösterir, hiçbir şey kaydetmez, çerez ve analitik kullanmaz.',
@@ -817,6 +825,9 @@ const tr = {
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
     // The same notes without a count, for the reply whose lead already says how many places there are.
     dishNamedShort: 'Adında "{{dish}}" geçen yerleri üste koydum.',
+    dishMadeUpWords:
+      '"{{q}}" diye bir yemek ya da yer bilmiyorum; yakındaki benzer yerleri gösteriyorum.',
+    dishMadeUp: '"{{dish}}" diye bir yemek bilmiyorum; {{label}} gibi yerleri gösteriyorum.',
     dishLikelyShort: '"{{dish}}" adında yer yok ama {{label}} gibi yerlerde büyük ihtimalle var.',
     dishCommonShort: '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
@@ -955,6 +966,9 @@ const tr = {
     noInfo_reviews: 'yorum ve lezzet',
     noInfo_menu: 'menü',
     noInfo_kids: 'çocuk olanakları',
+    noInfo_allergen: 'alerjen ve içerik',
+    noInfo_space: 'garantili boş yer',
+    noPhone: 'Telefon numarası bilgimiz yok; konumu ve yol tarifi kartta.',
     noInfoRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa ve otoparka göre yaptım.',
     noInfoAi: '{{what}} bilgimiz yok; yakınlığa, açık olmasına ve otoparka göre seçtim.',
     noInfoPlainRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa göre yaptım.',
@@ -1108,6 +1122,13 @@ const tr = {
     ticketFood: 'yer yakında',
     ticketWhere: '{{name}} · {{walk}} dk',
     foodRadius: 'yürüme mesafesinde',
+    ticketPark: 'otopark',
+    ticketNearest: 'en yakını {{name}} · {{walk}} dk',
+    ticketWalk: 'yürüyerek {{walk}} dk',
+    ticketInCity: 'şehirde',
+    ticketNearby: 'yakınında',
+    ticketOpen: 'yer açık',
+    ticketRestaurant: 'restoran',
     greeting: {
       morning: 'Günaydın!',
       day: 'İyi günler!',
@@ -1116,6 +1137,49 @@ const tr = {
     },
     swipe: 'kaydır',
     footerNote: 'afiyet olsun, park kolay gelsin ✌︎',
+    // The taped suggestion note in the middle of Home.
+    note: {
+      title: {
+        morning: 'Sabah için {{dish}} nasıl olur?',
+        noon: 'Öğle için {{dish}} nasıl olur?',
+        evening: 'Akşam için {{dish}} nasıl olur?',
+        night: 'Gece için {{dish}} nasıl olur?',
+      },
+      dish: {
+        breakfast: 'kahvaltı',
+        soup: 'çorba',
+        meat: 'kebap',
+        lokanta: 'ev yemeği',
+        fish: 'balık',
+        cafe: 'kahve',
+        meyhane: 'meyhane',
+        fast: 'hızlı bir lokma',
+        world: 'dünya mutfağı',
+        dessert: 'tatlı',
+      },
+      parkEasy: 'Park derdi en az olanı {{name}}: otoparkı {{distance}}.',
+      show: {
+        breakfast: 'Kahvaltıcıları göster',
+        soup: 'Çorbacıları göster',
+        meat: 'Kebapçıları göster',
+        lokanta: 'Lokantaları göster',
+        fish: 'Balıkçıları göster',
+        cafe: 'Kafeleri göster',
+        meyhane: 'Meyhaneleri göster',
+        fast: 'Hızlı yemek yerlerini göster',
+        world: 'Dünya mutfaklarını göster',
+        dessert: 'Tatlıcıları göster',
+      },
+      // No count or place known: only the hour speaks.
+      generic: {
+        morning: 'Kahvaltı vakti!',
+        noon: 'Öğle arası!',
+        evening: 'Akşam yemeği vakti!',
+        night: 'Gece acıktın mı?',
+      },
+      bodyNone: 'Yakınındaki yerlere birlikte bakalım.',
+      actionNone: 'Yerleri göster',
+    },
     cravingTitle: 'Canın ne çekiyor?',
     a11yCraving: '{{name}} ara',
     cravingSlot: {

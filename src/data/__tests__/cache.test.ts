@@ -51,6 +51,21 @@ describe('deviceCache', () => {
   });
 });
 
+describe('deviceCache keeps the record of why a load failed', () => {
+  beforeEach(() => AsyncStorage.clear());
+  const lastFailure = { reason: 'Zaman aşımı (45 sn)', at: '2026-10-24T10:12:00.000Z' };
+
+  it('round-trips lastFailure and drops a malformed one', async () => {
+    await deviceCache.save({ ...result, lastFailure });
+    expect(await deviceCache.load()).toEqual({ ...result, lastFailure });
+    await AsyncStorage.setItem(
+      'parkings-cache-v1',
+      JSON.stringify({ ...result, lastFailure: { reason: 5 } }),
+    );
+    expect(await deviceCache.load()).toEqual(result);
+  });
+});
+
 describe('deviceCache validation', () => {
   beforeEach(() => AsyncStorage.clear());
   const put = (v: unknown) => AsyncStorage.setItem('parkings-cache-v1', JSON.stringify(v));
@@ -91,7 +106,8 @@ describe('primeParkingsFromCache', () => {
     const client = new QueryClient();
     await primeParkingsFromCache(client);
     const state = client.getQueryState(parkingsQueryKey());
-    expect(state?.data).toEqual(result);
+    // Marked as saved data: the live load is on its way.
+    expect(state?.data).toEqual({ ...result, fromCache: true });
     // updatedAt 0 marks it stale, so the first screen still fetches.
     expect(state?.dataUpdatedAt).toBe(0);
     client.clear();

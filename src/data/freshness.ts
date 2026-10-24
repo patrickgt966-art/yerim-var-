@@ -123,3 +123,25 @@ export function ageSince(iso: string, now: Date = new Date()): string {
   const t = new Date(iso).getTime();
   return Number.isNaN(t) ? '' : formatAge(now.getTime() - t);
 }
+
+/** Name of a live source in the UI language ("İzmir Büyükşehir", "İSPARK"); "" for any other. */
+export function sourceName(source: string): string {
+  if (source === 'izmir-open-data') return t('freshness.sourceIzmir');
+  if (source === 'ispark') return t('freshness.sourceIspark');
+  return '';
+}
+
+/**
+ * A failed load as short text for people ("zaman aşımı 45 sn", "HTTP 503", "ağ hatası"), made
+ * from the raw reason a provider threw. It never claims the phone is offline: a failed load
+ * says only that the city source did not answer.
+ */
+export function describeFailure(reason: string): string {
+  const timeout = /^Zaman aşımı \((\d+) sn\)/.exec(reason);
+  if (timeout) return t('freshness.failTimeout', { sec: timeout[1] });
+  const http = /^HTTP (\d{3})\b/.exec(reason);
+  if (http) return t('freshness.failHttp', { code: http[1] });
+  // fetch rejects with a TypeError for a network failure ("Network request failed" on React Native).
+  if (/network|failed to fetch|load failed/i.test(reason)) return t('freshness.failNetwork');
+  return t('freshness.failOther');
+}

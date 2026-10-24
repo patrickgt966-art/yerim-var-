@@ -37,6 +37,7 @@ import {
   meal,
   nudgeAllowed,
   roundedCount,
+  withoutCard,
   type Nudge,
 } from '@/lib/nudge';
 import { useApp } from '@/store/app';
@@ -51,7 +52,7 @@ const DELAY_MS = 2500;
 /** Untouched, the peek goes back behind the tab bar after this long. */
 const PEEK_MS = 8000;
 /** Places of a category counted for the meal suggestion. */
-const MEAL_RADIUS_M = 1000;
+export const MEAL_RADIUS_M = 1000;
 const SIZE = 86;
 
 const POSES: Record<Nudge['kind'], MascotPose> = {
@@ -63,7 +64,7 @@ const POSES: Record<Nudge['kind'], MascotPose> = {
 
 /** `away`: on its way back behind the bar; `bye`: a happy hop before going away. */
 /** Every suggestion that fits right now, built from the current data in one pass. */
-function buildCandidates(
+export function buildCandidates(
   d: {
     parkings: Parking[] | undefined;
     favorites: readonly { id: string }[];
@@ -93,7 +94,7 @@ function buildCandidates(
 type Phase = 'hidden' | 'peek' | 'open' | 'bye' | 'away';
 
 /** The texts of a suggestion, in the user's language. */
-function useNudgeText(n: Nudge | null) {
+export function useNudgeText(n: Nudge | null) {
   const { t } = useTranslation();
   if (!n) return null;
   switch (n.kind) {
@@ -182,7 +183,12 @@ export function MascotNudge({ nearby }: { nearby: Pick<NearbyHome, 'here'> }) {
       const now = new Date();
       // Off, muted or already shown today: nothing to work out.
       if (!nudgeAllowed(useNudge.getState(), now)) return;
-      const pick = chooseNudge(buildCandidates(latest.current, now), useNudge.getState(), now);
+      // Never what the card on Home already says.
+      const pick = chooseNudge(
+        withoutCard(buildCandidates(latest.current, now)),
+        useNudge.getState(),
+        now,
+      );
       if (!pick) return;
       useNudge.getState().shown(pick.kind);
       setNudge(pick);

@@ -342,6 +342,19 @@ function foreignNames(): { key: string; folded: string; written: string }[] {
   ];
 }
 
+/**
+ * The dishes (folded) that the aliases with a name word starting `stem` stand for: "sebasti" ->
+ * ["cheesecake"], "lahma" -> ["lahmacun"]. For checking a stem of a dish name against what a
+ * reading says once both went through the alias table.
+ */
+export function aliasTargets(stem: string): string[] {
+  if (stem === '') return [];
+  const hits = SPELLING_ALIASES.filter((a) => a.key.split(' ').some((w) => w.startsWith(stem))).map(
+    (a) => a.folded,
+  );
+  return [...new Set(hits)];
+}
+
 /** What may follow an aliased word: the compound ending ("çiböreği"), plural or seller. */
 const ALIAS_TAILS = ['i', 'in', 'e', 'ler', 'leri', 'lar', 'ci', 'cu'];
 

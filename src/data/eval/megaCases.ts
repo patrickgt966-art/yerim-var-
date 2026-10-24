@@ -29,7 +29,7 @@ import {
   type Dish,
 } from './aiBigCases';
 import { fold } from '@/lib/ai/protocol';
-import { CHOICES } from '../choices';
+import { CHOICES, entryForCat } from '../choices';
 import { cityById, hasLiveParking } from '../cities';
 import {
   ALL_ANSWERS,
@@ -39,6 +39,7 @@ import {
   FAR_DISHES,
   GREET_CHIPS,
   HEPSI,
+  asksFor,
   wishesFor,
   DISH_EMOJI,
   DISH_EMOJI_ALSO,
@@ -134,7 +135,16 @@ type AddOpts = {
   anywhere?: boolean | (() => boolean);
   /** Fixed: the phone gives (true) or does not give (false) a location. */
   located?: boolean;
+  /**
+   * Read after the case is built: true when a search in it names no place and does not say "near
+   * me", so the phone must give a location (asking "which district?" is then the right answer to a
+   * phone that does not). The random draw of `anywhere` still happens, so the cases stay the same.
+   */
+  needsLocation?: () => boolean;
 };
+
+/** A message that says "near me" in some language or by emoji (folded; the pin emoji has no letters). */
+const SAYS_NEAR = /yakin|buralar|etraf|civar|near|nearby|here|around|close|hier|nahe|📍|قريب|هنا/;
 
 /** Dishes that have a name in every language of the style cases. */
 const LANG_DISHES = Object.keys(DISH_LANG).map(dishByX);
@@ -233,9 +243,13 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
       section,
       hour: o.hour ?? (o.times ? hourIn(o.times) : anyHour()),
       ui,
-      located:
-        o.located ??
-        ((typeof o.anywhere === 'function' ? o.anywhere() : o.anywhere) ? !r.chance(0.28) : true),
+      located: (() => {
+        if (o.located !== undefined) return o.located;
+        const drawn = (typeof o.anywhere === 'function' ? o.anywhere() : o.anywhere)
+          ? !r.chance(0.28)
+          : true;
+        return o.needsLocation?.() ? true : drawn;
+      })(),
       turns,
     });
     return true;
@@ -407,6 +421,8 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
           : intent === 'dish' && r.chance(0.12)
             ? r.pick(MORE_DISTRICTS[city] ?? core(city))
             : coreDistrict(city);
+      /** The message of the built conversation: whether it names a place or says "near me". */
+      let said = '';
       return add(
         'style',
         spec.style,
@@ -415,17 +431,29 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         isPark(intent) ? 'park' : 'food',
         (ui) => {
           const text = spec.text({ intent, d, dish, ui, k });
+          said = text;
           const e = expectOf(intent, city, d, dish);
-          // A generic emoji (🥩) names the kind only; 🥙 is a döner and a dürüm.
-          const also = emoji ? DISH_EMOJI_ALSO[dish.x] : undefined;
+          // A generic emoji (🥩) names the kind only; 🥙 is a döner and a dürüm. A car park ask
+          // ("🅿️ kepez") carries no dish emoji: it expects no dish.
+          const withDish = emoji && !isPark(intent);
+          const also = withDish ? DISH_EMOJI_ALSO[dish.x] : undefined;
           const shaped: TurnExpect = {
             ...e,
-            ...(emoji && GENERIC_DISH_EMOJI.has(dish.x) ? { dishOptional: true } : {}),
-            ...(emoji && also && hasOf(dish) ? { dishHas: [...hasOf(dish)!, ...also] } : {}),
+            ...(withDish && GENERIC_DISH_EMOJI.has(dish.x) ? { dishOptional: true } : {}),
+            ...(withDish && also && hasOf(dish) ? { dishHas: [...hasOf(dish)!, ...also] } : {}),
           };
           return [say(text, shaped)];
         },
-        { en: true, anywhere: spec.anywhere },
+        {
+          en: true,
+          anywhere: spec.anywhere,
+          // "arabamı bırakacak bir yer arıyorum" says neither a place nor "near me": without a
+          // location of the phone, asking "which district?" is the right answer.
+          needsLocation: () =>
+            (intent === 'foodNear' || intent === 'parkNear') &&
+            !SAYS_NEAR.test(fold(said)) &&
+            !SAYS_NEAR.test(said),
+        },
       );
     });
   }
@@ -926,6 +954,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
   many(40, (k) => {
     const city = nextCity();
     const spec = at(NARROWS, k);
+    let placedText = false;
     return add(
       'multi',
       'chips_mixed',
@@ -936,12 +965,13 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         const d = coreDistrict(city);
         const raw = r.pick(spec.texts);
         const placed = raw.includes('{L}');
+        placedText = placed;
         const kindsAsked: TurnExpect = {
           kind: 'food',
           cat: [spec.cat],
           cards: 'some',
-          chipsMin: 2,
-          hepsi: false,
+          // The kinds inside the category are offered as chips only where the table has them.
+          ...(entryForCat(spec.cat) ? { chipsMin: 2, hepsi: false } : {}),
           ...(placed ? { place: [d] } : { nearMe: true }),
         };
         const inKind = (hepsi: boolean): TurnExpect => ({
@@ -959,7 +989,12 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
           ...(r.chance(0.5) ? [say(r.pick(THANKS_TR), farewell('tr'))] : []),
         ];
       },
-      { anywhere: true, ...(spec.times ? { times: spec.times } : {}) },
+      {
+        anywhere: true,
+        // "et yemek istiyorum" names no place: with no location the question "which district?" is right.
+        needsLocation: () => !placedText,
+        ...(spec.times ? { times: spec.times } : {}),
+      },
     );
   });
 
@@ -981,7 +1016,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         const asked: TurnExpect = {
           kind: 'choice',
           // The router's own kinds ('ai') are as good a question as the table entry of the goal.
-          ask: [...spec.asks, 'ai'],
+          ask: [...asksFor(spec, ask), 'ai'],
           hepsi: true,
           chipsMin: 2,
           cards: 'none',
@@ -1536,7 +1571,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         placed = ask.place !== null;
         const asked: TurnExpect = {
           kind: 'choice',
-          ask: [...spec.asks, 'ai'],
+          ask: [...asksFor(spec, ask.text), 'ai'],
           hepsi: true,
           chipsMin: 2,
           cards: 'none',
@@ -1657,18 +1692,20 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
           ui === 'en' && sit.en
             ? `${at(sit.en, k)} in ${low(d)}`
             : `${at(sit.texts, k + r.int(2))} ${locative(d)}`;
-        const romantic = sit.wishes.includes('romantic');
+        // A vague ask (no dish, no kind): a kinds question with "Hepsi" or the results with the
+        // honest note are both right, one rule for every wish with no data.
         const first: TurnExpect = {
           kind: 'food',
           place: [d],
           wishes: sit.wishes,
           cards: 'some',
           note: true,
-          ...(romantic ? { orAsk: true } : {}),
+          orAsk: true,
         };
         return [
           say(styled(text, ui), first),
-          ...(romantic ? [tap('@1', { kind: 'food', cards: 'some', note: true })] : []),
+          // Played only when a question was asked: the user taps one of the kinds it offered.
+          tap('@1', { kind: 'food', cards: 'some', note: true }),
         ];
       },
       { en: true, anywhere: true, times: sit.times },
@@ -2379,8 +2416,8 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         'lower',
       ];
       const form = at(forms, k);
-      // A slip never touches the first two letters, so the first three are only safe without one.
-      const first = asciiFold(low(words[0] ?? name)).slice(0, form.includes('typo') ? 2 : 3);
+      // The real words of the name: the reading names the place by them (or, with a slip, by what was typed).
+      const tokens = words.map((w) => asciiFold(low(w)));
       return add(
         'dishes',
         `name_${
@@ -2432,10 +2469,12 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
               text = low(name);
           }
           const exact = form === 'exact' || form === 'lower' || form === 'ascii' || form === 'caps';
+          const typed = typedWords.map((w) => asciiFold(low(w)));
           return [
             say(text, {
               kind: 'name',
-              placeHas: [first],
+              placeHas: [...new Set([...tokens, ...typed])],
+              placeName: asciiFold(low(name)),
               ...(exact ? { cards: 'some' as const, nameCard: [asciiFold(low(name))] } : {}),
             }),
           ];
@@ -2626,7 +2665,7 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
     const pool = r.shuffle(searchableNames(city));
     many(3, (k) => {
       const name = at(pool, k * 5 + r.int(3));
-      const first = asciiFold(low(name.split(' ')[0] ?? name)).slice(0, 3);
+      const tokens = name.split(' ').map((w) => asciiFold(low(w)));
       return add(
         'honesty',
         'phone_name',
@@ -2642,7 +2681,8 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
             ]),
             {
               kind: 'name',
-              placeHas: [first],
+              placeHas: tokens,
+              placeName: asciiFold(low(name)),
               noClaim: ['phone'],
             },
           ),
@@ -2923,6 +2963,9 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
     'tonight {X} in {D} with a car park please',
     'a table for {X} in {D} this evening, with parking',
   ];
+  /** A plan that names no dish ("akşam yemeği yiyeceğiz otoparkı olan bir yer") expects none. */
+  const planDish = (template: string, dish: Dish): Dish | null =>
+    template.includes('{X}') ? dish : null;
   many(50, (k) => {
     const city = nextCity();
     return add(
@@ -2934,12 +2977,15 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
       (ui) => {
         const dish = r.pick(BOTH_DISHES.filter((x) => x.x !== 'serpme kahvaltı'));
         const d = parkedDistrict(city, dish.x);
-        const text = fill(
-          ui === 'en' ? at(PLAN_PARK_EN, k) : at(PLAN_PARK_TR, k + Math.floor(k / 5)),
-          d,
-          ui === 'en' ? nameIn(dish, 'en') : dish.x,
-        );
-        return [say(styled(text, ui), food([d], dish, { cards: 'some', ...withParking }))];
+        const template =
+          ui === 'en' ? at(PLAN_PARK_EN, k) : at(PLAN_PARK_TR, k + Math.floor(k / 5));
+        const text = fill(template, d, ui === 'en' ? nameIn(dish, 'en') : dish.x);
+        return [
+          say(
+            styled(text, ui),
+            food([d], planDish(template, dish), { cards: 'some', ...withParking }),
+          ),
+        ];
       },
       { en: true, anywhere: true, times: EVENING },
     );
@@ -3175,20 +3221,17 @@ export function buildMegaCases(seed: number = MEGA_SEED): MegaCase[] {
         const dish2 = r.pick(BOTH_DISHES.filter((x) => x.x !== 'serpme kahvaltı' && x !== dish));
         const d = parkedDistrict(city, dish.x);
         const d2 = parkedDistrict(city, dish2.x);
-        const a = fill(
-          ui === 'en' ? at(PLAN_PARK_EN, k) : at(PLAN_PARK_TR, k),
-          d,
-          ui === 'en' ? nameIn(dish, 'en') : dish.x,
-        );
-        const b = fill(
-          ui === 'en' ? at(PLAN_PARK_EN, k + 1) : at(PLAN_PARK_TR, k + 2),
-          d2,
-          ui === 'en' ? nameIn(dish2, 'en') : dish2.x,
-        );
+        const templateA = ui === 'en' ? at(PLAN_PARK_EN, k) : at(PLAN_PARK_TR, k);
+        const templateB = ui === 'en' ? at(PLAN_PARK_EN, k + 1) : at(PLAN_PARK_TR, k + 2);
+        const a = fill(templateA, d, ui === 'en' ? nameIn(dish, 'en') : dish.x);
+        const b = fill(templateB, d2, ui === 'en' ? nameIn(dish2, 'en') : dish2.x);
         return [
-          say(styled(a, ui), food([d], dish, { cards: 'some', ...withParking })),
+          say(
+            styled(a, ui),
+            food([d], planDish(templateA, dish), { cards: 'some', ...withParking }),
+          ),
           say(r.pick(ui === 'en' ? THANKS_EN : THANKS_TR), farewell(ui)),
-          say(b, food([d2], dish2, { cards: 'some', ...withParking })),
+          say(b, food([d2], planDish(templateB, dish2), { cards: 'some', ...withParking })),
           { input: { type: 'directions', text: YOL }, expect: goes },
         ];
       },

@@ -413,7 +413,8 @@ function Restaurants() {
         </View>
       )}
       <View style={{ marginBottom: 10 }}>
-        <SampleBanner result={data} />
+        {/* Food leads: the parking banner is a muted line unless Otoparklı is on. */}
+        <SampleBanner result={data} muted={!requireParking} />
       </View>
       {/* The park sort belongs to the parking filter; without it the list is just nearest first. */}
       {requireParking && (

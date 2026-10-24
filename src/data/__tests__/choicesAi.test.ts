@@ -295,17 +295,21 @@ describe('kinds round 2: occasions, party size, "hepsi" after results', () => {
     expect(late.ctx.ask).toBe('quick');
   });
 
-  it('an occasion no table entry fits keeps today\'s results, and a plain "acıktım" is untouched', async () => {
+  it('an occasion no table entry fits asks the common kinds when the router sent none; a plain "acıktım" is untouched', async () => {
     const { deps } = fakeAi(routed({ wishes: [] }));
     for (const text of [
       'iş arkadaşlarımla öğle yemeğine çıkıyoruz',
       'tatil için geldim yöresel bir şeyler denemek istiyorum',
-      'acıktım',
     ]) {
-      const r = await answer(text, emptyContext('food'), deps);
-      expect(r.ctx.ask).toBeUndefined();
-      expect(r.reply.cards.length).toBeGreaterThan(0);
+      const q = await answer(text, emptyContext('food'), deps);
+      expect(q.ctx.ask).toBe('ai');
+      expect(q.reply.cards).toEqual([]);
+      expect(labels(q.reply).at(-1)).toBe('Hepsi');
+      expect(labels(q.reply).length).toBeGreaterThanOrEqual(3);
     }
+    const plain = await answer('acıktım', emptyContext('food'), deps);
+    expect(plain.ctx.ask).toBeUndefined();
+    expect(plain.reply.cards.length).toBeGreaterThan(0);
   });
 
   it('the fallback needs the router: without it a mood word changes nothing', async () => {
