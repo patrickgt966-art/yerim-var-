@@ -10,11 +10,12 @@ import { openState } from '@/lib/openNow';
 import { directionsOnly } from '@/lib/parkHere';
 import { isStatic, sourceLabel, staticHeadline } from '@/lib/staticInfo';
 import { useApp } from '@/store/app';
-import { asym, fonts, statusTone, useColors } from '@/theme';
+import { asym, brand, fonts, statusTone, useColors } from '@/theme';
 
 import { Button } from './Button';
 import { DashedFrame } from './DashedFrame';
 import { FreshnessBadge, freshnessText, Tag } from './FreshnessBadge';
+import { Dashes } from './lively/Dashes';
 import { PBadge } from './PBadge';
 import { SlotStrip } from './SlotStrip';
 import { Txt } from './Txt';
@@ -177,6 +178,11 @@ export function ParkingCard({
             backgroundColor: c.card,
             borderWidth: 1,
             borderColor: c.line,
+            shadowColor: brand.navy,
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 1,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
@@ -221,7 +227,7 @@ export function ParkingCard({
   }
 
   return (
-    <View style={[asym(22, 6), { padding: 14, backgroundColor: c.surface }]}>
+    <View style={[asym(22, 6), { padding: 14, backgroundColor: c.mintSoft }]}>
       <DashedFrame color={c.text} radius={22} tight={6} strokeWidth={2} dash={[8, 6]} />
       {/* One VoiceOver stop for the info block; the two buttons stay separate. */}
       <View
@@ -267,6 +273,9 @@ export function ParkingCard({
         ) : (
           <BigCount free={free} capacity={p.capacity} size={40} />
         )}
+      </View>
+      <View style={{ marginTop: 12 }}>
+        <Dashes color={c.rowDash} />
       </View>
       <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         <Button

@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
+import { Dashes } from '@/components/lively/Dashes';
+import { TicketCard } from '@/components/lively/TicketCard';
 import { Txt } from '@/components/Txt';
 import { roundArea } from '@/data/appleParkings';
 import { cityById, isInCityArea } from '@/data/cities';
@@ -16,7 +18,7 @@ import { currentLocation, reverseStreet } from '@/lib/location';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { parsePurpose, pickedLabel } from '@/lib/pickPlace';
 import { useApp } from '@/store/app';
-import { asym, brand, HIT, useColors } from '@/theme';
+import { asym, brand, fonts, HIT, useColors } from '@/theme';
 
 const REVERSE_DEBOUNCE_MS = 500;
 const DELTA = 0.008;
@@ -186,6 +188,11 @@ function PickLocation() {
             backgroundColor: c.card,
             borderWidth: 1,
             borderColor: c.line,
+            shadowColor: brand.navy,
+            shadowOpacity: 0.14,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 3,
           },
         ]}
       >
@@ -202,28 +209,25 @@ function PickLocation() {
         </Txt>
       </View>
 
-      <View
-        style={[
-          asym(22, 6),
-          {
-            position: 'absolute',
-            left: 12,
-            right: 12,
-            bottom: insets.bottom + 12,
-            padding: 16,
-            gap: 10,
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.line,
-          },
-        ]}
+      <TicketCard
+        style={{
+          position: 'absolute',
+          left: 12,
+          right: 12,
+          bottom: insets.bottom + 12,
+          padding: 16,
+          gap: 10,
+          shadowOpacity: 0.16,
+          shadowRadius: 12,
+        }}
       >
         <Txt variant="caption" secondary>
           {q ? t('picker.hint', { q }) : t('picker.hintGeneric')}
         </Txt>
-        <Txt variant="bodyBold" numberOfLines={2}>
+        <Txt style={{ fontFamily: fonts.display, fontSize: 18, lineHeight: 23 }} numberOfLines={2}>
           {street ?? t('picker.fallback')}
         </Txt>
+        <Dashes color={c.rowDash} />
         {outside && (
           <Txt variant="caption" secondary>
             {t('picker.outside', { city: city.name })}
@@ -246,7 +250,7 @@ function PickLocation() {
           </>
         )}
         <Button label={t('picker.use')} onPress={confirm} />
-      </View>
+      </TicketCard>
     </View>
   );
 }

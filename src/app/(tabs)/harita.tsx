@@ -6,6 +6,7 @@ import { ActivityIndicator, Alert, Pressable, useWindowDimensions, View } from '
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { FreshnessBadge, freshnessText, Tag } from '@/components/FreshnessBadge';
+import { Dashes } from '@/components/lively/Dashes';
 import { ParkingMap } from '@/components/ParkingMap';
 import { SampleBanner } from '@/components/SampleBanner';
 import { Txt } from '@/components/Txt';
@@ -313,7 +314,11 @@ export default function MapTab() {
                   }
                 : {
                     pathname: '/sonuc',
-                    params: { lat: String(mapCenter.lat), lng: String(mapCenter.lng) },
+                    params: {
+                      lat: String(mapCenter.lat),
+                      lng: String(mapCenter.lng),
+                      mode: 'park',
+                    },
                   },
             )
           }
@@ -366,7 +371,7 @@ export function RestaurantCard({
           gap: 10,
           backgroundColor: c.card,
           borderWidth: 1,
-          borderColor: c.line,
+          borderColor: c.peachLine,
           shadowColor: '#0B3C49',
           shadowOpacity: 0.2,
           shadowRadius: 8,
@@ -374,7 +379,20 @@ export function RestaurantCard({
         },
       ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        <View
+          accessible={false}
+          style={{
+            ...asym(14, 4),
+            width: 44,
+            height: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: c.peachSoft,
+          }}
+        >
+          <Icon name="cutlery" size={22} color={c.ink} />
+        </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Txt style={{ fontFamily: fonts.display, fontSize: 17 }} numberOfLines={2}>
             {r.name}
@@ -404,6 +422,7 @@ export function RestaurantCard({
           </Txt>
         </Pressable>
       </View>
+      <Dashes color={c.rowDash} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button
           kind="secondary"
@@ -576,6 +595,7 @@ function ParkingSheetCard({
           />
         )}
       </View>
+      <Dashes color={c.rowDash} />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Button
           kind="secondary"

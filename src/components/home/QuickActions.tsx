@@ -130,7 +130,7 @@ export function QuickActions({
         sub={parkSub}
         label={parkSpoken ? `${t('home.a11yParkNearMe')}, ${parkSpoken}` : t('home.a11yParkNearMe')}
         stacked={stacked}
-        onPress={() => router.push({ pathname: '/sonuc', params: { near: '1' } })}
+        onPress={() => router.push({ pathname: '/sonuc', params: { near: '1', mode: 'park' } })}
       />
       <ActionCard
         coach={coachFood}

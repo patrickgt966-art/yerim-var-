@@ -8,7 +8,6 @@ import {
   AppState,
   Linking,
   Pressable,
-  ScrollView,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -17,8 +16,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
-import { CATEGORY_ICON } from '@/components/foodCategory';
+import { ChipRow, FoodKindChips, ParkSubChips } from '@/components/FoodFilters';
 import { Icon } from '@/components/Icon';
+import { HandNote } from '@/components/lively/Hand';
+import { PaperSheet } from '@/components/lively/PaperSheet';
+import { Segmented } from '@/components/lively/Segmented';
 import { AskYerim } from '@/components/mascot/AskYerim';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
@@ -47,11 +49,16 @@ import { isClosedNow } from '@/lib/openNow';
 import { firstParam, parseLatLng } from '@/lib/params';
 import { parkHere } from '@/lib/parkHere';
 import { buildRestaurantRows } from '@/lib/restaurantRows';
+import { entryMode, rememberMode, startMode, type ResultsMode } from '@/lib/resultsMode';
 import { useApp } from '@/store/app';
 import { asym, fonts, HIT, useColors } from '@/theme';
 import { useHiddenPlaceIds } from '@/store/reports';
 
-type Filter = 'all' | 'food' | 'indoor' | 'nearPier' | 'disabled' | 'free' | 'nonstop' | 'rail';
+// Car park sub-filters: they exist only in the Otopark mode.
+type Filter = 'all' | 'indoor' | 'nearPier' | 'disabled' | 'free' | 'nonstop' | 'rail' | 'hasCount';
+type ResultItem =
+  | { key: string; kind: 'park'; p: RankedParking }
+  | { key: string; kind: 'food'; row: RestaurantRow };
 type Notice = 'outside' | 'failed' | 'denied';
 
 const LOCATION_TIMEOUT_MS = 6000;
@@ -76,6 +83,7 @@ function Results() {
     lng?: string | string[];
     label?: string | string[];
     near?: string | string[];
+    mode?: string | string[];
   }>();
   const mapRef = useRef<MapView>(null);
 
@@ -90,6 +98,10 @@ function Results() {
   const [label, setLabel] = useState(() =>
     initial.outside ? city.name : (firstParam(params.label) ?? ''),
   );
+  // Entry decides the start (locate / typed place: Tümü, "Otopark bul": Otopark, food: Restoran);
+  // what was chosen last after the same entry is remembered until the app closes.
+  const [entry] = useState(() => entryMode(params));
+  const [mode, setModeState] = useState<ResultsMode>(() => startMode(entry));
   const [filter, setFilter] = useState<Filter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
@@ -151,27 +163,39 @@ function Results() {
     void refetch().finally(() => setPulling(false));
   };
 
+  const setMode = (next: ResultsMode) => {
+    rememberMode(entry, next);
+    setModeState(next);
+    setSelectedId(null);
+    setSelectedRestaurantId(null);
+  };
+  const showPark = mode !== 'food';
+  const showFood = mode !== 'park';
+  // The sub-filters belong to the Otopark mode; the other modes list every car park.
+  const parkFilter: Filter = mode === 'park' ? filter : 'all';
+
   const filtered = useMemo(() => {
     let list: RankedParking[] = ranked;
-    if (filter === 'indoor') list = list.filter((p) => p.isIndoor === true);
-    if (filter === 'free') list = list.filter((p) => p.isPaid === false);
-    if (filter === 'nonstop') list = list.filter((p) => p.nonstop === true);
-    if (filter === 'rail') list = list.filter((p) => p.nearRail);
-    if (filter === 'nearPier') list = list.filter((p) => p.nearPier);
-    if (filter === 'disabled') list = list.filter((p) => disabledInfo(p) != null);
+    if (parkFilter === 'indoor') list = list.filter((p) => p.isIndoor === true);
+    if (parkFilter === 'free') list = list.filter((p) => p.isPaid === false);
+    if (parkFilter === 'nonstop') list = list.filter((p) => p.nonstop === true);
+    if (parkFilter === 'rail') list = list.filter((p) => p.nearRail);
+    if (parkFilter === 'nearPier') list = list.filter((p) => p.nearPier);
+    if (parkFilter === 'disabled') list = list.filter((p) => disabledInfo(p) != null);
+    if (parkFilter === 'hasCount') list = list.filter((p) => visibleFree(p) != null);
     // "Hemen bul": put the nearest open parking with a visible free space first,
-    // unless it is much farther than the nearest one.
-    if (nearMode) list = promoteFree(list);
+    // unless it is much farther than the nearest one. Only in the Otopark mode: Tümü is nearest first.
+    if (nearMode && mode === 'park') list = promoteFree(list);
     if (selectedId) {
       const i = list.findIndex((p) => p.id === selectedId);
       if (i > 0) list = [list[i]!, ...list.filter((_, j) => j !== i)];
     }
     return list;
-  }, [ranked, filter, nearMode, selectedId]);
+  }, [ranked, parkFilter, nearMode, mode, selectedId]);
   const hidden = useHiddenPlaceIds();
   const nearbyFood = useMemo(
-    () => (filter === 'food' && target && hidden ? restaurantsNear(target, 1000, 600) : []),
-    [filter, target, hidden],
+    () => (showFood && target && hidden ? restaurantsNear(target, 1000, 600) : []),
+    [showFood, target, hidden],
   );
   // Food kinds present in the nearby list, most places first.
   const foodKinds = useMemo(
@@ -186,16 +210,19 @@ function Results() {
         .map((x) => x.cat),
     [nearbyFood, foodKind],
   );
+  // Kind chips and "Otoparklı" belong to the Restoran mode; Tümü lists every place nearest first.
+  const parkAsked = mode === 'food' && parkOn;
   const foodRows = useMemo<RestaurantRow[]>(() => {
-    if (filter !== 'food' || !target || !hidden) return [];
-    const items = foodKind ? nearbyFood.filter((r) => matchesCategory(r, foodKind)) : nearbyFood;
+    if (!showFood || !target || !hidden) return [];
+    const kind = mode === 'food' ? foodKind : null;
+    const items = kind ? nearbyFood.filter((r) => matchesCategory(r, kind)) : nearbyFood;
     const parkings = data?.parkings ?? [];
     let list = rankRestaurants(
       buildRestaurantRows(items, parkings, target, new Date()),
       'distance',
-      foodKind ?? undefined,
+      kind ?? undefined,
     );
-    if (parkOn) {
+    if (parkAsked) {
       list = withParkingWithin(list, 300);
       if (indoorOnly || freeOnly || railOnly || nonstopOnly) {
         list = list.filter((row) => {
@@ -217,19 +244,33 @@ function Results() {
     }
     return list;
   }, [
-    filter,
+    showFood,
+    mode,
     target,
     data,
     selectedRestaurantId,
     hidden,
     nearbyFood,
     foodKind,
-    parkOn,
+    parkAsked,
     indoorOnly,
     freeOnly,
     railOnly,
     nonstopOnly,
   ]);
+  // What the list shows: car parks, restaurants, or both mixed, nearest first.
+  const items = useMemo<ResultItem[]>(() => {
+    const parks = filtered.map((p) => ({ key: `p-${p.id}`, kind: 'park' as const, p }));
+    const foods = foodRows.map((row) => ({ key: `r-${row.r.id}`, kind: 'food' as const, row }));
+    if (mode === 'park') return parks;
+    if (mode === 'food') return foods;
+    const dist = (x: ResultItem) => (x.kind === 'park' ? x.p.distance : x.row.r.distanceM);
+    const mixed: ResultItem[] = [...parks, ...foods].sort((a, b) => dist(a) - dist(b));
+    const i = mixed.findIndex((x) =>
+      x.kind === 'park' ? x.p.id === selectedId : x.row.r.id === selectedRestaurantId,
+    );
+    return i > 0 ? [mixed[i]!, ...mixed.filter((_, j) => j !== i)] : mixed;
+  }, [mode, filtered, foodRows, selectedId, selectedRestaurantId]);
   // Only the truly nearest open card is tagged "En yakın" (a promoted one is not).
   const nearestId = useMemo(() => {
     let best: RankedParking | null = null;
@@ -257,6 +298,7 @@ function Results() {
   const anyNonstop = ranked.some((p) => p.nonstop === true);
   const anyNearRail = ranked.some((p) => p.nearRail);
   const anyDisabled = ranked.some((p) => disabledInfo(p) != null);
+  const anyHasCount = ranked.some((p) => visibleFree(p) != null);
 
   // Screen reader: the map is hidden (the list is the way in) and changes are spoken.
   const screenReader = useScreenReader();
@@ -266,8 +308,12 @@ function Results() {
       ? t('a11y.resultsSummary', {
           place: label || city.name,
           summary: [
-            t('results.summaryUnknown', { count: filtered.length }),
-            widenedKm != null ? t('results.widened', { km: widenedKm }) : null,
+            mode === 'food'
+              ? t('results.foodSummary', { count: foodRows.length })
+              : mode === 'all'
+                ? t('results.allSummary', { parks: filtered.length, foods: foodRows.length })
+                : t('results.summaryUnknown', { count: filtered.length }),
+            widenedKm != null && mode === 'park' ? t('results.widened', { km: widenedKm }) : null,
           ]
             .filter(Boolean)
             .join('. '),
@@ -275,7 +321,7 @@ function Results() {
       : null,
     400,
   );
-  useAnnounce(liveIncoming ? t('results.liveIncoming') : null);
+  useAnnounce(liveIncoming && showPark ? t('results.liveIncoming') : null);
   useAnnounce(
     notice
       ? t(notice === 'outside' ? 'results.outsideCity' : 'results.locationFailed', {
@@ -294,151 +340,126 @@ function Results() {
     setNonstopOnly(false);
     setSelectedRestaurantId(null);
   };
-  // Food results: the scope chip, then what to eat, then "Otoparklı". Car park filters come
-  // only after "Otoparklı" is on.
+  // Restoran: what to eat, then "Otoparklı". Car park filters come only after "Otoparklı" is on.
+  const wrapChips = fontScale > 1.2;
   const foodChips = (
-    <>
-      <Chip
-        label={t('food.nearby')}
-        selected
-        onPress={() => {
-          setFilter('all');
-          setFoodKind(null);
-          turnParkOff();
-          setSelectedId(null);
-        }}
-      />
-      {foodKinds.map((cat) => (
-        <Chip
-          key={cat}
-          label={t(`food.cats.${cat}`)}
-          icon={CATEGORY_ICON[cat]}
-          selected={foodKind === cat}
-          onPress={() => {
-            setFoodKind(foodKind === cat ? null : cat);
-            setSelectedRestaurantId(null);
-          }}
-        />
-      ))}
-      <Chip
-        label={t('food.withParking')}
-        selected={parkOn}
-        onPress={() => {
-          if (parkOn) turnParkOff();
-          else {
-            setParkOn(true);
-            setSelectedRestaurantId(null);
-          }
-        }}
-      />
-    </>
+    <FoodKindChips
+      kinds={foodKinds}
+      selected={foodKind}
+      onSelect={(cat) => {
+        setFoodKind(cat);
+        setSelectedRestaurantId(null);
+      }}
+      parkOn={parkOn}
+      onToggleParking={() => {
+        if (parkOn) turnParkOff();
+        else {
+          setParkOn(true);
+          setSelectedRestaurantId(null);
+        }
+      }}
+    />
   );
   const foodParkChips = (
-    <>
-      <Chip
-        label={t('results.indoor')}
-        selected={indoorOnly}
-        onPress={() => setIndoorOnly(!indoorOnly)}
-      />
-      <Chip label={t('results.free')} selected={freeOnly} onPress={() => setFreeOnly(!freeOnly)} />
-      <Chip
-        label={t('results.nearRail')}
-        selected={railOnly}
-        onPress={() => setRailOnly(!railOnly)}
-      />
-      <Chip
-        label={t('results.nonstop')}
-        selected={nonstopOnly}
-        onPress={() => setNonstopOnly(!nonstopOnly)}
-      />
-    </>
+    <ParkSubChips
+      value={{ indoorOnly, freeOnly, railOnly, nonstopOnly }}
+      onChange={(v) => {
+        setIndoorOnly(v.indoorOnly);
+        setFreeOnly(v.freeOnly);
+        setRailOnly(v.railOnly);
+        setNonstopOnly(v.nonstopOnly);
+      }}
+    />
   );
-  const chips = (
+  // Otopark: the car park sub-filters; pressing the chosen one again clears it.
+  const pick = (f: Exclude<Filter, 'all'>) => setFilter(filter === f ? 'all' : f);
+  const parkChips = (
     <>
-      <Chip label={t('results.all')} selected={filter === 'all'} onPress={() => setFilter('all')} />
-      {/* Restaurants sit right after "Tümü" so they are not lost at the end. */}
-      {target && (
+      {anyHasCount && (
         <Chip
-          label={t('food.nearby')}
-          selected={filter === 'food'}
-          onPress={() => {
-            setFilter(filter === 'food' ? 'all' : 'food');
-            setSelectedId(null);
-            setSelectedRestaurantId(null);
-          }}
+          label={t('results.hasCount')}
+          selected={filter === 'hasCount'}
+          onPress={() => pick('hasCount')}
         />
       )}
       {anyIndoorKnown && (
         <Chip
           label={t('results.indoor')}
           selected={filter === 'indoor'}
-          onPress={() => setFilter('indoor')}
+          onPress={() => pick('indoor')}
         />
       )}
       {anyFree && (
-        <Chip
-          label={t('results.free')}
-          selected={filter === 'free'}
-          onPress={() => setFilter('free')}
-        />
+        <Chip label={t('results.free')} selected={filter === 'free'} onPress={() => pick('free')} />
       )}
       {anyNonstop && (
         <Chip
           label={t('results.nonstop')}
           selected={filter === 'nonstop'}
-          onPress={() => setFilter('nonstop')}
+          onPress={() => pick('nonstop')}
         />
       )}
       {anyNearRail && (
         <Chip
           label={t('results.nearRail')}
           selected={filter === 'rail'}
-          onPress={() => setFilter('rail')}
+          onPress={() => pick('rail')}
         />
       )}
       {anyNearPier && (
         <Chip
           label={t('results.nearPier')}
           selected={filter === 'nearPier'}
-          onPress={() => setFilter('nearPier')}
+          onPress={() => pick('nearPier')}
         />
       )}
       {anyDisabled && (
         <Chip
           label={t('a11y.disabledFilter')}
           selected={filter === 'disabled'}
-          onPress={() => setFilter('disabled')}
+          onPress={() => pick('disabled')}
         />
       )}
       {/* "Şarj" is hidden until the data source reports charging points. */}
     </>
   );
 
+  const modes: { id: ResultsMode; label: string }[] = [
+    { id: 'all', label: t('results.all') },
+    { id: 'park', label: t('results.modePark') },
+    { id: 'food', label: t('results.modeFood') },
+  ];
+  // Data age is said once for the whole list, not on every restaurant card.
+  const anyStaleFood = foodRows.some((x) => !x.r.verified);
+
   const header = (
     <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
       <View>
+        <HandNote size={20}>{t('results.hand')}</HandNote>
         <Txt variant="title" accessibilityRole="header">
-          {filter === 'food'
+          {mode === 'food'
             ? t('results.foodSummary', { count: foodRows.length })
-            : totalFree == null
-              ? t('results.summaryUnknown', { count: filtered.length })
-              : t('results.summary', { count: filtered.length, free: totalFree })}
+            : mode === 'all'
+              ? t('results.allSummary', { parks: filtered.length, foods: foodRows.length })
+              : totalFree == null
+                ? t('results.summaryUnknown', { count: filtered.length })
+                : t('results.summary', { count: filtered.length, free: totalFree })}
         </Txt>
         {!!label && (
           <Txt variant="caption" secondary>
             {t('results.subtitle', { place: label })}
             {/* Saved data stays on screen while the slow API answers. */}
-            {isFetching && !!data && !pulling && !liveIncoming
+            {showPark && isFetching && !!data && !pulling && !liveIncoming
               ? ` · ${t('results.refreshing')}`
               : ''}
           </Txt>
         )}
-        {widenedKm != null && (
+        {widenedKm != null && mode === 'park' && (
           <Txt variant="caption" secondary>
             {t('results.widened', { km: widenedKm })}
           </Txt>
         )}
-        {liveIncoming && (
+        {liveIncoming && showPark && (
           <View
             accessibilityRole="progressbar"
             accessibilityLabel={t('results.liveIncoming')}
@@ -449,6 +470,11 @@ function Results() {
               {t('results.liveIncoming')}
             </Txt>
           </View>
+        )}
+        {showFood && anyStaleFood && (
+          <Txt variant="caption" secondary>
+            {t('food.listStale')}
+          </Txt>
         )}
       </View>
       {notice && (
@@ -467,26 +493,42 @@ function Results() {
           )}
         </View>
       )}
-      {/* Food lists lead with food: the parking banner is a muted line unless Otoparklı is on. */}
-      <SampleBanner result={data} updating={false} muted={filter === 'food' && !parkOn} />
-      {fontScale > 1.2 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {filter === 'food' ? foodChips : chips}
-        </View>
+      {/* The parking data banner belongs to Otopark; Tümü gets a small muted line, Restoran none. */}
+      {mode !== 'food' && <SampleBanner result={data} updating={false} muted={mode === 'all'} />}
+      {mode === 'park' && <ChipRow wrap={wrapChips}>{parkChips}</ChipRow>}
+      {mode === 'food' && <ChipRow wrap={wrapChips}>{foodChips}</ChipRow>}
+      {parkAsked && <ChipRow wrap={wrapChips}>{foodParkChips}</ChipRow>}
+      {parkAsked && <SampleBanner result={data} updating={false} muted />}
+    </View>
+  );
+
+  const emptyList = (
+    <View style={{ padding: 20, gap: 12 }}>
+      {mode === 'food' ? (
+        <>
+          <Txt secondary>{t('food.empty')}</Txt>
+          {target && !isPlaceholderData ? (
+            <AskYerim
+              question={t('mascot.askFood', {
+                what: t('mascot.food'),
+                place: label || city.name,
+              })}
+            />
+          ) : null}
+        </>
+      ) : isLoading || isPlaceholderData || !target ? (
+        <Txt secondary>{t('results.loading')}</Txt>
+      ) : isError ? (
+        <>
+          <Txt secondary>{t('results.error')}</Txt>
+          <Button label={t('common.retry')} onPress={() => void refetch()} />
+        </>
       ) : (
-        <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-          {filter === 'food' ? foodChips : chips}
-        </ScrollView>
+        <>
+          <Txt secondary>{t(mode === 'all' ? 'results.allEmpty' : 'results.empty')}</Txt>
+          <AskYerim question={t('mascot.askPark', { place: label || city.name })} />
+        </>
       )}
-      {filter === 'food' &&
-        parkOn &&
-        (fontScale > 1.2 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{foodParkChips}</View>
-        ) : (
-          <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-            {foodParkChips}
-          </ScrollView>
-        ))}
     </View>
   );
 
@@ -506,10 +548,10 @@ function Results() {
             targetLabel={label}
             selectedId={selectedId}
             onSelect={(p) => setSelectedId(p.id)}
-            restaurants={filter === 'food' ? foodRows.map((x) => x.r) : undefined}
+            restaurants={showFood ? foodRows.map((x) => x.r) : undefined}
             selectedRestaurantId={selectedRestaurantId}
             onSelectRestaurant={(r) => setSelectedRestaurantId(r.id)}
-            quietParkings={filter === 'food'}
+            quietParkings={mode === 'food'}
             bottomInset={260}
           />
         </View>
@@ -524,51 +566,62 @@ function Results() {
         snapPoints={snapPoints}
         // The fully open sheet stops below the floating top bar, so "back" never hides.
         topInset={insets.top + TOP_BAR_SPACE}
-        backgroundStyle={{
-          backgroundColor: c.card,
-          borderTopLeftRadius: 32,
-          borderTopRightRadius: 32,
-        }}
+        backgroundComponent={PaperSheet}
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
         accessibilityLabel={t('results.a11yList')}
       >
-        {filter === 'food' ? (
+        <View style={{ flex: 1 }}>
+          {/* Always visible: what the person is looking for comes first. */}
+          <View style={{ paddingHorizontal: 10 }}>
+            <Segmented
+              options={modes}
+              value={mode}
+              onChange={setMode}
+              label={t('results.modeLabel')}
+            />
+          </View>
           <BottomSheetFlatList
-            data={foodRows}
-            keyExtractor={(x: RestaurantRow) => x.r.id}
+            data={items}
+            keyExtractor={(x: ResultItem) => x.key}
             ListHeaderComponent={header}
             refreshing={pulling}
             onRefresh={onPullRefresh}
             contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-            renderItem={({ item, index }: { item: RestaurantRow; index: number }) => (
+            renderItem={({ item, index }: { item: ResultItem; index: number }) => (
               <View style={{ paddingHorizontal: 20 }}>
-                <RestaurantRowCard
-                  row={item}
-                  target={target}
-                  best={false}
-                  widened={false}
-                  parkPending={isPlaceholderData}
-                  parkAsked={parkOn}
-                  showParking={parkOn}
-                />
+                {item.kind === 'park' ? (
+                  <ParkingCard
+                    parking={item.p}
+                    featured={index === 0}
+                    nearest={item.p.id === nearestId && !selectedId}
+                    freeTag={
+                      index === 0 &&
+                      !selectedId &&
+                      item.p.id !== nearestId &&
+                      (visibleFree(item.p) ?? 0) > 0
+                    }
+                    onParkHere={() => parkHere(item.p)}
+                    onDetail={() =>
+                      router.push({ pathname: '/otopark/[id]', params: { id: item.p.id } })
+                    }
+                  />
+                ) : (
+                  <RestaurantRowCard
+                    row={item.row}
+                    target={target}
+                    best={false}
+                    widened={false}
+                    parkPending={isPlaceholderData}
+                    parkAsked={parkAsked}
+                    showParking={parkAsked}
+                  />
+                )}
               </View>
             )}
-            ListEmptyComponent={
-              <View style={{ padding: 20, gap: 12 }}>
-                <Txt secondary>{t('food.empty')}</Txt>
-                {target && !isPlaceholderData ? (
-                  <AskYerim
-                    question={t('mascot.askFood', {
-                      what: t('mascot.food'),
-                      place: label || city.name,
-                    })}
-                  />
-                ) : null}
-              </View>
-            }
+            ListEmptyComponent={emptyList}
             ListFooterComponent={
-              target && foodRows.length > 0 ? (
+              mode === 'food' && target && foodRows.length > 0 ? (
                 <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
                   <Button
                     kind="secondary"
@@ -584,53 +637,7 @@ function Results() {
               ) : null
             }
           />
-        ) : (
-          <BottomSheetFlatList
-            data={filtered}
-            keyExtractor={(p: RankedParking) => p.id}
-            ListHeaderComponent={header}
-            refreshing={pulling}
-            onRefresh={onPullRefresh}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-            renderItem={({ item, index }: { item: RankedParking; index: number }) => (
-              <View style={{ paddingHorizontal: 20 }}>
-                <ParkingCard
-                  parking={item}
-                  featured={index === 0}
-                  nearest={item.id === nearestId && !selectedId}
-                  freeTag={
-                    index === 0 &&
-                    !selectedId &&
-                    item.id !== nearestId &&
-                    (visibleFree(item) ?? 0) > 0
-                  }
-                  onParkHere={() => parkHere(item)}
-                  onDetail={() =>
-                    router.push({ pathname: '/otopark/[id]', params: { id: item.id } })
-                  }
-                />
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={{ padding: 20, gap: 12 }}>
-                {isLoading || isPlaceholderData || !target ? (
-                  <Txt secondary>{t('results.loading')}</Txt>
-                ) : isError ? (
-                  <>
-                    <Txt secondary>{t('results.error')}</Txt>
-                    <Button label={t('common.retry')} onPress={() => void refetch()} />
-                  </>
-                ) : (
-                  <>
-                    <Txt secondary>{t('results.empty')}</Txt>
-                    <AskYerim question={t('mascot.askPark', { place: label || city.name })} />
-                  </>
-                )}
-              </View>
-            }
-          />
-        )}
+        </View>
       </BottomSheet>
 
       {/* Top bar: after the sheet so it always stays on top and reachable. */}

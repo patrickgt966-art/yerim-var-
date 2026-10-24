@@ -10,6 +10,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandWordmark } from '@/components/BrandWordmark';
 import { Button } from '@/components/Button';
 import { Icon, type IconName } from '@/components/Icon';
+import { HandNote } from '@/components/lively/Hand';
+import { Paper } from '@/components/lively/Paper';
+import { Dashes } from '@/components/lively/Dashes';
 import { WelcomeIntro } from '@/components/mascot/WelcomeIntro';
 import { Txt } from '@/components/Txt';
 import { cityAt, CITIES, hasLiveParking, type City } from '@/data/cities';
@@ -251,6 +254,7 @@ export default function Onboarding() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <Paper />
       <StatusBar style={c.statusBar} />
       <View
         style={{
@@ -290,6 +294,7 @@ export default function Onboarding() {
             >
               {t('onboarding.cityTitle')}
             </Txt>
+            <HandNote size={21}>{t('onboarding.handCity')}</HandNote>
             <View style={{ gap: 8 }}>
               {CITIES.map((city) => (
                 <CityCard
@@ -326,6 +331,7 @@ export default function Onboarding() {
               >
                 {t('onboarding.locTitle')}
               </Txt>
+              <HandNote size={21}>{t('onboarding.handLoc')}</HandNote>
               <View
                 style={[
                   asym(22, 6),
@@ -339,14 +345,14 @@ export default function Onboarding() {
                   tile={c.mintSoft}
                   fg={c.mintText}
                 />
-                <View style={{ height: 1, backgroundColor: c.line }} />
+                <Dashes color={c.rowDash} />
                 <WhyRow
                   icon="check"
                   text={t('onboarding.locWhy2')}
                   tile={c.peachSoft}
                   fg={c.peachText}
                 />
-                <View style={{ height: 1, backgroundColor: c.line }} />
+                <Dashes color={c.rowDash} />
                 <WhyRow
                   icon="search"
                   text={t('onboarding.locWhy3')}

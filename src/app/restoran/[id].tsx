@@ -9,6 +9,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { Tag } from '@/components/FreshnessBadge';
+import { MascotSays } from '@/components/lively/MascotSays';
+import { Paper } from '@/components/lively/Paper';
+import { PaperSheet } from '@/components/lively/PaperSheet';
+import { TicketCard, TicketDivider } from '@/components/lively/TicketCard';
 import { ParkingCard } from '@/components/ParkingCard';
 import { ParkingMap } from '@/components/ParkingMap';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -96,10 +100,12 @@ export default function RestaurantDetail() {
           paddingTop: insets.top + 8,
           paddingHorizontal: 20,
           backgroundColor: c.bg,
+          gap: 14,
         }}
       >
+        <Paper />
         <ScreenHeader title={firstParam(params.n) ?? ''} back />
-        <Txt secondary>{t('food.notFound')}</Txt>
+        <MascotSays text={t('food.notFound')} pose={{ eyes: 'curious', mouth: 'none' }} />
       </View>
     );
   }
@@ -163,11 +169,7 @@ export default function RestaurantDetail() {
         snapPoints={snapPoints}
         // The fully open sheet stops below the floating top bar, so "back" never hides.
         topInset={insets.top + TOP_BAR_SPACE}
-        backgroundStyle={{
-          backgroundColor: c.card,
-          borderTopLeftRadius: 32,
-          borderTopRightRadius: 32,
-        }}
+        backgroundComponent={PaperSheet}
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
       >
         <BottomSheetScrollView
@@ -178,14 +180,23 @@ export default function RestaurantDetail() {
           }}
         >
           {(!!meta || !r.verified) && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+            <TicketCard
+              tone="peach"
+              style={{
+                padding: 14,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
               {!!meta && <Txt secondary>{meta}</Txt>}
               {!r.verified && (
                 <View accessible accessibilityLabel={t('food.a11yUnverified')}>
                   <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
                 </View>
               )}
-            </View>
+            </TicketCard>
           )}
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -212,21 +223,34 @@ export default function RestaurantDetail() {
             )}
           </View>
 
-          {!!r.openingHours && (
-            <View style={{ gap: 2 }}>
-              <Txt variant="label" secondary>
-                {t('food.hours')}
-              </Txt>
-              {formatOpeningHours(r.openingHours, (k) => t(k)).map((line, i) => (
-                <Txt key={i}>{line}</Txt>
-              ))}
-            </View>
+          {(!!r.openingHours || facts.length > 0) && (
+            <TicketCard style={{ paddingVertical: 12 }}>
+              {!!r.openingHours && (
+                <View style={{ gap: 2, paddingHorizontal: 14 }}>
+                  <Txt variant="label" secondary>
+                    {t('food.hours')}
+                  </Txt>
+                  {formatOpeningHours(r.openingHours, (k) => t(k)).map((line, i) => (
+                    <Txt key={i}>{line}</Txt>
+                  ))}
+                </View>
+              )}
+              {!!r.openingHours && facts.length > 0 && (
+                <View style={{ marginVertical: 10 }}>
+                  <TicketDivider />
+                </View>
+              )}
+              {facts.length > 0 && (
+                <View style={{ gap: 2, paddingHorizontal: 14 }}>
+                  {facts.map((f) => (
+                    <Txt key={f} variant="caption" secondary>
+                      {f}
+                    </Txt>
+                  ))}
+                </View>
+              )}
+            </TicketCard>
           )}
-          {facts.map((f) => (
-            <Txt key={f} variant="caption" secondary>
-              {f}
-            </Txt>
-          ))}
 
           {parkOpen ? (
             <>

@@ -43,7 +43,7 @@ const ParkWidget = (props: ParkWidgetProps, environment: WidgetEnvironment) => {
   const nearest = parked ? null : props.nearest;
   // Both the app and the widget extension open yerimvar:// links; the home screen shows the park.
   const home = 'yerimvar://';
-  const findPark = 'yerimvar://sonuc?near=1';
+  const findPark = 'yerimvar://sonuc?near=1&mode=park';
 
   const timer = (size: number, maxWidth?: number) => (
     <Text

@@ -7,6 +7,7 @@ import { setActiveCity } from '@/data/cities';
 import { FOOD_CATEGORIES, matchesCategory, restaurantsNear } from '@/data/restaurants';
 import type { Parking } from '@/data/types';
 import tr from '@/i18n/tr';
+import { forgetModes } from '@/lib/resultsMode';
 import { useApp } from '@/store/app';
 
 const KORDON = { lat: '38.4344', lng: '27.1427', label: 'Kordon' };
@@ -14,6 +15,7 @@ const TARGET = { lat: 38.4344, lng: 27.1427 };
 
 let mockParams: Record<string, string> = {};
 let mockParkings: Parking[] = [];
+let mockSource = 'izmir-open-data';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), setParams: jest.fn() },
   useLocalSearchParams: () => mockParams,
@@ -36,7 +38,7 @@ jest.mock('@/data/useParkings', () => {
     ...actual,
     useRanked: (target: { lat: number; lng: number } | null) => ({
       ranked: target ? actual.rankByDistance(mockParkings, target) : [],
-      data: { parkings: mockParkings, source: 'izmir-open-data' },
+      data: { parkings: mockParkings, source: mockSource },
       isLoading: false,
       isPlaceholderData: false,
       isError: false,
@@ -89,23 +91,105 @@ beforeEach(() => {
   useApp.setState({ city: 'izmir' });
   mockParams = { ...KORDON };
   mockParkings = [parkingAt(0), parkingAt(1), parkingAt(2)];
+  mockSource = 'izmir-open-data';
+  forgetModes();
 });
 
-describe('sonuc car park results', () => {
-  it('keeps the car park filters and shows no food chips', async () => {
+const BANNER = 'Bu bilgi deneme, gerçek değil: belediye verisine ulaşamadım.';
+const tab = (name: string) => screen.getByRole('tab', { name });
+const isOn = (name: string) => tab(name).props.accessibilityState.selected === true;
+const restaurantButtons = () =>
+  screen
+    .queryAllByRole('button', { name: /dakika yürüme/ })
+    .filter((b) => !(b.props.accessibilityLabel as string).startsWith('Otopark '));
+/** The banner text sits inside an alert only in its full (Otopark) form. */
+const bannerIsAlert = () => {
+  let node = screen.getByText(BANNER).parent;
+  while (node) {
+    if (node.props.accessibilityRole === 'alert') return true;
+    node = node.parent;
+  }
+  return false;
+};
+
+describe('sonuc entry decides the start mode', () => {
+  it.each([
+    ['the locate button (near=1)', { near: '1' }, 'Tümü'],
+    ['a typed place (no mode)', {}, 'Tümü'],
+    ['"Otopark bul"', { near: '1', mode: 'park' }, 'Otopark'],
+    ['"Yemek bul"', { mode: 'food' }, 'Restoran'],
+    ['the Turkish names', { mode: 'restoran' }, 'Restoran'],
+    ['an unknown mode', { mode: 'xyz' }, 'Tümü'],
+  ])('%s opens %s', async (_name, extra, expected) => {
+    mockParams = { ...KORDON, ...extra };
     await render(<Results />);
-    expect(screen.getByText('Tümü')).toBeTruthy();
-    expect(screen.getByText('Yakındaki restoranlar')).toBeTruthy();
-    expect(screen.getByText('Üstü kapalı')).toBeTruthy();
-    expect(screen.queryByText('Otoparklı')).toBeNull();
-    expect(screen.getAllByText('Otopark 0').length).toBeGreaterThan(0);
+    for (const name of ['Tümü', 'Otopark', 'Restoran']) expect(isOn(name)).toBe(name === expected);
+  });
+
+  it('remembers the last mode per entry for the session only', async () => {
+    const first = await render(<Results />);
+    await fireEvent.press(tab('Restoran'));
+    await first.unmount();
+    const second = await render(<Results />);
+    expect(isOn('Restoran')).toBe(true);
+    await second.unmount();
+    // Another entry keeps its own start.
+    mockParams = { ...KORDON, mode: 'park' };
+    const third = await render(<Results />);
+    expect(isOn('Otopark')).toBe(true);
+    await third.unmount();
+    // A new session starts over.
+    forgetModes();
+    mockParams = { ...KORDON };
+    await render(<Results />);
+    expect(isOn('Tümü')).toBe(true);
   });
 });
 
-describe('sonuc food results', () => {
+describe('sonuc Tümü', () => {
+  it('lists car parks and restaurants together with no sub-filter row', async () => {
+    await render(<Results />);
+    expect(screen.getByText(/^Yakınında 3 otopark · \d+ restoran$/)).toBeTruthy();
+    expect(screen.getAllByText('Otopark 0').length).toBeGreaterThan(0);
+    expect(restaurantButtons().length).toBeGreaterThan(0);
+    for (const label of ['Üstü kapalı', 'Ücretsiz', 'Boş yer bilgisi olanlar', 'Otoparklı'])
+      expect(screen.queryByText(label)).toBeNull();
+    expect(screen.queryByText(PARKING_LINE)).toBeNull();
+  });
+});
+
+describe('sonuc Otopark', () => {
+  beforeEach(() => {
+    mockParams = { ...KORDON, mode: 'park' };
+  });
+
+  it('shows the car park filters, no food chips and no restaurant cards', async () => {
+    await render(<Results />);
+    expect(screen.getByText('Üstü kapalı')).toBeTruthy();
+    expect(screen.queryByText('Otoparklı')).toBeNull();
+    expect(screen.queryByText('Yakındaki restoranlar')).toBeNull();
+    expect(screen.getAllByText('Otopark 0').length).toBeGreaterThan(0);
+    expect(restaurantButtons()).toHaveLength(0);
+  });
+
+  it('narrows with a filter and clears it when pressed again', async () => {
+    mockParkings = [{ ...parkingAt(0), isPaid: false }, parkingAt(1), parkingAt(2)];
+    await render(<Results />);
+    await fireEvent.press(screen.getByText('Ücretsiz'));
+    expect(screen.getAllByText('Otopark 0').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Otopark 1')).toHaveLength(0);
+    await fireEvent.press(screen.getByText('Ücretsiz'));
+    expect(screen.getAllByText('Otopark 1').length).toBeGreaterThan(0);
+  });
+});
+
+describe('sonuc Restoran', () => {
+  beforeEach(() => {
+    mockParams = { ...KORDON, mode: 'food' };
+  });
+
   it('lists food kinds and "Otoparklı" first, with no car park filters or lines', async () => {
     await render(<Results />);
-    await fireEvent.press(screen.getByText('Yakındaki restoranlar'));
     const nearby = restaurantsNear(TARGET, 1000, 600);
     const present = FOOD_CATEGORIES.filter((cat) => nearby.some((r) => matchesCategory(r, cat)));
     expect(present.length).toBeGreaterThan(0);
@@ -114,11 +198,11 @@ describe('sonuc food results', () => {
     for (const label of SUB_FILTERS) expect(screen.queryByText(label)).toBeNull();
     expect(screen.queryByText(PARKING_LINE)).toBeNull();
     expect(screen.queryByText(/Yakında otopark bilgisi yok/)).toBeNull();
+    expect(screen.queryByText('Otopark 0')).toBeNull();
   });
 
   it('shows the sub-filters and parking lines with "Otoparklı", and clears them when off', async () => {
     await render(<Results />);
-    await fireEvent.press(screen.getByText('Yakındaki restoranlar'));
     await fireEvent.press(screen.getByText('Otoparklı'));
     for (const label of SUB_FILTERS) expect(screen.getByText(label)).toBeTruthy();
     expect(screen.getAllByText(PARKING_LINE).length).toBeGreaterThan(0);
@@ -138,12 +222,8 @@ describe('sonuc food results', () => {
 
   it('filters the list with a kind chip', async () => {
     await render(<Results />);
-    await fireEvent.press(screen.getByText('Yakındaki restoranlar'));
     const nearby = restaurantsNear(TARGET, 1000, 600);
-    const rowLabels = () =>
-      screen
-        .getAllByRole('button', { name: /dakika yürüme/ })
-        .map((b) => b.props.accessibilityLabel as string);
+    const rowLabels = () => restaurantButtons().map((b) => b.props.accessibilityLabel as string);
     const before = rowLabels();
     const cat = FOOD_CATEGORIES.find(
       (c) =>
@@ -163,12 +243,43 @@ describe('sonuc food results', () => {
     expect(after).not.toEqual(before);
   });
 
-  it('goes back to the car park results from the scope chip', async () => {
+  it('says the data may be old once in the header, not on every card', async () => {
     await render(<Results />);
-    await fireEvent.press(screen.getByText('Yakındaki restoranlar'));
-    await fireEvent.press(screen.getByText('Yakındaki restoranlar'));
-    expect(screen.getByText('Tümü')).toBeTruthy();
+    expect(screen.queryAllByText(tr.food.unverified)).toHaveLength(0);
+    expect(screen.queryAllByText(tr.food.listStale).length).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('sonuc chips follow the mode', () => {
+  it('switches the chip rows with the segmented control', async () => {
+    await render(<Results />);
+    expect(screen.queryByText('Üstü kapalı')).toBeNull();
+    await fireEvent.press(tab('Otopark'));
     expect(screen.getByText('Üstü kapalı')).toBeTruthy();
     expect(screen.queryByText('Otoparklı')).toBeNull();
+    await fireEvent.press(tab('Restoran'));
+    expect(screen.getByText('Otoparklı')).toBeTruthy();
+    expect(screen.queryByText('Üstü kapalı')).toBeNull();
+    await fireEvent.press(tab('Tümü'));
+    expect(screen.queryByText('Otoparklı')).toBeNull();
+    expect(screen.queryByText('Üstü kapalı')).toBeNull();
+  });
+});
+
+describe('sonuc parking data banner', () => {
+  beforeEach(() => {
+    mockSource = 'mock';
+  });
+
+  it('is a full alert in Otopark, a muted line in Tümü and absent in Restoran', async () => {
+    await render(<Results />);
+    expect(screen.getByText(BANNER)).toBeTruthy();
+    expect(bannerIsAlert()).toBe(false); // Tümü: small muted line
+
+    await fireEvent.press(tab('Otopark'));
+    expect(bannerIsAlert()).toBe(true);
+
+    await fireEvent.press(tab('Restoran'));
+    expect(screen.queryByText(BANNER)).toBeNull();
   });
 });

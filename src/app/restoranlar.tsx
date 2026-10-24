@@ -3,21 +3,16 @@ import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  ScrollView,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, Pressable, useWindowDimensions, View } from 'react-native';
 import type MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { ChipRow, FoodKindChips, ParkSubChips } from '@/components/FoodFilters';
 import { AskYerim } from '@/components/mascot/AskYerim';
-import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
+import { HandNote } from '@/components/lively/Hand';
+import { PaperSheet } from '@/components/lively/PaperSheet';
 import { ParkingMap } from '@/components/ParkingMap';
 import { isBest, RestaurantRowCard } from '@/components/RestaurantRowCard';
 import { SampleBanner } from '@/components/SampleBanner';
@@ -335,52 +330,35 @@ function Restaurants() {
   // The whole header scrolls with the list, so large text never squeezes the rows.
   const wrapChips = fontScale > 1.2;
   const categoryChips = (
-    <>
-      <Chip label={t('food.all')} selected={active === 'all'} onPress={() => setFilter('all')} />
-      {kinds.map((cat) => (
-        <Chip
-          key={cat}
-          label={t(`food.cats.${cat}`)}
-          icon={CATEGORY_ICON[cat]}
-          selected={active === cat}
-          onPress={() => setFilter(cat)}
-        />
-      ))}
-      <Chip
-        label={t('food.withParking')}
-        selected={requireParking}
-        onPress={() => {
-          if (requireParking) turnParkingOff();
-          else {
-            setParkChip(true);
-            setSelectedId(null);
-          }
-        }}
-      />
-    </>
+    <FoodKindChips
+      kinds={kinds}
+      selected={active === 'all' ? null : active}
+      onSelect={(cat) => setFilter(cat ?? 'all')}
+      allLabel={t('food.all')}
+      parkOn={requireParking}
+      onToggleParking={() => {
+        if (requireParking) turnParkingOff();
+        else {
+          setParkChip(true);
+          setSelectedId(null);
+        }
+      }}
+    />
   );
   const parkingChips = (
-    <>
-      <Chip
-        label={t('results.indoor')}
-        selected={indoorOnly}
-        onPress={() => setIndoorOnly(!indoorOnly)}
-      />
-      <Chip label={t('results.free')} selected={freeOnly} onPress={() => setFreeOnly(!freeOnly)} />
-      <Chip
-        label={t('results.nearRail')}
-        selected={railOnly}
-        onPress={() => setRailOnly(!railOnly)}
-      />
-      <Chip
-        label={t('results.nonstop')}
-        selected={nonstopOnly}
-        onPress={() => setNonstopOnly(!nonstopOnly)}
-      />
-    </>
+    <ParkSubChips
+      value={{ indoorOnly, freeOnly, railOnly, nonstopOnly }}
+      onChange={(v) => {
+        setIndoorOnly(v.indoorOnly);
+        setFreeOnly(v.freeOnly);
+        setRailOnly(v.railOnly);
+        setNonstopOnly(v.nonstopOnly);
+      }}
+    />
   );
   const header = (
     <View>
+      <HandNote size={20}>{t('food.hand')}</HandNote>
       <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
         {t(sort === 'parkEase' ? 'food.subtitle' : 'food.subtitleNearest', {
           place,
@@ -388,6 +366,12 @@ function Restaurants() {
         })}
         {widenedKm && visible.length > 0 ? `\n${t('food.widened', { km: widenedKm })}` : ''}
       </Txt>
+      {/* Data age is said once here, not on every card. */}
+      {visible.some((x) => !x.r.verified) && (
+        <Txt variant="caption" secondary style={{ marginBottom: 10 }}>
+          {t('food.listStale')}
+        </Txt>
+      )}
       {outside && (
         <Txt variant="caption" style={{ marginBottom: 10 }}>
           {t('food.pointOutside', { city: cityName })}
@@ -442,32 +426,12 @@ function Restaurants() {
       {/* A category chosen before opening must stay changeable, even with nothing within 1 km. */}
       {(all.length > 0 || active !== 'all') && (
         <View style={{ marginBottom: 12 }}>
-          {wrapChips ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{categoryChips}</View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-            >
-              {categoryChips}
-            </ScrollView>
-          )}
+          <ChipRow wrap={wrapChips}>{categoryChips}</ChipRow>
         </View>
       )}
       {requireParking && (
         <View style={{ marginBottom: 12 }}>
-          {wrapChips ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{parkingChips}</View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-            >
-              {parkingChips}
-            </ScrollView>
-          )}
+          <ChipRow wrap={wrapChips}>{parkingChips}</ChipRow>
         </View>
       )}
       {(parkParam || dish || quality) && (
@@ -533,11 +497,7 @@ function Restaurants() {
         snapPoints={snapPoints}
         // The fully open sheet stops below the floating top bar, so "back" never hides.
         topInset={insets.top + TOP_BAR_SPACE}
-        backgroundStyle={{
-          backgroundColor: c.card,
-          borderTopLeftRadius: 32,
-          borderTopRightRadius: 32,
-        }}
+        backgroundComponent={PaperSheet}
         handleIndicatorStyle={{ backgroundColor: c.line, width: 44 }}
       >
         <BottomSheetFlatList

@@ -9,7 +9,7 @@ import { CATEGORY_ICON } from '@/components/foodCategory';
 import { Icon } from '@/components/Icon';
 import { Mascot } from '@/components/mascot/Mascot';
 import { ParkingMap } from '@/components/ParkingMap';
-import { TabSquiggle } from '@/components/lively/Hand';
+import { Segmented } from '@/components/lively/Segmented';
 import { Dashes } from '@/components/lively/Ticket';
 import { Txt } from '@/components/Txt';
 import { formatClock, getFreshness, occupancyLevel } from '@/data/freshness';
@@ -18,7 +18,7 @@ import { categoryOf, formatDistance, type RestaurantRow } from '@/data/restauran
 import { areaName } from '@/data/search';
 import type { RankedParking } from '@/data/useParkings';
 import { useApp } from '@/store/app';
-import { brand, fonts, HIT, statusTone, useColors } from '@/theme';
+import { brand, fonts, statusTone, useColors } from '@/theme';
 
 import type { NearbyHome } from './useNearbyHome';
 
@@ -47,40 +47,15 @@ function mix(parks: RankedParking[], foods: RestaurantRow[]): Item[] {
 }
 
 /** Hepsi · Otopark · Yemek as text tabs; the chosen one gets a hand-drawn underline. */
-function Segmented({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
-  const c = useColors();
+function FilterTabs({ value, onChange }: { value: Filter; onChange: (f: Filter) => void }) {
   const { t } = useTranslation();
   return (
-    <View
-      accessibilityRole="tablist"
-      accessibilityLabel={t('home.filterLabel')}
-      style={{ flexDirection: 'row', gap: 4 }}
-    >
-      {FILTERS.map((f) => {
-        const selected = value === f.id;
-        return (
-          <Pressable
-            key={f.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            onPress={() => onChange(f.id)}
-            style={{ minHeight: HIT, paddingHorizontal: 10, justifyContent: 'center' }}
-          >
-            <Txt
-              style={{
-                fontFamily: selected ? fonts.bodyExtraBold : fonts.body,
-                fontSize: 14,
-                lineHeight: 19,
-              }}
-              color={selected ? c.text : c.textSecondary}
-            >
-              {t(f.label)}
-            </Txt>
-            <TabSquiggle on={selected} />
-          </Pressable>
-        );
-      })}
-    </View>
+    <Segmented
+      options={FILTERS.map((f) => ({ id: f.id, label: t(f.label) }))}
+      value={value}
+      onChange={onChange}
+      label={t('home.filterLabel')}
+    />
   );
 }
 
@@ -364,7 +339,7 @@ export function NearbyCard({ nearby }: { nearby: NearbyHome }) {
         >
           {t('home.nearTitle')}
         </Txt>
-        {here && <Segmented value={filter} onChange={setFilter} />}
+        {here && <FilterTabs value={filter} onChange={setFilter} />}
       </View>
       {!!area && (
         <Txt secondary style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 18 }}>

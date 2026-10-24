@@ -6,7 +6,9 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { Dashes } from '@/components/lively/Dashes';
+import { Paper } from '@/components/lively/Paper';
+import { LiveHeader } from '@/components/lively/ScreenHeader';
 import { Txt } from '@/components/Txt';
 import type { SearchHit } from '@/data/search';
 import { firstParam } from '@/lib/params';
@@ -80,8 +82,13 @@ export default function PlaceSearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
+      <Paper />
       <View style={{ paddingHorizontal: 16 }}>
-        <ScreenHeader title={t('search.savePrompt', { label })} back />
+        <LiveHeader
+          title={t('search.savePrompt', { label })}
+          note={t(kind === 'home' ? 'search.handHome' : 'search.handWork')}
+          back
+        />
       </View>
       <View
         style={[
@@ -149,11 +156,17 @@ export default function PlaceSearchScreen() {
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   justifyContent: 'center',
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: c.line,
                   backgroundColor: pressed ? c.surface : c.card,
                 })}
               >
+                {i > 0 && (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', top: 0, left: 16, right: 16 }}
+                  >
+                    <Dashes color={c.rowDash} />
+                  </View>
+                )}
                 <Txt variant="bodyBold" numberOfLines={2}>
                   {h.name}
                 </Txt>

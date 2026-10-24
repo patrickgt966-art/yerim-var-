@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BotBubble, TypingBubble, UserBubble, type ChatMessage } from '@/components/ChatBits';
 import { ChatHeader } from '@/components/chat/ChatHeader';
+import { Paper } from '@/components/lively/Paper';
 import { ChatMascot } from '@/components/chat/ChatMascot';
 import { Composer } from '@/components/chat/Composer';
 import { ConsentCard } from '@/components/chat/ConsentCard';
@@ -381,6 +382,7 @@ function Chat({ first }: { first: boolean }) {
       keyboardVerticalOffset={0}
       style={{ flex: 1, backgroundColor: c.bg }}
     >
+      <Paper />
       <ChatHeader
         top={insets.top + 4}
         right={
