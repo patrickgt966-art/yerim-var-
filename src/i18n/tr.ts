@@ -817,6 +817,9 @@ const tr = {
       '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur; {{count}} tane buldum.',
     // The same notes without a count, for the reply whose lead already says how many places there are.
     dishNamedShort: 'Adında "{{dish}}" geçen yerleri üste koydum.',
+    dishMadeUpWords:
+      '"{{q}}" diye bir yemek ya da yer bilmiyorum; yakındaki benzer yerleri gösteriyorum.',
+    dishMadeUp: '"{{dish}}" diye bir yemek bilmiyorum; {{label}} gibi yerleri gösteriyorum.',
     dishLikelyShort: '"{{dish}}" adında yer yok ama {{label}} gibi yerlerde büyük ihtimalle var.',
     dishCommonShort: '"{{dish}}" adında yer yok ama {{shop}} gibi yerlerde genelde olur.',
     dishWider: '{{dish}} için yakında az yer var, biraz daha geniş baktım.',
@@ -955,6 +958,9 @@ const tr = {
     noInfo_reviews: 'yorum ve lezzet',
     noInfo_menu: 'menü',
     noInfo_kids: 'çocuk olanakları',
+    noInfo_allergen: 'alerjen ve içerik',
+    noInfo_space: 'garantili boş yer',
+    noPhone: 'Telefon numarası bilgimiz yok; konumu ve yol tarifi kartta.',
     noInfoRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa ve otoparka göre yaptım.',
     noInfoAi: '{{what}} bilgimiz yok; yakınlığa, açık olmasına ve otoparka göre seçtim.',
     noInfoPlainRule: '{{what}} bilgimiz yok; sıralamayı yakınlığa göre yaptım.',

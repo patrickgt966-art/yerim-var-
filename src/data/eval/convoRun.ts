@@ -17,7 +17,7 @@ import {
   type ChatCard,
   type ChatContext,
 } from '@/data/assistant';
-import { AI_CHOICE_ID, KINDS, memberLabel } from '@/data/choices';
+import { KINDS, memberLabel } from '@/data/choices';
 import { activeCity, setActiveCity } from '@/data/cities';
 import { getRestaurant } from '@/data/restaurants';
 import { staticParkings } from '@/data/staticParkings';
@@ -111,16 +111,21 @@ type Resolved =
   /** A "@n" tap and the reply offered no kind chip at all: nothing to tap, the turn is skipped. */
   | { kind: 'none' };
 
+/** Labels of the kind chips and of "Hepsi", in both app languages (a user may type them instead of tapping). */
 const KIND_LABELS = new Set(
   Object.values(KINDS).flatMap((m) => [memberLabel(m, 'tr'), memberLabel(m, 'en')]),
 );
 
+const CHOICE_LABELS = new Set([...KIND_LABELS, HEPSI, en.chat.choice.all]);
+
 /**
  * The chip of the last reply a tap names: "@n" is the nth kind chip, else the label (folded too).
- * A kind the router did not pick (`aiAsk`: the question was about its kinds) is not the app's
- * fault: the first kind on offer is tapped instead.
+ * The simulated user picks from what was offered: when a question about kinds is pending (`asked`)
+ * and the kind they meant is not among its chips (the router picked other kinds, or the table
+ * asked another goal's question), the first kind on offer is tapped instead. A label that is not
+ * offered at all ("Hepsi" after plain results) is `missing`: the caller types it as text.
  */
-function chipOf(last: BotMessage | null, label: string, aiAsk = false): Resolved {
+function chipOf(last: BotMessage | null, label: string, asked = false): Resolved {
   const actions = (last?.actions ?? []).filter((a) => a.kind !== 'open');
   const kindChips = actions.filter((a) => KIND_LABELS.has(a.label));
   // A "how many of you?" question has party chips in the place of kind chips.
@@ -138,7 +143,7 @@ function chipOf(last: BotMessage | null, label: string, aiAsk = false): Resolved
     actions.find((a) => fold(a.label) === fold(label)) ??
     (hepsiLabels.includes(label) ? actions.find((a) => hepsiLabels.includes(a.label)) : undefined);
   if (hit) return { kind: 'chip', action: hit };
-  if (aiAsk && KIND_LABELS.has(label) && kinds[0]) {
+  if (asked && KIND_LABELS.has(label) && kinds[0]) {
     return { kind: 'chip', action: kinds[0], swapped: true };
   }
   return { kind: 'missing' };
@@ -255,6 +260,7 @@ async function playTurn(
     wordings: [],
     directions: null,
     parkAsk: { before: ctx.parkAsk?.name ?? null, after: null },
+    askedBefore: ctx.ask !== undefined,
     infra: false,
   };
   const pending: Promise<unknown>[] = [];
@@ -392,7 +398,7 @@ async function playTurn(
   let observedText = label;
   let chip: ChatAction | null = null;
   if (turn.input.type === 'tap') {
-    const hit = chipOf(s.last, label, ctx.ask === AI_CHOICE_ID);
+    const hit = chipOf(s.last, label, ctx.ask !== undefined);
     if (hit.kind === 'none') {
       // Nothing was offered to tap: this turn is not played, it is not a second failure.
       observed.skipped = true;
@@ -404,6 +410,10 @@ async function playTurn(
       // The user sees what they tapped: the chip's own label.
       observed.input = chip.label;
       if (chip.kind === 'say') observedText = chip.text;
+    } else if (CHOICE_LABELS.has(label)) {
+      // A kind or "Hepsi" that was not offered: the user types the words instead (the chip was
+      // never there to tap), and what that typed answer picks is not judged as a tap.
+      observed.typedInstead = true;
     } else observed.tapMissing = true;
   }
   // "Yol tarifi" on a food card, as the chat screen does it: the parking offer, or the map at once.
@@ -454,6 +464,7 @@ async function playTurn(
     freeParking: nextCtx.freeParking,
     ask: nextCtx.ask ?? null,
     choice: nextCtx.choice ?? null,
+    wishes: nextCtx.wishes ?? [],
   };
   return { observed, ctx: nextCtx, reply };
 }

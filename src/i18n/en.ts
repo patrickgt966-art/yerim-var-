@@ -918,6 +918,9 @@ const en = {
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places; I found {{count}}.',
     dishNamedShort: 'Put the places with "{{dish}}" in their name at the top.',
     // {{label}} and {{shop}} are Turkish shop types, so the English texts leave them out or quote them.
+    dishMadeUpWords:
+      'I don\'t know a dish or a place called "{{q}}"; showing similar places nearby.',
+    dishMadeUp: 'I don\'t know a dish called "{{dish}}"; showing places of that kind instead.',
     dishLikelyShort: 'No place is named "{{dish}}", but places of this kind very likely have it.',
     dishCommonShort:
       'No place is named "{{dish}}", but it usually turns up at {{shop}}-type places.',
@@ -1060,6 +1063,9 @@ const en = {
     noInfo_reviews: 'review and taste',
     noInfo_menu: 'menu',
     noInfo_kids: 'kids’ facilities',
+    noInfo_allergen: 'allergen and ingredient',
+    noInfo_space: 'guaranteed free space',
+    noPhone: 'We have no phone number info; the card has the location and directions.',
     noInfoRule: "We don't have {{what}} info; I sorted by distance and parking.",
     noInfoAi: "We don't have {{what}} info; I picked by distance, opening hours and parking.",
     noInfoPlainRule: "We don't have {{what}} info; I sorted by distance.",

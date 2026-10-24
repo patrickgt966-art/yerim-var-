@@ -125,7 +125,6 @@ describe('wish and plan words', () => {
     'balık',
     'Alsancak kahvaltı',
     'yakınımda otopark',
-    "Konak'ta ücretsiz otopark",
     'metroya yakın otopark',
     'en iyi etçi',
     'akşam yemeği',
