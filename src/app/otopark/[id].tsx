@@ -8,6 +8,9 @@ import { Button } from '@/components/Button';
 import { cityOfPlace } from '@/components/favoriteCity';
 import { FreshnessBadge, StatusBadge, Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
+import { LiveHeader } from '@/components/lively/ScreenHeader';
+import { Paper } from '@/components/lively/Paper';
+import { TicketCard } from '@/components/lively/TicketCard';
 import { SampleBanner } from '@/components/SampleBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Row, Section } from '@/components/Section';
@@ -78,6 +81,7 @@ export default function ParkingDetail() {
           backgroundColor: c.bg,
         }}
       >
+        <Paper />
         <ScreenHeader title={firstParam(params.n) ?? ''} back />
         {isLoading || isPlaceholderData || !data ? (
           <ActivityIndicator color={c.text} accessibilityLabel={t('results.loading')} />
@@ -115,10 +119,12 @@ export default function ParkingDetail() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingTop: insets.top + 8 }}>
+      <Paper />
       {/* Header stays fixed so "back" is always reachable while the page scrolls. */}
       <View style={{ paddingHorizontal: 20, paddingBottom: 6 }}>
-        <ScreenHeader
+        <LiveHeader
           title={p.name}
+          note={t('detail.hand')}
           back
           right={
             <View style={{ flexDirection: 'row' }}>
@@ -209,8 +215,10 @@ export default function ParkingDetail() {
             </Txt>
           </View>
         ) : (
-          <View
+          <TicketCard
+            tone="mint"
             style={{
+              padding: 14,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -240,7 +248,7 @@ export default function ParkingDetail() {
                 {t('common.free')}
               </Txt>
             </View>
-          </View>
+          </TicketCard>
         )}
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>

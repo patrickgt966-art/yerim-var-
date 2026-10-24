@@ -187,7 +187,7 @@ describe('the Yerim Var widget layout', () => {
     expect(texts(medium)).toContain('Yerim Var');
     const links: string[] = [];
     walk(medium, (n) => void (n.type === 'Link' && links.push(String(n.props.destination))));
-    expect(links).toEqual(['yerimvar://sonuc?near=1', 'yerimvar://']);
+    expect(links).toEqual(['yerimvar://sonuc?near=1&mode=park', 'yerimvar://']);
   });
 
   it('uses no custom colours in tinted and lock screen modes', () => {

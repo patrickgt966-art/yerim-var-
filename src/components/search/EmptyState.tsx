@@ -108,7 +108,8 @@ export function EmptyState({ section, onAsk, onPlace }: SearchProps) {
 
   const nearMe = async () => {
     if (locating) return;
-    if (section === 'park') return router.push({ pathname: '/sonuc', params: { near: '1' } });
+    if (section === 'park')
+      return router.push({ pathname: '/sonuc', params: { near: '1', mode: 'park' } });
     setLocating(true);
     try {
       await openFoodNearMe(t('results.myLocation'), undefined, true);

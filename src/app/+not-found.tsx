@@ -4,6 +4,8 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { MascotSays } from '@/components/lively/MascotSays';
+import { Paper } from '@/components/lively/Paper';
 import { Txt } from '@/components/Txt';
 import { fonts, useColors } from '@/theme';
 
@@ -23,11 +25,12 @@ export default function NotFound() {
         justifyContent: 'center',
       }}
     >
+      <Paper />
       <Stack.Screen options={{ headerShown: false }} />
       <Txt accessibilityRole="header" style={{ fontFamily: fonts.display, fontSize: 24 }}>
         {t('notFound.title')}
       </Txt>
-      <Txt secondary>{t('notFound.body')}</Txt>
+      <MascotSays text={t('notFound.body')} pose={{ eyes: 'curious', mouth: 'none' }} />
       <Button label={t('notFound.home')} onPress={() => router.replace('/')} />
     </View>
   );

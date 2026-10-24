@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
+import { Dashes } from '@/components/lively/Dashes';
 import { Txt } from '@/components/Txt';
 import { fonts, HIT, useColors } from '@/theme';
 
@@ -25,8 +26,6 @@ export function ChatHeader({ top, right }: { top: number; right?: ReactNode }) {
           paddingLeft: 8,
           paddingRight: 12,
           backgroundColor: c.bg,
-          borderBottomWidth: 1,
-          borderBottomColor: c.chipBg,
         },
       ]}
     >
@@ -62,6 +61,9 @@ export function ChatHeader({ top, right }: { top: number; right?: ReactNode }) {
         </Txt>
       </View>
       {right}
+      <View pointerEvents="none" style={{ position: 'absolute', left: 12, right: 12, bottom: 0 }}>
+        <Dashes color={c.rowDash} />
+      </View>
     </View>
   );
 }

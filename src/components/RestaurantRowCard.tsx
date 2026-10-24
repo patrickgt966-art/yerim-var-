@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 
 import { DashedFrame } from '@/components/DashedFrame';
+import { Dashes } from '@/components/lively/Dashes';
 import { Tag } from '@/components/FreshnessBadge';
 import { Icon } from '@/components/Icon';
 import { CATEGORY_ICON } from '@/components/foodCategory';
@@ -18,7 +19,7 @@ import {
   kindLabel,
   type RestaurantRow,
 } from '@/data/restaurants';
-import { asym, fonts, useColors } from '@/theme';
+import { asym, brand, fonts, useColors } from '@/theme';
 import { FlaggedLine } from './FlaggedLine';
 import { useIsFlagged } from '@/store/reports';
 
@@ -115,7 +116,15 @@ export function RestaurantRowCard({
           alignItems: 'flex-start',
           backgroundColor: best ? c.surface : c.card,
         },
-        !best && { borderWidth: 1, borderColor: c.line },
+        !best && {
+          borderWidth: 1,
+          borderColor: c.line,
+          shadowColor: brand.navy,
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
+        },
       ]}
     >
       {best && <DashedFrame color={c.text} radius={22} tight={6} strokeWidth={2} dash={[8, 6]} />}
@@ -124,7 +133,7 @@ export function RestaurantRowCard({
           width: 44,
           height: 44,
           borderRadius: 22,
-          backgroundColor: c.warnBg,
+          backgroundColor: c.peachSoft,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -132,15 +141,7 @@ export function RestaurantRowCard({
         <Icon name={cat ? CATEGORY_ICON[cat] : 'cutlery'} size={24} color={c.ink} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-        {!r.verified && (
-          <View
-            accessible
-            accessibilityLabel={t('food.a11yUnverified')}
-            style={{ flexDirection: 'row' }}
-          >
-            <Tag text={t('food.unverified')} bg={c.badgeInfoBg} fg={c.badgeInfoText} />
-          </View>
-        )}
+        {/* Data age is said once in the list header; a card only speaks up when reported. */}
         {showParking && (best || easy) && (
           <View style={{ flexDirection: 'row' }}>
             <Tag
@@ -158,11 +159,14 @@ export function RestaurantRowCard({
         </Txt>
         {flagged && <FlaggedLine />}
         {showParking && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 4 }}>
-            <PBadge size={18} />
-            <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
-              {parkText}
-            </Txt>
+          <View style={{ marginTop: 6, gap: 8 }}>
+            <Dashes color={c.rowDash} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <PBadge size={18} />
+              <Txt variant="caption" style={{ flex: 1 }} numberOfLines={3}>
+                {parkText}
+              </Txt>
+            </View>
           </View>
         )}
       </View>

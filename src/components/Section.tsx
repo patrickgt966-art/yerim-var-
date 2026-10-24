@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { asym, useColors } from '@/theme';
+import { asym, brand, useColors } from '@/theme';
 
 import { Txt } from './Txt';
 
@@ -19,7 +19,18 @@ export function Section({
     <View
       style={[
         asym(22, 6),
-        { backgroundColor: c.card, borderWidth: 1, borderColor: c.line, padding: 16, gap: 10 },
+        {
+          backgroundColor: c.card,
+          borderWidth: 1,
+          borderColor: c.line,
+          padding: 16,
+          gap: 10,
+          shadowColor: brand.navy,
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 1,
+        },
       ]}
     >
       <View
