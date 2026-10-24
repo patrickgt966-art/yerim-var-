@@ -23,7 +23,7 @@ import { MEGA_CATEGORIES, timeOfDay, TIMES_OF_DAY } from './megaCases';
 /** What a shard run leaves behind, as JSON. */
 export type ShardFile = {
   version: 1;
-  set: 'mega';
+  set: 'convo' | 'mega';
   seed: number;
   model: string;
   /** The shard (i of n), or null for a run of everything. */
@@ -38,6 +38,9 @@ export type ShardFile = {
 };
 
 export const SHARD_FILE = /^ai-eval-mega-(\d+)\.json$/;
+/** The result files of a set: the mega shards, or the convo run (ai-eval-convo-all.json). */
+export const resultFileOf = (set: 'convo' | 'mega'): RegExp =>
+  set === 'mega' ? SHARD_FILE : /^ai-eval-convo-(\d+|all)\.json$/;
 /** The share of the conversations that must pass; the model is not deterministic, so not all of them. */
 export const MEGA_PASS = 0.85;
 /** How many failed conversations the report lists. */
@@ -47,9 +50,13 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** A ShardFile from parsed JSON; throws a readable error when it is not one. */
-export function readShard(json: unknown, where = 'shard file'): ShardFile {
-  if (!isObject(json) || json.version !== 1 || json.set !== 'mega') {
-    throw new Error(`${where} is not a mega shard (version 1)`);
+export function readShard(
+  json: unknown,
+  where = 'shard file',
+  set: 'convo' | 'mega' = 'mega',
+): ShardFile {
+  if (!isObject(json) || json.version !== 1 || json.set !== set) {
+    throw new Error(`${where} is not a ${set} shard (version 1)`);
   }
   if (!Array.isArray(json.results) || !isObject(json.usage)) {
     throw new Error(`${where} has no results`);
@@ -139,6 +146,12 @@ export type MegaReportMeta = {
   planned: number;
   /** The shards that came, and how many there should be (omit for a run of everything). */
   shards?: { have: readonly number[]; of: number };
+  /** The first line's title: "Mega AI eval" when absent. */
+  title?: string;
+  /** The categories to list, in order: the mega set's when absent. */
+  categories?: readonly string[];
+  /** The adaptive part of the report (src/data/eval/adaptive.ts adaptiveLines), after the header. */
+  adaptive?: readonly string[];
 };
 
 const subKey = (r: CaseResult): string => `${r.c.category}/${r.c.sub ?? '-'}`;
@@ -149,7 +162,7 @@ export function buildMegaReport(results: CaseResult[], meta: MegaReportMeta): st
   const passed = results.filter((r) => r.ok).length;
   const rate = results.length === 0 ? 0 : passed / results.length;
   lines.push(
-    `Mega AI eval (${meta.model}): ${passed}/${results.length} (${pct(passed, results.length)})`,
+    `${meta.title ?? 'Mega AI eval'} (${meta.model}): ${passed}/${results.length} (${pct(passed, results.length)})`,
   );
   lines.push(
     `Pass bar: ${Math.round(meta.bar * 100)}% -> ${rate >= meta.bar ? 'PASS' : 'FAIL'}` +
@@ -168,8 +181,11 @@ export function buildMegaReport(results: CaseResult[], meta: MegaReportMeta): st
   }
   lines.push(`Seed: ${meta.seed}`);
   lines.push('');
+  if (meta.adaptive) lines.push(...meta.adaptive);
 
-  lines.push(...table('Category', results, (r) => r.c.category, MEGA_CATEGORIES));
+  lines.push(
+    ...table('Category', results, (r) => r.c.category, meta.categories ?? MEGA_CATEGORIES),
+  );
 
   lines.push('| Check (per turn) | Pass | % |', '| --- | --- | --- |');
   const allScores = results.flatMap((r) => r.scores);

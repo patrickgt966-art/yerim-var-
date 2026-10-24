@@ -8,6 +8,13 @@ name: AI eval (mega)
 # rate limits); the merge job joins their reports into docs/ai-eval-mega.md, publishes it to the job
 # summary and fails when fewer than 85% of the conversations pass. The optional `limit` input plays
 # only the first N conversations (taken round-robin across the categories), also split over the shards.
+#
+# Adaptive exam (`mode`): the plan job downloads the carry artifact (ai-eval-mega-carry) of the latest
+# completed run on the default branch (or, without one, derives the failures from that run's shard
+# files) and composes the exam of `size` questions: the failures of last time come back, `guard`
+# percent are old passes asked again (a regression check), the rest are new and harder. The merge job
+# writes the next carry file and prints one EVAL_SUMMARY {json} line to the log. `fixed` is the old
+# behaviour (the same questions every run), `fresh` asks only new ones.
 on:
   workflow_dispatch:
     inputs:
@@ -19,9 +26,28 @@ on:
         description: 'Play only N conversations (empty = all)'
         required: false
         default: ''
+      mode:
+        description: 'adaptive (failures come back, new harder ones replace passes), fixed (same questions as always) or fresh (all new)'
+        required: false
+        default: 'adaptive'
+        type: choice
+        options:
+          - adaptive
+          - fixed
+          - fresh
+      size:
+        description: 'Number of questions in the exam (empty = the size of the fixed set, 2984)'
+        required: false
+        default: ''
+      guard:
+        description: 'Percent of the exam asked again from old passes (regression guard)'
+        required: false
+        default: '5'
 
 permissions:
   contents: read
+  # gh run list / gh run download: the carry artifact of the last run.
+  actions: read
 
 # The live evals share the org's per-minute token limit: one at a time, the next one waits.
 concurrency:
@@ -35,12 +61,61 @@ jobs:
       shards: ${{ steps.matrix.outputs.shards }}
     env:
       SHARDS: ${{ inputs.shards }}
+      MODE: ${{ inputs.mode }}
+      SIZE: ${{ inputs.size }}
+      GUARD: ${{ inputs.guard }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - id: matrix
         run: |
           n="${SHARDS:-6}"
           case "$n" in ''|*[!0-9]*|0) echo "shards must be a positive number" >&2; exit 1;; esac
           echo "shards=$(seq 0 $((n - 1)) | paste -sd, - | sed 's/^/[/; s/$/]/')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - if: env.ANTHROPIC_API_KEY != ''
+        run: npm ci
+      # The carry artifact of the latest completed run on the default branch that has one; without
+      # any, the shard files of the latest run that has them (the failures are derived from those).
+      - name: Fetch the carry of the last run
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          mkdir -p plan-in
+          ids="$(gh run list --workflow ai-eval-mega.yml --branch "$DEFAULT_BRANCH" --status completed --limit 20 --json databaseId --jq '.[].databaseId' || true)"
+          found=""
+          for id in $ids; do
+            if gh run download "$id" --name ai-eval-mega-carry --dir plan-in/carry 2>/dev/null; then
+              echo "Carry file of run $id"; found=1; break
+            fi
+          done
+          if [ -z "$found" ]; then
+            for id in $ids; do
+              if gh run download "$id" --pattern 'ai-eval-mega-shard-*' --dir plan-in/last 2>/dev/null; then
+                echo "No carry file; shard files of run $id"; break
+              fi
+            done
+          fi
+          ls -R plan-in || true
+      - name: Compose the exam
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          args=""
+          [ -f plan-in/carry/ai-eval-mega-carry.json ] && args="--carry plan-in/carry/ai-eval-mega-carry.json"
+          [ -d plan-in/last ] && args="$args --bootstrap plan-in/last"
+          npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --set mega --mode "${MODE:-adaptive}" ${SIZE:+--size "$SIZE"} --guard "${GUARD:-5}" --run "$GITHUB_RUN_NUMBER" $args --plan-out plan/exam.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega-plan
+          path: plan/exam.json
+          retention-days: 14
 
   shard:
     needs: plan
@@ -71,9 +146,15 @@ jobs:
       # The Worker's pinned Anthropic SDK and zod; scripts/ai-eval-convo.ts imports them from here.
       - if: env.ANTHROPIC_API_KEY != ''
         run: npm ci --prefix server/yerim-ai
+      # The exam the plan job composed: every shard plays its part of the same list.
+      - uses: actions/download-artifact@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega-plan
+          path: plan
       - name: Run shard ${{ matrix.shard }}
         if: env.ANTHROPIC_API_KEY != ''
-        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --set mega --shard "${{ matrix.shard }}/${SHARDS:-6}" ${LIMIT:+--limit "$LIMIT"}
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-convo.ts --set mega --exam plan/exam.json --shard "${{ matrix.shard }}/${SHARDS:-6}" ${LIMIT:+--limit "$LIMIT"}
       - uses: actions/upload-artifact@v4
         if: always() && env.ANTHROPIC_API_KEY != ''
         with:
@@ -109,10 +190,16 @@ jobs:
           pattern: ai-eval-mega-shard-*
           path: shards
           merge-multiple: true
-      # Fails (after the summary is published) when fewer than 85% of the conversations pass.
+      - uses: actions/download-artifact@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega-plan
+          path: plan
+      # Fails (after the summary is published) when fewer than 85% of the conversations pass. Writes
+      # docs/ai-eval-mega-carry.json (next run's carry list) and prints the EVAL_SUMMARY line.
       - name: Merge the shards
         if: env.ANTHROPIC_API_KEY != ''
-        run: npx --yes tsx@4.23.15 scripts/ai-eval-merge.ts --dir shards --out docs/ai-eval-mega.md
+        run: npx --yes tsx@4.23.15 scripts/ai-eval-merge.ts --set mega --dir shards --exam plan/exam.json --out docs/ai-eval-mega.md
       - name: Publish summary
         if: always() && env.ANTHROPIC_API_KEY != ''
         run: '[ -f docs/ai-eval-mega.md ] && cat docs/ai-eval-mega.md >> "$GITHUB_STEP_SUMMARY" || true'
@@ -121,4 +208,12 @@ jobs:
         with:
           name: ai-eval-mega
           path: docs/ai-eval-mega.md
+          if-no-files-found: ignore
+      # The failures with their full definitions, the passes for the guard, the asked hashes.
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: ai-eval-mega-carry
+          path: docs/ai-eval-mega-carry.json
+          retention-days: 90
           if-no-files-found: ignore

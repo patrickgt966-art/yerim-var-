@@ -190,6 +190,10 @@ export type ConvoCase<C extends string = ConvoCategory> = {
   ui?: 'tr' | 'en';
   /** Mega set only: false = the phone gives no location (a search around the user uses the city centre). */
   located?: boolean;
+  /** Adaptive exams: how hard the case is. 1 = the old templates (absent too), 2 = the complex layer. */
+  level?: 1 | 2;
+  /** Adaptive exams: why it is in this run: asked again after a fail, a check of an old pass, or new. */
+  group?: 'carried' | 'guard' | 'fresh';
 };
 
 /** The chips of a greeting, in the app's words. */

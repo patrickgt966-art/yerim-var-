@@ -21,6 +21,17 @@
  *   --seed S         another set of conversations from another seed
  *   --dry            builds the conversations and prints how many there are per category and
  *                    subcategory with the cost estimate; calls nothing and needs no key
+ *   --mode M         fixed (default: the old set, the same questions every run), adaptive (the
+ *                    failures of the last run come back, a --guard % sample of old passes is checked
+ *                    again, the rest is new and more complex) or fresh (all new, nothing carried)
+ *   --size N         the size of the exam (default: the size of the fixed set)
+ *   --run R          the run number: the seed of the fresh cases, recorded in the report
+ *                    (default: $GITHUB_RUN_NUMBER or 1; --seed wins)
+ *   --guard P        percent of the size asked again from old passes in adaptive mode (default 5)
+ *   --carry FILE     the carry file of the last run (ai-eval-<set>-carry.json)
+ *   --bootstrap DIR  no carry file: derive the failures from the result JSONs of the last run in DIR
+ *   --plan-out FILE  composes the exam, writes it as JSON (the shards read it with --exam), exits
+ *   --exam FILE      plays the exam of a plan file instead of building one
  * The cost is estimated and printed before anything is sent (it needs no key); the batch API is not
  * used: a conversation is interactive, the next turn depends on the last reply. The fixed prompts
  * are cached, as in the Worker.
@@ -58,7 +69,22 @@ import {
   shardOf,
   timeOfDay,
 } from '@/data/eval/megaCases';
-import { MEGA_PASS, buildMegaReport, type ShardFile } from '@/data/eval/megaMerge';
+import { MEGA_PASS, buildMegaReport, resultFileOf, type ShardFile } from '@/data/eval/megaMerge';
+import {
+  EXAM_MODES,
+  GUARD_DEFAULT,
+  bootstrapCarry,
+  compositionLines,
+  composeExam,
+  readCarry,
+  readExam,
+  type CarryFile,
+  type Exam,
+  type ExamFile,
+  type ExamMode,
+} from '@/data/eval/adaptive';
+import { buildComplexCases } from '@/data/eval/complexCases';
+import { findFiles } from './evalFiles';
 import { playConversation, type ConvoAi, type Transcript } from '@/data/eval/convoRun';
 import {
   PRICE_IN,
@@ -160,10 +186,18 @@ type Args = {
   seed?: number;
   shard: { i: number; n: number } | null;
   dry: boolean;
+  mode: ExamMode;
+  size?: number;
+  run?: string;
+  guard: number;
+  carry?: string;
+  bootstrap?: string;
+  exam?: string;
+  planOut?: string;
 };
 
 function parseArgs(argv: string[]): Args {
-  const out: Args = { set: 'convo', shard: null, dry: false };
+  const out: Args = { set: 'convo', shard: null, dry: false, mode: 'fixed', guard: GUARD_DEFAULT };
   for (let i = 0; i < argv.length; i++) {
     const [flag, inline] = (argv[i] ?? '').split('=');
     const value = () => inline ?? argv[++i];
@@ -190,6 +224,28 @@ function parseArgs(argv: string[]): Args {
       }
       out.shard = shard;
     } else if (flag === '--dry') out.dry = true;
+    else if (flag === '--mode') {
+      const v = value() as ExamMode;
+      if (!EXAM_MODES.includes(v)) {
+        console.error(`Unknown mode "${v}". One of: ${EXAM_MODES.join(', ')}`);
+        process.exit(2);
+      }
+      out.mode = v;
+    } else if (flag === '--size') {
+      const n = Math.floor(Number(value()));
+      if (Number.isFinite(n) && n > 0) out.size = n;
+    } else if (flag === '--run') out.run = value();
+    else if (flag === '--guard') {
+      const n = Number(value());
+      if (Number.isFinite(n) && n >= 0 && n <= 50) out.guard = n;
+      else {
+        console.error('--guard wants a percent from 0 to 50');
+        process.exit(2);
+      }
+    } else if (flag === '--carry') out.carry = value();
+    else if (flag === '--bootstrap') out.bootstrap = value();
+    else if (flag === '--exam') out.exam = value();
+    else if (flag === '--plan-out') out.planOut = value();
     else {
       console.error(`Unknown option: ${argv[i]}`);
       process.exit(2);
@@ -239,18 +295,85 @@ function countLines(cases: readonly ConvoCase<string>[]): string[] {
   return lines;
 }
 
+/** The carry file of the last run: the file, else derived from the result JSONs of that run. */
+function loadCarry(args: Args): CarryFile | null {
+  if (args.carry && fs.existsSync(args.carry)) {
+    return readCarry(JSON.parse(fs.readFileSync(args.carry, 'utf8')), args.carry);
+  }
+  if (!args.bootstrap) return null;
+  const files = findFiles(args.bootstrap, resultFileOf(args.set));
+  if (files.length === 0) return null;
+  const shards = files.map((f) => JSON.parse(fs.readFileSync(f, 'utf8')) as ShardFile);
+  const mega = args.set === 'mega';
+  console.error(`No carry file: derived the failures from ${files.length} result file(s).`);
+  return bootstrapCarry(
+    shards,
+    {
+      set: args.set,
+      run: 'bootstrap',
+      seed: shards[0]?.seed ?? 0,
+      mode: 'fixed',
+      size: shards.reduce((n, s) => n + s.results.length, 0),
+    },
+    (s) => (mega ? buildMegaCases(s) : buildConvoCases(s)),
+  );
+}
+
+/** The exam of this run (see composeExam); the CLI default is the old fixed set. */
+function planExam(args: Args): { exam: Exam; carry: CarryFile | null } {
+  const mega = args.set === 'mega';
+  const build = (s: number): ConvoCase<string>[] => (mega ? buildMegaCases(s) : buildConvoCases(s));
+  const fixedSeed = args.seed ?? (mega ? MEGA_SEED : CONVO_SEED);
+  const all = build(mega ? MEGA_SEED : CONVO_SEED);
+  const baseMix: Record<string, number> = {};
+  for (const c of all) baseMix[c.category] = (baseMix[c.category] ?? 0) + 1;
+  const run = args.run ?? process.env.GITHUB_RUN_NUMBER ?? '1';
+  const runSeed = Math.floor(Number(run));
+  // Loaded in every mode: a fixed run still keeps the carry list and the asked hashes of the others.
+  const carry = loadCarry(args);
+  const exam = composeExam({
+    set: args.set,
+    mode: args.mode,
+    size: args.size ?? all.length,
+    run,
+    seed:
+      args.mode === 'fixed' ? fixedSeed : (args.seed ?? (Number.isFinite(runSeed) ? runSeed : 1)),
+    guardPercent: args.guard,
+    carry,
+    baseMix,
+    fixed: () => build(fixedSeed),
+    legacy: build,
+    complex: (s, want, avoid) => buildComplexCases(s, want, args.set, avoid),
+  });
+  return { exam, carry };
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const mega = args.set === 'mega';
-  const seed = args.seed ?? (mega ? MEGA_SEED : CONVO_SEED);
   const categories: readonly string[] = mega ? MEGA_CATEGORIES : CONVO_CATEGORIES;
   if (args.only && !categories.includes(args.only)) {
     console.error(`Unknown category "${args.only}". One of: ${categories.join(', ')}`);
     process.exit(2);
   }
-  let cases: ConvoCase<string>[] = (mega ? buildMegaCases(seed) : buildConvoCases(seed)).filter(
-    (c) => !args.only || c.category === args.only,
-  );
+  let exam: Exam;
+  let carry: CarryFile | null = null;
+  if (args.exam) {
+    const file = readExam(JSON.parse(fs.readFileSync(args.exam, 'utf8')), args.exam);
+    exam = { cases: file.cases, info: file.info };
+    carry = file.carry;
+  } else {
+    ({ exam, carry } = planExam(args));
+  }
+  const seed = exam.info.seed;
+  if (args.planOut) {
+    const file: ExamFile = { version: 1, info: exam.info, cases: exam.cases, carry };
+    fs.mkdirSync(path.dirname(path.resolve(args.planOut)), { recursive: true });
+    fs.writeFileSync(args.planOut, JSON.stringify(file));
+    console.log(compositionLines(exam.info).join('\n'));
+    return;
+  }
+  let cases: ConvoCase<string>[] = exam.cases.filter((c) => !args.only || c.category === args.only);
   if (args.limit) cases = sampleCases(cases, args.limit, seed);
   if (args.shard) cases = shardOf(cases, args.shard.i, args.shard.n);
   const turns = cases.reduce((n, c) => n + c.turns.length, 0);
@@ -268,6 +391,7 @@ async function main(): Promise<void> {
     console.error(`Estimate is above the $${target} target for a run.`);
   }
   if (args.dry) {
+    console.log(`${compositionLines(exam.info).join('\n')}\n`);
     console.log(countLines(cases).join('\n'));
     return;
   }
@@ -550,6 +674,20 @@ async function main(): Promise<void> {
     console.log(report);
     const md = `# AI eval (convo)\n\nDate: ${date}\n\n${report}\n`;
     fs.writeFileSync(docs('ai-eval-convo.md'), md);
+    // The scored conversations as JSON: scripts/ai-eval-merge.ts --set convo builds the adaptive report and the carry file from it.
+    const convoFile: ShardFile = {
+      version: 1,
+      set: 'convo',
+      seed,
+      model: MODEL,
+      shard: null,
+      planned: cases.length,
+      order: cases.map((c) => c.name),
+      usage,
+      estimateUsd: estimate.usd,
+      results: scored,
+    };
+    fs.writeFileSync(docs('ai-eval-convo-all.json'), JSON.stringify(convoFile));
     if (rate < CONVO_PASS) process.exitCode = 1;
     return;
   }
